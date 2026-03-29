@@ -652,9 +652,9 @@ async function showDetail(id) {
   html += '</div>';
   // Expires at
   html += '<div style="flex:1;min-width:200px"><label class="form-label">Expires At</label>';
-  html += '<div style="display:flex;gap:0.5rem"><input class="form-input" id="detail-expires" type="datetime-local" value="' + expVal + '">';
+  html += '<div style="display:flex;gap:0.5rem"><input class="form-input" id="detail-expires" type="datetime-local" value="' + expVal + '" oninput="document.getElementById(\\'expiry-save-btn\\').disabled = !this.value">';
   if (l.expires_at) html += '<button class="btn btn-ghost btn-sm" onclick="clearDetailExpiry(' + id + ')">Clear</button>';
-  html += '<button class="btn btn-secondary btn-sm" onclick="saveDetailExpiry(' + id + ')">Save</button></div>';
+  html += '<button class="btn btn-secondary btn-sm" id="expiry-save-btn" onclick="saveDetailExpiry(' + id + ')"' + (expVal ? '' : ' disabled') + '>Save</button></div>';
   html += '</div>';
   html += '</div></div>';
 
