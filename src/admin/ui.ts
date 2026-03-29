@@ -190,9 +190,6 @@ const ADMIN_HTML = `<!DOCTYPE html>
     .sort-btn { background: transparent; border: 2px solid var(--outline); border-radius: var(--radius); color: var(--on-bg-muted); font-family: var(--font-body); font-size: 0.75rem; font-weight: 600; padding: 0.3rem 0.6rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.3rem; }
     .sort-btn:hover { border-color: var(--on-bg-muted); color: var(--on-bg); }
     .sort-btn.active { border-color: var(--secondary); color: var(--secondary); }
-    .toggle-filter { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; user-select: none; }
-    .toggle-filter input { accent-color: var(--secondary); width: 14px; height: 14px; cursor: pointer; }
-    .toggle-filter-label { font-size: 0.75rem; color: var(--on-bg-muted); font-weight: 600; }
     .link-disabled { opacity: 0.5; }
     .disabled-badge { display: inline-flex; align-items: center; gap: 0.2rem; background: var(--danger); color: #fff; font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: var(--radius); text-transform: uppercase; letter-spacing: 0.05em; }
     .link-date { font-size: 0.7rem; color: var(--on-bg-muted); margin-top: 0.2rem; }
@@ -288,10 +285,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
           <button class="sort-btn active" id="sort-recent" onclick="sortLinks('recent')"><span class="icon" style="font-size:16px">schedule</span> Recent</button>
           <button class="sort-btn" id="sort-popular" onclick="sortLinks('popular')"><span class="icon" style="font-size:16px">trending_up</span> Popular</button>
         </div>
-        <label class="toggle-filter" title="Include disabled links in the list">
-          <input type="checkbox" id="toggle-disabled" onchange="toggleShowDisabled(this.checked)">
-          <span class="toggle-filter-label">Show disabled</span>
-        </label>
+        <button class="sort-btn" id="toggle-disabled" onclick="toggleShowDisabled()"><span class="icon" style="font-size:16px">block</span> Show disabled</button>
       </div>
       <button class="btn btn-primary" onclick="showCreateModal()">
         <span class="icon">add</span> New Link
@@ -512,8 +506,9 @@ function sortLinks(mode) {
   renderLinks();
 }
 
-function toggleShowDisabled(checked) {
-  showDisabled = checked;
+function toggleShowDisabled() {
+  showDisabled = !showDisabled;
+  document.getElementById('toggle-disabled').classList.toggle('active', showDisabled);
   linkPage = 1;
   renderLinks();
 }
