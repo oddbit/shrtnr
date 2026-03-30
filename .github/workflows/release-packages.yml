@@ -1,0 +1,84 @@
+name: Release packages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - sdk/package.json
+      - mcp/package.json
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect packages to release
+        id: detect
+        run: bash scripts/detect-releases.sh
+
+  release:
+    needs: detect
+    if: needs.detect.outputs.matrix != '{"include":[]}'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract changelog
+        run: |
+          bash scripts/extract-changelog.sh \
+            "${{ matrix.version }}" \
+            "${{ matrix.package }}/CHANGELOG.md" \
+            "/tmp/${{ matrix.package }}-release-notes.md"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.package }}
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        working-directory: ${{ matrix.package }}
+        run: yarn build
+
+      - name: Test
+        working-directory: ${{ matrix.package }}
+        run: yarn test
+
+      - name: Publish to npm
+        working-directory: ${{ matrix.package }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
+
+      - name: Create tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ matrix.package }}-v${{ matrix.version }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file "/tmp/${{ matrix.package }}-release-notes.md"

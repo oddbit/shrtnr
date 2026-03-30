@@ -46,26 +46,11 @@ jobs:
 
       - name: Extract changelog for version
         if: steps.version.outputs.changed == 'true' && steps.check_tag.outputs.exists == 'false'
-        id: changelog
         run: |
-          VERSION="${{ steps.version.outputs.current }}"
-          # Extract the section for this version from CHANGELOG.md.
-          # Matches from "## [x.y.z]" or "## x.y.z" until the next "## " heading.
-          NOTES=$(awk -v ver="$VERSION" '
-            BEGIN { found=0 }
-            /^## / {
-              if (found) exit
-              if (index($0, ver)) { found=1; next }
-            }
-            found { print }
-          ' CHANGELOG.md)
-
-          if [ -z "$NOTES" ]; then
-            NOTES="Release app-v${VERSION}"
-          fi
-
-          # Write to file to preserve newlines
-          echo "$NOTES" > /tmp/release_notes.md
+          bash scripts/extract-changelog.sh \
+            "${{ steps.version.outputs.current }}" \
+            CHANGELOG.md \
+            /tmp/release_notes.md
 
       - name: Create tag and release
         if: steps.version.outputs.changed == 'true' && steps.check_tag.outputs.exists == 'false'
