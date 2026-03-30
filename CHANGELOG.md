@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0
+
+### Mobile UI
+- Responsive layout with slide-in drawer navigation on small screens
+- Hamburger menu button in sticky mobile header
+- Long URLs truncate instead of overflowing
+- Progress bars hidden on mobile; numeric values remain visible
+- API keys table scrolls horizontally rather than breaking layout
+
+### Integrations
+- Published `@oddbit/shrtnr-sdk` npm package for programmatic link management
+- Published `@oddbit/shrtnr-mcp` npm package exposing link management to AI assistants via MCP stdio transport
+
+### CI
+- Shared release scripts in `scripts/` (`extract-changelog.sh`, `detect-releases.sh`)
+- Unified `release-packages.yml` workflow covers both SDK and MCP releases via a dynamic matrix
+
 ## 0.2.0
 
 ### API keys
