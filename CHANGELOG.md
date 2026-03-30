@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0
+
+- Migrated admin UI from monolithic SPA to Hono JSX server-rendered pages
+- Replaced 1500-line template-literal file with modular page components
+- Admin routes moved from `/_/admin/*` to `/_/*` with legacy redirects
+- Extracted CSS and client JS into dedicated modules
+- Added Hono as a dependency for routing and JSX rendering
+- Updated copyright notices to 2026
+
 ## 0.4.4
 
 - Dashboard stat cards (Total Links, Total Clicks) sit side by side on mobile instead of stacking full-width
