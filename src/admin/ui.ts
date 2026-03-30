@@ -288,15 +288,32 @@ const ADMIN_HTML = `<!DOCTYPE html>
     .empty-state .icon { font-size: 48px; margin-bottom: 1rem; display: block; }
     .empty-state p { margin-bottom: 1rem; }
 
+    /* Mobile navigation */
+    .mobile-header { display: none; align-items: center; gap: 0.75rem; background: var(--surface-low); position: sticky; top: 0; z-index: 50; border-bottom: 1px solid var(--outline); }
+    .mobile-brand { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--on-bg); }
+    .mobile-brand span { color: var(--primary); }
+    .mobile-menu-btn { background: none; border: none; color: var(--on-bg); cursor: pointer; padding: 0.4rem; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; }
+    .mobile-menu-btn:hover { background: var(--surface-high); }
+    .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 55; }
+    .sidebar-backdrop.open { display: block; }
+
     /* Responsive */
     @media (max-width: 768px) {
-      .sidebar { display: none; }
+      .mobile-header { display: flex; padding: 0.75rem 1rem; margin: -1rem -1rem 1rem; }
+      .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; z-index: 60; }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-backdrop.open { display: block; }
       .main { margin-left: 0; padding: 1rem; }
-      .bento { grid-template-columns: 1fr; }
+      .bento { grid-template-columns: 1fr; gap: 0.75rem; }
       .bento-card.span-2, .bento-card.span-3 { grid-column: span 1; }
       .detail-grid { grid-template-columns: 1fr; }
       .hero-input-wrap { flex-direction: column; }
       .form-row { flex-direction: column; }
+      .toolbar { flex-wrap: wrap; gap: 0.5rem; }
+      .stat-name { flex: 1; min-width: 0; max-width: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .stat-bar { display: none; }
+      .stat-count { min-width: 28px; }
+      .keys-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     }
   </style>
 </head>
@@ -333,8 +350,19 @@ const ADMIN_HTML = `<!DOCTYPE html>
   </div>
 </nav>
 
+<!-- Sidebar backdrop (mobile) -->
+<div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeDrawer()"></div>
+
 <!-- Main content -->
 <div class="main" id="app">
+
+  <!-- Mobile header -->
+  <div class="mobile-header">
+    <button class="mobile-menu-btn" onclick="toggleDrawer()" aria-label="Open navigation">
+      <span class="icon">menu</span>
+    </button>
+    <div class="mobile-brand">shrtnr<span>.</span></div>
+  </div>
 
   <!-- Dashboard View -->
   <div id="view-dashboard">
@@ -455,9 +483,22 @@ let showDisabled = false;
 document.getElementById('user-email').textContent = CURRENT_USER;
 document.getElementById('copyright-year').textContent = '\\u00A9 ' + new Date().getFullYear();
 
+// ---- Mobile drawer ----
+function toggleDrawer() {
+  const s = document.querySelector('.sidebar');
+  const b = document.getElementById('sidebar-backdrop');
+  const open = s.classList.toggle('open');
+  b.classList.toggle('open', open);
+}
+function closeDrawer() {
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('sidebar-backdrop').classList.remove('open');
+}
+
 // ---- Navigation ----
 function switchView(view, pushState) {
   if (typeof pushState === 'undefined') pushState = true;
+  closeDrawer();
   currentView = view;
   ['dashboard','links','keys','settings','detail'].forEach(v => {
     document.getElementById('view-' + v).style.display = v === view ? '' : 'none';
@@ -549,10 +590,10 @@ function renderDashboard() {
     d.recent_links.forEach(link => {
       const primary = link.slugs.find(s => !s.is_vanity);
       const slug = primary ? primary.slug : (link.slugs[0]?.slug || '');
-      html += '<div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;cursor:pointer" onclick="showDetail(' + link.id + ')">';
+      html += '<div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;cursor:pointer;overflow:hidden;min-width:0" onclick="showDetail(' + link.id + ')">';
       html += '<span class="slug-chip" onclick="event.stopPropagation();copyUrl(\\'' + slug + '\\')" title="Click to copy">/' + esc(slug) + ' <span class="icon" style="font-size:14px">content_copy</span></span>';
-      html += '<span style="flex:1;font-size:0.8rem;color:var(--on-bg-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(link.url) + '</span>';
-      html += '<span style="font-family:var(--font-display);font-weight:700;color:var(--primary)">' + link.total_clicks + '</span>';
+      html += '<span style="flex:1;min-width:0;font-size:0.8rem;color:var(--on-bg-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(link.url) + '</span>';
+      html += '<span style="font-family:var(--font-display);font-weight:700;color:var(--primary);flex-shrink:0">' + link.total_clicks + '</span>';
       html += '</div>';
     });
   }
@@ -579,9 +620,9 @@ function renderDashboard() {
     d.top_links.forEach(link => {
       const primary = link.slugs.find(s => !s.is_vanity);
       const slug = primary ? primary.slug : (link.slugs[0]?.slug || '');
-      html += '<div style="cursor:pointer" onclick="showDetail(' + link.id + ')">';
+      html += '<div style="cursor:pointer;overflow:hidden" onclick="showDetail(' + link.id + ')">';
       html += '<div class="stat-row">';
-      html += '<span class="stat-name" style="min-width:140px;font-family:var(--font-mono)">/' + esc(slug) + '</span>';
+      html += '<span class="stat-name" style="font-family:var(--font-mono)">/' + esc(slug) + '</span>';
       html += '<div class="stat-bar"><div class="stat-fill orange" style="width:' + (link.total_clicks / maxT * 100) + '%"></div></div>';
       html += '<span class="stat-count">' + link.total_clicks + '</span>';
       html += '</div>';
@@ -828,7 +869,8 @@ async function showDetail(id, pushState) {
   // Slugs breakdown
   const maxSC = Math.max(1, ...l.slugs.map(x => x.click_count));
   const maxSlugLen = Math.max(...l.slugs.map(x => x.slug.length + 1));
-  const slugColWidth = Math.max(100, maxSlugLen * 9.6);
+  const isMobile = window.innerWidth < 768;
+  const slugColWidth = isMobile ? Math.min(90, Math.max(60, maxSlugLen * 7)) : Math.max(100, maxSlugLen * 9.6);
   l.slugs.forEach(s => {
     const pct = (s.click_count / maxSC * 100).toFixed(0);
     html += '<div class="stat-row"><span class="stat-name" style="font-family:var(--font-mono);min-width:' + slugColWidth + 'px;max-width:' + slugColWidth + 'px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">/' + esc(s.slug) + '</span><div class="stat-bar"><div class="stat-fill ' + (s.is_vanity ? 'mint' : 'orange') + '" style="width:' + pct + '%"></div></div><span class="stat-count">' + s.click_count + '</span></div>';
@@ -967,7 +1009,7 @@ function renderKeys() {
     return;
   }
 
-  let html = '<div class="bento-card" style="padding:0;overflow:hidden"><table class="keys-table"><thead><tr><th>Title</th><th>Key</th><th>Scope</th><th>Created</th><th>Last Used</th><th></th></tr></thead><tbody>';
+  let html = '<div class="bento-card" style="padding:0"><div class="keys-table-scroll"><table class="keys-table"><thead><tr><th>Title</th><th>Key</th><th>Scope</th><th>Created</th><th>Last Used</th><th></th></tr></thead><tbody>';
   for (const k of apiKeys) {
     const scopes = k.scope.split(',');
     let scopeHtml = '';
@@ -982,7 +1024,7 @@ function renderKeys() {
     html += '<td><button class="btn btn-danger btn-sm" onclick="deleteKey(' + k.id + ',\\'' + esc(k.title).replace(/'/g, "\\\\'") + '\\')"><span class="icon" style="font-size:16px">delete</span></button></td>';
     html += '</tr>';
   }
-  html += '</tbody></table></div>';
+  html += '</tbody></table></div></div>';
   el.innerHTML = html;
 }
 
