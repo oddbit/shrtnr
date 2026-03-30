@@ -17,7 +17,7 @@ When you are instructed to "update the version", "bump version" or "create a rel
 
 ## Writing Rules
 
-These rules apply to all produced material: skill output, captions, docs, comments, UI copy, and any text written for or on behalf of Oddbit.
+These rules apply to all produced material: docs, comments, UI copy, and any text written.
 
 - **Specific words over general ones.** Not "move": "shuffle." Not "say": "announce." Not "problem": "bottleneck." The right word does more than the right sentence. Before settling on a word, ask: is there a more precise one?
 - **No em dash.** Use a colon, comma, or period instead. Em dashes read as AI-generated filler.
@@ -28,5 +28,5 @@ These rules apply to all produced material: skill output, captions, docs, commen
 
 ## Documentation
 
-- Do NOT hardcode dynamic content that can drift. Never enumerate plugins, skills, dependencies, components, or any other list that has a file or folder as its source of truth. Instead, refer to that source directly. For example: reference `plugins/` or `.claude-plugin/marketplace.json` rather than listing plugins by name; reference `package.json` rather than listing dependencies.
-- Do NOT hardcode dynamic content in `plugins/` that can drift (module lists, dependency lists, component inventories). Reference the source files or directories instead.
+- Do NOT hardcode dynamic content that can drift. Never enumerate plugins, skills, dependencies, components, or any other list that has a file or folder as its source of truth. Instead, refer to that source directly. For example: `package.json` rather than listing dependencies.
+- Do NOT hardcode dynamic content that can drift (module lists, dependency lists, component inventories). Reference the source files or directories instead.

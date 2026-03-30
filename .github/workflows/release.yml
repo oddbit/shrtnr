@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Detect version change
         id: version
@@ -37,7 +37,7 @@ jobs:
         if: steps.version.outputs.changed == 'true'
         id: check_tag
         run: |
-          TAG="v${{ steps.version.outputs.current }}"
+          TAG="app-v${{ steps.version.outputs.current }}"
           if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
@@ -61,7 +61,7 @@ jobs:
           ' CHANGELOG.md)
 
           if [ -z "$NOTES" ]; then
-            NOTES="Release v${VERSION}"
+            NOTES="Release app-v${VERSION}"
           fi
 
           # Write to file to preserve newlines
@@ -72,7 +72,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="v${{ steps.version.outputs.current }}"
+          TAG="app-v${{ steps.version.outputs.current }}"
           git tag "$TAG"
           git push origin "$TAG"
           gh release create "$TAG" \
