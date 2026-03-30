@@ -1,7 +1,10 @@
 # CLAUDE.md
 
-## Coding rules
+## Coding 
 
+### Releases
+
+When you are instructed to "update the version", "bump version" or "create a release" you should update the version in package.json to recommended version according to semver logic of what was changed. Then write into CHANGELOG.md a summary of what was changed.
 
 ### Testing
 - Always **make a test first** for a feature or change that is being requested. Define it by writing tests first and requesting details on its behavior from the developer. If the behavior is trivial, you can just write the tests. After that, implement the code that can pass the test.

@@ -40,6 +40,12 @@ describe("Routing", () => {
     expect(body.status).toBe("ok");
   });
 
+  it("GET /_/health should include version string", async () => {
+    const res = await SELF.fetch(unauthed("/_/health"));
+    const body = await res.json() as { version: string };
+    expect(body.version).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
   it("GET /_/admin should redirect to /_/admin/dashboard", async () => {
     const res = await SELF.fetch(authed("/_/admin"), { redirect: "manual" });
     expect(res.status).toBe(302);

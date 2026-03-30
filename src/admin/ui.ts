@@ -1,8 +1,12 @@
 // Copyright 2025 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
+import { APP_VERSION } from "../version";
+
 export function serveAdminUI(email: string): Response {
-  const html = ADMIN_HTML.replace("__CURRENT_USER__", escapeForJs(email));
+  const html = ADMIN_HTML
+    .replace("__CURRENT_USER__", escapeForJs(email))
+    .replace("__APP_VERSION__", APP_VERSION);
   return new Response(html, {
     headers: { "Content-Type": "text/html;charset=UTF-8" },
   });
@@ -210,6 +214,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
     .toast-success { background: var(--secondary); color: #0a1a09; }
     .toast-error { background: var(--danger); color: #fff; }
     @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
     /* Chart */
     .chart-container { position: relative; height: 160px; display: flex; align-items: flex-end; gap: 3px; padding-top: 1rem; }
@@ -375,6 +380,14 @@ const ADMIN_HTML = `<!DOCTYPE html>
         <div style="font-size:0.75rem;color:var(--on-bg-muted);margin-top:0.4rem" id="slug-combo-hint"></div>
       </div>
     </div>
+    <div class="bento-card" style="max-width:480px;margin-top:1.4rem">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Version</label>
+        <div id="version-status" style="font-size:0.875rem">
+          <span style="color:var(--on-bg-muted)"><span class="icon" style="font-size:16px;vertical-align:text-bottom;animation:spin 1s linear infinite">progress_activity</span> Checking for updates...</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Link Detail View -->
@@ -392,6 +405,8 @@ const ADMIN_HTML = `<!DOCTYPE html>
 <script>
 const API = '/_/api';
 const CURRENT_USER = '__CURRENT_USER__';
+const APP_VERSION = '__APP_VERSION__';
+const REPO_URL = 'https://github.com/oddbit/shrtnr';
 let links = [];
 let dashboardData = null;
 let currentView = 'dashboard';
@@ -418,6 +433,7 @@ function switchView(view, pushState) {
   }
   if (view === 'dashboard') loadDashboard();
   if (view === 'links') loadLinks();
+  if (view === 'settings') checkForUpdates();
 }
 
 // ---- Country names ----
@@ -846,6 +862,45 @@ function updateComboHint() {
 }
 
 document.getElementById('slug-length-input').addEventListener('input', updateComboHint);
+
+function compareVersions(a, b) {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+  }
+  return 0;
+}
+
+async function checkForUpdates() {
+  const el = document.getElementById('version-status');
+  try {
+    const res = await fetch('https://api.github.com/repos/oddbit/shrtnr/releases/latest', {
+      headers: { 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!res.ok) throw new Error('GitHub API error');
+    const release = await res.json();
+    const latest = (release.tag_name || '').replace(/^v/, '');
+    if (!latest) throw new Error('No version tag');
+    if (compareVersions(APP_VERSION, latest) < 0) {
+      const releaseUrl = release.html_url || (REPO_URL + '/releases/tag/v' + latest);
+      let html = '<div style="display:flex;flex-direction:column;gap:0.75rem">';
+      html += '<div><span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--on-bg-muted)">&rarr;</span> <span style="font-family:var(--font-mono);color:var(--secondary);font-weight:600">' + esc(latest) + '</span> available</div>';
+      html += '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">';
+      html += '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">open_in_new</span> Release notes</a>';
+      html += '<a href="' + REPO_URL + '" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">code</span> View repo</a>';
+      html += '</div>';
+      html += '<div style="font-size:0.75rem;color:var(--on-bg-muted);line-height:1.5">To update: sync your fork on GitHub, then your deployment will redeploy automatically.</div>';
+      html += '</div>';
+      el.innerHTML = html;
+    } else {
+      el.innerHTML = '<span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--secondary)"><span class="icon" style="font-size:16px;vertical-align:text-bottom">check_circle</span> Up to date</span>';
+    }
+  } catch (e) {
+    el.innerHTML = '<span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--on-bg-muted)">&middot; Could not check for updates</span>';
+  }
+}
 
 async function saveSettings() {
   const val = parseInt(document.getElementById('slug-length-input').value);
