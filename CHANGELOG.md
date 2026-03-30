@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.1
+
+### Security
+- Restricted link URLs to http and https schemes, rejecting javascript:, data:, file:, and ftp: targets
+- Capped slug length at 128 characters to prevent oversized allocations
+
+### Docs
+- Added multi-language and API key auth to README feature list
+- Clarified authentication model: Worker reads JWTs, Cloudflare Access verifies signatures
+- Documented API key Bearer token usage and scope model
+
 ## 0.6.0
 
 - Added internationalization (i18n) with English, Indonesian, and Swedish
