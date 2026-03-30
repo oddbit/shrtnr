@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "npm run db:migrate:remote && wrangler deploy",
+    "deploy": "node scripts/resolve-d1-id.js && npm run db:migrate:remote && wrangler deploy",
     "wrangler-login": "wrangler login",
     "db:create": "wrangler d1 create shrtnr-db",
     "db:migrate": "wrangler d1 migrations apply shrtnr-db --local",
