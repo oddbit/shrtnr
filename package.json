@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler d1 migrations apply DB --remote && wrangler deploy",
+    "deploy": "wrangler deploy",
     "wrangler-login": "wrangler login",
     "db:create": "wrangler d1 create shrtnr-db",
     "db:migrate": "wrangler d1 migrations apply shrtnr-db",

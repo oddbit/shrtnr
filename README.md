@@ -35,9 +35,8 @@ git clone https://github.com/oddbit/shrtnr
 cd shrtnr
 yarn install
 yarn wrangler-login
-yarn db:create          # copy the database_id into wrangler.toml
 yarn db:migrate
-yarn deploy
+yarn deploy             # auto-provisions the D1 database on first deploy
 ```
 
 ## Authentication
