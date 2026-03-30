@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Env } from "../types";
-import { getDashboardStats, getLinkClickStats } from "../db";
+import {
+  getManagedDashboardStats,
+  getManagedLinkAnalytics,
+  ServiceResult,
+} from "../services/link-management";
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -11,12 +15,15 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+function fromServiceResult<T>(result: ServiceResult<T>): Response {
+  if (!result.ok) return json({ error: result.error }, result.status);
+  return json(result.data, result.status);
+}
+
 export async function handleDashboardStats(env: Env): Promise<Response> {
-  const stats = await getDashboardStats(env.DB);
-  return json(stats);
+  return fromServiceResult(await getManagedDashboardStats(env));
 }
 
 export async function handleLinkAnalytics(env: Env, linkId: number): Promise<Response> {
-  const stats = await getLinkClickStats(env.DB, linkId);
-  return json(stats);
+  return fromServiceResult(await getManagedLinkAnalytics(env, linkId));
 }
