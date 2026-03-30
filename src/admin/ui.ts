@@ -410,37 +410,39 @@ const ADMIN_HTML = `<!DOCTYPE html>
       <div class="page-title">Settings</div>
       <div class="page-subtitle">Configure your URL shortener</div>
     </div>
-    <div class="bento-card" style="max-width:480px">
-      <div class="form-group">
-        <label class="form-label">Theme</label>
-        <div class="theme-toggle" id="theme-picker">
-          <button class="theme-btn active" data-theme="oddbit" onclick="setTheme('oddbit')"><span class="icon">eco</span> Oddbit</button>
-          <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')"><span class="icon">dark_mode</span> Dark</button>
-          <button class="theme-btn" data-theme="light" onclick="setTheme('light')"><span class="icon">light_mode</span> Light</button>
+    <div style="display:flex;gap:2.5rem;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:280px;max-width:480px">
+        <div class="bento-card">
+          <div class="form-group">
+            <label class="form-label">Theme</label>
+            <div class="theme-toggle" id="theme-picker">
+              <button class="theme-btn active" data-theme="oddbit" onclick="setTheme('oddbit')"><span class="icon">eco</span> Oddbit</button>
+              <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')"><span class="icon">dark_mode</span> Dark</button>
+              <button class="theme-btn" data-theme="light" onclick="setTheme('light')"><span class="icon">light_mode</span> Light</button>
+            </div>
+          </div>
+        </div>
+        <div class="bento-card" style="margin-top:1.4rem">
+          <div class="form-group">
+            <label class="form-label">Default Slug Length</label>
+            <div style="display:flex;gap:0.75rem;align-items:center">
+              <input class="form-input" type="number" id="slug-length-input" min="3" value="3" style="width:80px">
+              <button class="btn btn-secondary btn-sm" onclick="saveSettings()">Save</button>
+            </div>
+            <div style="font-size:0.75rem;color:var(--on-bg-muted);margin-top:0.4rem" id="slug-combo-hint"></div>
+          </div>
+        </div>
+        <div class="bento-card" style="margin-top:1.4rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Version</label>
+            <div id="version-status" style="font-size:0.875rem">
+              <span style="color:var(--on-bg-muted)"><span class="icon" style="font-size:16px;vertical-align:text-bottom;animation:spin 1s linear infinite">progress_activity</span> Checking for updates...</span>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="bento-card" style="max-width:480px;margin-top:1.4rem">
-      <div class="form-group">
-        <label class="form-label">Default Slug Length</label>
-        <div style="display:flex;gap:0.75rem;align-items:center">
-          <input class="form-input" type="number" id="slug-length-input" min="3" value="3" style="width:80px">
-          <button class="btn btn-secondary btn-sm" onclick="saveSettings()">Save</button>
-        </div>
-        <div style="font-size:0.75rem;color:var(--on-bg-muted);margin-top:0.4rem" id="slug-combo-hint"></div>
-      </div>
-    </div>
-    <div class="bento-card" style="max-width:480px;margin-top:1.4rem">
-      <div class="form-group" style="margin-bottom:0">
-        <label class="form-label">Version</label>
-        <div id="version-status" style="font-size:0.875rem">
-          <span style="color:var(--on-bg-muted)"><span class="icon" style="font-size:16px;vertical-align:text-bottom;animation:spin 1s linear infinite">progress_activity</span> Checking for updates...</span>
-        </div>
-      </div>
-    </div>
-    <div style="margin-top:2.5rem">
-      <div style="font-size:0.75rem;color:var(--secondary);font-weight:600;text-transform:uppercase;margin-bottom:1rem">Integrations</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.4rem;max-width:700px">
+      <div style="min-width:240px;max-width:300px;display:flex;flex-direction:column;gap:1.4rem">
+        <div style="font-size:0.75rem;color:var(--secondary);font-weight:600;text-transform:uppercase">Integrations</div>
         <a href="https://www.npmjs.com/package/@oddbit/shrtnr" target="_blank" rel="noopener" class="bento-card" style="text-decoration:none;color:inherit;display:block">
           <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
             <span class="icon" style="color:var(--primary)">terminal</span>
