@@ -65,4 +65,43 @@ describe("admin-management service", () => {
       expect(result.error).toMatch(/Invalid theme/);
     }
   });
+
+  it("rejects unsupported language preference", async () => {
+    const result = await updateUserPreferences(env as any, "user@example.com", { language: "fr" });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(400);
+      expect(result.error).toMatch(/Invalid language/);
+    }
+  });
+
+  it("accepts and persists a supported language", async () => {
+    const result = await updateUserPreferences(env as any, "user@example.com", { language: "id" });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.language).toBe("id");
+    }
+  });
+
+  it("accepts Swedish language", async () => {
+    const result = await updateUserPreferences(env as any, "user@example.com", { language: "sv" });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.language).toBe("sv");
+    }
+  });
+
+  it("saves language and theme independently", async () => {
+    await updateUserPreferences(env as any, "user@example.com", { theme: "dark" });
+    const result = await updateUserPreferences(env as any, "user@example.com", { language: "sv" });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.theme).toBe("dark");
+      expect(result.data.language).toBe("sv");
+    }
+  });
 });

@@ -16,6 +16,7 @@ import {
   getUserPreferences,
 } from "./db";
 import { DEFAULT_SLUG_LENGTH } from "./constants";
+import { createTranslateFn, getTranslations } from "./i18n";
 import { handleHealth } from "./api/health";
 import {
   handleListLinks,
@@ -86,9 +87,12 @@ async function getPageData(c: { env: Env; var: { email: string } }) {
   const email = c.var.email;
   const prefs = await getUserPreferences(db, email);
   const theme = prefs.theme || "oddbit";
+  const lang = prefs.language || "en";
+  const t = createTranslateFn(lang);
+  const translations = getTranslations(lang);
   const slugLengthStr = await getSetting(db, "slug_default_length");
   const slugLength = slugLengthStr ? parseInt(slugLengthStr, 10) : DEFAULT_SLUG_LENGTH;
-  return { db, email, theme, slugLength };
+  return { db, email, theme, slugLength, lang, t, translations };
 }
 
 // ---- Admin page auth middleware ----
@@ -112,24 +116,24 @@ async function cfAccessMiddleware(
 // ---- Admin pages ----
 
 app.get("/_/dashboard", async (c) => {
-  const { db, email, theme } = await getPageData(c);
+  const { db, email, theme, t, lang, translations } = await getPageData(c);
   const stats = await getDashboardStats(db);
   return c.html(
-    <Layout email={email} active="dashboard" theme={theme}>
-      <DashboardPage stats={stats} />
+    <Layout email={email} active="dashboard" theme={theme} t={t} lang={lang} translations={translations}>
+      <DashboardPage stats={stats} t={t} />
     </Layout>,
   );
 });
 
 app.get("/_/links", async (c) => {
-  const { db, email, theme, slugLength } = await getPageData(c);
+  const { db, email, theme, slugLength, t, lang, translations } = await getPageData(c);
   const links = await getAllLinks(db);
   const sort = c.req.query("sort") || "recent";
   const page = parseInt(c.req.query("page") || "1", 10) || 1;
   const perPage = parseInt(c.req.query("per_page") || "25", 10) || 25;
   const showDisabled = c.req.query("show_disabled") === "1";
   return c.html(
-    <Layout email={email} active="links" theme={theme}>
+    <Layout email={email} active="links" theme={theme} t={t} lang={lang} translations={translations}>
       <LinksPage
         links={links}
         sort={sort}
@@ -137,6 +141,8 @@ app.get("/_/links", async (c) => {
         perPage={perPage}
         showDisabled={showDisabled}
         slugLength={slugLength}
+        t={t}
+        lang={lang}
       />
     </Layout>,
   );
@@ -145,32 +151,32 @@ app.get("/_/links", async (c) => {
 app.get("/_/links/:id", async (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return notFoundResponse();
-  const { db, email, theme } = await getPageData(c);
+  const { db, email, theme, t, lang, translations } = await getPageData(c);
   const link = await getLinkById(db, id);
   if (!link) return notFoundResponse();
   const analytics = await getLinkClickStats(db, id);
   return c.html(
-    <Layout email={email} active="links" theme={theme}>
-      <LinkDetailPage link={link} analytics={analytics} />
+    <Layout email={email} active="links" theme={theme} t={t} lang={lang} translations={translations}>
+      <LinkDetailPage link={link} analytics={analytics} t={t} />
     </Layout>,
   );
 });
 
 app.get("/_/keys", async (c) => {
-  const { db, email, theme } = await getPageData(c);
+  const { db, email, theme, t, lang, translations } = await getPageData(c);
   const keys = await getApiKeysByEmail(db, email);
   return c.html(
-    <Layout email={email} active="keys" theme={theme}>
-      <KeysPage keys={keys} />
+    <Layout email={email} active="keys" theme={theme} t={t} lang={lang} translations={translations}>
+      <KeysPage keys={keys} t={t} lang={lang} />
     </Layout>,
   );
 });
 
 app.get("/_/settings", async (c) => {
-  const { email, theme, slugLength } = await getPageData(c);
+  const { email, theme, slugLength, t, lang, translations } = await getPageData(c);
   return c.html(
-    <Layout email={email} active="settings" theme={theme}>
-      <SettingsPage theme={theme} slugLength={slugLength} />
+    <Layout email={email} active="settings" theme={theme} t={t} lang={lang} translations={translations}>
+      <SettingsPage theme={theme} slugLength={slugLength} lang={lang} t={t} />
     </Layout>,
   );
 });

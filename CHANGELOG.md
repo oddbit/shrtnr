@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0
+
+- Added internationalization (i18n) with English, Indonesian, and Swedish
+- Language preference stored in `user_preferences` table, English as default
+- Language selector on settings page shows localized and native language names
+- Extracted all hardcoded UI strings into translation files
+- Client-side strings translated via serialized translation object
+- Locale-aware date formatting and country name display
+
 ## 0.5.0
 
 - Migrated admin UI from monolithic SPA to Hono JSX server-rendered pages

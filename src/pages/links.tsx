@@ -3,6 +3,7 @@
 
 import type { FC } from "hono/jsx";
 import type { LinkWithSlugs } from "../types";
+import type { TranslateFn } from "../i18n";
 
 function escHtml(s: string): string {
   return s
@@ -12,9 +13,9 @@ function escHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function formatDate(ts: number): string {
+function formatDate(ts: number, lang: string): string {
   const d = new Date(ts * 1000);
-  return d.toLocaleDateString("en-US", {
+  return d.toLocaleDateString(lang, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -28,6 +29,8 @@ type Props = {
   perPage: number;
   showDisabled: boolean;
   slugLength: number;
+  t: TranslateFn;
+  lang: string;
 };
 
 export const LinksPage: FC<Props> = ({
@@ -37,6 +40,8 @@ export const LinksPage: FC<Props> = ({
   perPage,
   showDisabled,
   slugLength,
+  t,
+  lang,
 }) => {
   const now = Math.floor(Date.now() / 1000);
   const filtered = showDisabled
@@ -87,11 +92,13 @@ export const LinksPage: FC<Props> = ({
     return `/_/links?${params}`;
   }
 
+  const countKey = filtered.length !== 1 ? "links.countPlural" : "links.count";
+
   return (
     <>
       <div class="page-header">
-        <div class="page-title">Links</div>
-        <div class="page-subtitle">Manage all your short links</div>
+        <div class="page-title">{t("links.title")}</div>
+        <div class="page-subtitle">{t("links.subtitle")}</div>
       </div>
 
       <input type="hidden" id="slug-length-default" value={String(slugLength)} />
@@ -99,7 +106,7 @@ export const LinksPage: FC<Props> = ({
       <div class="toolbar">
         <div style="display:flex;align-items:center;gap:1rem">
           <div class="toolbar-count">
-            {filtered.length} link{filtered.length !== 1 ? "s" : ""}
+            {t(countKey as any, { count: filtered.length })}
           </div>
           <div class="toolbar-sort">
             <a
@@ -109,7 +116,7 @@ export const LinksPage: FC<Props> = ({
               <span class="icon" style="font-size:16px">
                 schedule
               </span>{" "}
-              Recent
+              {t("links.recent")}
             </a>
             <a
               class={`sort-btn${sort === "popular" ? " active" : ""}`}
@@ -118,7 +125,7 @@ export const LinksPage: FC<Props> = ({
               <span class="icon" style="font-size:16px">
                 trending_up
               </span>{" "}
-              Popular
+              {t("links.popular")}
             </a>
           </div>
           <a
@@ -128,11 +135,11 @@ export const LinksPage: FC<Props> = ({
             <span class="icon" style="font-size:16px">
               block
             </span>{" "}
-            Show disabled
+            {t("links.showDisabled")}
           </a>
         </div>
         <button class="btn btn-primary" onclick="showCreateModal()">
-          <span class="icon">add</span> New Link
+          <span class="icon">add</span> {t("links.newLink")}
         </button>
       </div>
 
@@ -141,8 +148,8 @@ export const LinksPage: FC<Props> = ({
           <span class="icon">link_off</span>
           <p>
             {links.length > 0
-              ? 'All links are disabled. Toggle "Show disabled" to see them.'
-              : "No links yet. Use the + New Link button above to get started."}
+              ? t("links.allDisabled")
+              : t("links.empty")}
           </p>
         </div>
       ) : (
@@ -162,7 +169,7 @@ export const LinksPage: FC<Props> = ({
                       <span
                         class="slug-chip"
                         onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(primary.slug)}')`}
-                        title="Click to copy"
+                        title={t("links.clickToCopy")}
                       >
                         /{primary.slug}{" "}
                         <span class="icon">content_copy</span>
@@ -172,7 +179,7 @@ export const LinksPage: FC<Props> = ({
                       <span
                         class="slug-chip vanity"
                         onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(v.slug)}')`}
-                        title="Click to copy"
+                        title={t("links.clickToCopy")}
                       >
                         /{v.slug} <span class="icon">content_copy</span>
                       </span>
@@ -182,7 +189,7 @@ export const LinksPage: FC<Props> = ({
                         <span class="icon" style="font-size:14px">
                           block
                         </span>{" "}
-                        Disabled
+                        {t("links.disabled")}
                       </span>
                     )}
                   </div>
@@ -190,12 +197,12 @@ export const LinksPage: FC<Props> = ({
                     <div class="link-label">{link.label}</div>
                   )}
                   <div class="link-url">{link.url}</div>
-                  <div class="link-date">{formatDate(link.created_at)}</div>
+                  <div class="link-date">{formatDate(link.created_at, lang)}</div>
                 </div>
                 <div class="link-meta">
                   <div style="text-align:center">
                     <div class="link-clicks">{link.total_clicks}</div>
-                    <div class="link-clicks-label">clicks</div>
+                    <div class="link-clicks-label">{t("links.clicks")}</div>
                   </div>
                 </div>
               </a>
@@ -237,7 +244,7 @@ export const LinksPage: FC<Props> = ({
                 </a>
               </div>
               <div class="per-page">
-                Show{" "}
+                {t("links.show")}{" "}
                 {[25, 50, 100].map((n) => (
                   <a
                     class={`per-page-btn${perPage === n ? " active" : ""}`}

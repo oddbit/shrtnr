@@ -3,6 +3,7 @@
 
 import type { FC } from "hono/jsx";
 import type { DashboardStats, LinkWithSlugs } from "../types";
+import type { TranslateFn } from "../i18n";
 
 function escHtml(s: string): string {
   return s
@@ -47,9 +48,10 @@ function primarySlug(link: LinkWithSlugs): string {
 
 type Props = {
   stats: DashboardStats;
+  t: TranslateFn;
 };
 
-export const DashboardPage: FC<Props> = ({ stats }) => {
+export const DashboardPage: FC<Props> = ({ stats, t }) => {
   const d = stats;
   const topCountryMax = d.top_countries[0]?.count || 1;
   const topRefMax = d.top_referrers[0]?.count || 1;
@@ -58,8 +60,8 @@ export const DashboardPage: FC<Props> = ({ stats }) => {
   return (
     <>
       <div class="page-header">
-        <div class="page-title">Dashboard</div>
-        <div class="page-subtitle">Overview of your short links</div>
+        <div class="page-title">{t("dashboard.title")}</div>
+        <div class="page-subtitle">{t("dashboard.subtitle")}</div>
       </div>
 
       <div class="hero-input-wrap">
@@ -67,22 +69,22 @@ export const DashboardPage: FC<Props> = ({ stats }) => {
           class="hero-input"
           id="quick-url"
           type="url"
-          placeholder="Paste a long URL to shorten..."
+          placeholder={t("dashboard.urlPlaceholder")}
         />
         <button class="btn btn-primary btn-lg" onclick="quickShorten()">
-          <span class="icon">bolt</span> Shorten
+          <span class="icon">bolt</span> {t("dashboard.shorten")}
         </button>
       </div>
 
       <div class="bento">
-        <StatCard label="Total Links" value={d.total_links} />
-        <StatCard label="Total Clicks" value={d.total_clicks} />
+        <StatCard label={t("dashboard.totalLinks")} value={d.total_links} />
+        <StatCard label={t("dashboard.totalClicks")} value={d.total_clicks} />
 
         <div class="bento-card">
-          <div class="bento-label">Top Countries</div>
+          <div class="bento-label">{t("dashboard.topCountries")}</div>
           <div class="bento-value small">
             {d.top_countries.length === 0 && (
-              <span style="color:var(--on-bg-muted)">No data yet</span>
+              <span style="color:var(--on-bg-muted)">{t("dashboard.noData")}</span>
             )}
           </div>
           {d.top_countries.map((c) => (
@@ -96,10 +98,10 @@ export const DashboardPage: FC<Props> = ({ stats }) => {
         </div>
 
         <div class="bento-card span-2">
-          <div class="bento-label">Recent Links</div>
+          <div class="bento-label">{t("dashboard.recentLinks")}</div>
           {d.recent_links.length === 0 ? (
             <div style="color:var(--on-bg-muted);font-size:0.875rem">
-              No links yet
+              {t("dashboard.noLinks")}
             </div>
           ) : (
             d.recent_links.map((link) => {
@@ -112,7 +114,7 @@ export const DashboardPage: FC<Props> = ({ stats }) => {
                   <span
                     class="slug-chip"
                     onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(slug)}')`}
-                    title="Click to copy"
+                    title={t("dashboard.clickToCopy")}
                   >
                     /{slug}{" "}
                     <span class="icon" style="font-size:14px">
@@ -132,10 +134,10 @@ export const DashboardPage: FC<Props> = ({ stats }) => {
         </div>
 
         <div class="bento-card">
-          <div class="bento-label">Top Sources</div>
+          <div class="bento-label">{t("dashboard.topSources")}</div>
           {d.top_referrers.length === 0 ? (
             <div style="color:var(--on-bg-muted);font-size:0.875rem">
-              No data yet
+              {t("dashboard.noData")}
             </div>
           ) : (
             d.top_referrers.map((r) => (
@@ -150,10 +152,10 @@ export const DashboardPage: FC<Props> = ({ stats }) => {
         </div>
 
         <div class="bento-card span-3">
-          <div class="bento-label">Most Clicked</div>
+          <div class="bento-label">{t("dashboard.mostClicked")}</div>
           {d.top_links.length === 0 ? (
             <div style="color:var(--on-bg-muted);font-size:0.875rem">
-              No data yet
+              {t("dashboard.noData")}
             </div>
           ) : (
             d.top_links.map((link) => {

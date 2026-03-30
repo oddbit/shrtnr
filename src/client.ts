@@ -1,17 +1,31 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
+import type { Translations } from "./i18n/types";
+
 function escapeForJs(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, '\\"');
 }
 
-export function adminClientScript(email: string, version: string): string {
+export function adminClientScript(email: string, version: string, translations: Translations): string {
+  const tJson = JSON.stringify(translations);
   return `
 'use strict';
 var API = '/_/api';
 var CURRENT_USER = '${escapeForJs(email)}';
 var APP_VERSION = '${version}';
 var REPO_URL = 'https://github.com/oddbit/shrtnr';
+var T = ${tJson};
+
+function t(key, params) {
+  var val = T[key] || key;
+  if (params) {
+    for (var k in params) {
+      val = val.replace(new RegExp('\\\\{' + k + '\\\\}', 'g'), String(params[k]));
+    }
+  }
+  return val;
+}
 
 // ---- Toast ----
 function toast(msg, type) {
@@ -47,7 +61,7 @@ function api(path, opts) {
 function copyUrl(slug) {
   var url = location.origin + '/' + slug;
   navigator.clipboard.writeText(url);
-  toast('Copied ' + url);
+  toast(t('client.copied', {url: url}));
 }
 
 // ---- Mobile drawer ----
@@ -65,20 +79,31 @@ function closeDrawer() {
 // ---- Theme ----
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  document.querySelectorAll('.theme-btn').forEach(function(btn) {
+  document.querySelectorAll('#theme-picker .theme-btn').forEach(function(btn) {
     btn.classList.toggle('active', btn.getAttribute('data-theme') === theme);
   });
 }
 function setTheme(theme) {
   applyTheme(theme);
   api('/preferences', { method: 'PUT', body: JSON.stringify({ theme: theme }) }).then(function(res) {
-    if (res.ok) toast('Theme updated');
-    else toast('Failed to save theme', 'error');
+    if (res.ok) toast(t('client.themeUpdated'));
+    else toast(t('client.themeError'), 'error');
+  });
+}
+
+// ---- Language ----
+function setLanguage(lang) {
+  document.querySelectorAll('#language-picker .theme-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+  });
+  api('/preferences', { method: 'PUT', body: JSON.stringify({ language: lang }) }).then(function(res) {
+    if (res.ok) window.location.reload();
+    else toast(t('client.languageError'), 'error');
   });
 }
 
 // ---- Country names ----
-var countryNames = new Intl.DisplayNames(['en'], { type: 'region' });
+var countryNames = new Intl.DisplayNames([T['_lang'] || 'en'], { type: 'region' });
 function countryName(code) {
   try { return countryNames.of(code) || code; } catch(e) { return code; }
 }
@@ -92,18 +117,18 @@ function formatDate(ts) {
 // ---- Quick shorten (dashboard) ----
 function quickShorten() {
   var url = document.getElementById('quick-url').value.trim();
-  if (!url) { toast('Paste a URL first', 'error'); return; }
+  if (!url) { toast(t('client.pasteUrl'), 'error'); return; }
   api('/links', { method: 'POST', body: JSON.stringify({ url: url }) }).then(function(res) {
     if (res.ok) {
       return res.json().then(function(link) {
         var primary = link.slugs.find(function(s) { return !s.is_vanity; });
         if (primary) copyUrl(primary.slug);
-        toast('Link created & copied!');
+        toast(t('client.linkCreatedCopied'));
         window.location.href = '/_/links/' + link.id;
       });
     } else {
       return res.json().then(function(data) {
-        toast(data.error || 'Failed to create link', 'error');
+        toast(data.error || t('client.createLinkError'), 'error');
       });
     }
   });
@@ -113,19 +138,19 @@ function quickShorten() {
 function showCreateModal() {
   var len = (document.getElementById('slug-length-default') || {}).value || '3';
   openModal(
-    '<div class="modal-title">New Link</div>' +
-    '<div class="form-group"><label class="form-label">Destination URL *</label><input class="form-input" id="m-url" placeholder="https://example.com/long/path"></div>' +
-    '<div class="form-group"><label class="form-label">Label (optional)</label><input class="form-input" id="m-label" placeholder="My Blog Post"></div>' +
-    '<div class="form-row"><div class="form-group"><label class="form-label">Slug Length</label><input class="form-input" id="m-len" type="number" min="3" value="' + esc(len) + '"></div>' +
-    '<div class="form-group"><label class="form-label">Vanity Slug (optional)</label><input class="form-input" id="m-vanity" placeholder="my-post"></div></div>' +
-    '<div class="form-group"><label class="form-label">Expires At (optional)</label><input class="form-input" id="m-expires" type="datetime-local"></div>' +
-    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="createLink()">Create</button></div>'
+    '<div class="modal-title">' + esc(t('client.modalNewLink')) + '</div>' +
+    '<div class="form-group"><label class="form-label">' + esc(t('client.destinationUrl')) + '</label><input class="form-input" id="m-url" placeholder="https://example.com/long/path"></div>' +
+    '<div class="form-group"><label class="form-label">' + esc(t('client.labelOptional')) + '</label><input class="form-input" id="m-label" placeholder="My Blog Post"></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">' + esc(t('client.slugLength')) + '</label><input class="form-input" id="m-len" type="number" min="3" value="' + esc(len) + '"></div>' +
+    '<div class="form-group"><label class="form-label">' + esc(t('client.vanityOptional')) + '</label><input class="form-input" id="m-vanity" placeholder="my-post"></div></div>' +
+    '<div class="form-group"><label class="form-label">' + esc(t('client.expiresOptional')) + '</label><input class="form-input" id="m-expires" type="datetime-local"></div>' +
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="createLink()">' + esc(t('client.create')) + '</button></div>'
   );
 }
 
 function createLink() {
   var url = document.getElementById('m-url').value.trim();
-  if (!url) { toast('URL is required', 'error'); return; }
+  if (!url) { toast(t('client.urlRequired'), 'error'); return; }
   var body = { url: url };
   var label = document.getElementById('m-label').value.trim();
   if (label) body.label = label;
@@ -140,12 +165,12 @@ function createLink() {
     if (res.ok) {
       return res.json().then(function(link) {
         closeModal();
-        toast('Link created');
+        toast(t('client.linkCreated'));
         window.location.href = '/_/links/' + link.id;
       });
     } else {
       return res.json().then(function(data) {
-        toast(data.error || 'Failed to create link', 'error');
+        toast(data.error || t('client.createLinkError'), 'error');
       });
     }
   });
@@ -154,28 +179,28 @@ function createLink() {
 // ---- API Keys ----
 function showCreateKeyModal() {
   openModal(
-    '<div class="modal-title">Create API Key</div>' +
-    '<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="m-key-title" placeholder="e.g. CI Pipeline, Mobile App"></div>' +
-    '<div class="form-group"><label class="form-label">Scope *</label>' +
+    '<div class="modal-title">' + esc(t('client.createApiKey')) + '</div>' +
+    '<div class="form-group"><label class="form-label">' + esc(t('client.keyTitleLabel')) + '</label><input class="form-input" id="m-key-title" placeholder="e.g. CI Pipeline, Mobile App"></div>' +
+    '<div class="form-group"><label class="form-label">' + esc(t('client.keyScopeLabel')) + '</label>' +
     '<div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.25rem">' +
-    '<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem"><input type="radio" name="key-scope" value="create"> <strong>Create</strong> <span style="color:var(--on-bg-muted)">\\u2014 can shorten URLs</span></label>' +
-    '<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem"><input type="radio" name="key-scope" value="read"> <strong>Read</strong> <span style="color:var(--on-bg-muted)">\\u2014 can list links and analytics</span></label>' +
-    '<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem"><input type="radio" name="key-scope" value="create,read" checked> <strong>Create + Read</strong> <span style="color:var(--on-bg-muted)">\\u2014 full API access</span></label>' +
+    '<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem"><input type="radio" name="key-scope" value="create"> <strong>' + esc(t('client.scopeCreate')) + '</strong> <span style="color:var(--on-bg-muted)">\\u2014 ' + esc(t('client.scopeCreateDesc')) + '</span></label>' +
+    '<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem"><input type="radio" name="key-scope" value="read"> <strong>' + esc(t('client.scopeRead')) + '</strong> <span style="color:var(--on-bg-muted)">\\u2014 ' + esc(t('client.scopeReadDesc')) + '</span></label>' +
+    '<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem"><input type="radio" name="key-scope" value="create,read" checked> <strong>' + esc(t('client.scopeCreateRead')) + '</strong> <span style="color:var(--on-bg-muted)">\\u2014 ' + esc(t('client.scopeCreateReadDesc')) + '</span></label>' +
     '</div></div>' +
-    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="createKey()">Create Key</button></div>'
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="createKey()">' + esc(t('client.createKey')) + '</button></div>'
   );
 }
 
 function createKey() {
   var title = document.getElementById('m-key-title').value.trim();
-  if (!title) { toast('Title is required', 'error'); return; }
+  if (!title) { toast(t('client.titleRequired'), 'error'); return; }
   var checked = document.querySelector('input[name="key-scope"]:checked');
   var scope = checked ? checked.value : null;
-  if (!scope) { toast('Select a scope', 'error'); return; }
+  if (!scope) { toast(t('client.selectScope'), 'error'); return; }
 
   api('/keys', { method: 'POST', body: JSON.stringify({ title: title, scope: scope }) }).then(function(res) {
     if (!res.ok) {
-      return res.json().then(function(data) { toast(data.error || 'Failed to create key', 'error'); });
+      return res.json().then(function(data) { toast(data.error || t('client.createKeyError'), 'error'); });
     }
     return res.json().then(function(data) { showKeyRevealModal(data.raw_key); });
   });
@@ -183,18 +208,18 @@ function createKey() {
 
 function showKeyRevealModal(rawKey) {
   openModal(
-    '<div class="modal-title">Key Created</div>' +
-    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:1rem">Copy your API key now. It will not be shown again.</p>' +
+    '<div class="modal-title">' + esc(t('client.keyCreated')) + '</div>' +
+    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:1rem">' + esc(t('client.keyCreatedDesc')) + '</p>' +
     '<div class="key-revealed" id="revealed-key">' + esc(rawKey) + '</div>' +
-    '<div class="key-warning"><span class="icon" style="font-size:18px">warning</span> Store this key securely. You cannot retrieve it later.</div>' +
-    '<div class="modal-actions"><button class="btn btn-secondary" onclick="copyRawKey()"><span class="icon">content_copy</span> Copy</button><button class="btn btn-ghost" onclick="closeKeyRevealModal()">Done</button></div>'
+    '<div class="key-warning"><span class="icon" style="font-size:18px">warning</span> ' + esc(t('client.keyWarning')) + '</div>' +
+    '<div class="modal-actions"><button class="btn btn-secondary" onclick="copyRawKey()"><span class="icon">content_copy</span> ' + esc(t('client.copy')) + '</button><button class="btn btn-ghost" onclick="closeKeyRevealModal()">' + esc(t('client.done')) + '</button></div>'
   );
 }
 
 function copyRawKey() {
   var key = document.getElementById('revealed-key').textContent;
   navigator.clipboard.writeText(key);
-  toast('API key copied');
+  toast(t('client.apiKeyCopied'));
 }
 
 function closeKeyRevealModal() {
@@ -203,26 +228,26 @@ function closeKeyRevealModal() {
 }
 
 function deleteKey(id, title) {
-  if (!confirm('Delete API key "' + title + '"? This cannot be undone.')) return;
+  if (!confirm(t('client.confirmDeleteKey', {title: title}))) return;
   api('/keys/' + id, { method: 'DELETE' }).then(function(res) {
-    if (res.ok) { toast('Key deleted'); window.location.reload(); }
-    else toast('Failed to delete key', 'error');
+    if (res.ok) { toast(t('client.keyDeleted')); window.location.reload(); }
+    else toast(t('client.keyDeleteError'), 'error');
   });
 }
 
 // ---- Link actions (detail page) ----
 function disableLink(id) {
-  if (!confirm('Disable this link? It will stop redirecting immediately.')) return;
+  if (!confirm(t('client.confirmDisable'))) return;
   api('/links/' + id + '/disable', { method: 'POST' }).then(function(res) {
-    if (res.ok) { toast('Link disabled'); window.location.reload(); }
-    else toast('Failed to disable', 'error');
+    if (res.ok) { toast(t('client.linkDisabled')); window.location.reload(); }
+    else toast(t('client.disableError'), 'error');
   });
 }
 
 function enableLink(id) {
   api('/links/' + id, { method: 'PUT', body: JSON.stringify({ expires_at: null }) }).then(function(res) {
-    if (res.ok) { toast('Link enabled'); window.location.reload(); }
-    else toast('Failed to enable', 'error');
+    if (res.ok) { toast(t('client.linkEnabled')); window.location.reload(); }
+    else toast(t('client.enableError'), 'error');
   });
 }
 
@@ -230,8 +255,8 @@ function addVanityFromDetail(linkId) {
   var slug = document.getElementById('detail-vanity').value.trim();
   if (!slug) return;
   api('/links/' + linkId + '/slugs', { method: 'POST', body: JSON.stringify({ slug: slug }) }).then(function(res) {
-    if (res.ok) { toast('Vanity slug added'); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || 'Failed to add vanity slug', 'error'); });
+    if (res.ok) { toast(t('client.vanityAdded')); window.location.reload(); }
+    else res.json().then(function(data) { toast(data.error || t('client.vanityError'), 'error'); });
   });
 }
 
@@ -239,15 +264,15 @@ function saveDetailExpiry(linkId) {
   var exp = document.getElementById('detail-expires').value;
   var body = { expires_at: exp ? Math.floor(new Date(exp).getTime() / 1000) : null };
   api('/links/' + linkId, { method: 'PUT', body: JSON.stringify(body) }).then(function(res) {
-    if (res.ok) { toast('Expiry updated'); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || 'Failed to update', 'error'); });
+    if (res.ok) { toast(t('client.expiryUpdated')); window.location.reload(); }
+    else res.json().then(function(data) { toast(data.error || t('client.expiryError'), 'error'); });
   });
 }
 
 function clearDetailExpiry(linkId) {
   api('/links/' + linkId, { method: 'PUT', body: JSON.stringify({ expires_at: null }) }).then(function(res) {
-    if (res.ok) { toast('Expiry cleared'); window.location.reload(); }
-    else toast('Failed to clear expiry', 'error');
+    if (res.ok) { toast(t('client.expiryCleared')); window.location.reload(); }
+    else toast(t('client.expiryClearError'), 'error');
   });
 }
 
@@ -255,10 +280,10 @@ function clearDetailExpiry(linkId) {
 function showQRModal(slug) {
   var url = location.origin + '/' + slug;
   openModal(
-    '<div class="modal-title">QR Code</div>' +
+    '<div class="modal-title">' + esc(t('client.qrCode')) + '</div>' +
     '<p style="text-align:center;font-size:0.85rem;color:var(--on-bg-muted);margin-bottom:1rem">' + esc(url) + '</p>' +
     '<div class="qr-wrap" id="qr-target"></div>' +
-    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>'
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.close')) + '</button></div>'
   );
   generateQR(url, document.getElementById('qr-target'));
 }
@@ -269,7 +294,7 @@ function generateQR(text, container) {
   canvas.width = size; canvas.height = size;
   var ctx = canvas.getContext('2d');
   var qr = makeQR(text);
-  if (!qr) { container.textContent = 'QR generation failed'; return; }
+  if (!qr) { container.textContent = t('client.qrFailed'); return; }
   var modules = qr.length;
   var cellSize = size / modules;
   ctx.fillStyle = '#ffffff';
@@ -416,10 +441,10 @@ function rsEncode(data, numEcc) {
 // ---- Settings ----
 function saveSettings() {
   var val = parseInt(document.getElementById('slug-length-input').value);
-  if (val < 3) { toast('Minimum slug length is 3', 'error'); return; }
+  if (val < 3) { toast(t('client.minSlugLength'), 'error'); return; }
   api('/settings', { method: 'PUT', body: JSON.stringify({ slug_default_length: val }) }).then(function(res) {
-    if (res.ok) toast('Settings saved');
-    else toast('Failed to save settings', 'error');
+    if (res.ok) toast(t('client.settingsSaved'));
+    else toast(t('client.settingsError'), 'error');
   });
 }
 
@@ -429,8 +454,8 @@ function updateComboHint() {
   var len = parseInt(document.getElementById('slug-length-input').value) || 3;
   var combos = Math.pow(56, Math.max(len, 3));
   el.textContent = len >= 3
-    ? combos.toLocaleString() + ' possible combinations'
-    : 'Minimum length is 3 characters';
+    ? t('client.combos', {count: combos.toLocaleString()})
+    : t('client.minLength');
 }
 
 // ---- Version check ----
@@ -458,19 +483,19 @@ function checkForUpdates() {
     if (compareVersions(APP_VERSION, latest) < 0) {
       var releaseUrl = release.html_url || (REPO_URL + '/releases/tag/v' + latest);
       var html = '<div style="display:flex;flex-direction:column;gap:0.75rem">';
-      html += '<div><span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--on-bg-muted)">&rarr;</span> <span style="font-family:var(--font-mono);color:var(--secondary);font-weight:600">' + esc(latest) + '</span> available</div>';
+      html += '<div><span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--on-bg-muted)">&rarr;</span> <span style="font-family:var(--font-mono);color:var(--secondary);font-weight:600">' + esc(latest) + '</span> ' + esc(t('client.updateAvailable')) + '</div>';
       html += '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">';
-      html += '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">open_in_new</span> Release notes</a>';
-      html += '<a href="' + REPO_URL + '" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">code</span> View repo</a>';
+      html += '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">open_in_new</span> ' + esc(t('client.releaseNotes')) + '</a>';
+      html += '<a href="' + REPO_URL + '" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">code</span> ' + esc(t('client.viewRepo')) + '</a>';
       html += '</div>';
-      html += '<div style="font-size:0.75rem;color:var(--on-bg-muted);line-height:1.5">To update: sync your fork on GitHub, then your deployment will redeploy automatically.</div>';
+      html += '<div style="font-size:0.75rem;color:var(--on-bg-muted);line-height:1.5">' + esc(t('client.updateHint')) + '</div>';
       html += '</div>';
       el.innerHTML = html;
     } else {
-      el.innerHTML = '<span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--secondary)"><span class="icon" style="font-size:16px;vertical-align:text-bottom">check_circle</span> Up to date</span>';
+      el.innerHTML = '<span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--secondary)"><span class="icon" style="font-size:16px;vertical-align:text-bottom">check_circle</span> ' + esc(t('client.upToDate')) + '</span>';
     }
   }).catch(function() {
-    el.innerHTML = '<span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--on-bg-muted)">&middot; Could not check for updates</span>';
+    el.innerHTML = '<span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--on-bg-muted)">&middot; ' + esc(t('client.updateCheckFailed')) + '</span>';
   });
 }
 

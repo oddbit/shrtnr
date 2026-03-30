@@ -3,6 +3,7 @@
 
 import type { FC } from "hono/jsx";
 import type { LinkWithSlugs, ClickStats } from "../types";
+import type { TranslateFn } from "../i18n";
 
 function escHtml(s: string): string {
   return s
@@ -51,9 +52,10 @@ function deviceIcon(name: string): string {
 type Props = {
   link: LinkWithSlugs;
   analytics: ClickStats;
+  t: TranslateFn;
 };
 
-export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
+export const LinkDetailPage: FC<Props> = ({ link, analytics, t }) => {
   const now = Math.floor(Date.now() / 1000);
   const isExpired = !!(link.expires_at && link.expires_at < now);
   const primary = link.slugs.find((s) => !s.is_vanity);
@@ -75,21 +77,21 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
             arrow_back
           </span>
         </a>
-        <div class="page-title">Link Details</div>
+        <div class="page-title">{t("linkDetail.title")}</div>
         <div style="margin-left:auto">
           {isExpired ? (
             <button
               class="btn btn-secondary btn-sm"
               onclick={`enableLink(${link.id})`}
             >
-              <span class="icon">check_circle</span> Enable
+              <span class="icon">check_circle</span> {t("linkDetail.enable")}
             </button>
           ) : (
             <button
               class="btn btn-danger btn-sm"
               onclick={`disableLink(${link.id})`}
             >
-              <span class="icon">block</span> Disable
+              <span class="icon">block</span> {t("linkDetail.disable")}
             </button>
           )}
         </div>
@@ -98,7 +100,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
       <div class="detail-hero">
         {isExpired && (
           <div style="display:inline-block;background:var(--danger);color:var(--on-danger);font-size:0.7rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:var(--radius);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em">
-            Disabled
+            {t("linkDetail.disabled")}
           </div>
         )}
         <div
@@ -118,18 +120,18 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
             class="btn btn-secondary btn-sm"
             onclick={`copyUrl('${escHtml(displaySlug)}')`}
           >
-            <span class="icon">content_copy</span> Copy
+            <span class="icon">content_copy</span> {t("linkDetail.copy")}
           </button>
           <button
             class="btn btn-ghost btn-sm"
             onclick={`showQRModal('${escHtml(displaySlug)}')`}
           >
-            <span class="icon">qr_code_2</span> QR
+            <span class="icon">qr_code_2</span> {t("linkDetail.qr")}
           </button>
           {vanitySlug && (
             <>
               <span style="color:var(--on-bg-muted);font-size:0.75rem;margin-left:0.5rem">
-                or
+                {t("linkDetail.or")}
               </span>
               <button
                 class="btn btn-ghost btn-sm"
@@ -149,7 +151,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
       <div class="bento-card" style="margin-bottom:1.4rem">
         <div style="display:flex;gap:1.4rem;flex-wrap:wrap;align-items:flex-end">
           <div style="flex:1;min-width:200px">
-            <label class="form-label">Vanity Slug</label>
+            <label class="form-label">{t("linkDetail.vanitySlug")}</label>
             {vanity.length > 0 ? (
               <div style="display:flex;flex-wrap:wrap;gap:0.4rem">
                 {vanity.map((v) => (
@@ -169,13 +171,13 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
                   class="btn btn-secondary btn-sm"
                   onclick={`addVanityFromDetail(${link.id})`}
                 >
-                  Add
+                  {t("linkDetail.add")}
                 </button>
               </div>
             )}
           </div>
           <div style="flex:1;min-width:200px">
-            <label class="form-label">Expires At</label>
+            <label class="form-label">{t("linkDetail.expiresAt")}</label>
             <div style="display:flex;gap:0.5rem;align-items:center">
               <input
                 class="form-input"
@@ -189,7 +191,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
                 onclick={`clearDetailExpiry(${link.id})`}
                 disabled={!link.expires_at}
               >
-                Clear
+                {t("linkDetail.clear")}
               </button>
               <button
                 class="btn btn-secondary btn-sm"
@@ -197,7 +199,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
                 onclick={`saveDetailExpiry(${link.id})`}
                 disabled={!expVal}
               >
-                Save
+                {t("linkDetail.save")}
               </button>
             </div>
           </div>
@@ -206,7 +208,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
 
       <div class="detail-grid">
         <div class="bento-card">
-          <div class="bento-label">Clicks Over Time</div>
+          <div class="bento-label">{t("linkDetail.clicksOverTime")}</div>
           {analytics.clicks_over_time.length > 0 ? (
             <>
               <div class="chart-container">
@@ -238,19 +240,19 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
             </>
           ) : (
             <div style="color:var(--on-bg-muted);font-size:0.875rem;padding:2rem 0;text-align:center">
-              No click data yet
+              {t("linkDetail.noClickData")}
             </div>
           )}
         </div>
 
         <div class="bento-card">
-          <div class="bento-label">Performance</div>
+          <div class="bento-label">{t("linkDetail.performance")}</div>
           <div style="text-align:center;padding:1rem 0">
             <div style="font-family:var(--font-display);font-size:3rem;font-weight:700;color:var(--primary)">
               {analytics.total_clicks}
             </div>
             <div style="color:var(--on-bg-muted);font-size:0.8rem">
-              total clicks
+              {t("linkDetail.totalClicks")}
             </div>
           </div>
           {link.slugs.map((s) => (
@@ -265,7 +267,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
         </div>
 
         <div class="bento-card">
-          <div class="bento-label">Countries</div>
+          <div class="bento-label">{t("linkDetail.countries")}</div>
           {analytics.countries.length > 0 ? (
             analytics.countries.map((c) => (
               <StatBar
@@ -277,13 +279,13 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
             ))
           ) : (
             <div style="color:var(--on-bg-muted);font-size:0.875rem">
-              No data yet
+              {t("linkDetail.noData")}
             </div>
           )}
         </div>
 
         <div class="bento-card">
-          <div class="bento-label">Sources</div>
+          <div class="bento-label">{t("linkDetail.sources")}</div>
           {analytics.referrers.length > 0 ? (
             analytics.referrers.map((r) => (
               <StatBar
@@ -295,13 +297,13 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
             ))
           ) : (
             <div style="color:var(--on-bg-muted);font-size:0.875rem">
-              No data yet
+              {t("linkDetail.noData")}
             </div>
           )}
         </div>
 
         <div class="bento-card">
-          <div class="bento-label">Devices</div>
+          <div class="bento-label">{t("linkDetail.devices")}</div>
           {analytics.devices.length > 0 ? (
             analytics.devices.map((d) => (
               <StatBar
@@ -314,13 +316,13 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
             ))
           ) : (
             <div style="color:var(--on-bg-muted);font-size:0.875rem">
-              No data yet
+              {t("linkDetail.noData")}
             </div>
           )}
         </div>
 
         <div class="bento-card">
-          <div class="bento-label">Browsers</div>
+          <div class="bento-label">{t("linkDetail.browsers")}</div>
           {analytics.browsers.length > 0 ? (
             analytics.browsers.map((b) => (
               <StatBar
@@ -332,7 +334,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics }) => {
             ))
           ) : (
             <div style="color:var(--on-bg-muted);font-size:0.875rem">
-              No data yet
+              {t("linkDetail.noData")}
             </div>
           )}
         </div>

@@ -14,6 +14,7 @@ import { DEFAULT_SLUG_LENGTH } from "../constants";
 import { validateSlugLength } from "../slugs";
 import { Env } from "../types";
 import { ServiceResult } from "../api/response";
+import { SUPPORTED_LANGUAGES, isSupportedLanguage } from "../i18n";
 
 const VALID_SCOPES = ["create", "read", "create,read"];
 const VALID_THEMES = ["oddbit", "dark", "light"];
@@ -83,13 +84,23 @@ export async function getUserPreferencesForUser(
 export async function updateUserPreferences(
   env: Env,
   email: string,
-  body: { theme?: string }
+  body: { theme?: string; language?: string }
 ): Promise<ServiceResult<Record<string, string>>> {
   if (body.theme !== undefined) {
     if (!VALID_THEMES.includes(body.theme)) {
       return fail(400, "Invalid theme. Must be one of: " + VALID_THEMES.join(", "));
     }
     await setUserPreference(env.DB, email, "theme", body.theme);
+  }
+
+  if (body.language !== undefined) {
+    if (!isSupportedLanguage(body.language)) {
+      return fail(
+        400,
+        "Invalid language. Must be one of: " + SUPPORTED_LANGUAGES.join(", "),
+      );
+    }
+    await setUserPreference(env.DB, email, "language", body.language);
   }
 
   return getUserPreferencesForUser(env, email);

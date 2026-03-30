@@ -2,24 +2,28 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { FC } from "hono/jsx";
+import type { TranslateFn } from "../i18n";
+import { SUPPORTED_LANGUAGES } from "../i18n";
 
 type Props = {
   theme: string;
   slugLength: number;
+  lang: string;
+  t: TranslateFn;
 };
 
-export const SettingsPage: FC<Props> = ({ theme, slugLength }) => {
+export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t }) => {
   const combos = Math.pow(56, Math.max(slugLength, 3));
   const comboHint =
     slugLength >= 3
-      ? `${combos.toLocaleString()} possible combinations`
-      : "Minimum length is 3 characters";
+      ? t("settings.combos", { count: combos.toLocaleString() })
+      : t("settings.minLength");
 
   return (
     <>
       <div class="page-header">
-        <div class="page-title">Settings</div>
-        <div class="page-subtitle">Configure your URL shortener</div>
+        <div class="page-title">{t("settings.title")}</div>
+        <div class="page-subtitle">{t("settings.subtitle")}</div>
       </div>
 
       <div
@@ -29,28 +33,51 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength }) => {
         <div style="flex:1;min-width:280px;max-width:480px">
           <div class="bento-card">
             <div class="form-group">
-              <label class="form-label">Theme</label>
+              <label class="form-label">{t("settings.language")}</label>
+              <div class="theme-toggle" id="language-picker">
+                {SUPPORTED_LANGUAGES.map((code) => {
+                  const native = t(`lang.${code}` as any);
+                  const local = t(`langLocal.${code}` as any);
+                  const isCurrent = lang === code;
+                  const label = isCurrent ? native : `${local} | ${native}`;
+                  return (
+                    <button
+                      class={`theme-btn${isCurrent ? " active" : ""}`}
+                      data-lang={code}
+                      onclick={`setLanguage('${code}')`}
+                    >
+                      <span class="icon">translate</span> {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div class="bento-card" style="margin-top:1.4rem">
+            <div class="form-group">
+              <label class="form-label">{t("settings.theme")}</label>
               <div class="theme-toggle" id="theme-picker">
                 <button
                   class={`theme-btn${theme === "oddbit" ? " active" : ""}`}
                   data-theme="oddbit"
                   onclick="setTheme('oddbit')"
                 >
-                  <span class="icon">eco</span> Oddbit
+                  <span class="icon">eco</span> {t("settings.themeOddbit")}
                 </button>
                 <button
                   class={`theme-btn${theme === "dark" ? " active" : ""}`}
                   data-theme="dark"
                   onclick="setTheme('dark')"
                 >
-                  <span class="icon">dark_mode</span> Dark
+                  <span class="icon">dark_mode</span> {t("settings.themeDark")}
                 </button>
                 <button
                   class={`theme-btn${theme === "light" ? " active" : ""}`}
                   data-theme="light"
                   onclick="setTheme('light')"
                 >
-                  <span class="icon">light_mode</span> Light
+                  <span class="icon">light_mode</span> {t("settings.themeLight")}
                 </button>
               </div>
             </div>
@@ -58,7 +85,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength }) => {
 
           <div class="bento-card" style="margin-top:1.4rem">
             <div class="form-group">
-              <label class="form-label">Default Slug Length</label>
+              <label class="form-label">{t("settings.slugLength")}</label>
               <div style="display:flex;gap:0.75rem;align-items:center">
                 <input
                   class="form-input"
@@ -69,7 +96,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength }) => {
                   style="width:80px"
                 />
                 <button class="btn btn-secondary btn-sm" onclick="saveSettings()">
-                  Save
+                  {t("settings.save")}
                 </button>
               </div>
               <div
@@ -83,7 +110,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength }) => {
 
           <div class="bento-card" style="margin-top:1.4rem">
             <div class="form-group" style="margin-bottom:0">
-              <label class="form-label">Version</label>
+              <label class="form-label">{t("settings.version")}</label>
               <div id="version-status" style="font-size:0.875rem">
                 <span style="color:var(--on-bg-muted)">
                   <span
@@ -92,7 +119,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength }) => {
                   >
                     progress_activity
                   </span>{" "}
-                  Checking for updates...
+                  {t("settings.checkingUpdates")}
                 </span>
               </div>
             </div>
@@ -101,7 +128,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength }) => {
 
         <div style="min-width:240px;max-width:300px;display:flex;flex-direction:column;gap:1.4rem">
           <div style="font-size:0.75rem;color:var(--secondary);font-weight:600;text-transform:uppercase">
-            Integrations
+            {t("settings.integrations")}
           </div>
           <a
             href="https://www.npmjs.com/package/@oddbit/shrtnr"
@@ -114,11 +141,10 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength }) => {
               <span class="icon" style="color:var(--primary)">
                 terminal
               </span>
-              <span style="font-weight:600">TypeScript SDK</span>
+              <span style="font-weight:600">{t("settings.sdkTitle")}</span>
             </div>
             <div style="font-size:0.813rem;color:var(--on-bg-muted);line-height:1.45">
-              Manage links from your own code. Create, update, disable, and read
-              click analytics programmatically.
+              {t("settings.sdkDesc")}
             </div>
             <div style="font-size:0.7rem;color:var(--secondary);margin-top:0.6rem;display:flex;align-items:center;gap:0.25rem">
               <span class="icon" style="font-size:14px">
@@ -138,11 +164,10 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength }) => {
               <span class="icon" style="color:var(--primary)">
                 smart_toy
               </span>
-              <span style="font-weight:600">MCP Server</span>
+              <span style="font-weight:600">{t("settings.mcpTitle")}</span>
             </div>
             <div style="font-size:0.813rem;color:var(--on-bg-muted);line-height:1.45">
-              Give AI assistants access to your links. Works with Claude Desktop
-              and GitHub Copilot in VS Code.
+              {t("settings.mcpDesc")}
             </div>
             <div style="font-size:0.7rem;color:var(--secondary);margin-top:0.6rem;display:flex;align-items:center;gap:0.25rem">
               <span class="icon" style="font-size:14px">

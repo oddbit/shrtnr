@@ -1,0 +1,197 @@
+// Copyright 2026 Oddbit (https://oddbit.id)
+// SPDX-License-Identifier: Apache-2.0
+
+import type { Translations } from "./types";
+
+const id: Translations = {
+  // Language code (used by client-side Intl APIs)
+  "_lang": "id",
+  // Navigation
+  "nav.dashboard": "Dasbor",
+  "nav.links": "Tautan",
+  "nav.apiKeys": "Kunci API",
+  "nav.settings": "Pengaturan",
+  "nav.signOut": "Keluar",
+  "nav.openNavigation": "Buka navigasi",
+
+  // Dashboard
+  "dashboard.title": "Dasbor",
+  "dashboard.subtitle": "Ringkasan tautan pendek Anda",
+  "dashboard.urlPlaceholder": "Tempel URL panjang untuk diperpendek...",
+  "dashboard.shorten": "Perpendek",
+  "dashboard.totalLinks": "Total Tautan",
+  "dashboard.totalClicks": "Total Klik",
+  "dashboard.topCountries": "Negara Teratas",
+  "dashboard.noData": "Belum ada data",
+  "dashboard.recentLinks": "Tautan Terbaru",
+  "dashboard.noLinks": "Belum ada tautan",
+  "dashboard.topSources": "Sumber Teratas",
+  "dashboard.mostClicked": "Paling Banyak Diklik",
+  "dashboard.clickToCopy": "Klik untuk menyalin",
+
+  // Links
+  "links.title": "Tautan",
+  "links.subtitle": "Kelola semua tautan pendek Anda",
+  "links.count": "{count} tautan",
+  "links.countPlural": "{count} tautan",
+  "links.recent": "Terbaru",
+  "links.popular": "Populer",
+  "links.showDisabled": "Tampilkan nonaktif",
+  "links.newLink": "Tautan Baru",
+  "links.allDisabled":
+    'Semua tautan nonaktif. Aktifkan "Tampilkan nonaktif" untuk melihatnya.',
+  "links.empty":
+    "Belum ada tautan. Gunakan tombol + Tautan Baru di atas untuk memulai.",
+  "links.disabled": "Nonaktif",
+  "links.clicks": "klik",
+  "links.clickToCopy": "Klik untuk menyalin",
+  "links.show": "Tampilkan",
+
+  // Link Detail
+  "linkDetail.title": "Detail Tautan",
+  "linkDetail.enable": "Aktifkan",
+  "linkDetail.disable": "Nonaktifkan",
+  "linkDetail.disabled": "Nonaktif",
+  "linkDetail.copy": "Salin",
+  "linkDetail.qr": "QR",
+  "linkDetail.or": "atau",
+  "linkDetail.vanitySlug": "Slug Kustom",
+  "linkDetail.add": "Tambah",
+  "linkDetail.expiresAt": "Kedaluwarsa",
+  "linkDetail.clear": "Hapus",
+  "linkDetail.save": "Simpan",
+  "linkDetail.clicksOverTime": "Klik Seiring Waktu",
+  "linkDetail.noClickData": "Belum ada data klik",
+  "linkDetail.performance": "Performa",
+  "linkDetail.totalClicks": "total klik",
+  "linkDetail.countries": "Negara",
+  "linkDetail.sources": "Sumber",
+  "linkDetail.devices": "Perangkat",
+  "linkDetail.browsers": "Browser",
+  "linkDetail.noData": "Belum ada data",
+  "linkDetail.clickToCopy": "Klik untuk menyalin",
+
+  // API Keys
+  "keys.title": "Kunci API",
+  "keys.subtitle": "Kelola akses programatik ke API pemerpendek",
+  "keys.count": "{count} kunci",
+  "keys.countPlural": "{count} kunci",
+  "keys.newKey": "Kunci Baru",
+  "keys.empty":
+    "Belum ada kunci API. Gunakan tombol + Kunci Baru di atas untuk mengaktifkan akses programatik.",
+  "keys.colTitle": "Judul",
+  "keys.colKey": "Kunci",
+  "keys.colScope": "Cakupan",
+  "keys.colCreated": "Dibuat",
+  "keys.colLastUsed": "Terakhir Digunakan",
+  "keys.never": "Belum pernah",
+
+  // Settings
+  "settings.title": "Pengaturan",
+  "settings.subtitle": "Konfigurasi pemerpendek URL Anda",
+  "settings.language": "Bahasa",
+  "settings.theme": "Tema",
+  "settings.themeOddbit": "Oddbit",
+  "settings.themeDark": "Gelap",
+  "settings.themeLight": "Terang",
+  "settings.slugLength": "Panjang Slug Default",
+  "settings.save": "Simpan",
+  "settings.combos": "{count} kemungkinan kombinasi",
+  "settings.minLength": "Panjang minimum 3 karakter",
+  "settings.version": "Versi",
+  "settings.checkingUpdates": "Memeriksa pembaruan...",
+  "settings.integrations": "Integrasi",
+  "settings.sdkTitle": "TypeScript SDK",
+  "settings.sdkDesc":
+    "Kelola tautan dari kode Anda sendiri. Buat, perbarui, nonaktifkan, dan baca analitik klik secara programatik.",
+  "settings.mcpTitle": "MCP Server",
+  "settings.mcpDesc":
+    "Berikan asisten AI akses ke tautan Anda. Bekerja dengan Claude Desktop dan GitHub Copilot di VS Code.",
+
+  // 404
+  "notFound.label": "Tidak ditemukan",
+
+  // Client-side strings
+  "client.copied": "{url} disalin",
+  "client.themeUpdated": "Tema diperbarui",
+  "client.themeError": "Gagal menyimpan tema",
+  "client.languageUpdated": "Bahasa diperbarui",
+  "client.languageError": "Gagal menyimpan bahasa",
+  "client.pasteUrl": "Tempel URL terlebih dahulu",
+  "client.linkCreatedCopied": "Tautan dibuat & disalin!",
+  "client.linkCreated": "Tautan dibuat",
+  "client.createLinkError": "Gagal membuat tautan",
+  "client.modalNewLink": "Tautan Baru",
+  "client.destinationUrl": "URL Tujuan *",
+  "client.labelOptional": "Label (opsional)",
+  "client.slugLength": "Panjang Slug",
+  "client.vanityOptional": "Slug Kustom (opsional)",
+  "client.expiresOptional": "Kedaluwarsa (opsional)",
+  "client.cancel": "Batal",
+  "client.create": "Buat",
+  "client.urlRequired": "URL wajib diisi",
+  "client.createApiKey": "Buat Kunci API",
+  "client.keyTitleLabel": "Judul *",
+  "client.keyScopeLabel": "Cakupan *",
+  "client.scopeCreate": "Buat",
+  "client.scopeCreateDesc": "dapat memperpendek URL",
+  "client.scopeRead": "Baca",
+  "client.scopeReadDesc": "dapat melihat tautan dan analitik",
+  "client.scopeCreateRead": "Buat + Baca",
+  "client.scopeCreateReadDesc": "akses API penuh",
+  "client.createKey": "Buat Kunci",
+  "client.titleRequired": "Judul wajib diisi",
+  "client.selectScope": "Pilih cakupan",
+  "client.createKeyError": "Gagal membuat kunci",
+  "client.keyCreated": "Kunci Dibuat",
+  "client.keyCreatedDesc":
+    "Salin kunci API Anda sekarang. Kunci tidak akan ditampilkan lagi.",
+  "client.keyWarning":
+    "Simpan kunci ini dengan aman. Anda tidak dapat mengambilnya nanti.",
+  "client.copy": "Salin",
+  "client.done": "Selesai",
+  "client.apiKeyCopied": "Kunci API disalin",
+  "client.confirmDeleteKey":
+    'Hapus kunci API "{title}"? Tindakan ini tidak dapat dibatalkan.',
+  "client.keyDeleted": "Kunci dihapus",
+  "client.keyDeleteError": "Gagal menghapus kunci",
+  "client.confirmDisable":
+    "Nonaktifkan tautan ini? Pengalihan akan berhenti segera.",
+  "client.linkDisabled": "Tautan dinonaktifkan",
+  "client.disableError": "Gagal menonaktifkan",
+  "client.linkEnabled": "Tautan diaktifkan",
+  "client.enableError": "Gagal mengaktifkan",
+  "client.vanityAdded": "Slug kustom ditambahkan",
+  "client.vanityError": "Gagal menambahkan slug kustom",
+  "client.expiryUpdated": "Kedaluwarsa diperbarui",
+  "client.expiryError": "Gagal memperbarui",
+  "client.expiryCleared": "Kedaluwarsa dihapus",
+  "client.expiryClearError": "Gagal menghapus kedaluwarsa",
+  "client.qrCode": "Kode QR",
+  "client.close": "Tutup",
+  "client.qrFailed": "Pembuatan QR gagal",
+  "client.minSlugLength": "Panjang slug minimum 3",
+  "client.settingsSaved": "Pengaturan disimpan",
+  "client.settingsError": "Gagal menyimpan pengaturan",
+  "client.combos": "{count} kemungkinan kombinasi",
+  "client.minLength": "Panjang minimum 3 karakter",
+  "client.updateAvailable": "tersedia",
+  "client.releaseNotes": "Catatan rilis",
+  "client.viewRepo": "Lihat repo",
+  "client.updateHint":
+    "Untuk memperbarui: sinkronkan fork Anda di GitHub, lalu deployment akan dideploy ulang secara otomatis.",
+  "client.upToDate": "Terbaru",
+  "client.updateCheckFailed": "Tidak dapat memeriksa pembaruan",
+
+  // Language names (displayed in their own language)
+  "lang.en": "English",
+  "lang.id": "Bahasa Indonesia",
+  "lang.sv": "Svenska",
+
+  // Language names (translated into this locale)
+  "langLocal.en": "Inggris",
+  "langLocal.id": "Indonesia",
+  "langLocal.sv": "Swedia",
+};
+
+export default id;

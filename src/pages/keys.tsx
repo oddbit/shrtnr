@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { FC } from "hono/jsx";
+import type { TranslateFn } from "../i18n";
 
 function escHtml(s: string): string {
   return s
@@ -11,9 +12,9 @@ function escHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function formatDate(ts: number): string {
+function formatDate(ts: number, lang: string): string {
   const d = new Date(ts * 1000);
-  return d.toLocaleDateString("en-US", {
+  return d.toLocaleDateString(lang, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -31,24 +32,28 @@ type ApiKey = {
 
 type Props = {
   keys: ApiKey[];
+  t: TranslateFn;
+  lang: string;
 };
 
-export const KeysPage: FC<Props> = ({ keys }) => {
+export const KeysPage: FC<Props> = ({ keys, t, lang }) => {
+  const countKey = keys.length !== 1 ? "keys.countPlural" : "keys.count";
+
   return (
     <>
       <div class="page-header">
-        <div class="page-title">API Keys</div>
+        <div class="page-title">{t("keys.title")}</div>
         <div class="page-subtitle">
-          Manage programmatic access to the shortener API
+          {t("keys.subtitle")}
         </div>
       </div>
 
       <div class="toolbar">
         <div class="toolbar-count">
-          {keys.length} key{keys.length !== 1 ? "s" : ""}
+          {t(countKey as any, { count: keys.length })}
         </div>
         <button class="btn btn-primary" onclick="showCreateKeyModal()">
-          <span class="icon">add</span> New Key
+          <span class="icon">add</span> {t("keys.newKey")}
         </button>
       </div>
 
@@ -56,8 +61,7 @@ export const KeysPage: FC<Props> = ({ keys }) => {
         <div class="empty-state">
           <span class="icon">key_off</span>
           <p>
-            No API keys yet. Use the <strong>+ New Key</strong> button above to
-            enable programmatic access.
+            {t("keys.empty")}
           </p>
         </div>
       ) : (
@@ -66,11 +70,11 @@ export const KeysPage: FC<Props> = ({ keys }) => {
             <table class="keys-table">
               <thead>
                 <tr>
-                  <th>Title</th>
-                  <th>Key</th>
-                  <th>Scope</th>
-                  <th>Created</th>
-                  <th>Last Used</th>
+                  <th>{t("keys.colTitle")}</th>
+                  <th>{t("keys.colKey")}</th>
+                  <th>{t("keys.colScope")}</th>
+                  <th>{t("keys.colCreated")}</th>
+                  <th>{t("keys.colLastUsed")}</th>
                   <th />
                 </tr>
               </thead>
@@ -79,30 +83,30 @@ export const KeysPage: FC<Props> = ({ keys }) => {
                   const scopes = k.scope.split(",");
                   return (
                     <tr>
-                      <td data-label="Title" style="font-weight:600">
+                      <td data-label={t("keys.colTitle")} style="font-weight:600">
                         {k.title}
                       </td>
-                      <td data-label="Key">
+                      <td data-label={t("keys.colKey")}>
                         <span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--on-bg-muted)">
                           {k.key_prefix}&hellip;
                         </span>
                       </td>
-                      <td data-label="Scope">
+                      <td data-label={t("keys.colScope")}>
                         {scopes.map((s) => (
                           <span class={`scope-badge ${s}`}>{s} </span>
                         ))}
                       </td>
                       <td
-                        data-label="Created"
+                        data-label={t("keys.colCreated")}
                         style="color:var(--on-bg-muted);font-size:0.8rem"
                       >
-                        {formatDate(k.created_at)}
+                        {formatDate(k.created_at, lang)}
                       </td>
-                      <td data-label="Last Used" style="font-size:0.8rem">
+                      <td data-label={t("keys.colLastUsed")} style="font-size:0.8rem">
                         {k.last_used_at ? (
-                          formatDate(k.last_used_at)
+                          formatDate(k.last_used_at, lang)
                         ) : (
-                          <span style="color:var(--on-bg-muted)">Never</span>
+                          <span style="color:var(--on-bg-muted)">{t("keys.never")}</span>
                         )}
                       </td>
                       <td>

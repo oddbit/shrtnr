@@ -13,7 +13,7 @@ export async function handleGetPreferences(env: Env, email: string): Promise<Res
 }
 
 export async function handleUpdatePreferences(request: Request, env: Env, email: string): Promise<Response> {
-  let body: { theme?: string };
+  let body: { theme?: string; language?: string };
 
   try {
     body = await request.json();
