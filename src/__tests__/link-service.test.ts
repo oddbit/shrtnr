@@ -67,6 +67,65 @@ describe("link-management service", () => {
     }
   });
 
+  it("rejects javascript: URL scheme", async () => {
+    const result = await createManagedLink(env as any, { url: "javascript:alert(1)" });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(400);
+      expect(result.error).toMatch(/https?/);
+    }
+  });
+
+  it("rejects data: URL scheme", async () => {
+    const result = await createManagedLink(env as any, { url: "data:text/html,<h1>hi</h1>" });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(400);
+    }
+  });
+
+  it("rejects file: URL scheme", async () => {
+    const result = await createManagedLink(env as any, { url: "file:///etc/passwd" });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(400);
+    }
+  });
+
+  it("rejects ftp: URL scheme", async () => {
+    const result = await createManagedLink(env as any, { url: "ftp://files.example.com/data" });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(400);
+    }
+  });
+
+  it("accepts http: URL scheme", async () => {
+    const result = await createManagedLink(env as any, { url: "http://example.com" });
+    expect(result.ok).toBe(true);
+  });
+
+  it("accepts https: URL scheme", async () => {
+    const result = await createManagedLink(env as any, { url: "https://example.com" });
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects javascript: URL in update", async () => {
+    const created = await createManagedLink(env as any, { url: "https://example.com" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const result = await updateManagedLink(env as any, created.data.id, { url: "javascript:alert(1)" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(400);
+    }
+  });
+
   it("requires read scope semantics for get and create scope semantics for update", async () => {
     const created = await createManagedLink(env as any, { url: "https://example.com" });
     expect(created.ok).toBe(true);

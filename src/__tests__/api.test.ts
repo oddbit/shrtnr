@@ -143,6 +143,30 @@ describe("Links API", () => {
     expect(res.status).toBe(400);
   });
 
+  it("POST /_/api/links should return 400 for javascript: URL", async () => {
+    const res = await SELF.fetch(
+      authed("/_/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "javascript:alert(1)" }),
+      })
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json() as any;
+    expect(body.error).toMatch(/https?/);
+  });
+
+  it("POST /_/api/links should return 400 for data: URL", async () => {
+    const res = await SELF.fetch(
+      authed("/_/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "data:text/html,<script>alert(1)</script>" }),
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+
   it("POST /_/api/links should return 400 for missing URL", async () => {
     const res = await SELF.fetch(
       authed("/_/api/links", {

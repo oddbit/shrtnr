@@ -45,7 +45,10 @@ export async function createManagedLink(
   }
 
   try {
-    new URL(body.url);
+    const parsed = new URL(body.url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return fail(400, "url must use http or https");
+    }
   } catch {
     return fail(400, "url must be a valid URL");
   }
@@ -88,7 +91,10 @@ export async function updateManagedLink(
 ): Promise<ServiceResult<LinkWithSlugs>> {
   if (body.url !== undefined) {
     try {
-      new URL(body.url);
+      const parsed = new URL(body.url);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return fail(400, "url must use http or https");
+      }
     } catch {
       return fail(400, "url must be a valid URL");
     }
