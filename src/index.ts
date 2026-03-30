@@ -4,15 +4,23 @@
 import { Env } from "./types";
 import { handleRedirect } from "./redirect";
 import { getAuthenticatedEmail, unauthorizedResponse } from "./auth";
+import { authenticateApiKey } from "./db";
 import { handleHealth } from "./api/health";
 import { handleListLinks, handleGetLink, handleCreateLink, handleUpdateLink, handleDisableLink } from "./api/links";
 import { handleAddVanitySlug, handleRemoveVanitySlug } from "./api/slugs";
 import { handleGetSettings, handleUpdateSettings } from "./api/settings";
 import { handleGetPreferences, handleUpdatePreferences } from "./api/preferences";
+import { handleListKeys, handleCreateKey, handleDeleteKey } from "./api/keys";
 import { handleDashboardStats, handleLinkAnalytics } from "./api/analytics";
 import { serveAdminUI } from "./admin/ui";
 import { serveAsset } from "./assets";
 import { notFoundResponse } from "./404";
+
+type AuthContext = {
+  email: string;
+  source: "access" | "apikey";
+  scope: string | null; // null = full access (admin), "create" | "read" | "create,read"
+};
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -44,13 +52,13 @@ export default {
       return serveAdminUI(email);
     }
 
-    // API routes — require auth
+    // API routes — require auth (Access JWT or API key)
     if (path.startsWith("/_/api/")) {
-      const email = getAuthenticatedEmail(request);
-      if (!email) {
+      const auth = await resolveAuth(request, env);
+      if (!auth) {
         return unauthorizedResponse();
       }
-      return handleApiRoute(request, env, path, email);
+      return handleApiRoute(request, env, path, auth);
     }
 
     // Root URL — redirect to admin (Cloudflare Access will handle login)
@@ -68,79 +76,141 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
-async function handleApiRoute(request: Request, env: Env, path: string, email: string): Promise<Response> {
-  const method = request.method;
-
-  // GET /_/api/links
-  if (path === "/_/api/links" && method === "GET") {
-    return handleListLinks(env);
+async function resolveAuth(request: Request, env: Env): Promise<AuthContext | null> {
+  // Try Cloudflare Access JWT first (admin access)
+  const email = getAuthenticatedEmail(request);
+  if (email) {
+    return { email, source: "access", scope: null };
   }
 
-  // POST /_/api/links
+  // Try Bearer token (API key)
+  const authHeader = request.headers.get("Authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    const key = await authenticateApiKey(env.DB, token);
+    if (key) {
+      return { email: key.email, source: "apikey", scope: key.scope };
+    }
+  }
+
+  return null;
+}
+
+function hasScope(auth: AuthContext, required: string): boolean {
+  if (auth.scope === null) return true; // Admin has full access
+  return auth.scope.split(",").includes(required);
+}
+
+function forbiddenResponse(): Response {
+  return new Response(JSON.stringify({ error: "Forbidden" }), {
+    status: 403,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function requireAdmin(auth: AuthContext): Response | null {
+  if (auth.source !== "access") return forbiddenResponse();
+  return null;
+}
+
+async function handleApiRoute(request: Request, env: Env, path: string, auth: AuthContext): Promise<Response> {
+  const method = request.method;
+
+  // --- API key management (admin only) ---
+
+  if (path === "/_/api/keys" && method === "GET") {
+    const denied = requireAdmin(auth);
+    if (denied) return denied;
+    return handleListKeys(env, auth.email);
+  }
+  if (path === "/_/api/keys" && method === "POST") {
+    const denied = requireAdmin(auth);
+    if (denied) return denied;
+    return handleCreateKey(request, env, auth.email);
+  }
+  const keyDeleteMatch = path.match(/^\/_\/api\/keys\/(\d+)$/);
+  if (keyDeleteMatch && method === "DELETE") {
+    const denied = requireAdmin(auth);
+    if (denied) return denied;
+    return handleDeleteKey(env, auth.email, parseInt(keyDeleteMatch[1], 10));
+  }
+
+  // --- Scoped: create ---
+
   if (path === "/_/api/links" && method === "POST") {
+    if (!hasScope(auth, "create")) return forbiddenResponse();
     return handleCreateLink(request, env);
   }
 
-  // GET /_/api/settings
+  // --- Scoped: read ---
+
+  if (path === "/_/api/links" && method === "GET") {
+    if (!hasScope(auth, "read")) return forbiddenResponse();
+    return handleListLinks(env);
+  }
+
+  const analyticsMatch = path.match(/^\/_\/api\/links\/(\d+)\/analytics$/);
+  if (analyticsMatch && method === "GET") {
+    if (!hasScope(auth, "read")) return forbiddenResponse();
+    return handleLinkAnalytics(env, parseInt(analyticsMatch[1], 10));
+  }
+
+  // --- Admin-only routes ---
+
   if (path === "/_/api/settings" && method === "GET") {
+    const denied = requireAdmin(auth);
+    if (denied) return denied;
     return handleGetSettings(env);
   }
-
-  // PUT /_/api/settings
   if (path === "/_/api/settings" && method === "PUT") {
+    const denied = requireAdmin(auth);
+    if (denied) return denied;
     return handleUpdateSettings(request, env);
   }
-
-  // GET /_/api/preferences
   if (path === "/_/api/preferences" && method === "GET") {
-    return handleGetPreferences(env, email);
+    const denied = requireAdmin(auth);
+    if (denied) return denied;
+    return handleGetPreferences(env, auth.email);
   }
-
-  // PUT /_/api/preferences
   if (path === "/_/api/preferences" && method === "PUT") {
-    return handleUpdatePreferences(request, env, email);
+    const denied = requireAdmin(auth);
+    if (denied) return denied;
+    return handleUpdatePreferences(request, env, auth.email);
   }
-
-  // GET /_/api/dashboard
   if (path === "/_/api/dashboard" && method === "GET") {
+    const denied = requireAdmin(auth);
+    if (denied) return denied;
     return handleDashboardStats(env);
   }
 
-  // Routes with :id
   const linkMatch = path.match(/^\/_\/api\/links\/(\d+)$/);
   if (linkMatch) {
+    const denied = requireAdmin(auth);
+    if (denied) return denied;
     const id = parseInt(linkMatch[1], 10);
     if (method === "GET") return handleGetLink(env, id);
     if (method === "PUT") return handleUpdateLink(request, env, id);
   }
 
-  // POST /_/api/links/:id/disable
   const disableMatch = path.match(/^\/_\/api\/links\/(\d+)\/disable$/);
   if (disableMatch && method === "POST") {
-    const id = parseInt(disableMatch[1], 10);
-    return handleDisableLink(env, id);
+    const denied = requireAdmin(auth);
+    if (denied) return denied;
+    return handleDisableLink(env, parseInt(disableMatch[1], 10));
   }
 
-  // GET /_/api/links/:id/analytics
-  const analyticsMatch = path.match(/^\/_\/api\/links\/(\d+)\/analytics$/);
-  if (analyticsMatch && method === "GET") {
-    const id = parseInt(analyticsMatch[1], 10);
-    return handleLinkAnalytics(env, id);
-  }
-
-  // POST /_/api/links/:id/slugs
   const addSlugMatch = path.match(/^\/_\/api\/links\/(\d+)\/slugs$/);
   if (addSlugMatch && method === "POST") {
-    const id = parseInt(addSlugMatch[1], 10);
-    return handleAddVanitySlug(request, env, id);
+    const denied = requireAdmin(auth);
+    if (denied) return denied;
+    return handleAddVanitySlug(request, env, parseInt(addSlugMatch[1], 10));
   }
 
-  // DELETE /_/api/links/:id/slugs/:slug
   const removeSlugMatch = path.match(/^\/_\/api\/links\/(\d+)\/slugs\/(.+)$/);
   if (removeSlugMatch && method === "DELETE") {
-    const id = parseInt(removeSlugMatch[1], 10);
-    const slug = decodeURIComponent(removeSlugMatch[2]);
-    return handleRemoveVanitySlug(env, id, slug);
+    const denied = requireAdmin(auth);
+    if (denied) return denied;
+    return handleRemoveVanitySlug(env, parseInt(removeSlugMatch[1], 10), decodeURIComponent(removeSlugMatch[2]));
   }
 
   return new Response(JSON.stringify({ error: "Not Found" }), {

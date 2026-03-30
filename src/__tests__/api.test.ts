@@ -757,3 +757,273 @@ describe("Analytics API", () => {
     expect(Array.isArray(body.top_countries)).toBe(true);
   });
 });
+
+// ---- API Keys Management ----
+
+describe("API Keys Management", () => {
+  it("POST /_/api/keys should create a key and return the raw key", async () => {
+    const res = await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "My Key", scope: "create" }),
+      })
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json() as any;
+    expect(body.raw_key).toMatch(/^sk_/);
+    expect(body.key.title).toBe("My Key");
+    expect(body.key.scope).toBe("create");
+  });
+
+  it("GET /_/api/keys should list keys for the authenticated user", async () => {
+    await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Key 1", scope: "create" }),
+      })
+    );
+    await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Key 2", scope: "read" }),
+      })
+    );
+    const res = await SELF.fetch(authed("/_/api/keys"));
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body).toHaveLength(2);
+    expect(body[0].key_hash).toBeUndefined();
+  });
+
+  it("GET /_/api/keys should not include other users keys", async () => {
+    await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Test Key", scope: "create" }),
+      })
+    );
+    const otherJwt = makeJwt("other@example.com");
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/api/keys", {
+        headers: { "Cf-Access-Jwt-Assertion": otherJwt },
+      })
+    );
+    const body = await res.json() as any;
+    expect(body).toHaveLength(0);
+  });
+
+  it("DELETE /_/api/keys/:id should revoke own key", async () => {
+    const createRes = await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Revokable", scope: "create" }),
+      })
+    );
+    const created = await createRes.json() as any;
+    const res = await SELF.fetch(authed(`/_/api/keys/${created.key.id}`, { method: "DELETE" }));
+    expect(res.status).toBe(200);
+    const listRes = await SELF.fetch(authed("/_/api/keys"));
+    const list = await listRes.json() as any;
+    expect(list).toHaveLength(0);
+  });
+
+  it("DELETE /_/api/keys/:id should not revoke another users key", async () => {
+    const createRes = await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Protected", scope: "create" }),
+      })
+    );
+    const created = await createRes.json() as any;
+    const otherJwt = makeJwt("other@example.com");
+    const res = await SELF.fetch(
+      new Request(`https://shrtnr.test/_/api/keys/${created.key.id}`, {
+        method: "DELETE",
+        headers: { "Cf-Access-Jwt-Assertion": otherJwt },
+      })
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /_/api/keys with invalid scope should return 400", async () => {
+    const res = await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Bad Scope", scope: "admin" }),
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /_/api/keys without title should return 400", async () => {
+    const res = await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope: "create" }),
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+});
+
+// ---- API Key Authentication ----
+
+describe("API Key Authentication", () => {
+  it("should authenticate with a valid API key via Bearer token", async () => {
+    const createRes = await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Bearer Key", scope: "create,read" }),
+      })
+    );
+    const { raw_key } = await createRes.json() as any;
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/api/links", {
+        headers: { "Authorization": `Bearer ${raw_key}` },
+      })
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("should reject an invalid Bearer token", async () => {
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/api/links", {
+        headers: { "Authorization": "Bearer sk_000000000000000000000000000000000000000000000000000" },
+      })
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("should reject a malformed Bearer token", async () => {
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/api/links", {
+        headers: { "Authorization": "Bearer not-a-key" },
+      })
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("should reject requests with no auth at all", async () => {
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/api/links")
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("create-scoped key should be able to create links", async () => {
+    const createRes = await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Creator", scope: "create" }),
+      })
+    );
+    const { raw_key } = await createRes.json() as any;
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/api/links", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${raw_key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com" }),
+      })
+    );
+    expect(res.status).toBe(201);
+  });
+
+  it("read-scoped key should not be able to create links", async () => {
+    const createRes = await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Reader", scope: "read" }),
+      })
+    );
+    const { raw_key } = await createRes.json() as any;
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/api/links", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${raw_key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com" }),
+      })
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("read-scoped key should be able to read link analytics", async () => {
+    // First create a link via admin auth
+    const linkRes = await SELF.fetch(
+      authed("/_/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com" }),
+      })
+    );
+    const link = await linkRes.json() as any;
+    // Then create a read key
+    const keyRes = await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Reader", scope: "read" }),
+      })
+    );
+    const { raw_key } = await keyRes.json() as any;
+    const res = await SELF.fetch(
+      new Request(`https://shrtnr.test/_/api/links/${link.id}/analytics`, {
+        headers: { "Authorization": `Bearer ${raw_key}` },
+      })
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("create-scoped key should not be able to read analytics", async () => {
+    const linkRes = await SELF.fetch(
+      authed("/_/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com" }),
+      })
+    );
+    const link = await linkRes.json() as any;
+    const keyRes = await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Creator", scope: "create" }),
+      })
+    );
+    const { raw_key } = await keyRes.json() as any;
+    const res = await SELF.fetch(
+      new Request(`https://shrtnr.test/_/api/links/${link.id}/analytics`, {
+        headers: { "Authorization": `Bearer ${raw_key}` },
+      })
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("API key auth should not grant access to admin-only endpoints", async () => {
+    const keyRes = await SELF.fetch(
+      authed("/_/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Limited", scope: "create,read" }),
+      })
+    );
+    const { raw_key } = await keyRes.json() as any;
+    // Settings should be admin-only
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/api/settings", {
+        headers: { "Authorization": `Bearer ${raw_key}` },
+      })
+    );
+    expect(res.status).toBe(403);
+  });
+});

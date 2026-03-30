@@ -17,6 +17,10 @@ import {
   getUserPreference,
   setUserPreference,
   getUserPreferences,
+  createApiKey,
+  getApiKeysByEmail,
+  deleteApiKey,
+  authenticateApiKey,
 } from "../db";
 import { generateUniqueSlug } from "../slugs";
 import { applyMigrations, resetData } from "./setup";
@@ -370,5 +374,88 @@ describe("User Preferences", () => {
   it("should return empty object when user has no preferences", async () => {
     const prefs = await getUserPreferences(env.DB, "nobody@example.com");
     expect(prefs).toEqual({});
+  });
+});
+
+// ---- API Keys ----
+
+describe("API Keys", () => {
+  it("should create a key and return the raw key starting with sk_", async () => {
+    const { key, rawKey } = await createApiKey(env.DB, "user@example.com", "Test Key", "create");
+    expect(rawKey).toMatch(/^sk_[0-9a-f]{48}$/);
+    expect(key.title).toBe("Test Key");
+    expect(key.scope).toBe("create");
+    expect(key.email).toBe("user@example.com");
+    expect(key.key_prefix).toBe(rawKey.slice(0, 7));
+    expect(key.last_used_at).toBeNull();
+  });
+
+  it("should authenticate with a valid raw key", async () => {
+    const { rawKey } = await createApiKey(env.DB, "user@example.com", "Auth Key", "read");
+    const found = await authenticateApiKey(env.DB, rawKey);
+    expect(found).not.toBeNull();
+    expect(found!.title).toBe("Auth Key");
+    expect(found!.email).toBe("user@example.com");
+  });
+
+  it("should reject an invalid key", async () => {
+    const found = await authenticateApiKey(env.DB, "sk_invalid000000000000000000000000000000000000000000");
+    expect(found).toBeNull();
+  });
+
+  it("should reject a malformed key", async () => {
+    const found = await authenticateApiKey(env.DB, "not-a-real-key");
+    expect(found).toBeNull();
+  });
+
+  it("should reject an empty key", async () => {
+    const found = await authenticateApiKey(env.DB, "");
+    expect(found).toBeNull();
+  });
+
+  it("should update last_used_at on authentication", async () => {
+    const { key, rawKey } = await createApiKey(env.DB, "user@example.com", "Usage Key", "create");
+    expect(key.last_used_at).toBeNull();
+    const authed = await authenticateApiKey(env.DB, rawKey);
+    expect(authed!.last_used_at).not.toBeNull();
+  });
+
+  it("should list keys for a specific user only", async () => {
+    await createApiKey(env.DB, "alice@example.com", "Alice Key", "create");
+    await createApiKey(env.DB, "bob@example.com", "Bob Key", "read");
+    const aliceKeys = await getApiKeysByEmail(env.DB, "alice@example.com");
+    expect(aliceKeys).toHaveLength(1);
+    expect(aliceKeys[0].title).toBe("Alice Key");
+    const bobKeys = await getApiKeysByEmail(env.DB, "bob@example.com");
+    expect(bobKeys).toHaveLength(1);
+    expect(bobKeys[0].title).toBe("Bob Key");
+  });
+
+  it("should not expose the raw key in listed keys", async () => {
+    const { rawKey } = await createApiKey(env.DB, "user@example.com", "Secret", "create");
+    const keys = await getApiKeysByEmail(env.DB, "user@example.com");
+    expect(keys[0].key_hash).not.toBe(rawKey);
+    expect(keys[0].key_prefix).toHaveLength(7);
+  });
+
+  it("should delete a key owned by the user", async () => {
+    const { key } = await createApiKey(env.DB, "user@example.com", "Deletable", "create");
+    const deleted = await deleteApiKey(env.DB, key.id, "user@example.com");
+    expect(deleted).toBe(true);
+    const keys = await getApiKeysByEmail(env.DB, "user@example.com");
+    expect(keys).toHaveLength(0);
+  });
+
+  it("should not delete a key owned by a different user", async () => {
+    const { key } = await createApiKey(env.DB, "alice@example.com", "Alice Only", "create");
+    const deleted = await deleteApiKey(env.DB, key.id, "bob@example.com");
+    expect(deleted).toBe(false);
+    const keys = await getApiKeysByEmail(env.DB, "alice@example.com");
+    expect(keys).toHaveLength(1);
+  });
+
+  it("should support create,read combined scope", async () => {
+    const { key } = await createApiKey(env.DB, "user@example.com", "Full Access", "create,read");
+    expect(key.scope).toBe("create,read");
   });
 });

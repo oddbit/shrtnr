@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+- App-managed API keys with SHA-256 hashed storage
+- Dual authentication: Cloudflare Access (admin) and Bearer token (API keys)
+- Scope-based authorization: create, read, or both
+- API key management endpoints (create, list, delete)
+- Per-user key isolation with owner-only deletion
+- Raw key shown once at creation, prefix stored for display
+- Automatic last-used tracking on each API call
+
 ## 0.1.0
 
 Initial release.

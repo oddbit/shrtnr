@@ -162,6 +162,85 @@ export async function setSetting(db: D1Database, key: string, value: string): Pr
     .run();
 }
 
+// --- API Keys ---
+
+export interface ApiKeyRow {
+  id: number;
+  email: string;
+  title: string;
+  key_prefix: string;
+  key_hash: string;
+  scope: string;
+  created_at: number;
+  last_used_at: number | null;
+}
+
+async function hashKey(raw: string): Promise<string> {
+  const encoded = new TextEncoder().encode(raw);
+  const digest = await crypto.subtle.digest("SHA-256", encoded);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+export async function createApiKey(
+  db: D1Database,
+  email: string,
+  title: string,
+  scope: string,
+): Promise<{ key: ApiKeyRow; rawKey: string }> {
+  const rawKey = "sk_" + Array.from(crypto.getRandomValues(new Uint8Array(24)))
+    .map(b => b.toString(16).padStart(2, "0")).join("");
+  const keyHash = await hashKey(rawKey);
+  const keyPrefix = rawKey.slice(0, 7);
+  const now = Math.floor(Date.now() / 1000);
+
+  await db
+    .prepare("INSERT INTO api_keys (email, title, key_prefix, key_hash, scope, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(email, title, keyPrefix, keyHash, scope, now)
+    .run();
+
+  const row = await db
+    .prepare("SELECT * FROM api_keys WHERE key_hash = ?")
+    .bind(keyHash)
+    .first<ApiKeyRow>();
+
+  return { key: row!, rawKey };
+}
+
+export async function getApiKeysByEmail(db: D1Database, email: string): Promise<ApiKeyRow[]> {
+  const { results } = await db
+    .prepare("SELECT * FROM api_keys WHERE email = ? ORDER BY created_at DESC")
+    .bind(email)
+    .all<ApiKeyRow>();
+  return results ?? [];
+}
+
+export async function deleteApiKey(db: D1Database, id: number, email: string): Promise<boolean> {
+  const result = await db
+    .prepare("DELETE FROM api_keys WHERE id = ? AND email = ?")
+    .bind(id, email)
+    .run();
+  return (result.meta.changes ?? 0) > 0;
+}
+
+export async function authenticateApiKey(db: D1Database, rawKey: string): Promise<ApiKeyRow | null> {
+  const keyHash = await hashKey(rawKey);
+  const row = await db
+    .prepare("SELECT * FROM api_keys WHERE key_hash = ?")
+    .bind(keyHash)
+    .first<ApiKeyRow>();
+  if (!row) return null;
+
+  // Update last_used_at and return the updated row
+  const now = Math.floor(Date.now() / 1000);
+  await db
+    .prepare("UPDATE api_keys SET last_used_at = ? WHERE id = ?")
+    .bind(now, row.id)
+    .run();
+
+  row.last_used_at = now;
+  return row;
+}
+
 // --- User Preferences ---
 
 export async function getUserPreference(db: D1Database, email: string, key: string): Promise<string | null> {

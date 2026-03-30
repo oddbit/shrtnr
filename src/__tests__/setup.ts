@@ -35,5 +35,6 @@ export async function resetData() {
   await env.DB.exec("DELETE FROM links");
   await env.DB.exec("DELETE FROM settings");
   await env.DB.exec("DELETE FROM user_preferences");
+  await env.DB.exec("DELETE FROM api_keys");
   await env.DB.exec("INSERT INTO settings (key, value) VALUES ('slug_default_length', '3')");
 }
