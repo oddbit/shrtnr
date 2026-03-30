@@ -1005,7 +1005,7 @@ function renderKeys() {
   document.getElementById('keys-count').textContent = apiKeys.length + ' key' + (apiKeys.length !== 1 ? 's' : '');
 
   if (apiKeys.length === 0) {
-    el.innerHTML = '<div class="empty-state"><span class="icon">key_off</span><p>No API keys yet. Create one to enable programmatic access.</p><button class="btn btn-primary" onclick="showCreateKeyModal()"><span class="icon">add</span> New Key</button></div>';
+    el.innerHTML = '<div class="empty-state"><span class="icon">key_off</span><p>No API keys yet. Use the <strong>+ New Key</strong> button above to enable programmatic access.</p></div>';
     return;
   }
 
