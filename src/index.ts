@@ -7,7 +7,7 @@ import { getAuthenticatedEmail, unauthorizedResponse } from "./auth";
 import { authenticateApiKey } from "./db";
 import { handleHealth } from "./api/health";
 import { handleListLinks, handleGetLink, handleCreateLink, handleUpdateLink, handleDisableLink } from "./api/links";
-import { handleAddVanitySlug, handleRemoveVanitySlug } from "./api/slugs";
+import { handleAddVanitySlug } from "./api/slugs";
 import { handleGetSettings, handleUpdateSettings } from "./api/settings";
 import { handleGetPreferences, handleUpdatePreferences } from "./api/preferences";
 import { handleListKeys, handleCreateKey, handleDeleteKey } from "./api/keys";
@@ -204,13 +204,6 @@ async function handleApiRoute(request: Request, env: Env, path: string, auth: Au
     const denied = requireAdmin(auth);
     if (denied) return denied;
     return handleAddVanitySlug(request, env, parseInt(addSlugMatch[1], 10));
-  }
-
-  const removeSlugMatch = path.match(/^\/_\/api\/links\/(\d+)\/slugs\/(.+)$/);
-  if (removeSlugMatch && method === "DELETE") {
-    const denied = requireAdmin(auth);
-    if (denied) return denied;
-    return handleRemoveVanitySlug(env, parseInt(removeSlugMatch[1], 10), decodeURIComponent(removeSlugMatch[2]));
   }
 
   return new Response(JSON.stringify({ error: "Not Found" }), {

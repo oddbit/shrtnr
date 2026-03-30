@@ -131,14 +131,6 @@ export async function addVanitySlug(db: D1Database, linkId: number, slug: string
     .first<Slug>())!;
 }
 
-export async function removeVanitySlug(db: D1Database, linkId: number, slug: string): Promise<boolean> {
-  const result = await db
-    .prepare("DELETE FROM slugs WHERE link_id = ? AND slug = ? AND is_vanity = 1")
-    .bind(linkId, slug)
-    .run();
-  return (result.meta.changes ?? 0) > 0;
-}
-
 export async function slugExists(db: D1Database, slug: string): Promise<boolean> {
   const row = await db
     .prepare("SELECT 1 FROM slugs WHERE slug = ?")

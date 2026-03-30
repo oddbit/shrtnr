@@ -417,6 +417,27 @@ describe("Vanity Slugs API", () => {
     expect(res.status).toBe(409);
   });
 
+  it("should return 409 when link already has a vanity slug", async () => {
+    const createRes = await SELF.fetch(
+      authed("/_/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com", vanity_slug: "existing" }),
+      })
+    );
+    const created = await createRes.json() as any;
+    const res = await SELF.fetch(
+      authed(`/_/api/links/${created.id}/slugs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "another" }),
+      })
+    );
+    expect(res.status).toBe(409);
+    const body = await res.json() as any;
+    expect(body.error).toMatch(/already has a vanity slug/i);
+  });
+
   it("should return 400 for invalid vanity slug", async () => {
     const createRes = await SELF.fetch(
       authed("/_/api/links", {
@@ -436,45 +457,6 @@ describe("Vanity Slugs API", () => {
     expect(res.status).toBe(400);
   });
 
-  it("DELETE should remove a vanity slug", async () => {
-    const createRes = await SELF.fetch(
-      authed("/_/api/links", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://example.com", vanity_slug: "removable" }),
-      })
-    );
-    const created = await createRes.json() as any;
-    const res = await SELF.fetch(
-      authed(`/_/api/links/${created.id}/slugs/removable`, { method: "DELETE" })
-    );
-    expect(res.status).toBe(200);
-    const body = await res.json() as any;
-    expect(body.success).toBe(true);
-  });
-
-  it("DELETE should fail for auto-generated slug", async () => {
-    const createRes = await SELF.fetch(
-      authed("/_/api/links", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://example.com" }),
-      })
-    );
-    const created = await createRes.json() as any;
-    const autoSlug = created.slugs[0].slug;
-    const res = await SELF.fetch(
-      authed(`/_/api/links/${created.id}/slugs/${autoSlug}`, { method: "DELETE" })
-    );
-    expect(res.status).toBe(404);
-  });
-
-  it("DELETE should return 404 for non-existent link", async () => {
-    const res = await SELF.fetch(
-      authed("/_/api/links/99999/slugs/whatever", { method: "DELETE" })
-    );
-    expect(res.status).toBe(404);
-  });
 });
 
 // ---- Redirect ----

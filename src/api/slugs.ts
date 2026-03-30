@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Env } from "../types";
-import { getLinkById, addVanitySlug, removeVanitySlug, slugExists } from "../db";
+import { getLinkById, addVanitySlug, slugExists } from "../db";
 import { validateVanitySlug } from "../slugs";
 
 function json(data: unknown, status = 200): Response {
@@ -34,26 +34,14 @@ export async function handleAddVanitySlug(
   const err = validateVanitySlug(body.slug);
   if (err) return json({ error: err }, 400);
 
+  if (link.slugs.some(s => s.is_vanity)) {
+    return json({ error: "Link already has a vanity slug" }, 409);
+  }
+
   if (await slugExists(env.DB, body.slug)) {
     return json({ error: "Slug already exists" }, 409);
   }
 
   const slug = await addVanitySlug(env.DB, linkId, body.slug);
   return json(slug, 201);
-}
-
-export async function handleRemoveVanitySlug(
-  env: Env,
-  linkId: number,
-  slug: string
-): Promise<Response> {
-  const link = await getLinkById(env.DB, linkId);
-  if (!link) return json({ error: "Link not found" }, 404);
-
-  const removed = await removeVanitySlug(env.DB, linkId, slug);
-  if (!removed) {
-    return json({ error: "Vanity slug not found or cannot remove primary slug" }, 404);
-  }
-
-  return json({ success: true });
 }

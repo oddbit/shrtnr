@@ -1116,16 +1116,21 @@ function showEditModal(id) {
   if (!link) return;
   const exp = link.expires_at ? new Date(link.expires_at * 1000).toISOString().slice(0, 16) : '';
   const vanity = link.slugs.filter(s => s.is_vanity);
-  let vanityHtml = vanity.length ? '<div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem">' + vanity.map(v =>
-    '<span class="slug-chip vanity">/' + esc(v.slug) + ' <span style="cursor:pointer;color:var(--danger)" onclick="removeVanity(' + id + ',\\'' + v.slug + '\\')"><span class="icon" style="font-size:14px">close</span></span></span>'
-  ).join('') + '</div>' : '';
+  let vanityHtml = '';
+  if (vanity.length) {
+    vanityHtml = '<div style="display:flex;flex-wrap:wrap;gap:0.4rem">' + vanity.map(v =>
+      '<span class="slug-chip vanity" style="cursor:default">/' + esc(v.slug) + '</span>'
+    ).join('') + '</div>';
+  } else {
+    vanityHtml = '<div style="display:flex;gap:0.5rem"><input class="form-input" id="m-new-vanity" placeholder="my-custom-slug"><button class="btn btn-secondary btn-sm" onclick="addVanity(' + id + ')">Add</button></div>';
+  }
 
   openModal(
     '<div class="modal-title">Edit Link</div>' +
     '<div class="form-group"><label class="form-label">Destination URL</label><input class="form-input" id="m-url" value="' + esc(link.url) + '"></div>' +
     '<div class="form-group"><label class="form-label">Label</label><input class="form-input" id="m-label" value="' + (link.label ? esc(link.label) : '') + '"></div>' +
     '<div class="form-group"><label class="form-label">Expires At</label><input class="form-input" id="m-expires" type="datetime-local" value="' + exp + '"></div>' +
-    '<div class="form-group"><label class="form-label">Vanity Slugs</label>' + vanityHtml + '<div style="display:flex;gap:0.5rem"><input class="form-input" id="m-new-vanity" placeholder="new-vanity-slug"><button class="btn btn-secondary btn-sm" onclick="addVanity(' + id + ')">Add</button></div></div>' +
+    '<div class="form-group"><label class="form-label">Vanity Slug</label>' + vanityHtml + '</div>' +
     '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="updateLink(' + id + ')">Save</button></div>'
   );
 }
@@ -1188,17 +1193,6 @@ async function saveDetailExpiry(linkId) {
   } else {
     const data = await res.json();
     toast(data.error || 'Failed to update', 'error');
-  }
-}
-
-async function removeVanity(linkId, slug) {
-  const res = await api('/links/' + linkId + '/slugs/' + encodeURIComponent(slug), { method: 'DELETE' });
-  if (res.ok) {
-    toast('Vanity slug removed');
-    await loadLinks();
-    showEditModal(linkId);
-  } else {
-    toast('Failed to remove vanity slug', 'error');
   }
 }
 

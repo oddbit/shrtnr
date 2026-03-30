@@ -7,7 +7,6 @@ import {
   updateLink,
   disableLink,
   addVanitySlug,
-  removeVanitySlug,
   slugExists,
   recordClick,
   getLinkClickStats,
@@ -204,29 +203,6 @@ describe("Vanity Slugs", () => {
     await createLink(env.DB, "https://example.com", "abc");
     expect(await slugExists(env.DB, "abc")).toBe(true);
     expect(await slugExists(env.DB, "nonexistent")).toBe(false);
-  });
-
-  it("should remove a vanity slug", async () => {
-    const link = await createLink(env.DB, "https://example.com", "abc", null, "my-vanity");
-    const removed = await removeVanitySlug(env.DB, link.id, "my-vanity");
-    expect(removed).toBe(true);
-    const updated = await getLinkById(env.DB, link.id);
-    expect(updated!.slugs).toHaveLength(1);
-    expect(updated!.slugs[0].is_vanity).toBe(0);
-  });
-
-  it("should not remove an auto-generated slug", async () => {
-    const link = await createLink(env.DB, "https://example.com", "abc");
-    const removed = await removeVanitySlug(env.DB, link.id, "abc");
-    expect(removed).toBe(false);
-    const updated = await getLinkById(env.DB, link.id);
-    expect(updated!.slugs).toHaveLength(1);
-  });
-
-  it("should return false when removing a non-existent vanity slug", async () => {
-    const link = await createLink(env.DB, "https://example.com", "abc");
-    const removed = await removeVanitySlug(env.DB, link.id, "nope");
-    expect(removed).toBe(false);
   });
 });
 
