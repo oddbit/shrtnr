@@ -33,6 +33,13 @@ export default {
       if (!email) {
         return unauthorizedResponse();
       }
+      return Response.redirect(new URL("/_/admin/dashboard", request.url).toString(), 302);
+    }
+    if (path.startsWith("/_/admin/")) {
+      const email = getAuthenticatedEmail(request);
+      if (!email) {
+        return unauthorizedResponse();
+      }
       return serveAdminUI(email);
     }
 
@@ -47,7 +54,7 @@ export default {
 
     // Root URL — redirect to admin (Cloudflare Access will handle login)
     if (path === "/" || path === "") {
-      return Response.redirect(new URL("/_/admin", request.url).toString(), 302);
+      return Response.redirect(new URL("/_/admin/dashboard", request.url).toString(), 302);
     }
 
     // Everything else is a slug redirect

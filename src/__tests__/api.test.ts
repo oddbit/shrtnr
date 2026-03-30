@@ -27,7 +27,7 @@ beforeEach(resetData);
 // ---- Routing ----
 
 describe("Routing", () => {
-  it("GET / should redirect to /_/admin", async () => {
+  it("GET / should redirect to /_/admin/dashboard", async () => {
     const res = await SELF.fetch(unauthed("/"), { redirect: "manual" });
     expect(res.status).toBe(302);
     expect(res.headers.get("Location")).toContain("/_/admin");
@@ -40,10 +40,39 @@ describe("Routing", () => {
     expect(body.status).toBe("ok");
   });
 
-  it("GET /_/admin should return HTML when authenticated", async () => {
-    const res = await SELF.fetch(authed("/_/admin"));
+  it("GET /_/admin should redirect to /_/admin/dashboard", async () => {
+    const res = await SELF.fetch(authed("/_/admin"), { redirect: "manual" });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toContain("/_/admin/dashboard");
+  });
+
+  it("GET /_/admin/dashboard should return admin HTML", async () => {
+    const res = await SELF.fetch(authed("/_/admin/dashboard"));
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
+  });
+
+  it("GET /_/admin/links should return admin HTML", async () => {
+    const res = await SELF.fetch(authed("/_/admin/links"));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+  });
+
+  it("GET /_/admin/settings should return admin HTML", async () => {
+    const res = await SELF.fetch(authed("/_/admin/settings"));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+  });
+
+  it("GET /_/admin/link/:slug should return admin HTML", async () => {
+    const res = await SELF.fetch(authed("/_/admin/link/abc"));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+  });
+
+  it("GET /_/admin/* without auth should return 401", async () => {
+    const res = await SELF.fetch(unauthed("/_/admin/dashboard"));
+    expect(res.status).toBe(401);
   });
 
   it("GET /favicon.ico should return the icon", async () => {
@@ -587,5 +616,27 @@ describe("Analytics API", () => {
     expect(typeof body.total_links).toBe("number");
     expect(typeof body.total_clicks).toBe("number");
     expect(Array.isArray(body.recent_links)).toBe(true);
+  });
+
+  it("GET /_/api/dashboard top_links should include url for each link", async () => {
+    const createRes = await SELF.fetch(
+      authed("/_/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://target.example.com" }),
+      })
+    );
+    expect(createRes.status).toBe(201);
+    const res = await SELF.fetch(authed("/_/api/dashboard"));
+    const body = await res.json() as any;
+    expect(Array.isArray(body.top_links)).toBe(true);
+    expect(body.top_links.length).toBeGreaterThan(0);
+    expect(body.top_links[0].url).toBe("https://target.example.com");
+  });
+
+  it("GET /_/api/dashboard top_countries should return country codes", async () => {
+    const res = await SELF.fetch(authed("/_/api/dashboard"));
+    const body = await res.json() as any;
+    expect(Array.isArray(body.top_countries)).toBe(true);
   });
 });

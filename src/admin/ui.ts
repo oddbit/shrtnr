@@ -228,13 +228,13 @@ const ADMIN_HTML = `<!DOCTYPE html>
 <nav class="sidebar">
   <div class="sidebar-brand">shrtnr<span>.</span></div>
   <div class="sidebar-nav">
-    <a class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">
+    <a class="nav-item active" data-view="dashboard" href="/_/admin/dashboard" onclick="event.preventDefault();switchView('dashboard')">
       <span class="icon">dashboard</span> Dashboard
     </a>
-    <a class="nav-item" data-view="links" onclick="switchView('links')">
+    <a class="nav-item" data-view="links" href="/_/admin/links" onclick="event.preventDefault();switchView('links')">
       <span class="icon">link</span> Links
     </a>
-    <a class="nav-item" data-view="settings" onclick="switchView('settings')">
+    <a class="nav-item" data-view="settings" href="/_/admin/settings" onclick="event.preventDefault();switchView('settings')">
       <span class="icon">settings</span> Settings
     </a>
   </div>
@@ -340,7 +340,8 @@ document.getElementById('user-email').textContent = CURRENT_USER;
 document.getElementById('copyright-year').textContent = '\\u00A9 ' + new Date().getFullYear();
 
 // ---- Navigation ----
-function switchView(view) {
+function switchView(view, pushState) {
+  if (typeof pushState === 'undefined') pushState = true;
   currentView = view;
   ['dashboard','links','settings','detail'].forEach(v => {
     document.getElementById('view-' + v).style.display = v === view ? '' : 'none';
@@ -348,8 +349,17 @@ function switchView(view) {
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.view === view);
   });
+  if (pushState && view !== 'detail') {
+    history.pushState({ view: view }, '', '/_/admin/' + view);
+  }
   if (view === 'dashboard') loadDashboard();
   if (view === 'links') loadLinks();
+}
+
+// ---- Country names ----
+const countryNames = new Intl.DisplayNames(['en'], { type: 'region' });
+function countryName(code) {
+  try { return countryNames.of(code) || code; } catch(e) { return code; }
 }
 
 // ---- API helper ----
@@ -408,7 +418,7 @@ function renderDashboard() {
   if (d.top_countries.length) {
     const maxC = d.top_countries[0].count;
     d.top_countries.forEach(c => {
-      html += '<div class="stat-row"><span class="stat-name">' + esc(c.name) + '</span><div class="stat-bar"><div class="stat-fill orange" style="width:' + (c.count / maxC * 100) + '%"></div></div><span class="stat-count">' + c.count + '</span></div>';
+      html += '<div class="stat-row"><span class="stat-name">' + esc(countryName(c.name)) + '</span><div class="stat-bar"><div class="stat-fill orange" style="width:' + (c.count / maxC * 100) + '%"></div></div><span class="stat-count">' + c.count + '</span></div>';
     });
   }
   html += '</div>';
@@ -451,10 +461,13 @@ function renderDashboard() {
     d.top_links.forEach(link => {
       const primary = link.slugs.find(s => !s.is_vanity);
       const slug = primary ? primary.slug : (link.slugs[0]?.slug || '');
-      html += '<div class="stat-row" style="cursor:pointer" onclick="showDetail(' + link.id + ')">';
+      html += '<div style="cursor:pointer" onclick="showDetail(' + link.id + ')">';
+      html += '<div class="stat-row">';
       html += '<span class="stat-name" style="min-width:140px;font-family:var(--font-mono)">/' + esc(slug) + '</span>';
       html += '<div class="stat-bar"><div class="stat-fill orange" style="width:' + (link.total_clicks / maxT * 100) + '%"></div></div>';
       html += '<span class="stat-count">' + link.total_clicks + '</span>';
+      html += '</div>';
+      html += '<div style="font-size:0.75rem;color:var(--on-bg-muted);margin:-0.15rem 0 0.5rem 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(link.url) + '</div>';
       html += '</div>';
     });
   }
@@ -590,7 +603,8 @@ function renderLinks() {
 }
 
 // ---- Link Detail ----
-async function showDetail(id) {
+async function showDetail(id, pushState) {
+  if (typeof pushState === 'undefined') pushState = true;
   const link = links.find(l => l.id === id);
   if (!link) {
     await loadLinks();
@@ -600,6 +614,12 @@ async function showDetail(id) {
   currentView = 'detail';
   ['dashboard','links','settings'].forEach(v => document.getElementById('view-' + v).style.display = 'none');
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  if (pushState) {
+    const l2 = links.find(x => x.id === id);
+    const p = l2 && l2.slugs.find(s => !s.is_vanity);
+    const detailSlug = p ? p.slug : (l2 && l2.slugs[0] ? l2.slugs[0].slug : id);
+    history.pushState({ view: 'detail', slug: detailSlug }, '', '/_/admin/link/' + encodeURIComponent(detailSlug));
+  }
 
   const view = document.getElementById('view-detail');
   view.style.display = '';
@@ -693,7 +713,7 @@ async function showDetail(id) {
   if (analytics.countries.length) {
     const maxCC = analytics.countries[0].count;
     analytics.countries.forEach(c => {
-      html += '<div class="stat-row"><span class="stat-name">' + esc(c.name) + '</span><div class="stat-bar"><div class="stat-fill orange" style="width:' + (c.count / maxCC * 100) + '%"></div></div><span class="stat-count">' + c.count + '</span></div>';
+      html += '<div class="stat-row"><span class="stat-name">' + esc(countryName(c.name)) + '</span><div class="stat-bar"><div class="stat-fill orange" style="width:' + (c.count / maxCC * 100) + '%"></div></div><span class="stat-count">' + c.count + '</span></div>';
     });
   } else html += '<div style="color:var(--on-bg-muted);font-size:0.875rem">No data yet</div>';
   html += '</div>';
@@ -1085,10 +1105,55 @@ function rsEncode(data, numEcc) {
   return Array.from(msg.slice(data.length));
 }
 
+// ---- Routing ----
+window.addEventListener('popstate', function(e) {
+  if (e.state && e.state.view) {
+    if (e.state.view === 'detail' && e.state.slug) {
+      showDetailBySlug(e.state.slug, false);
+    } else {
+      switchView(e.state.view, false);
+    }
+  } else {
+    routeFromPath();
+  }
+});
+
+async function showDetailBySlug(slug, pushState) {
+  if (!links.length) await loadLinks();
+  const link = links.find(l => l.slugs.some(s => s.slug === slug));
+  if (link) {
+    showDetail(link.id, pushState);
+  } else {
+    switchView('links', pushState);
+  }
+}
+
+function routeFromPath() {
+  const path = location.pathname;
+  if (path.startsWith('/_/admin/link/')) {
+    const slug = decodeURIComponent(path.replace('/_/admin/link/', ''));
+    showDetailBySlug(slug, false);
+    history.replaceState({ view: 'detail', slug: slug }, '', path);
+    return;
+  }
+  if (path === '/_/admin/links') {
+    switchView('links', false);
+    history.replaceState({ view: 'links' }, '', path);
+    return;
+  }
+  if (path === '/_/admin/settings') {
+    switchView('settings', false);
+    history.replaceState({ view: 'settings' }, '', path);
+    return;
+  }
+  // Default: dashboard. Rewrite URL if bare /_/admin
+  switchView('dashboard', false);
+  history.replaceState({ view: 'dashboard' }, '', '/_/admin/dashboard');
+}
+
 // ---- Init ----
 loadSettings();
-loadDashboard();
-loadLinks();
+loadLinks().then(function() { routeFromPath(); });
 </script>
 </body>
 </html>`;
