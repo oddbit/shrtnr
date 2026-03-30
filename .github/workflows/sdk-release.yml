@@ -1,0 +1,107 @@
+name: Release SDK
+
+on:
+  push:
+    branches: [main]
+    paths: [sdk/package.json]
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect version change
+        id: version
+        working-directory: sdk
+        run: |
+          CURRENT=$(jq -r .version package.json)
+          PREVIOUS=$(git show HEAD~1:sdk/package.json 2>/dev/null | jq -r .version 2>/dev/null || echo "")
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          if [ "$CURRENT" != "$PREVIOUS" ] && [ -n "$CURRENT" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check tag does not exist
+        if: steps.version.outputs.changed == 'true'
+        id: check_tag
+        run: |
+          TAG="sdk-v${{ steps.version.outputs.current }}"
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract changelog for version
+        if: steps.version.outputs.changed == 'true' && steps.check_tag.outputs.exists == 'false'
+        id: changelog
+        working-directory: sdk
+        run: |
+          VERSION="${{ steps.version.outputs.current }}"
+          # Extract the section for this version from sdk/CHANGELOG.md.
+          # Matches from "## [x.y.z]" or "## x.y.z" until the next "## " heading.
+          NOTES=$(awk -v ver="$VERSION" '
+            BEGIN { found=0 }
+            /^## / {
+              if (found) exit
+              if (index($0, ver)) { found=1; next }
+            }
+            found { print }
+          ' CHANGELOG.md)
+
+          if [ -z "$NOTES" ]; then
+            NOTES="Release sdk-v${VERSION}"
+          fi
+
+          # Write to file to preserve newlines
+          echo "$NOTES" > /tmp/sdk-release-notes.md
+
+      - uses: actions/setup-node@v4
+        if: steps.version.outputs.changed == 'true'
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Install and build
+        if: steps.version.outputs.changed == 'true'
+        working-directory: sdk
+        run: |
+          npm ci
+          npm run build
+
+      - name: Run tests
+        if: steps.version.outputs.changed == 'true'
+        working-directory: sdk
+        run: npm test
+
+      - name: Publish to NPM
+        if: steps.version.outputs.changed == 'true' && steps.check_tag.outputs.exists == 'false'
+        working-directory: sdk
+        run: npm publish --provenance --access public
+        # --access public is required for scoped packages (@oddbit/shrtnr) to publish publicly
+
+      - name: Create tag and release
+        if: steps.version.outputs.changed == 'true' && steps.check_tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="sdk-v${{ steps.version.outputs.current }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file /tmp/sdk-release-notes.md

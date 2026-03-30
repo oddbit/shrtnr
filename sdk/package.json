@@ -1,0 +1,41 @@
+{
+  "name": "@oddbit/shrtnr",
+  "version": "0.2.0",
+  "description": "SDK for the shrtnr URL shortener API",
+  "license": "Apache-2.0",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oddbit/shrtnr.git",
+    "directory": "sdk"
+  },
+  "keywords": [
+    "url-shortener",
+    "shrtnr",
+    "cloudflare-workers",
+    "sdk"
+  ]
+}
