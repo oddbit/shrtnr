@@ -1,12 +1,12 @@
 // Copyright 2025 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-import { APP_VERSION } from "../version";
+import pkg from "../../package.json";
 
 export function serveAdminUI(email: string): Response {
   const html = ADMIN_HTML
     .replace("__CURRENT_USER__", escapeForJs(email))
-    .replace("__APP_VERSION__", APP_VERSION);
+    .replace("__APP_VERSION__", pkg.version);
   return new Response(html, {
     headers: { "Content-Type": "text/html;charset=UTF-8" },
   });
