@@ -438,6 +438,27 @@ const ADMIN_HTML = `<!DOCTYPE html>
         </div>
       </div>
     </div>
+    <div style="margin-top:2.5rem">
+      <div style="font-size:0.75rem;color:var(--secondary);font-weight:600;text-transform:uppercase;margin-bottom:1rem">Integrations</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.4rem;max-width:700px">
+        <a href="https://www.npmjs.com/package/@oddbit/shrtnr" target="_blank" rel="noopener" class="bento-card" style="text-decoration:none;color:inherit;display:block">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
+            <span class="icon" style="color:var(--primary)">terminal</span>
+            <span style="font-weight:600">TypeScript SDK</span>
+          </div>
+          <div style="font-size:0.813rem;color:var(--on-bg-muted);line-height:1.45">Manage links from your own code. Create, update, disable, and read click analytics programmatically.</div>
+          <div style="font-size:0.7rem;color:var(--secondary);margin-top:0.6rem;display:flex;align-items:center;gap:0.25rem"><span class="icon" style="font-size:14px">open_in_new</span> @oddbit/shrtnr</div>
+        </a>
+        <a href="https://www.npmjs.com/package/@oddbit/shrtnr-mcp" target="_blank" rel="noopener" class="bento-card" style="text-decoration:none;color:inherit;display:block">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
+            <span class="icon" style="color:var(--primary)">smart_toy</span>
+            <span style="font-weight:600">MCP Server</span>
+          </div>
+          <div style="font-size:0.813rem;color:var(--on-bg-muted);line-height:1.45">Give AI assistants access to your links. Works with Claude Desktop and GitHub Copilot in VS Code.</div>
+          <div style="font-size:0.7rem;color:var(--secondary);margin-top:0.6rem;display:flex;align-items:center;gap:0.25rem"><span class="icon" style="font-size:14px">open_in_new</span> @oddbit/shrtnr-mcp</div>
+        </a>
+      </div>
+    </div>
   </div>
 
   <!-- API Keys View -->

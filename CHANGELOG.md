@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2
+
+- Settings page now shows an Integrations section with links to the TypeScript SDK and MCP Server npm packages
+
 ## 0.4.1
 
 - Deploy script resolves the D1 `database_id` at build time via `wrangler d1 list`, removing the need for a hardcoded ID in `wrangler.toml`
