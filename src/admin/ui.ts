@@ -706,7 +706,7 @@ function renderLinks() {
   document.getElementById('link-count').textContent = filtered.length + ' link' + (filtered.length !== 1 ? 's' : '');
 
   if (filtered.length === 0) {
-    el.innerHTML = '<div class="empty-state"><span class="icon">link_off</span><p>' + (links.length > 0 ? 'All links are disabled. Toggle "Show disabled" to see them.' : 'No links yet. Create one to get started.') + '</p>' + (links.length === 0 ? '<button class="btn btn-primary" onclick="showCreateModal()"><span class="icon">add</span> New Link</button>' : '') + '</div>';
+    el.innerHTML = '<div class="empty-state"><span class="icon">link_off</span><p>' + (links.length > 0 ? 'All links are disabled. Toggle "Show disabled" to see them.' : 'No links yet. Use the <strong>+ New Link</strong> button above to get started.') + '</p></div>';
     return;
   }
 
