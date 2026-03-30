@@ -1,9 +1,9 @@
-name: Release SDK
+name: Release MCP
 
 on:
   push:
     branches: [main]
-    paths: [sdk/package.json]
+    paths: [mcp/package.json]
 
 permissions:
   contents: write
@@ -24,10 +24,10 @@ jobs:
 
       - name: Detect version change
         id: version
-        working-directory: sdk
+        working-directory: mcp
         run: |
           CURRENT=$(jq -r .version package.json)
-          PREVIOUS=$(git show HEAD~1:sdk/package.json 2>/dev/null | jq -r .version 2>/dev/null || echo "")
+          PREVIOUS=$(git show HEAD~1:mcp/package.json 2>/dev/null | jq -r .version 2>/dev/null || echo "")
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           if [ "$CURRENT" != "$PREVIOUS" ] && [ -n "$CURRENT" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -39,7 +39,7 @@ jobs:
         if: steps.version.outputs.changed == 'true'
         id: check_tag
         run: |
-          TAG="sdk-v${{ steps.version.outputs.current }}"
+          TAG="mcp-v${{ steps.version.outputs.current }}"
           if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
@@ -49,10 +49,10 @@ jobs:
       - name: Extract changelog for version
         if: steps.version.outputs.changed == 'true' && steps.check_tag.outputs.exists == 'false'
         id: changelog
-        working-directory: sdk
+        working-directory: mcp
         run: |
           VERSION="${{ steps.version.outputs.current }}"
-          # Extract the section for this version from sdk/CHANGELOG.md.
+          # Extract the section for this version from mcp/CHANGELOG.md.
           # Matches from "## [x.y.z]" or "## x.y.z" until the next "## " heading.
           NOTES=$(awk -v ver="$VERSION" '
             BEGIN { found=0 }
@@ -64,11 +64,11 @@ jobs:
           ' CHANGELOG.md)
 
           if [ -z "$NOTES" ]; then
-            NOTES="Release sdk-v${VERSION}"
+            NOTES="Release mcp-v${VERSION}"
           fi
 
           # Write to file to preserve newlines
-          echo "$NOTES" > /tmp/sdk-release-notes.md
+          echo "$NOTES" > /tmp/mcp-release-notes.md
 
       - uses: actions/setup-node@v4
         if: steps.version.outputs.changed == 'true'
@@ -78,30 +78,30 @@ jobs:
 
       - name: Install and build
         if: steps.version.outputs.changed == 'true'
-        working-directory: sdk
+        working-directory: mcp
         run: |
           yarn install --frozen-lockfile
           yarn build
 
       - name: Run tests
         if: steps.version.outputs.changed == 'true'
-        working-directory: sdk
+        working-directory: mcp
         run: yarn test
 
       - name: Publish to NPM
         if: steps.version.outputs.changed == 'true' && steps.check_tag.outputs.exists == 'false'
-        working-directory: sdk
+        working-directory: mcp
         run: npm publish --provenance --access public
-        # --access public is required for scoped packages (@oddbit/shrtnr) to publish publicly
+        # --access public is required for scoped packages (@oddbit/shrtnr-mcp) to publish publicly
 
       - name: Create tag and release
         if: steps.version.outputs.changed == 'true' && steps.check_tag.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="sdk-v${{ steps.version.outputs.current }}"
+          TAG="mcp-v${{ steps.version.outputs.current }}"
           git tag "$TAG"
           git push origin "$TAG"
           gh release create "$TAG" \
             --title "$TAG" \
-            --notes-file /tmp/sdk-release-notes.md
+            --notes-file /tmp/mcp-release-notes.md

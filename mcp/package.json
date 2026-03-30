@@ -3,6 +3,7 @@
     "version": "0.1.0",
     "description": "MCP server for the shrtnr URL shortener — gives AI assistants access to link management",
     "license": "Apache-2.0",
+    "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
     "type": "module",
     "bin": {
         "shrtnr-mcp": "dist/index.js"
@@ -16,7 +17,7 @@
         "dev": "tsup src/index.ts --format esm --watch",
         "test": "vitest run",
         "test:watch": "vitest",
-        "prepublishOnly": "npm run build"
+        "prepublishOnly": "yarn build"
     },
     "engines": {
         "node": ">=18"

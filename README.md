@@ -128,9 +128,9 @@ yarn build
 
 ```bash
 cd mcp
-npm install
-npm test
-npm run build
+yarn install
+yarn test
+yarn build
 ```
 
 ## Attribution
