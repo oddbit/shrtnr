@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Env } from "../types";
-import { createApiKey, getApiKeysByEmail, deleteApiKey } from "../db";
-
-const VALID_SCOPES = ["create", "read", "create,read"];
+import {
+  AdminServiceResult,
+  createApiKeyForUser,
+  deleteApiKeyForUser,
+  listApiKeysForUser,
+} from "../services/admin-management";
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -13,11 +16,13 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+function fromServiceResult<T>(result: AdminServiceResult<T>): Response {
+  if (!result.ok) return json({ error: result.error }, result.status);
+  return json(result.data, result.status);
+}
+
 export async function handleListKeys(env: Env, email: string): Promise<Response> {
-  const keys = await getApiKeysByEmail(env.DB, email);
-  // Strip key_hash from response
-  const safe = keys.map(({ key_hash, ...rest }) => rest);
-  return json(safe);
+  return fromServiceResult(await listApiKeysForUser(env, email));
 }
 
 export async function handleCreateKey(request: Request, env: Env, email: string): Promise<Response> {
@@ -28,20 +33,9 @@ export async function handleCreateKey(request: Request, env: Env, email: string)
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  if (!body.title || typeof body.title !== "string" || !body.title.trim()) {
-    return json({ error: "Title is required" }, 400);
-  }
-  if (!body.scope || !VALID_SCOPES.includes(body.scope)) {
-    return json({ error: "Scope must be one of: " + VALID_SCOPES.join(", ") }, 400);
-  }
-
-  const { key, rawKey } = await createApiKey(env.DB, email, body.title.trim(), body.scope);
-  const { key_hash, ...safeKey } = key;
-  return json({ key: safeKey, raw_key: rawKey }, 201);
+  return fromServiceResult(await createApiKeyForUser(env, email, body));
 }
 
 export async function handleDeleteKey(env: Env, email: string, id: number): Promise<Response> {
-  const deleted = await deleteApiKey(env.DB, id, email);
-  if (!deleted) return json({ error: "Key not found" }, 404);
-  return json({ ok: true });
+  return fromServiceResult(await deleteApiKeyForUser(env, email, id));
 }
