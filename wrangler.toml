@@ -1,5 +1,5 @@
 name = "shrtnr"
-main = "src/index.ts"
+main = "src/index.tsx"
 compatibility_date = "2026-03-30"
 upload_source_maps = true
 

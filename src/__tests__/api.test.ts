@@ -27,10 +27,10 @@ beforeEach(resetData);
 // ---- Routing ----
 
 describe("Routing", () => {
-  it("GET / should redirect to /_/admin/dashboard", async () => {
+  it("GET / should redirect to /_/dashboard", async () => {
     const res = await SELF.fetch(unauthed("/"), { redirect: "manual" });
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toContain("/_/admin");
+    expect(res.headers.get("Location")).toContain("/_/dashboard");
   });
 
   it("GET /_/health should return ok without auth", async () => {
@@ -46,44 +46,38 @@ describe("Routing", () => {
     expect(body.version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  it("GET /_/admin should redirect to /_/admin/dashboard", async () => {
+  it("GET /_/admin should redirect to /_/dashboard", async () => {
     const res = await SELF.fetch(authed("/_/admin"), { redirect: "manual" });
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toContain("/_/admin/dashboard");
+    expect(res.headers.get("Location")).toContain("/_/dashboard");
   });
 
-  it("GET /_/admin/dashboard should return admin HTML", async () => {
-    const res = await SELF.fetch(authed("/_/admin/dashboard"));
+  it("GET /_/dashboard should return admin HTML", async () => {
+    const res = await SELF.fetch(authed("/_/dashboard"));
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
   });
 
-  it("GET /_/admin/links should return admin HTML", async () => {
-    const res = await SELF.fetch(authed("/_/admin/links"));
+  it("GET /_/links should return admin HTML", async () => {
+    const res = await SELF.fetch(authed("/_/links"));
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
   });
 
-  it("GET /_/admin/settings should return admin HTML", async () => {
-    const res = await SELF.fetch(authed("/_/admin/settings"));
+  it("GET /_/settings should return admin HTML", async () => {
+    const res = await SELF.fetch(authed("/_/settings"));
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
   });
 
-  it("GET /_/admin/link/:slug should return admin HTML", async () => {
-    const res = await SELF.fetch(authed("/_/admin/link/abc"));
+  it("GET /_/keys should return admin HTML", async () => {
+    const res = await SELF.fetch(authed("/_/keys"));
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
   });
 
-  it("GET /_/admin/keys should return admin HTML", async () => {
-    const res = await SELF.fetch(authed("/_/admin/keys"));
-    expect(res.status).toBe(200);
-    expect(res.headers.get("Content-Type")).toContain("text/html");
-  });
-
-  it("GET /_/admin/* without auth should return 401", async () => {
-    const res = await SELF.fetch(unauthed("/_/admin/dashboard"));
+  it("GET /_/dashboard without auth should return 401", async () => {
+    const res = await SELF.fetch(unauthed("/_/dashboard"));
     expect(res.status).toBe(401);
   });
 
