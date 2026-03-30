@@ -30,7 +30,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/oddbit/shrtnr.git",
+    "url": "git+https://github.com/oddbit/shrtnr.git",
     "directory": "sdk"
   },
   "keywords": [
