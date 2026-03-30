@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.3
+
+- Fixed mobile layout across all pages: dashboard, links, API keys, and settings now render correctly on narrow screens
+- Dashboard bento grid stacks to a single column on mobile
+- Links toolbar wraps gracefully with full-width "New Link" button
+- Link items stack vertically so URLs and click counts stay visible
+- API keys table switches to a stacked card layout per row
+- Settings and integrations columns stack on small viewports
+- Prevented horizontal overflow on the main content area
+
 ## 0.4.2
 
 - Settings page now shows an Integrations section with links to the TypeScript SDK and MCP Server npm packages

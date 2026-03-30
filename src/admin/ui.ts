@@ -299,21 +299,39 @@ const ADMIN_HTML = `<!DOCTYPE html>
 
     /* Responsive */
     @media (max-width: 768px) {
+      body { overflow-x: hidden; }
       .mobile-header { display: flex; padding: 0.75rem 1rem; margin: -1rem -1rem 1rem; }
       .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; z-index: 60; }
       .sidebar.open { transform: translateX(0); }
       .sidebar-backdrop.open { display: block; }
-      .main { margin-left: 0; padding: 1rem; }
+      .main { margin-left: 0; padding: 1rem; max-width: 100vw; overflow-x: hidden; }
+      .page-title { font-size: 1.5rem; }
       .bento { grid-template-columns: 1fr; gap: 0.75rem; }
       .bento-card.span-2, .bento-card.span-3 { grid-column: span 1; }
+      .bento-card { padding: 1rem 1.1rem; }
       .detail-grid { grid-template-columns: 1fr; }
       .hero-input-wrap { flex-direction: column; }
       .form-row { flex-direction: column; }
       .toolbar { flex-wrap: wrap; gap: 0.5rem; }
+      .toolbar > .btn { width: 100%; justify-content: center; }
+      .link-item { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+      .link-url { white-space: normal; word-break: break-all; }
+      .link-meta { justify-content: flex-start; }
       .stat-name { flex: 1; min-width: 0; max-width: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .stat-bar { display: none; }
       .stat-count { min-width: 28px; }
       .keys-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .keys-table thead { display: none; }
+      .keys-table, .keys-table tbody, .keys-table tr, .keys-table td { display: block; width: 100%; }
+      .keys-table tr { padding: 0.75rem 1rem; border-bottom: 1px solid var(--outline); }
+      .keys-table tr:last-child { border-bottom: none; }
+      .keys-table td { padding: 0.2rem 0; border-bottom: none; background: transparent !important; }
+      .keys-table td:before { content: attr(data-label); display: block; font-size: 0.65rem; color: var(--secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.1rem; }
+      .keys-table td:last-child { margin-top: 0.5rem; }
+      .keys-table td:last-child:before { display: none; }
+      .settings-layout { flex-direction: column !important; }
+      .settings-layout > div:last-child { max-width: 100% !important; }
+      .pagination { flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
     }
   </style>
 </head>
@@ -410,7 +428,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
       <div class="page-title">Settings</div>
       <div class="page-subtitle">Configure your URL shortener</div>
     </div>
-    <div style="display:flex;gap:2.5rem;align-items:flex-start;flex-wrap:wrap">
+    <div class="settings-layout" style="display:flex;gap:2.5rem;align-items:flex-start;flex-wrap:wrap">
       <div style="flex:1;min-width:280px;max-width:480px">
         <div class="bento-card">
           <div class="form-group">
@@ -1039,11 +1057,11 @@ function renderKeys() {
     scopes.forEach(s => { scopeHtml += '<span class="scope-badge ' + s + '">' + esc(s) + '</span> '; });
     const lastUsed = k.last_used_at ? formatDate(k.last_used_at) : '<span style="color:var(--on-bg-muted)">Never</span>';
     html += '<tr>';
-    html += '<td style="font-weight:600">' + esc(k.title) + '</td>';
-    html += '<td><span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--on-bg-muted)">' + esc(k.key_prefix) + '\\u2026</span></td>';
-    html += '<td>' + scopeHtml + '</td>';
-    html += '<td style="color:var(--on-bg-muted);font-size:0.8rem">' + formatDate(k.created_at) + '</td>';
-    html += '<td style="font-size:0.8rem">' + lastUsed + '</td>';
+    html += '<td data-label="Title" style="font-weight:600">' + esc(k.title) + '</td>';
+    html += '<td data-label="Key"><span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--on-bg-muted)">' + esc(k.key_prefix) + '\\u2026</span></td>';
+    html += '<td data-label="Scope">' + scopeHtml + '</td>';
+    html += '<td data-label="Created" style="color:var(--on-bg-muted);font-size:0.8rem">' + formatDate(k.created_at) + '</td>';
+    html += '<td data-label="Last Used" style="font-size:0.8rem">' + lastUsed + '</td>';
     html += '<td><button class="btn btn-danger btn-sm" onclick="deleteKey(' + k.id + ',\\'' + esc(k.title).replace(/'/g, "\\\\'") + '\\')"><span class="icon" style="font-size:16px">delete</span></button></td>';
     html += '</tr>';
   }
