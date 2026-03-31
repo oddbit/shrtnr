@@ -1,6 +1,7 @@
 name = "shrtnr"
 main = "src/index.tsx"
 compatibility_date = "2026-03-30"
+compatibility_flags = ["nodejs_compat"]
 upload_source_maps = true
 
 [observability]

@@ -38,6 +38,7 @@ import {
 } from "./api/analytics";
 import { serveAsset } from "./assets";
 import { notFoundResponse } from "./404";
+import { handleMcpRequest } from "./mcp/handler";
 
 import { Layout } from "./pages/layout";
 import { DashboardPage } from "./pages/dashboard";
@@ -190,6 +191,14 @@ app.get("/_/admin/links", (c) => c.redirect("/_/links", 301));
 app.get("/_/admin/keys", (c) => c.redirect("/_/keys", 301));
 app.get("/_/admin/settings", (c) => c.redirect("/_/settings", 301));
 app.get("/_/admin/link/:slug", (c) => c.redirect("/_/links", 301));
+
+// ---- MCP endpoint (API key auth) ----
+
+app.all("/_/mcp", async (c) => {
+  const auth = await resolveAuth(c.req.raw, c.env);
+  if (!auth) return unauthorizedResponse();
+  return handleMcpRequest(c.req.raw, c.env, c.executionCtx);
+});
 
 // ---- API auth middleware ----
 

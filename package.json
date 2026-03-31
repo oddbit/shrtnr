@@ -1,6 +1,6 @@
 {
   "name": "shrtnr",
-  "version": "0.6.3",
+  "version": "0.7.0",
   "description": "A free, open-source, self-hosted URL shortener built on Cloudflare Workers + D1",
   "license": "Apache-2.0",
   "scripts": {
@@ -25,6 +25,9 @@
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
   "dependencies": {
-    "hono": "^4.12.9"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "agents": "^0.8.7",
+    "hono": "^4.12.9",
+    "zod": "^4.3.6"
   }
 }
