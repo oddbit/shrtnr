@@ -27,10 +27,10 @@ beforeEach(resetData);
 // ---- Routing ----
 
 describe("Routing", () => {
-  it("GET / should redirect to /_/dashboard", async () => {
+  it("GET / should redirect to /_/admin/dashboard", async () => {
     const res = await SELF.fetch(unauthed("/"), { redirect: "manual" });
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toContain("/_/dashboard");
+    expect(res.headers.get("Location")).toContain("/_/admin/dashboard");
   });
 
   it("GET /_/health should return ok without auth", async () => {
@@ -46,39 +46,40 @@ describe("Routing", () => {
     expect(body.version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  it("GET /_/admin should redirect to /_/dashboard", async () => {
-    const res = await SELF.fetch(authed("/_/admin"), { redirect: "manual" });
+  it("GET /_/admin should redirect to /_/admin/dashboard", async () => {
+    const res = await SELF.fetch(unauthed("/_/admin"), { redirect: "manual" });
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toContain("/_/dashboard");
+    expect(res.headers.get("Location")).toContain("/_/admin/dashboard");
   });
 
-  it("GET /_/dashboard should return admin HTML", async () => {
-    const res = await SELF.fetch(authed("/_/dashboard"));
+  it("GET /_/admin/dashboard should return admin HTML", async () => {
+    const res = await SELF.fetch(authed("/_/admin/dashboard"));
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
   });
 
-  it("GET /_/links should return admin HTML", async () => {
-    const res = await SELF.fetch(authed("/_/links"));
+  it("GET /_/admin/links should return admin HTML", async () => {
+    const res = await SELF.fetch(authed("/_/admin/links"));
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
   });
 
-  it("GET /_/settings should return admin HTML", async () => {
-    const res = await SELF.fetch(authed("/_/settings"));
+  it("GET /_/admin/settings should return admin HTML", async () => {
+    const res = await SELF.fetch(authed("/_/admin/settings"));
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
   });
 
-  it("GET /_/keys should return admin HTML", async () => {
-    const res = await SELF.fetch(authed("/_/keys"));
+  it("GET /_/admin/keys should return admin HTML", async () => {
+    const res = await SELF.fetch(authed("/_/admin/keys"));
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
   });
 
-  it("GET /_/dashboard without auth should return 401", async () => {
-    const res = await SELF.fetch(unauthed("/_/dashboard"));
-    expect(res.status).toBe(401);
+  it("GET /_/admin/dashboard without auth should render as anonymous", async () => {
+    const res = await SELF.fetch(unauthed("/_/admin/dashboard"));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/html");
   });
 
   it("GET /favicon.ico should return the icon", async () => {
@@ -99,28 +100,12 @@ describe("Routing", () => {
   });
 });
 
-// ---- Authentication ----
-
-describe("Authentication", () => {
-  it("should return 401 for API requests without auth", async () => {
-    const res = await SELF.fetch(unauthed("/_/api/links"));
-    expect(res.status).toBe(401);
-    const body = await res.json() as { error: string };
-    expect(body.error).toBe("Unauthorized");
-  });
-
-  it("should return 401 for admin page without auth", async () => {
-    const res = await SELF.fetch(unauthed("/_/admin"));
-    expect(res.status).toBe(401);
-  });
-});
-
 // ---- Links API ----
 
 describe("Links API", () => {
-  it("POST /_/api/links should create a link with auto-generated slug", async () => {
+  it("POST /_/admin/api/links should create a link with auto-generated slug", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -132,9 +117,9 @@ describe("Links API", () => {
     expect(body.slugs.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("POST /_/api/links should return 400 for invalid URL", async () => {
+  it("POST /_/admin/api/links should return 400 for invalid URL", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "not-a-url" }),
@@ -143,9 +128,9 @@ describe("Links API", () => {
     expect(res.status).toBe(400);
   });
 
-  it("POST /_/api/links should return 400 for javascript: URL", async () => {
+  it("POST /_/admin/api/links should return 400 for javascript: URL", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "javascript:alert(1)" }),
@@ -156,9 +141,9 @@ describe("Links API", () => {
     expect(body.error).toMatch(/https?/);
   });
 
-  it("POST /_/api/links should return 400 for data: URL", async () => {
+  it("POST /_/admin/api/links should return 400 for data: URL", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "data:text/html,<script>alert(1)</script>" }),
@@ -167,9 +152,9 @@ describe("Links API", () => {
     expect(res.status).toBe(400);
   });
 
-  it("POST /_/api/links should return 400 for missing URL", async () => {
+  it("POST /_/admin/api/links should return 400 for missing URL", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -178,9 +163,9 @@ describe("Links API", () => {
     expect(res.status).toBe(400);
   });
 
-  it("POST /_/api/links with vanity slug should attach both slugs", async () => {
+  it("POST /_/admin/api/links with vanity slug should attach both slugs", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com", vanity_slug: "my-slug" }),
@@ -192,9 +177,9 @@ describe("Links API", () => {
     expect(body.slugs.some((s: any) => s.slug === "my-slug" && s.is_vanity === 1)).toBe(true);
   });
 
-  it("POST /_/api/links slugs should be ordered: auto at index 0, vanity at index 1", async () => {
+  it("POST /_/admin/api/links slugs should be ordered: auto at index 0, vanity at index 1", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com", vanity_slug: "custom" }),
@@ -206,47 +191,47 @@ describe("Links API", () => {
     expect(body.slugs[1].slug).toBe("custom");
   });
 
-  it("GET /_/api/links should preserve slug ordering per link", async () => {
+  it("GET /_/admin/api/links should preserve slug ordering per link", async () => {
     await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com", vanity_slug: "ordered" }),
       })
     );
-    const res = await SELF.fetch(authed("/_/api/links"));
+    const res = await SELF.fetch(authed("/_/admin/api/links"));
     const body = await res.json() as any;
     const link = body.find((l: any) => l.slugs.length === 2);
     expect(link.slugs[0].is_vanity).toBe(0);
     expect(link.slugs[1].is_vanity).toBe(1);
   });
 
-  it("GET /_/api/links/:id should preserve slug ordering", async () => {
+  it("GET /_/admin/api/links/:id should preserve slug ordering", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com", vanity_slug: "detail-order" }),
       })
     );
     const created = await createRes.json() as any;
-    const res = await SELF.fetch(authed(`/_/api/links/${created.id}`));
+    const res = await SELF.fetch(authed(`/_/admin/api/links/${created.id}`));
     const body = await res.json() as any;
     expect(body.slugs[0].is_vanity).toBe(0);
     expect(body.slugs[1].is_vanity).toBe(1);
     expect(body.slugs[1].slug).toBe("detail-order");
   });
 
-  it("POST /_/api/links with duplicate vanity slug should return 409", async () => {
+  it("POST /_/admin/api/links with duplicate vanity slug should return 409", async () => {
     await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com", vanity_slug: "taken" }),
       })
     );
     const res = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://other.com", vanity_slug: "taken" }),
@@ -255,10 +240,10 @@ describe("Links API", () => {
     expect(res.status).toBe(409);
   });
 
-  it("POST /_/api/links with label and expires_at should store them", async () => {
+  it("POST /_/admin/api/links with label and expires_at should store them", async () => {
     const future = Math.floor(Date.now() / 1000) + 3600;
     const res = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com", label: "Test", expires_at: future }),
@@ -269,34 +254,34 @@ describe("Links API", () => {
     expect(body.expires_at).toBe(future);
   });
 
-  it("GET /_/api/links should return all links", async () => {
+  it("GET /_/admin/api/links should return all links", async () => {
     await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://one.com" }),
       })
     );
     await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://two.com" }),
       })
     );
-    const res = await SELF.fetch(authed("/_/api/links"));
+    const res = await SELF.fetch(authed("/_/admin/api/links"));
     const body = await res.json() as any[];
     expect(body).toHaveLength(2);
   });
 
-  it("GET /_/api/links/:id should return 404 for non-existent ID", async () => {
-    const res = await SELF.fetch(authed("/_/api/links/99999"));
+  it("GET /_/admin/api/links/:id should return 404 for non-existent ID", async () => {
+    const res = await SELF.fetch(authed("/_/admin/api/links/99999"));
     expect(res.status).toBe(404);
   });
 
-  it("PUT /_/api/links/:id should update the link", async () => {
+  it("PUT /_/admin/api/links/:id should update the link", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://old.com" }),
@@ -304,7 +289,7 @@ describe("Links API", () => {
     );
     const created = await createRes.json() as any;
     const res = await SELF.fetch(
-      authed(`/_/api/links/${created.id}`, {
+      authed(`/_/admin/api/links/${created.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://new.com" }),
@@ -315,9 +300,9 @@ describe("Links API", () => {
     expect(body.url).toBe("https://new.com");
   });
 
-  it("PUT /_/api/links/:id with invalid URL should return 400", async () => {
+  it("PUT /_/admin/api/links/:id with invalid URL should return 400", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -325,7 +310,7 @@ describe("Links API", () => {
     );
     const created = await createRes.json() as any;
     const res = await SELF.fetch(
-      authed(`/_/api/links/${created.id}`, {
+      authed(`/_/admin/api/links/${created.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "bad-url" }),
@@ -338,9 +323,9 @@ describe("Links API", () => {
 // ---- Disable / Enable API ----
 
 describe("Disable / Enable API", () => {
-  it("POST /_/api/links/:id/disable should set expires_at to now", async () => {
+  it("POST /_/admin/api/links/:id/disable should set expires_at to now", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -349,7 +334,7 @@ describe("Disable / Enable API", () => {
     const created = await createRes.json() as any;
     const before = Math.floor(Date.now() / 1000);
     const res = await SELF.fetch(
-      authed(`/_/api/links/${created.id}/disable`, { method: "POST" })
+      authed(`/_/admin/api/links/${created.id}/disable`, { method: "POST" })
     );
     const after = Math.floor(Date.now() / 1000);
     expect(res.status).toBe(200);
@@ -358,16 +343,16 @@ describe("Disable / Enable API", () => {
     expect(body.expires_at).toBeLessThanOrEqual(after);
   });
 
-  it("POST /_/api/links/:id/disable for non-existent link should return 404", async () => {
+  it("POST /_/admin/api/links/:id/disable for non-existent link should return 404", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/links/99999/disable", { method: "POST" })
+      authed("/_/admin/api/links/99999/disable", { method: "POST" })
     );
     expect(res.status).toBe(404);
   });
 
   it("enabling a link by clearing expires_at should restore it", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -376,11 +361,11 @@ describe("Disable / Enable API", () => {
     const created = await createRes.json() as any;
     // Disable
     await SELF.fetch(
-      authed(`/_/api/links/${created.id}/disable`, { method: "POST" })
+      authed(`/_/admin/api/links/${created.id}/disable`, { method: "POST" })
     );
     // Enable by clearing expires_at
     const res = await SELF.fetch(
-      authed(`/_/api/links/${created.id}`, {
+      authed(`/_/admin/api/links/${created.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ expires_at: null }),
@@ -394,9 +379,9 @@ describe("Disable / Enable API", () => {
 // ---- Vanity Slugs API ----
 
 describe("Vanity Slugs API", () => {
-  it("POST /_/api/links/:id/slugs should add a vanity slug", async () => {
+  it("POST /_/admin/api/links/:id/slugs should add a vanity slug", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -404,7 +389,7 @@ describe("Vanity Slugs API", () => {
     );
     const created = await createRes.json() as any;
     const res = await SELF.fetch(
-      authed(`/_/api/links/${created.id}/slugs`, {
+      authed(`/_/admin/api/links/${created.id}/slugs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug: "my-vanity" }),
@@ -418,7 +403,7 @@ describe("Vanity Slugs API", () => {
 
   it("should return 409 for duplicate vanity slug", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com", vanity_slug: "taken" }),
@@ -426,7 +411,7 @@ describe("Vanity Slugs API", () => {
     );
     const created = await createRes.json() as any;
     const res = await SELF.fetch(
-      authed(`/_/api/links/${created.id}/slugs`, {
+      authed(`/_/admin/api/links/${created.id}/slugs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug: "taken" }),
@@ -437,7 +422,7 @@ describe("Vanity Slugs API", () => {
 
   it("should return 409 when link already has a vanity slug", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com", vanity_slug: "existing" }),
@@ -445,7 +430,7 @@ describe("Vanity Slugs API", () => {
     );
     const created = await createRes.json() as any;
     const res = await SELF.fetch(
-      authed(`/_/api/links/${created.id}/slugs`, {
+      authed(`/_/admin/api/links/${created.id}/slugs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug: "another" }),
@@ -458,7 +443,7 @@ describe("Vanity Slugs API", () => {
 
   it("should return 400 for invalid vanity slug", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -466,7 +451,7 @@ describe("Vanity Slugs API", () => {
     );
     const created = await createRes.json() as any;
     const res = await SELF.fetch(
-      authed(`/_/api/links/${created.id}/slugs`, {
+      authed(`/_/admin/api/links/${created.id}/slugs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug: "-bad" }),
@@ -482,7 +467,7 @@ describe("Vanity Slugs API", () => {
 describe("Redirect", () => {
   it("should 301 redirect for a valid active slug", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://destination.com" }),
@@ -503,7 +488,7 @@ describe("Redirect", () => {
   it("should return 404 for an expired slug", async () => {
     const past = Math.floor(Date.now() / 1000) - 60;
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com", expires_at: past }),
@@ -518,7 +503,7 @@ describe("Redirect", () => {
   it("should redirect for a slug with future expiry", async () => {
     const future = Math.floor(Date.now() / 1000) + 3600;
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com", expires_at: future }),
@@ -532,7 +517,7 @@ describe("Redirect", () => {
 
   it("should redirect for a slug with null expires_at", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -546,7 +531,7 @@ describe("Redirect", () => {
 
   it("should stop redirecting after disable", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -557,7 +542,7 @@ describe("Redirect", () => {
     // Set expires_at to a past timestamp (avoids same-second race with disableLink)
     const past = Math.floor(Date.now() / 1000) - 60;
     await SELF.fetch(
-      authed(`/_/api/links/${created.id}`, {
+      authed(`/_/admin/api/links/${created.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ expires_at: past }),
@@ -570,7 +555,7 @@ describe("Redirect", () => {
 
   it("should resume redirecting after re-enable", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -580,10 +565,10 @@ describe("Redirect", () => {
     const slug = created.slugs[0].slug;
     // Disable then enable
     await SELF.fetch(
-      authed(`/_/api/links/${created.id}/disable`, { method: "POST" })
+      authed(`/_/admin/api/links/${created.id}/disable`, { method: "POST" })
     );
     await SELF.fetch(
-      authed(`/_/api/links/${created.id}`, {
+      authed(`/_/admin/api/links/${created.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ expires_at: null }),
@@ -597,15 +582,15 @@ describe("Redirect", () => {
 // ---- Settings API ----
 
 describe("Settings API", () => {
-  it("GET /_/api/settings should return slug_default_length", async () => {
-    const res = await SELF.fetch(authed("/_/api/settings"));
+  it("GET /_/admin/api/settings should return slug_default_length", async () => {
+    const res = await SELF.fetch(authed("/_/admin/api/settings"));
     const body = await res.json() as any;
     expect(body.slug_default_length).toBe(3);
   });
 
-  it("PUT /_/api/settings should update slug_default_length", async () => {
+  it("PUT /_/admin/api/settings should update slug_default_length", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/settings", {
+      authed("/_/admin/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug_default_length: 5 }),
@@ -615,9 +600,9 @@ describe("Settings API", () => {
     expect(body.slug_default_length).toBe(5);
   });
 
-  it("PUT /_/api/settings with value below 3 should return 400", async () => {
+  it("PUT /_/admin/api/settings with value below 3 should return 400", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/settings", {
+      authed("/_/admin/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug_default_length: 2 }),
@@ -628,14 +613,14 @@ describe("Settings API", () => {
 
   it("new links should use updated default length", async () => {
     await SELF.fetch(
-      authed("/_/api/settings", {
+      authed("/_/admin/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug_default_length: 6 }),
       })
     );
     const res = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -650,16 +635,16 @@ describe("Settings API", () => {
 // ---- User Preferences API ----
 
 describe("User Preferences API", () => {
-  it("GET /_/api/preferences should return empty object for new user", async () => {
-    const res = await SELF.fetch(authed("/_/api/preferences"));
+  it("GET /_/admin/api/preferences should return empty object for new user", async () => {
+    const res = await SELF.fetch(authed("/_/admin/api/preferences"));
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body).toEqual({});
   });
 
-  it("PUT /_/api/preferences should save and return theme", async () => {
+  it("PUT /_/admin/api/preferences should save and return theme", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/preferences", {
+      authed("/_/admin/api/preferences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ theme: "dark" }),
@@ -670,22 +655,22 @@ describe("User Preferences API", () => {
     expect(body.theme).toBe("dark");
   });
 
-  it("GET /_/api/preferences should return saved theme", async () => {
+  it("GET /_/admin/api/preferences should return saved theme", async () => {
     await SELF.fetch(
-      authed("/_/api/preferences", {
+      authed("/_/admin/api/preferences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ theme: "light" }),
       })
     );
-    const res = await SELF.fetch(authed("/_/api/preferences"));
+    const res = await SELF.fetch(authed("/_/admin/api/preferences"));
     const body = await res.json() as any;
     expect(body.theme).toBe("light");
   });
 
-  it("PUT /_/api/preferences with invalid theme should return 400", async () => {
+  it("PUT /_/admin/api/preferences with invalid theme should return 400", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/preferences", {
+      authed("/_/admin/api/preferences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ theme: "neon" }),
@@ -696,7 +681,7 @@ describe("User Preferences API", () => {
 
   it("preferences should be scoped per user", async () => {
     await SELF.fetch(
-      authed("/_/api/preferences", {
+      authed("/_/admin/api/preferences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ theme: "dark" }),
@@ -704,7 +689,7 @@ describe("User Preferences API", () => {
     );
     const otherJwt = makeJwt("other@example.com");
     const otherRes = await SELF.fetch(
-      new Request("https://shrtnr.test/_/api/preferences", {
+      new Request("https://shrtnr.test/_/admin/api/preferences", {
         headers: { "Cf-Access-Jwt-Assertion": otherJwt },
       })
     );
@@ -716,24 +701,24 @@ describe("User Preferences API", () => {
 // ---- Analytics API ----
 
 describe("Analytics API", () => {
-  it("GET /_/api/links/:id/analytics should return click stats", async () => {
+  it("GET /_/admin/api/links/:id/analytics should return click stats", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
       })
     );
     const created = await createRes.json() as any;
-    const res = await SELF.fetch(authed(`/_/api/links/${created.id}/analytics`));
+    const res = await SELF.fetch(authed(`/_/admin/api/links/${created.id}/analytics`));
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.total_clicks).toBe(0);
     expect(body.countries).toEqual([]);
   });
 
-  it("GET /_/api/dashboard should return dashboard stats", async () => {
-    const res = await SELF.fetch(authed("/_/api/dashboard"));
+  it("GET /_/admin/api/dashboard should return dashboard stats", async () => {
+    const res = await SELF.fetch(authed("/_/admin/api/dashboard"));
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(typeof body.total_links).toBe("number");
@@ -741,24 +726,24 @@ describe("Analytics API", () => {
     expect(Array.isArray(body.recent_links)).toBe(true);
   });
 
-  it("GET /_/api/dashboard top_links should include url for each link", async () => {
+  it("GET /_/admin/api/dashboard top_links should include url for each link", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://target.example.com" }),
       })
     );
     expect(createRes.status).toBe(201);
-    const res = await SELF.fetch(authed("/_/api/dashboard"));
+    const res = await SELF.fetch(authed("/_/admin/api/dashboard"));
     const body = await res.json() as any;
     expect(Array.isArray(body.top_links)).toBe(true);
     expect(body.top_links.length).toBeGreaterThan(0);
     expect(body.top_links[0].url).toBe("https://target.example.com");
   });
 
-  it("GET /_/api/dashboard top_countries should return country codes", async () => {
-    const res = await SELF.fetch(authed("/_/api/dashboard"));
+  it("GET /_/admin/api/dashboard top_countries should return country codes", async () => {
+    const res = await SELF.fetch(authed("/_/admin/api/dashboard"));
     const body = await res.json() as any;
     expect(Array.isArray(body.top_countries)).toBe(true);
   });
@@ -767,9 +752,9 @@ describe("Analytics API", () => {
 // ---- API Keys Management ----
 
 describe("API Keys Management", () => {
-  it("POST /_/api/keys should create a key and return the raw key", async () => {
+  it("POST /_/admin/api/keys should create a key and return the raw key", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "My Key", scope: "create" }),
@@ -782,31 +767,31 @@ describe("API Keys Management", () => {
     expect(body.key.scope).toBe("create");
   });
 
-  it("GET /_/api/keys should list keys for the authenticated user", async () => {
+  it("GET /_/admin/api/keys should list keys for the authenticated user", async () => {
     await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Key 1", scope: "create" }),
       })
     );
     await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Key 2", scope: "read" }),
       })
     );
-    const res = await SELF.fetch(authed("/_/api/keys"));
+    const res = await SELF.fetch(authed("/_/admin/api/keys"));
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body).toHaveLength(2);
     expect(body[0].key_hash).toBeUndefined();
   });
 
-  it("GET /_/api/keys should not include other users keys", async () => {
+  it("GET /_/admin/api/keys should not include other users keys", async () => {
     await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Test Key", scope: "create" }),
@@ -814,7 +799,7 @@ describe("API Keys Management", () => {
     );
     const otherJwt = makeJwt("other@example.com");
     const res = await SELF.fetch(
-      new Request("https://shrtnr.test/_/api/keys", {
+      new Request("https://shrtnr.test/_/admin/api/keys", {
         headers: { "Cf-Access-Jwt-Assertion": otherJwt },
       })
     );
@@ -822,25 +807,25 @@ describe("API Keys Management", () => {
     expect(body).toHaveLength(0);
   });
 
-  it("DELETE /_/api/keys/:id should revoke own key", async () => {
+  it("DELETE /_/admin/api/keys/:id should revoke own key", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Revokable", scope: "create" }),
       })
     );
     const created = await createRes.json() as any;
-    const res = await SELF.fetch(authed(`/_/api/keys/${created.key.id}`, { method: "DELETE" }));
+    const res = await SELF.fetch(authed(`/_/admin/api/keys/${created.key.id}`, { method: "DELETE" }));
     expect(res.status).toBe(200);
-    const listRes = await SELF.fetch(authed("/_/api/keys"));
+    const listRes = await SELF.fetch(authed("/_/admin/api/keys"));
     const list = await listRes.json() as any;
     expect(list).toHaveLength(0);
   });
 
-  it("DELETE /_/api/keys/:id should not revoke another users key", async () => {
+  it("DELETE /_/admin/api/keys/:id should not revoke another users key", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Protected", scope: "create" }),
@@ -849,7 +834,7 @@ describe("API Keys Management", () => {
     const created = await createRes.json() as any;
     const otherJwt = makeJwt("other@example.com");
     const res = await SELF.fetch(
-      new Request(`https://shrtnr.test/_/api/keys/${created.key.id}`, {
+      new Request(`https://shrtnr.test/_/admin/api/keys/${created.key.id}`, {
         method: "DELETE",
         headers: { "Cf-Access-Jwt-Assertion": otherJwt },
       })
@@ -857,9 +842,9 @@ describe("API Keys Management", () => {
     expect(res.status).toBe(404);
   });
 
-  it("POST /_/api/keys with invalid scope should return 400", async () => {
+  it("POST /_/admin/api/keys with invalid scope should return 400", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Bad Scope", scope: "admin" }),
@@ -868,9 +853,9 @@ describe("API Keys Management", () => {
     expect(res.status).toBe(400);
   });
 
-  it("POST /_/api/keys without title should return 400", async () => {
+  it("POST /_/admin/api/keys without title should return 400", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scope: "create" }),
@@ -885,7 +870,7 @@ describe("API Keys Management", () => {
 describe("API Key Authentication", () => {
   it("should authenticate with a valid API key via Bearer token", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Bearer Key", scope: "create,read" }),
@@ -927,7 +912,7 @@ describe("API Key Authentication", () => {
 
   it("create-scoped key should be able to create links", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Creator", scope: "create" }),
@@ -946,7 +931,7 @@ describe("API Key Authentication", () => {
 
   it("read-scoped key should not be able to create links", async () => {
     const createRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Reader", scope: "read" }),
@@ -966,7 +951,7 @@ describe("API Key Authentication", () => {
   it("read-scoped key should be able to read link analytics", async () => {
     // First create a link via admin auth
     const linkRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -975,7 +960,7 @@ describe("API Key Authentication", () => {
     const link = await linkRes.json() as any;
     // Then create a read key
     const keyRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Reader", scope: "read" }),
@@ -992,7 +977,7 @@ describe("API Key Authentication", () => {
 
   it("create-scoped key should not be able to read analytics", async () => {
     const linkRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -1000,7 +985,7 @@ describe("API Key Authentication", () => {
     );
     const link = await linkRes.json() as any;
     const keyRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Creator", scope: "create" }),
@@ -1017,7 +1002,7 @@ describe("API Key Authentication", () => {
 
   it("read-scoped key should be able to get link details", async () => {
     const linkRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -1026,7 +1011,7 @@ describe("API Key Authentication", () => {
     const link = await linkRes.json() as any;
 
     const keyRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Reader", scope: "read" }),
@@ -1045,7 +1030,7 @@ describe("API Key Authentication", () => {
 
   it("create-scoped key should be able to update links", async () => {
     const linkRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -1054,7 +1039,7 @@ describe("API Key Authentication", () => {
     const link = await linkRes.json() as any;
 
     const keyRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Creator", scope: "create" }),
@@ -1080,7 +1065,7 @@ describe("API Key Authentication", () => {
 
   it("create-scoped key should be able to disable links", async () => {
     const linkRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -1089,7 +1074,7 @@ describe("API Key Authentication", () => {
     const link = await linkRes.json() as any;
 
     const keyRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Creator", scope: "create" }),
@@ -1109,7 +1094,7 @@ describe("API Key Authentication", () => {
 
   it("create-scoped key should be able to add vanity slugs", async () => {
     const linkRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -1118,7 +1103,7 @@ describe("API Key Authentication", () => {
     const link = await linkRes.json() as any;
 
     const keyRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Creator", scope: "create" }),
@@ -1140,66 +1125,9 @@ describe("API Key Authentication", () => {
     expect(res.status).toBe(201);
   });
 
-  it("API key auth should reject all administrative API endpoints", async () => {
-    const keyRes = await SELF.fetch(
-      authed("/_/api/keys", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "Limited", scope: "create,read" }),
-      })
-    );
-    const { raw_key } = await keyRes.json() as any;
-
-    const settingsRes = await SELF.fetch(
-      new Request("https://shrtnr.test/_/api/settings", {
-        headers: { "Authorization": `Bearer ${raw_key}` },
-      })
-    );
-    expect(settingsRes.status).toBe(403);
-
-    const preferencesRes = await SELF.fetch(
-      new Request("https://shrtnr.test/_/api/preferences", {
-        headers: { "Authorization": `Bearer ${raw_key}` },
-      })
-    );
-    expect(preferencesRes.status).toBe(403);
-
-    const dashboardRes = await SELF.fetch(
-      new Request("https://shrtnr.test/_/api/dashboard", {
-        headers: { "Authorization": `Bearer ${raw_key}` },
-      })
-    );
-    expect(dashboardRes.status).toBe(403);
-
-    const keysRes = await SELF.fetch(
-      new Request("https://shrtnr.test/_/api/keys", {
-        headers: { "Authorization": `Bearer ${raw_key}` },
-      })
-    );
-    expect(keysRes.status).toBe(403);
-  });
-
-  it("API key auth should not grant access to admin-only endpoints", async () => {
-    const keyRes = await SELF.fetch(
-      authed("/_/api/keys", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "Limited", scope: "create,read" }),
-      })
-    );
-    const { raw_key } = await keyRes.json() as any;
-    // Settings should be admin-only
-    const res = await SELF.fetch(
-      new Request("https://shrtnr.test/_/api/settings", {
-        headers: { "Authorization": `Bearer ${raw_key}` },
-      })
-    );
-    expect(res.status).toBe(403);
-  });
-
   it("read-scoped key should not be able to update links", async () => {
     const linkRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -1207,7 +1135,7 @@ describe("API Key Authentication", () => {
     );
     const link = await linkRes.json() as any;
     const keyRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Reader", scope: "read" }),
@@ -1229,7 +1157,7 @@ describe("API Key Authentication", () => {
 
   it("read-scoped key should not be able to disable links", async () => {
     const linkRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -1237,7 +1165,7 @@ describe("API Key Authentication", () => {
     );
     const link = await linkRes.json() as any;
     const keyRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Reader", scope: "read" }),
@@ -1255,7 +1183,7 @@ describe("API Key Authentication", () => {
 
   it("read-scoped key should not be able to add vanity slugs", async () => {
     const linkRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -1263,7 +1191,7 @@ describe("API Key Authentication", () => {
     );
     const link = await linkRes.json() as any;
     const keyRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Reader", scope: "read" }),
@@ -1285,7 +1213,7 @@ describe("API Key Authentication", () => {
 
   it("create-scoped key should not be able to list links", async () => {
     const keyRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Creator", scope: "create" }),
@@ -1302,7 +1230,7 @@ describe("API Key Authentication", () => {
 
   it("create-scoped key should not be able to get link details", async () => {
     const linkRes = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://example.com" }),
@@ -1310,7 +1238,7 @@ describe("API Key Authentication", () => {
     );
     const link = await linkRes.json() as any;
     const keyRes = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Creator", scope: "create" }),
@@ -1331,7 +1259,7 @@ describe("API Key Authentication", () => {
 describe("Vanity Slug Redirect", () => {
   it("should 301 redirect via a vanity slug", async () => {
     await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://vanity-target.com", vanity_slug: "go" }),
@@ -1346,9 +1274,9 @@ describe("Vanity Slug Redirect", () => {
 // ---- Invalid JSON Bodies ----
 
 describe("Invalid JSON Bodies", () => {
-  it("POST /_/api/links with invalid JSON should return 400", async () => {
+  it("POST /_/admin/api/links with invalid JSON should return 400", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/links", {
+      authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "not json",
@@ -1357,9 +1285,9 @@ describe("Invalid JSON Bodies", () => {
     expect(res.status).toBe(400);
   });
 
-  it("PUT /_/api/settings with invalid JSON should return 400", async () => {
+  it("PUT /_/admin/api/settings with invalid JSON should return 400", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/settings", {
+      authed("/_/admin/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: "not json",
@@ -1368,9 +1296,9 @@ describe("Invalid JSON Bodies", () => {
     expect(res.status).toBe(400);
   });
 
-  it("PUT /_/api/preferences with invalid JSON should return 400", async () => {
+  it("PUT /_/admin/api/preferences with invalid JSON should return 400", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/preferences", {
+      authed("/_/admin/api/preferences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: "not json",
@@ -1379,9 +1307,9 @@ describe("Invalid JSON Bodies", () => {
     expect(res.status).toBe(400);
   });
 
-  it("POST /_/api/keys with invalid JSON should return 400", async () => {
+  it("POST /_/admin/api/keys with invalid JSON should return 400", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/keys", {
+      authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "not json",
@@ -1394,14 +1322,14 @@ describe("Invalid JSON Bodies", () => {
 // ---- Nonexistent Resources ----
 
 describe("Nonexistent Resources", () => {
-  it("GET /_/api/links/:id/analytics for nonexistent link should return 404", async () => {
-    const res = await SELF.fetch(authed("/_/api/links/99999/analytics"));
+  it("GET /_/admin/api/links/:id/analytics for nonexistent link should return 404", async () => {
+    const res = await SELF.fetch(authed("/_/admin/api/links/99999/analytics"));
     expect(res.status).toBe(404);
   });
 
-  it("POST /_/api/links/:id/slugs for nonexistent link should return 404", async () => {
+  it("POST /_/admin/api/links/:id/slugs for nonexistent link should return 404", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/links/99999/slugs", {
+      authed("/_/admin/api/links/99999/slugs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug: "orphan" }),
@@ -1410,9 +1338,9 @@ describe("Nonexistent Resources", () => {
     expect(res.status).toBe(404);
   });
 
-  it("PUT /_/api/links/:id for nonexistent link should return 404", async () => {
+  it("PUT /_/admin/api/links/:id for nonexistent link should return 404", async () => {
     const res = await SELF.fetch(
-      authed("/_/api/links/99999", {
+      authed("/_/admin/api/links/99999", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: "https://nowhere.com" }),
@@ -1421,8 +1349,8 @@ describe("Nonexistent Resources", () => {
     expect(res.status).toBe(404);
   });
 
-  it("DELETE /_/api/keys/:id for nonexistent key should return 404", async () => {
-    const res = await SELF.fetch(authed("/_/api/keys/99999", { method: "DELETE" }));
+  it("DELETE /_/admin/api/keys/:id for nonexistent key should return 404", async () => {
+    const res = await SELF.fetch(authed("/_/admin/api/keys/99999", { method: "DELETE" }));
     expect(res.status).toBe(404);
   });
 });

@@ -49,20 +49,20 @@ The deploy button sets up [Workers Builds](https://developers.cloudflare.com/wor
 
 ## Authentication
 
-shrtnr uses [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/) to protect the admin UI. Access handles login, sessions, and identity. The Worker reads the validated JWT to extract the user's email but does not verify signatures itself.
+shrtnr uses [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/) to protect the admin UI. Access handles login, sessions, and identity at the edge. The Worker extracts the caller's identity from the validated JWT for per-user features (preferences, API key ownership) but does not enforce authentication itself.
 
 ### Setup
 
 1. Open **Zero Trust** in the [Cloudflare dashboard](https://one.dash.cloudflare.com/)
 2. Go to **Access > Applications > Add an application**
 3. Choose **Self-hosted**
-4. Set the application domain to your short domain (e.g. `oddb.it`) with path `_/*`
+4. Set the application domain to your short domain (e.g. `oddb.it`) with path `_/admin/*`
 5. Add a policy, for example:
    - **Action:** Allow
    - **Include rule:** Emails ending in `@yourcompany.com`
 6. Under **Authentication**, enable at least one login method. "One-time PIN" works out of the box with no external IdP.
 
-That's it. Visit `https://yourdomain.com` and Cloudflare Access will prompt you to log in.
+That's it. Visit `https://yourdomain.com` and Cloudflare Access will prompt you to log in before reaching the admin dashboard.
 
 ### Login methods
 
@@ -168,11 +168,11 @@ Replace `your-domain.com` with your actual short domain and `sk_your_api_key` wi
 
 Authentication model:
 
-- **Cloudflare Access** grants full admin access (UI + all API endpoints).
-- **API key Bearer tokens** grant scoped access to link-management endpoints only. Create keys from the admin UI under API Keys. Pass them as `Authorization: Bearer sk_...`.
+- **Admin UI** (`/_/admin/*`) is protected by Cloudflare Access at the edge. The Worker does not enforce authentication on these routes.
+- **API key Bearer tokens** grant scoped access to the public link-management API. Create keys from the admin UI under API Keys. Pass them as `Authorization: Bearer sk_...`.
 - The health endpoint is public and does not require auth.
 
-Administrative endpoints (settings, preferences, dashboard stats, key management) require Cloudflare Access and are not documented here.
+Administrative endpoints (settings, preferences, dashboard stats, key management) live under `/_/admin/api/*` and are not accessible via API keys.
 
 | Method | Path | Description |
 |---|---|---|

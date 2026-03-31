@@ -16,7 +16,7 @@ function makeJwt(email: string): string {
 
 async function createApiKey(scope = "create,read"): Promise<string> {
   const res = await SELF.fetch(
-    new Request("https://shrtnr.test/_/api/keys", {
+    new Request("https://shrtnr.test/_/admin/api/keys", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
