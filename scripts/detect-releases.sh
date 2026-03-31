@@ -4,7 +4,7 @@
 #
 # Usage: bash scripts/detect-releases.sh
 #
-# For each package in sdk and mcp, checks:
+# For each package in sdk, checks:
 #   1. The version in <package>/package.json changed since HEAD~1.
 #   2. The corresponding git tag (<package>-v<version>) does not yet exist.
 #
@@ -15,7 +15,7 @@ set -euo pipefail
 
 MATRIX='{"include":[]}'
 
-for PKG in sdk mcp; do
+for PKG in sdk; do
   CURRENT=$(jq -r .version "${PKG}/package.json")
   PREVIOUS=$(git show HEAD~1:"${PKG}/package.json" 2>/dev/null | jq -r .version 2>/dev/null || echo "")
   TAG="${PKG}-v${CURRENT}"
