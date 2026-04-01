@@ -80,7 +80,7 @@ The MCP endpoint authenticates through OAuth via [Cloudflare Access for SaaS](ht
 
 #### MCP setup
 
-**1. Create a SaaS OIDC application** in Cloudflare Zero Trust following the [Secure MCP servers with Access for SaaS](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/saas-mcp/) guide. Set the redirect URL to `https://your-domain.com/callback`. Copy these values from the application page:
+**1. Create a SaaS OIDC application** in Cloudflare Zero Trust following the [Secure MCP servers with Access for SaaS](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/saas-mcp/) guide. Set the redirect URL to `https://your-domain.com/_/auth/callback`. Copy these values from the application page:
 
 | SaaS app field | Worker secret |
 |---|---|
