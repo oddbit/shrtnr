@@ -7,11 +7,7 @@ export interface ApiKeyAuth {
   apiKey: string;
 }
 
-export interface AccessTokenAuth {
-  accessToken: string;
-}
-
-export type ShrtnrAuth = ApiKeyAuth | AccessTokenAuth;
+export type ShrtnrAuth = ApiKeyAuth;
 
 export interface ShrtnrConfig {
   baseUrl: string;

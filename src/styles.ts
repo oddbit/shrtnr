@@ -84,13 +84,11 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--on-bg)
 .nav-item:hover { color: var(--on-bg); background: var(--surface); }
 .nav-item.active { color: var(--secondary); background: var(--secondary-container); }
 .sidebar-footer { margin-top: auto; display: flex; flex-direction: column; gap: 0.75rem; }
-.sidebar-user { padding: 0.75rem; border-radius: var(--radius); background: var(--surface); }
 .sidebar-oddbit { text-align: center; padding: 0.75rem 0 0.25rem; }
 .sidebar-oddbit a { display: inline-block; opacity: 0.5; transition: opacity 0.2s; color: var(--on-bg-muted); }
 .sidebar-oddbit a:hover { opacity: 0.8; }
 [data-theme="light"] .sidebar-oddbit a { color: #09322f; opacity: 1; }
 [data-theme="light"] .sidebar { background: #dce3dd; border-right: 1px solid #c4cdc7; }
-[data-theme="light"] .sidebar-user { background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
 [data-theme="light"] .bento-card { box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #dfe3e0; }
 [data-theme="light"] .bento-card:hover { background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
 [data-theme="light"] .hero-input { background: #ffffff; border-color: #c4cdc7; }
@@ -101,10 +99,6 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--on-bg)
 [data-theme="oddbit"] .sidebar-oddbit a, :root .sidebar-oddbit a { color: #a7e3a1; }
 .sidebar-oddbit svg { width: 80px; height: auto; }
 .sidebar-oddbit .copyright { font-size: 0.65rem; color: var(--on-bg-muted); margin-top: 0.25rem; opacity: 0.5; }
-.sidebar-user-email { font-size: 0.75rem; color: var(--on-bg-muted); word-break: break-all; }
-.sidebar-user-logout { font-size: 0.75rem; color: var(--primary); text-decoration: none; margin-top: 0.25rem; display: inline-block; }
-.sidebar-user-logout:hover { text-decoration: underline; }
-
 /* Main */
 .main { margin-left: 240px; flex: 1; padding: 2rem 2.5rem; min-height: 100vh; }
 

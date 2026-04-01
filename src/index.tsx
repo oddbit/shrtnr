@@ -4,17 +4,15 @@
 import { Hono } from "hono";
 import type { Env } from "./types";
 import { handleRedirect } from "./redirect";
-import { getIdentity, unauthorizedResponse } from "./auth";
-import type { Identity } from "./auth";
+import { unauthorizedResponse } from "./auth";
 import {
   authenticateApiKey,
   getAllLinks,
   getLinkById,
   getDashboardStats,
   getLinkClickStats,
-  getApiKeysByEmail,
+  getAllApiKeys,
   getSetting,
-  getUserPreferences,
 } from "./db";
 import { DEFAULT_SLUG_LENGTH } from "./constants";
 import { createTranslateFn, getTranslations } from "./i18n";
@@ -28,10 +26,6 @@ import {
 } from "./api/links";
 import { handleAddVanitySlug } from "./api/slugs";
 import { handleGetSettings, handleUpdateSettings } from "./api/settings";
-import {
-  handleGetPreferences,
-  handleUpdatePreferences,
-} from "./api/preferences";
 import { handleListKeys, handleCreateKey, handleDeleteKey } from "./api/keys";
 import {
   handleDashboardStats as handleDashboardStatsApi,
@@ -51,7 +45,6 @@ import { SettingsPage } from "./pages/settings";
 // ---- Types ----
 
 type AuthContext = {
-  identity: string;
   source: "apikey";
   scope: string | null;
 };
@@ -59,7 +52,6 @@ type AuthContext = {
 type HonoEnv = {
   Bindings: Env;
   Variables: {
-    identity: Identity;
     auth: AuthContext;
   };
 };
@@ -84,50 +76,44 @@ app.get("/_/health", () => handleHealth());
 
 // ---- Admin page helpers ----
 
-async function getPageData(c: { env: Env; var: { identity: Identity } }) {
+function getCookie(request: Request, name: string): string | null {
+  const header = request.headers.get("Cookie") || "";
+  const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+async function getPageData(c: { env: Env; req: { raw: Request } }) {
   const db = c.env.DB;
-  const identity = c.var.identity;
-  const prefs = await getUserPreferences(db, identity.id);
-  const theme = prefs.theme || "oddbit";
-  const lang = prefs.language || "en";
+  const theme = getCookie(c.req.raw, "theme") || "oddbit";
+  const lang = getCookie(c.req.raw, "lang") || "en";
   const t = createTranslateFn(lang);
   const translations = getTranslations(lang);
   const slugLengthStr = await getSetting(db, "slug_default_length");
   const slugLength = slugLengthStr ? parseInt(slugLengthStr, 10) : DEFAULT_SLUG_LENGTH;
-  return { db, identity, theme, slugLength, lang, t, translations };
+  return { db, theme, slugLength, lang, t, translations };
 }
-
-// ---- Admin identity middleware ----
-// Cloudflare Access handles authentication at the edge. This middleware
-// extracts the caller's identity from the JWT for user-scoped features
-// (preferences, API keys, sidebar display).
-
-app.use("/_/admin/*", async (c, next) => {
-  c.set("identity", getIdentity(c.req.raw));
-  await next();
-});
 
 // ---- Admin pages ----
 
 app.get("/_/admin/dashboard", async (c) => {
-  const { db, identity, theme, t, lang, translations } = await getPageData(c);
+  const { db, theme, t, lang, translations } = await getPageData(c);
   const stats = await getDashboardStats(db);
   return c.html(
-    <Layout displayName={identity.displayName} active="dashboard" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="dashboard" theme={theme} t={t} lang={lang} translations={translations}>
       <DashboardPage stats={stats} t={t} />
     </Layout>,
   );
 });
 
 app.get("/_/admin/links", async (c) => {
-  const { db, identity, theme, slugLength, t, lang, translations } = await getPageData(c);
+  const { db, theme, slugLength, t, lang, translations } = await getPageData(c);
   const links = await getAllLinks(db);
   const sort = c.req.query("sort") || "recent";
   const page = parseInt(c.req.query("page") || "1", 10) || 1;
   const perPage = parseInt(c.req.query("per_page") || "25", 10) || 25;
   const showDisabled = c.req.query("show_disabled") === "1";
   return c.html(
-    <Layout displayName={identity.displayName} active="links" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="links" theme={theme} t={t} lang={lang} translations={translations}>
       <LinksPage
         links={links}
         sort={sort}
@@ -145,31 +131,31 @@ app.get("/_/admin/links", async (c) => {
 app.get("/_/admin/links/:id", async (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return notFoundResponse();
-  const { db, identity, theme, t, lang, translations } = await getPageData(c);
+  const { db, theme, t, lang, translations } = await getPageData(c);
   const link = await getLinkById(db, id);
   if (!link) return notFoundResponse();
   const analytics = await getLinkClickStats(db, id);
   return c.html(
-    <Layout displayName={identity.displayName} active="links" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="links" theme={theme} t={t} lang={lang} translations={translations}>
       <LinkDetailPage link={link} analytics={analytics} t={t} />
     </Layout>,
   );
 });
 
 app.get("/_/admin/keys", async (c) => {
-  const { db, identity, theme, t, lang, translations } = await getPageData(c);
-  const keys = await getApiKeysByEmail(db, identity.id);
+  const { db, theme, t, lang, translations } = await getPageData(c);
+  const keys = await getAllApiKeys(db);
   return c.html(
-    <Layout displayName={identity.displayName} active="keys" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="keys" theme={theme} t={t} lang={lang} translations={translations}>
       <KeysPage keys={keys} t={t} lang={lang} />
     </Layout>,
   );
 });
 
 app.get("/_/admin/settings", async (c) => {
-  const { identity, theme, slugLength, t, lang, translations } = await getPageData(c);
+  const { theme, slugLength, t, lang, translations } = await getPageData(c);
   return c.html(
-    <Layout displayName={identity.displayName} active="settings" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="settings" theme={theme} t={t} lang={lang} translations={translations}>
       <SettingsPage theme={theme} slugLength={slugLength} lang={lang} t={t} />
     </Layout>,
   );
@@ -195,20 +181,14 @@ app.all("/_/mcp", async (c) => {
 });
 
 // ---- Admin API routes ----
-// Cloudflare Access authenticates /_/admin/* at the edge. The identity
-// middleware above sets c.var.identity for user-scoped operations.
 
 // Keys
-app.get("/_/admin/api/keys", (c) => {
-  return handleListKeys(c.env, c.var.identity.id);
-});
-app.post("/_/admin/api/keys", (c) => {
-  return handleCreateKey(c.req.raw, c.env, c.var.identity.id);
-});
+app.get("/_/admin/api/keys", (c) => handleListKeys(c.env));
+app.post("/_/admin/api/keys", (c) => handleCreateKey(c.req.raw, c.env));
 app.delete("/_/admin/api/keys/:id", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  return handleDeleteKey(c.env, c.var.identity.id, id);
+  return handleDeleteKey(c.env, id);
 });
 
 // Links (admin path: no scope checks, full access)
@@ -243,10 +223,6 @@ app.post("/_/admin/api/links/:id/slugs", (c) => {
 // Settings
 app.get("/_/admin/api/settings", (c) => handleGetSettings(c.env));
 app.put("/_/admin/api/settings", (c) => handleUpdateSettings(c.req.raw, c.env));
-
-// Preferences
-app.get("/_/admin/api/preferences", (c) => handleGetPreferences(c.env, c.var.identity.id));
-app.put("/_/admin/api/preferences", (c) => handleUpdatePreferences(c.req.raw, c.env, c.var.identity.id));
 
 // Dashboard stats
 app.get("/_/admin/api/dashboard", (c) => handleDashboardStatsApi(c.env));
@@ -330,7 +306,7 @@ async function resolveAuth(
     const token = authHeader.slice(7);
     const key = await authenticateApiKey(env.DB, token);
     if (key) {
-      return { identity: key.email, source: "apikey", scope: key.scope };
+      return { source: "apikey", scope: key.scope };
     }
   }
   return null;

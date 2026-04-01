@@ -3,16 +3,11 @@
 
 import type { Translations } from "./i18n/types";
 
-function escapeForJs(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, '\\"');
-}
-
-export function adminClientScript(email: string, version: string, translations: Translations): string {
+export function adminClientScript(version: string, translations: Translations): string {
   const tJson = JSON.stringify(translations);
   return `
 'use strict';
 var API = '/_/admin/api';
-var CURRENT_USER = '${escapeForJs(email)}';
 var APP_VERSION = '${version}';
 var REPO_URL = 'https://github.com/oddbit/shrtnr';
 var T = ${tJson};
@@ -85,18 +80,14 @@ function applyTheme(theme) {
 }
 function setTheme(theme) {
   applyTheme(theme);
-  api('/preferences', { method: 'PUT', body: JSON.stringify({ theme: theme }) }).then(function(res) {
-    if (res.ok) toast(t('client.themeUpdated'));
-    else toast(t('client.themeError'), 'error');
-  });
+  document.cookie = 'theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax';
+  toast(t('client.themeUpdated'));
 }
 
 // ---- Language ----
 function setLanguage(lang) {
-  api('/preferences', { method: 'PUT', body: JSON.stringify({ language: lang }) }).then(function(res) {
-    if (res.ok) window.location.reload();
-    else toast(t('client.languageError'), 'error');
-  });
+  document.cookie = 'lang=' + lang + ';path=/;max-age=31536000;SameSite=Lax';
+  window.location.reload();
 }
 
 // ---- Country names ----

@@ -151,7 +151,6 @@ export async function setSetting(db: D1Database, key: string, value: string): Pr
 
 export interface ApiKeyRow {
   id: number;
-  email: string;
   title: string;
   key_prefix: string;
   key_hash: string;
@@ -168,7 +167,6 @@ async function hashKey(raw: string): Promise<string> {
 
 export async function createApiKey(
   db: D1Database,
-  email: string,
   title: string,
   scope: string,
 ): Promise<{ key: ApiKeyRow; rawKey: string }> {
@@ -179,8 +177,8 @@ export async function createApiKey(
   const now = Math.floor(Date.now() / 1000);
 
   await db
-    .prepare("INSERT INTO api_keys (email, title, key_prefix, key_hash, scope, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-    .bind(email, title, keyPrefix, keyHash, scope, now)
+    .prepare("INSERT INTO api_keys (title, key_prefix, key_hash, scope, created_at) VALUES (?, ?, ?, ?, ?)")
+    .bind(title, keyPrefix, keyHash, scope, now)
     .run();
 
   const row = await db
@@ -191,18 +189,17 @@ export async function createApiKey(
   return { key: row!, rawKey };
 }
 
-export async function getApiKeysByEmail(db: D1Database, email: string): Promise<ApiKeyRow[]> {
+export async function getAllApiKeys(db: D1Database): Promise<ApiKeyRow[]> {
   const { results } = await db
-    .prepare("SELECT * FROM api_keys WHERE email = ? ORDER BY created_at DESC")
-    .bind(email)
+    .prepare("SELECT * FROM api_keys ORDER BY created_at DESC")
     .all<ApiKeyRow>();
   return results ?? [];
 }
 
-export async function deleteApiKey(db: D1Database, id: number, email: string): Promise<boolean> {
+export async function deleteApiKey(db: D1Database, id: number): Promise<boolean> {
   const result = await db
-    .prepare("DELETE FROM api_keys WHERE id = ? AND email = ?")
-    .bind(id, email)
+    .prepare("DELETE FROM api_keys WHERE id = ?")
+    .bind(id)
     .run();
   return (result.meta.changes ?? 0) > 0;
 }
@@ -224,35 +221,6 @@ export async function authenticateApiKey(db: D1Database, rawKey: string): Promis
 
   row.last_used_at = now;
   return row;
-}
-
-// --- User Preferences ---
-
-export async function getUserPreference(db: D1Database, email: string, key: string): Promise<string | null> {
-  const row = await db
-    .prepare("SELECT value FROM user_preferences WHERE email = ? AND key = ?")
-    .bind(email, key)
-    .first<{ value: string }>();
-  return row?.value ?? null;
-}
-
-export async function setUserPreference(db: D1Database, email: string, key: string, value: string): Promise<void> {
-  await db
-    .prepare("INSERT INTO user_preferences (email, key, value) VALUES (?, ?, ?) ON CONFLICT(email, key) DO UPDATE SET value = ?")
-    .bind(email, key, value, value)
-    .run();
-}
-
-export async function getUserPreferences(db: D1Database, email: string): Promise<Record<string, string>> {
-  const { results } = await db
-    .prepare("SELECT key, value FROM user_preferences WHERE email = ?")
-    .bind(email)
-    .all<{ key: string; value: string }>();
-  const prefs: Record<string, string> = {};
-  for (const row of results ?? []) {
-    prefs[row.key] = row.value;
-  }
-  return prefs;
 }
 
 // --- Click analytics ---

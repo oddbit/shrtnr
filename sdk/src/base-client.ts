@@ -10,12 +10,7 @@ export class ShrtnrBaseClient {
 
   constructor(config: ShrtnrConfig) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, "");
-    this.headers = {};
-    if ("apiKey" in config.auth) {
-      this.headers["Authorization"] = `Bearer ${config.auth.apiKey}`;
-    } else {
-      this.headers["Cf-Access-Jwt-Assertion"] = config.auth.accessToken;
-    }
+    this.headers = { Authorization: `Bearer ${config.auth.apiKey}` };
   }
 
   protected async request<T>(method: string, path: string, body?: unknown): Promise<T> {

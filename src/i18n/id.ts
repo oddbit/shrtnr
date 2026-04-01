@@ -11,7 +11,6 @@ const id: Translations = {
   "nav.links": "Tautan",
   "nav.apiKeys": "Kunci API",
   "nav.settings": "Pengaturan",
-  "nav.signOut": "Keluar",
   "nav.openNavigation": "Buka navigasi",
 
   // Dashboard

@@ -11,7 +11,6 @@ const sv: Translations = {
   "nav.links": "Länkar",
   "nav.apiKeys": "API-nycklar",
   "nav.settings": "Inställningar",
-  "nav.signOut": "Logga ut",
   "nav.openNavigation": "Öppna navigering",
 
   // Dashboard

@@ -7,7 +7,6 @@ export type {
   ShrtnrConfig,
   ShrtnrAuth,
   ApiKeyAuth,
-  AccessTokenAuth,
   Link,
   Slug,
   ClickStats,
