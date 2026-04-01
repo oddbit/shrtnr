@@ -186,6 +186,7 @@ const id: Translations = {
   "client.updateHint":
     "Untuk memperbarui: sinkronkan fork Anda di GitHub, lalu deployment akan dideploy ulang secara otomatis.",
   "client.upToDate": "Terbaru",
+  "client.whatsNew": "Yang baru",
   "client.updateCheckFailed": "Tidak dapat memeriksa pembaruan",
 
   // Language names (displayed in their own language)

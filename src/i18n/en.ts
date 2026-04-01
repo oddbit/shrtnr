@@ -182,6 +182,7 @@ const en = {
   "client.updateHint":
     "To update: sync your fork on GitHub, then your deployment will redeploy automatically.",
   "client.upToDate": "Up to date",
+  "client.whatsNew": "What's new",
   "client.updateCheckFailed": "Could not check for updates",
 
   // Language names (displayed in their own language)

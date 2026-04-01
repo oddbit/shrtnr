@@ -468,10 +468,12 @@ function checkForUpdates() {
   }).then(function(release) {
     var latest = (release.tag_name || '').replace(/^v/, '');
     if (!latest) throw new Error('No version tag');
+    var releaseUrl = release.html_url || (REPO_URL + '/releases/tag/v' + latest);
     if (compareVersions(APP_VERSION, latest) < 0) {
-      var releaseUrl = release.html_url || (REPO_URL + '/releases/tag/v' + latest);
       var html = '<div style="display:flex;flex-direction:column;gap:0.75rem">';
-      html += '<div><span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--on-bg-muted)">&rarr;</span> <span style="font-family:var(--font-mono);color:var(--secondary);font-weight:600">' + esc(latest) + '</span> ' + esc(t('client.updateAvailable')) + '</div>';
+      html += '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">';
+      html += '<div><span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--on-bg-muted)">&rarr;</span> <span style="font-family:var(--font-mono);color:var(--secondary);font-weight:600">' + esc(latest) + '</span> <span style="color:var(--on-bg-muted);font-size:0.8rem">' + esc(t('client.updateAvailable')) + '</span></div>';
+      html += '</div>';
       html += '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">';
       html += '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">open_in_new</span> ' + esc(t('client.releaseNotes')) + '</a>';
       html += '<a href="' + REPO_URL + '" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">code</span> ' + esc(t('client.viewRepo')) + '</a>';
@@ -480,7 +482,19 @@ function checkForUpdates() {
       html += '</div>';
       el.innerHTML = html;
     } else {
-      el.innerHTML = '<span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--secondary)"><span class="icon" style="font-size:16px;vertical-align:text-bottom">check_circle</span> ' + esc(t('client.upToDate')) + '</span>';
+      el.innerHTML =
+        '<div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">' +
+          '<div style="display:flex;align-items:center;gap:0.4rem">' +
+            '<span style="font-family:var(--font-mono);font-weight:600">' + esc(APP_VERSION) + '</span>' +
+            '<span style="color:var(--secondary);display:inline-flex;align-items:center;gap:0.2rem">' +
+              '<span class="icon" style="font-size:15px;vertical-align:text-bottom">check_circle</span> ' + esc(t('client.upToDate')) +
+            '</span>' +
+          '</div>' +
+          '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" ' +
+            'style="color:var(--on-bg-muted);font-size:0.8rem;text-decoration:none;display:inline-flex;align-items:center;gap:0.2rem">' +
+            esc(t('client.whatsNew')) + ' <span class="icon" style="font-size:13px">open_in_new</span>' +
+          '</a>' +
+        '</div>';
     }
   }).catch(function() {
     el.innerHTML = '<span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--on-bg-muted)">&middot; ' + esc(t('client.updateCheckFailed')) + '</span>';

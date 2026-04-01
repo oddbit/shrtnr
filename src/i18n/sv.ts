@@ -186,6 +186,7 @@ const sv: Translations = {
   "client.updateHint":
     "För att uppdatera: synka din fork på GitHub, så deployas den automatiskt.",
   "client.upToDate": "Uppdaterad",
+  "client.whatsNew": "Nyheter",
   "client.updateCheckFailed": "Kunde inte söka efter uppdateringar",
 
   // Language names (displayed in their own language)
