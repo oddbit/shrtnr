@@ -31,6 +31,7 @@ export interface Link {
   label: string | null;
   created_at: number;
   expires_at: number | null;
+  created_via: string | null;
   slugs: Slug[];
   total_clicks: number;
 }
@@ -41,6 +42,7 @@ export interface ClickStats {
   referrers: NameCount[];
   devices: NameCount[];
   browsers: NameCount[];
+  channels: NameCount[];
   clicks_over_time: DateCount[];
 }
 

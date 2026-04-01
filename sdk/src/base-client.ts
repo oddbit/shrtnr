@@ -10,7 +10,10 @@ export class ShrtnrBaseClient {
 
   constructor(config: ShrtnrConfig) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, "");
-    this.headers = { Authorization: `Bearer ${config.auth.apiKey}` };
+    this.headers = {
+      Authorization: `Bearer ${config.auth.apiKey}`,
+      "X-Client": "sdk",
+    };
   }
 
   protected async request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -38,5 +41,24 @@ export class ShrtnrBaseClient {
 
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
+  }
+
+  protected async requestText(method: string, path: string): Promise<string> {
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method,
+      headers: { ...this.headers },
+    });
+
+    if (!res.ok) {
+      let parsed: unknown;
+      try {
+        parsed = await res.json();
+      } catch {
+        parsed = null;
+      }
+      throw new ShrtnrError(res.status, parsed);
+    }
+
+    return res.text();
   }
 }
