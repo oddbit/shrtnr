@@ -32,7 +32,6 @@ import {
   handleLinkAnalytics,
 } from "./api/analytics";
 import { raw } from "hono/html";
-import { serveAsset } from "./assets";
 import { notFoundResponse } from "./404";
 import { GOOGLE_FONTS_HREF, standalonePageStyles } from "./styles";
 import OAuthProvider from "@cloudflare/workers-oauth-provider";
@@ -61,18 +60,6 @@ type HonoEnv = {
 };
 
 const app = new Hono<HonoEnv>();
-
-// ---- Static assets ----
-
-app.get("/manifest.webmanifest", (c) => {
-  const asset = serveAsset("/manifest.webmanifest");
-  return asset || notFoundResponse();
-});
-
-app.get("/robots.txt", (c) => {
-  const asset = serveAsset("/robots.txt");
-  return asset || notFoundResponse();
-});
 
 // ---- Health check (public) ----
 
@@ -304,14 +291,12 @@ app.get("/_/mcp", (c) => {
         <link href={GOOGLE_FONTS_HREF} rel="stylesheet" />
         <style>{raw(standalonePageStyles + `
           .name {
-            font-size: clamp(5rem, 20vw, 18rem);
-            font-weight: 700;
-            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: var(--on-bg);
-            letter-spacing: -0.02em;
             user-select: none;
           }
-          .name span { color: var(--primary); }
           .label {
             font-size: clamp(1rem, 3vw, 1.75rem);
             font-weight: 700;
@@ -323,7 +308,9 @@ app.get("/_/mcp", (c) => {
         `)}</style>
       </head>
       <body>
-        <div class="name">shrtnr<span>.</span></div>
+        <div class="name">
+          <img src="/logotype-white.svg" alt="shrtnr." style="height: clamp(5rem, 20vw, 12rem); width: auto;" />
+        </div>
         <div class="label">MCP Server</div>
       </body>
     </html>,

@@ -123,7 +123,7 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--on-bg)
 [data-theme="light"] .stat-bar { background: #dfe3e0; }
 [data-theme="light"] .nav-item.active { color: #1b5e20; }
 [data-theme="oddbit"] .sidebar-oddbit a, :root .sidebar-oddbit a { color: #a7e3a1; }
-.sidebar-oddbit svg { width: 80px; height: auto; }
+.sidebar-oddbit img { width: 80px; height: auto; }
 .sidebar-oddbit .copyright { font-size: 0.65rem; color: var(--on-bg-muted); margin-top: 0.25rem; opacity: 0.5; }
 /* Main */
 .main { margin-left: 240px; flex: 1; padding: 2rem 2.5rem; min-height: 100vh; }
