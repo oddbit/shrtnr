@@ -46,14 +46,22 @@ The deploy button sets up [Workers Builds](https://developers.cloudflare.com/wor
 
 ## Access Control
 
-The admin UI (`/_/admin/*`) ships without built-in authentication. Protecting it is your responsibility. Choose whichever approach fits your setup:
+The admin UI (`/_/admin/*`) ships without built-in authentication. Protecting it is your responsibility. The app makes no assumptions about which method you use, but we recommend [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/) for most deployments. Other options include IP allowlists, firewall rules, Cloudflare Tunnel, or running on a private network.
 
-- [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/) policies on the `_/admin/*` path
-- IP allowlists or firewall rules
-- A private Cloudflare Tunnel
-- Running the worker on a private network
+### Recommended: Cloudflare Access
 
-The app makes no assumptions about which method you use.
+Cloudflare Access handles login, sessions, and SSO at the edge before requests reach your worker. It supports Google, GitHub, Microsoft, Okta, SAML, OIDC, and a built-in one-time PIN.
+
+1. Open **Zero Trust** in the [Cloudflare dashboard](https://one.dash.cloudflare.com/)
+2. Go to **Access > Applications > Add an application**
+3. Choose **Self-hosted**
+4. Set the application domain to your short domain (e.g. `oddb.it`) with path `_/admin/*`
+5. Add a policy, for example:
+   - **Action:** Allow
+   - **Include rule:** Emails ending in `@yourcompany.com`
+6. Under **Authentication**, enable at least one login method. "One-time PIN" works out of the box with no external IdP.
+
+Visit `https://yourdomain.com` and Cloudflare Access will prompt you to log in before reaching the admin dashboard. See [Cloudflare's IdP guides](https://developers.cloudflare.com/cloudflare-one/identity/idp-integration/) for setup instructions.
 
 ## Integrations
 
