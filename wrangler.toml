@@ -10,13 +10,12 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "shrtnr-db"
-database_id = "943b05f1-6eb1-4552-b27a-6d8c055ff25f"
 migrations_dir = "migrations"
 
 # KV namespace for MCP OAuth session state
+# ID resolved at deploy time by scripts/resolve-d1-id.js
 [[kv_namespaces]]
 binding = "OAUTH_KV"
-id = "PLACEHOLDER_REPLACE_WITH_ACTUAL_KV_ID"
 
 # Durable Object for MCP agent sessions
 [[durable_objects.bindings]]
