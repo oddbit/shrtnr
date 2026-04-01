@@ -301,7 +301,84 @@ app.post("/_/api/links/:id/slugs", (c) => {
 
 // ---- Root redirect ----
 
-app.get("/", (c) => c.redirect("/_/admin/dashboard", 302));
+app.get("/", (c) => {
+  // Return a minimal HTML page for the root to help crawler discovery,
+  // while still redirecting users to the dashboard.
+  return c.html(
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <title>shrtnr</title>
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta http-equiv="refresh" content="0; url=/_/admin/dashboard" />
+      </head>
+      <body>
+        Redirecting to <a href="/_/admin/dashboard">dashboard</a>...
+      </body>
+    </html>,
+  );
+});
+
+// ---- MCP discovery helper ----
+
+app.get("/_/mcp", (c) => {
+  return c.html(
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>shrtnr: MCP</title>
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap" rel="stylesheet" />
+        <style>{`
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            background: #001110;
+            color: #d3fcf6;
+            font-family: 'Space Grotesk', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+          }
+          .name {
+            font-size: clamp(5rem, 20vw, 18rem);
+            font-weight: 700;
+            line-height: 1;
+            color: #d3fcf6;
+            letter-spacing: -0.02em;
+            user-select: none;
+          }
+          .name span { color: #ff9061; }
+          .label {
+            font-size: clamp(1rem, 3vw, 1.75rem);
+            font-weight: 700;
+            color: #8cb3ae;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            margin-top: 0.5rem;
+          }
+        `}</style>
+      </head>
+      <body>
+        <div class="name">shrtnr<span>.</span></div>
+        <div class="label">MCP Server</div>
+      </body>
+    </html>,
+  );
+});
 
 // ---- Slug redirect (catch-all) ----
 
@@ -319,7 +396,7 @@ app.notFound(() => notFoundResponse());
 
 export { ShrtnrMCP };
 
-export default new OAuthProvider({
+const oauthProvider = new OAuthProvider({
   apiHandler: ShrtnrMCP.serve("/_/mcp"),
   apiRoute: "/_/mcp",
   authorizeEndpoint: "/oauth/authorize",
@@ -335,6 +412,16 @@ export default new OAuthProvider({
   },
   tokenEndpoint: "/oauth/token",
 });
+
+export default {
+  fetch: async (request: Request, env: Env, ctx: ExecutionContext) => {
+    const { pathname } = new URL(request.url);
+    if (pathname === "/_/mcp" && request.method === "GET") {
+      return app.fetch(request, env, ctx);
+    }
+    return oauthProvider.fetch(request, env, ctx);
+  },
+};
 
 // ---- Auth helpers ----
 
