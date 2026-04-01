@@ -124,36 +124,6 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
               </div>
             </div>
           </div>
-
-          <div class="bento-card" style="margin-top:1.4rem">
-            <div class="form-group" style="margin-bottom:0">
-              <label class="form-label">{t("settings.mcpOAuth")}</label>
-              <div style="font-size:0.875rem;display:flex;align-items:center;gap:0.4rem">
-                {mcpConfigured ? (
-                  <>
-                    <span class="icon" style="font-size:16px;color:var(--success, #22c55e)">check_circle</span>
-                    <span>{t("settings.mcpConfigured")}</span>
-                  </>
-                ) : (
-                  <div>
-                    <div style="display:flex;align-items:center;gap:0.4rem;color:var(--on-bg-muted)">
-                      <span class="icon" style="font-size:16px">cancel</span>
-                      <span>{t("settings.mcpNotConfigured")}</span>
-                    </div>
-                    <a
-                      href="https://github.com/oddbit/shrtnr#mcp-server-ai-integration"
-                      target="_blank"
-                      rel="noopener"
-                      style="font-size:0.75rem;color:var(--secondary);margin-top:0.4rem;display:inline-flex;align-items:center;gap:0.25rem"
-                    >
-                      <span class="icon" style="font-size:14px">open_in_new</span>
-                      {t("settings.mcpSetupLink")}
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
 
         <div style="min-width:240px;max-width:300px;display:flex;flex-direction:column;gap:1.4rem">
@@ -183,13 +153,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
               @oddbit/shrtnr
             </div>
           </a>
-          <a
-            href="https://github.com/oddbit/shrtnr#mcp-server-ai-integration"
-            target="_blank"
-            rel="noopener"
-            class="bento-card"
-            style="text-decoration:none;color:inherit;display:block"
-          >
+          <div class="bento-card">
             <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
               <span class="icon" style="color:var(--primary)">
                 smart_toy
@@ -199,13 +163,42 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
             <div style="font-size:0.813rem;color:var(--on-bg-muted);line-height:1.45">
               {t("settings.mcpDesc")}
             </div>
-            <div style="font-size:0.7rem;color:var(--secondary);margin-top:0.6rem;display:flex;align-items:center;gap:0.25rem">
+            <div style="font-size:0.813rem;margin-top:0.6rem;display:flex;align-items:center;gap:0.4rem">
+              {mcpConfigured ? (
+                <>
+                  <span class="icon" style="font-size:16px;color:var(--success, #22c55e)">check_circle</span>
+                  <span>{t("settings.mcpConfigured")}</span>
+                </>
+              ) : (
+                <>
+                  <span class="icon" style="font-size:16px;color:var(--warning, #f59e0b)">warning</span>
+                  <span style="color:var(--on-bg-muted)">{t("settings.mcpNotConfigured")}</span>
+                </>
+              )}
+            </div>
+            {!mcpConfigured && (
+              <a
+                href="https://github.com/oddbit/shrtnr#mcp-server-ai-integration"
+                target="_blank"
+                rel="noopener"
+                style="font-size:0.75rem;color:var(--secondary);margin-top:0.4rem;display:inline-flex;align-items:center;gap:0.25rem"
+              >
+                <span class="icon" style="font-size:14px">open_in_new</span>
+                {t("settings.mcpSetupLink")}
+              </a>
+            )}
+            <a
+              href="https://github.com/oddbit/shrtnr#mcp-server-ai-integration"
+              target="_blank"
+              rel="noopener"
+              style="font-size:0.7rem;color:var(--secondary);margin-top:0.4rem;display:inline-flex;align-items:center;gap:0.25rem"
+            >
               <span class="icon" style="font-size:14px">
                 open_in_new
               </span>{" "}
               /_/mcp
-            </div>
-          </a>
+            </a>
+          </div>
         </div>
       </div>
     </>

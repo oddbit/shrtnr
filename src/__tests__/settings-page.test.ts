@@ -14,7 +14,7 @@ describe("Settings page MCP status", () => {
     const res = await SELF.fetch(req("/_/admin/settings"));
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("MCP OAuth");
+    expect(html).toContain("MCP Server");
   });
 
   it("shows not-configured status when secrets are missing", async () => {
