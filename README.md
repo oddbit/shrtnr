@@ -25,6 +25,8 @@ It takes one click to deploy. You get a full admin UI, click analytics, a TypeSc
 
 ## Deploy
 
+**Prefer someone else handle this?** [Oddbit](https://oddbit.id) built shrtnr and helps teams deploy, configure, and integrate it. [Reach out.](https://oddbit.id)
+
 ### One-click
 
 Click the **Deploy to Cloudflare** button above. Cloudflare will fork the repo, provision a D1 database, apply schema migrations, and deploy the Worker. No manual database setup required.
@@ -227,9 +229,9 @@ yarn build
 
 ## Attribution
 
-shrtnr is built and maintained by **[Oddbit](https://oddbit.id)**, a software development studio in Sweden.
+shrtnr is built and maintained by **[Oddbit](https://oddbit.id)**. 
 
-If you fork or build on this project, please keep the license, notice, and attribution files intact. Apache 2.0 requires this, and it's good open-source etiquette.
+If you fork or build on this project, keep the license, notice, and attribution files intact. Apache 2.0 requires this, and it's good open-source etiquette.
 
 - Source: <https://github.com/oddbit/shrtnr>
 - License: [Apache License 2.0](LICENSE)
