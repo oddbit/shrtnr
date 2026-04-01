@@ -42,16 +42,14 @@ yarn deploy             # applies migrations and deploys the Worker
 
 ### Continuous deployment
 
-The recommended approach is the included GitHub Actions workflow at `.github/workflows/deploy.yml`. It runs D1 migrations before deploying the Worker, which guarantees schema changes land before new code goes live.
+The deploy button sets up [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) automatically. Cloudflare watches your repository and redeploys the Worker on every push to your production branch.
 
-To use it, add two secrets to your GitHub repository under **Settings > Secrets and variables > Actions**:
+Database migrations run automatically after each successful deployment via the included GitHub Actions workflow at `.github/workflows/migrate.yml`. It triggers on Cloudflare's deployment status event, so migrations apply as soon as the Worker is live.
+
+To enable it, add two secrets to your GitHub repository under **Settings > Secrets and variables > Actions**:
 
 - `CLOUDFLARE_API_TOKEN`: a Cloudflare API token with Worker and D1 edit permissions
 - `CLOUDFLARE_ACCOUNT_ID`: your Cloudflare account ID
-
-Every push to `main` then applies pending migrations and redeploys automatically.
-
-**If you use Cloudflare Workers Builds (the deploy button):** by default it runs `wrangler deploy` directly, which skips migrations. Change the build command to `yarn deploy` in your Workers Builds configuration to include the migration step. Go to your Worker in the Cloudflare dashboard, open **Settings > Builds**, and set the deploy command to `yarn deploy`.
 
 ## Access Control
 
