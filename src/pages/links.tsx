@@ -28,7 +28,6 @@ type Props = {
   page: number;
   perPage: number;
   showDisabled: boolean;
-  slugLength: number;
   t: TranslateFn;
   lang: string;
 };
@@ -39,7 +38,6 @@ export const LinksPage: FC<Props> = ({
   page,
   perPage,
   showDisabled,
-  slugLength,
   t,
   lang,
 }) => {
@@ -101,7 +99,17 @@ export const LinksPage: FC<Props> = ({
         <div class="page-subtitle">{t("links.subtitle")}</div>
       </div>
 
-      <input type="hidden" id="slug-length-default" value={String(slugLength)} />
+      <div class="hero-input-wrap">
+        <input
+          class="hero-input"
+          id="quick-url"
+          type="url"
+          placeholder={t("dashboard.urlPlaceholder")}
+        />
+        <button class="btn btn-primary btn-lg" onclick="quickShorten()">
+          <span class="icon">bolt</span> {t("dashboard.shorten")}
+        </button>
+      </div>
 
       <div class="toolbar">
         <div style="display:flex;align-items:center;gap:1rem">
@@ -138,9 +146,6 @@ export const LinksPage: FC<Props> = ({
             {t("links.showDisabled")}
           </a>
         </div>
-        <button class="btn btn-primary" onclick="showCreateModal()">
-          <span class="icon">add</span> {t("links.newLink")}
-        </button>
       </div>
 
       {filtered.length === 0 ? (

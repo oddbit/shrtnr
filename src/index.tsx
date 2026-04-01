@@ -110,7 +110,6 @@ app.get("/_/admin/links", async (c) => {
         page={page}
         perPage={perPage}
         showDisabled={showDisabled}
-        slugLength={slugLength}
         t={t}
         lang={lang}
       />
@@ -309,11 +308,7 @@ const oauthProvider = new OAuthProvider({
 });
 
 export default {
-  fetch: async (request: Request, env: Env, ctx: ExecutionContext) => {
-    const { pathname } = new URL(request.url);
-    if (pathname === "/_/mcp" && request.method === "GET" && !request.headers.get("Authorization")) {
-      return app.fetch(request, env, ctx);
-    }
+  fetch: (request: Request, env: Env, ctx: ExecutionContext) => {
     return oauthProvider.fetch(request, env, ctx);
   },
 };
