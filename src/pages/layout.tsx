@@ -72,7 +72,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
       <body>
         <nav class="sidebar">
           <div class="sidebar-brand">
-            <img src={brandLogotype} alt="shrtnr." style="height: 1.5rem;" />
+            <img src={brandLogotype} alt="shrtnr." style="height: 2rem;" />
           </div>
           <div class="sidebar-nav">
             {navItems.map((item) => (
@@ -115,7 +115,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
               <span class="icon">menu</span>
             </button>
             <div class="mobile-brand">
-              <img src={brandLogotype} alt="shrtnr." style="height: 1.25rem;" />
+              <img src={brandLogotype} alt="shrtnr." style="height: 1.5rem;" />
             </div>
           </div>
 
