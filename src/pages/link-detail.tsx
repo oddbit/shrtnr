@@ -148,11 +148,8 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
             </>
           )}
         </div>
-      </div>
-
-      <div class="bento-card" style="margin-bottom:1.4rem">
-        <div style="display:flex;gap:1.4rem;flex-wrap:wrap;align-items:flex-end">
-          <div style="flex:1;min-width:200px">
+        <div style="margin-top:1rem;display:flex;gap:1.4rem;flex-wrap:wrap;align-items:flex-end;border-top:1px solid var(--border);padding-top:1rem">
+          <div>
             <label class="form-label">{t("linkDetail.vanitySlug")}</label>
             {vanity.length > 0 ? (
               <div style="display:flex;flex-wrap:wrap;gap:0.4rem">
@@ -178,7 +175,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
               </div>
             )}
           </div>
-          <div style="flex:1;min-width:200px">
+          <div style="margin-left:auto">
             <label class="form-label">{t("linkDetail.expiresAt")}</label>
             <div style="display:flex;gap:0.5rem;align-items:center">
               <input
@@ -186,6 +183,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
                 id="detail-expires"
                 type="datetime-local"
                 value={expVal}
+                style="width:auto"
                 oninput="document.getElementById('expiry-save-btn').disabled = !this.value"
               />
               <button
