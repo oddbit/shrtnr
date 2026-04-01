@@ -31,8 +31,10 @@ import {
   handleDashboardStats as handleDashboardStatsApi,
   handleLinkAnalytics,
 } from "./api/analytics";
+import { raw } from "hono/html";
 import { serveAsset } from "./assets";
 import { notFoundResponse } from "./404";
+import { GOOGLE_FONTS_HREF, standalonePageStyles } from "./styles";
 import OAuthProvider from "@cloudflare/workers-oauth-provider";
 import { ShrtnrMCP } from "./mcp/server";
 import { handleAccessRequest } from "./mcp/access-handler";
@@ -61,26 +63,6 @@ type HonoEnv = {
 const app = new Hono<HonoEnv>();
 
 // ---- Static assets ----
-
-app.get("/favicon.ico", (c) => {
-  const asset = serveAsset("/favicon.ico");
-  return asset || notFoundResponse();
-});
-
-app.get("/apple-touch-icon.png", (c) => {
-  const asset = serveAsset("/apple-touch-icon.png");
-  return asset || notFoundResponse();
-});
-
-app.get("/icon-192.png", (c) => {
-  const asset = serveAsset("/icon-192.png");
-  return asset || notFoundResponse();
-});
-
-app.get("/icon-512.png", (c) => {
-  const asset = serveAsset("/icon-512.png");
-  return asset || notFoundResponse();
-});
 
 app.get("/manifest.webmanifest", (c) => {
   const asset = serveAsset("/manifest.webmanifest");
@@ -301,27 +283,7 @@ app.post("/_/api/links/:id/slugs", (c) => {
 
 // ---- Root redirect ----
 
-app.get("/", (c) => {
-  // Return a minimal HTML page for the root to help crawler discovery,
-  // while still redirecting users to the dashboard.
-  return c.html(
-    <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <title>shrtnr</title>
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="manifest" href="/manifest.webmanifest" />
-        <meta http-equiv="refresh" content="0; url=/_/admin/dashboard" />
-      </head>
-      <body>
-        Redirecting to <a href="/_/admin/dashboard">dashboard</a>...
-      </body>
-    </html>,
-  );
-});
+app.get("/", (c) => c.redirect("/_/admin/dashboard", 302));
 
 // ---- MCP discovery helper ----
 
@@ -339,38 +301,26 @@ app.get("/_/mcp", (c) => {
         <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap" rel="stylesheet" />
-        <style>{`
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            background: #001110;
-            color: #d3fcf6;
-            font-family: 'Space Grotesk', system-ui, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-          }
+        <link href={GOOGLE_FONTS_HREF} rel="stylesheet" />
+        <style>{raw(standalonePageStyles + `
           .name {
             font-size: clamp(5rem, 20vw, 18rem);
             font-weight: 700;
             line-height: 1;
-            color: #d3fcf6;
+            color: var(--on-bg);
             letter-spacing: -0.02em;
             user-select: none;
           }
-          .name span { color: #ff9061; }
+          .name span { color: var(--primary); }
           .label {
             font-size: clamp(1rem, 3vw, 1.75rem);
             font-weight: 700;
-            color: #8cb3ae;
+            color: var(--on-bg-muted);
             text-transform: uppercase;
             letter-spacing: 0.3em;
             margin-top: 0.5rem;
           }
-        `}</style>
+        `)}</style>
       </head>
       <body>
         <div class="name">shrtnr<span>.</span></div>

@@ -1,6 +1,33 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
+export const GOOGLE_FONTS_HREF =
+  "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap";
+
+// Base styles for standalone pages (404, MCP, etc.) that don't use the admin Layout.
+export const standalonePageStyles = `
+  :root {
+    --bg: #001110;
+    --on-bg: #d3fcf6;
+    --on-bg-muted: #8cb3ae;
+    --primary: #ff9061;
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-body: 'Manrope', system-ui, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--on-bg);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+`;
+
 export const adminStyles = `
 :root, [data-theme="oddbit"] {
   --bg: #001110;
@@ -77,8 +104,7 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--on-bg)
 
 /* Sidebar */
 .sidebar { width: 240px; background: var(--surface-low); padding: 1.5rem 1rem; display: flex; flex-direction: column; min-height: 100vh; position: fixed; left: 0; top: 0; }
-.sidebar-brand { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--on-bg); margin-bottom: 2rem; padding: 0 0.5rem; }
-.sidebar-brand span { color: var(--primary); }
+.sidebar-brand { color: var(--on-bg); margin-bottom: 2rem; padding: 0 0.5rem; }
 .sidebar-nav { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
 .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.75rem; border-radius: var(--radius); color: var(--on-bg-muted); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); text-decoration: none; }
 .nav-item:hover { color: var(--on-bg); background: var(--surface); }
@@ -257,8 +283,7 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--on-bg)
 
 /* Mobile navigation */
 .mobile-header { display: none; align-items: center; gap: 0.75rem; background: var(--surface-low); position: sticky; top: 0; z-index: 50; border-bottom: 1px solid var(--outline); }
-.mobile-brand { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--on-bg); }
-.mobile-brand span { color: var(--primary); }
+.mobile-brand { color: var(--on-bg); }
 .mobile-menu-btn { background: none; border: none; color: var(--on-bg); cursor: pointer; padding: 0.4rem; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; }
 .mobile-menu-btn:hover { background: var(--surface-high); }
 .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 55; }

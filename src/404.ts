@@ -1,6 +1,8 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
+import { GOOGLE_FONTS_HREF, standalonePageStyles } from "./styles";
+
 export function notFoundResponse(): Response {
   return new Response(NOT_FOUND_HTML, {
     status: 404,
@@ -21,32 +23,20 @@ const NOT_FOUND_HTML = `<!DOCTYPE html>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #001110;
-      color: #d3fcf6;
-      font-family: 'Space Grotesk', system-ui, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
+  <link href="${GOOGLE_FONTS_HREF}" rel="stylesheet">
+  <style>${standalonePageStyles}
     .code {
       font-size: clamp(10rem, 30vw, 28rem);
       font-weight: 700;
       line-height: 1;
-      color: #ff9061;
+      color: var(--primary);
       letter-spacing: -0.02em;
       user-select: none;
     }
     .label {
       font-size: clamp(1rem, 3vw, 1.75rem);
       font-weight: 700;
-      color: #8cb3ae;
+      color: var(--on-bg-muted);
       text-transform: uppercase;
       letter-spacing: 0.3em;
       margin-top: 0.5rem;
