@@ -302,18 +302,18 @@ export { ShrtnrMCP };
 export default new OAuthProvider({
   apiHandler: ShrtnrMCP.serve("/_/mcp"),
   apiRoute: "/_/mcp",
-  authorizeEndpoint: "/_/auth/authorize",
-  clientRegistrationEndpoint: "/_/auth/register",
+  authorizeEndpoint: "/oauth/authorize",
+  clientRegistrationEndpoint: "/oauth/register",
   defaultHandler: {
     fetch: async (request: Request, env: Env, ctx: ExecutionContext) => {
       const { pathname } = new URL(request.url);
-      if (pathname === "/_/auth/authorize" || pathname === "/_/auth/callback") {
+      if (pathname === "/oauth/authorize" || pathname === "/oauth/callback") {
         return handleAccessRequest(request, env as never, ctx);
       }
       return app.fetch(request, env, ctx);
     },
   },
-  tokenEndpoint: "/_/auth/token",
+  tokenEndpoint: "/oauth/token",
 });
 
 // ---- Auth helpers ----

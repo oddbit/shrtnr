@@ -30,9 +30,9 @@ export async function handleAccessRequest(
 ): Promise<Response> {
   const { pathname, searchParams } = new URL(request.url);
 
-  // ---- GET /_/auth/authorize: show approval dialog or skip if already approved ----
+  // ---- GET /oauth/authorize: show approval dialog or skip if already approved ----
 
-  if (request.method === "GET" && pathname === "/_/auth/authorize") {
+  if (request.method === "GET" && pathname === "/oauth/authorize") {
     const oauthReqInfo = await env.OAUTH_PROVIDER.parseAuthRequest(request);
     const { clientId } = oauthReqInfo;
     if (!clientId) {
@@ -58,9 +58,9 @@ export async function handleAccessRequest(
     });
   }
 
-  // ---- POST /_/auth/authorize: validate CSRF, redirect to CF Access ----
+  // ---- POST /oauth/authorize: validate CSRF, redirect to CF Access ----
 
-  if (request.method === "POST" && pathname === "/_/auth/authorize") {
+  if (request.method === "POST" && pathname === "/oauth/authorize") {
     try {
       const formData = await request.formData();
       validateCSRFToken(formData, request);
@@ -99,9 +99,9 @@ export async function handleAccessRequest(
     }
   }
 
-  // ---- GET /_/auth/callback: exchange code for token, verify JWT, complete auth ----
+  // ---- GET /oauth/callback: exchange code for token, verify JWT, complete auth ----
 
-  if (request.method === "GET" && pathname === "/_/auth/callback") {
+  if (request.method === "GET" && pathname === "/oauth/callback") {
     let oauthReqInfo: AuthRequest;
 
     try {
@@ -120,7 +120,7 @@ export async function handleAccessRequest(
       client_id: env.ACCESS_CLIENT_ID,
       client_secret: env.ACCESS_CLIENT_SECRET,
       code: searchParams.get("code") ?? undefined,
-      redirect_uri: new URL("/_/auth/callback", request.url).href,
+      redirect_uri: new URL("/oauth/callback", request.url).href,
       upstream_url: env.ACCESS_TOKEN_URL,
     });
     if (errResponse) return errResponse;
@@ -164,7 +164,7 @@ function redirectToAccess(
       ...headers,
       location: getUpstreamAuthorizeUrl({
         client_id: env.ACCESS_CLIENT_ID,
-        redirect_uri: new URL("/_/auth/callback", request.url).href,
+        redirect_uri: new URL("/oauth/callback", request.url).href,
         scope: "openid email profile",
         state: stateToken,
         upstream_url: env.ACCESS_AUTHORIZATION_URL,

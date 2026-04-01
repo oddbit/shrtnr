@@ -80,7 +80,7 @@ The MCP endpoint authenticates through OAuth via [Cloudflare Access for SaaS](ht
 
 #### MCP setup
 
-**1. Create a SaaS OIDC application** in Cloudflare Zero Trust following the [Secure MCP servers with Access for SaaS](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/saas-mcp/) guide. Set the redirect URL to `https://your-domain.com/_/auth/callback`. Copy these values from the application page:
+**1. Create a SaaS OIDC application** in Cloudflare Zero Trust following the [Secure MCP servers with Access for SaaS](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/saas-mcp/) guide. Set the redirect URL to `https://your-domain.com/oauth/callback`. Copy these values from the application page:
 
 | SaaS app field | Worker secret |
 |---|---|
@@ -93,16 +93,20 @@ The MCP endpoint authenticates through OAuth via [Cloudflare Access for SaaS](ht
 **2. Set Worker secrets and deploy.**
 
 ```bash
-# Generate the cookie encryption key
-openssl rand -hex 32
-# Then set all six secrets (wrangler prompts for each value)
+# Set all six secrets (wrangler prompts for each value)
 wrangler secret put ACCESS_CLIENT_ID
 wrangler secret put ACCESS_CLIENT_SECRET
 wrangler secret put ACCESS_TOKEN_URL
 wrangler secret put ACCESS_AUTHORIZATION_URL
 wrangler secret put ACCESS_JWKS_URL
-wrangler secret put COOKIE_ENCRYPTION_KEY
+```
 
+```bash
+# Generate and set the cookie encryption key
+openssl rand -hex 32 | wrangler secret put COOKIE_ENCRYPTION_KEY
+```
+
+```bash
 # Deploy (KV namespace is created automatically on first deploy)
 yarn deploy
 ```
