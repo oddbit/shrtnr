@@ -91,6 +91,57 @@ describe("OAuth discovery", () => {
     expect(body.token_endpoint).toBeDefined();
     expect(body.authorization_endpoint).toBeDefined();
   });
+
+  it("serves OAuth protected resource metadata", async () => {
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/.well-known/oauth-protected-resource"),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.resource).toBeDefined();
+    expect(body.authorization_servers).toBeDefined();
+  });
+
+  it("serves per-route protected resource metadata for /_/mcp", async () => {
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/.well-known/oauth-protected-resource/_/mcp"),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.resource).toContain("/_/mcp");
+  });
+
+  it("accepts dynamic client registration", async () => {
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/oauth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          redirect_uris: ["https://example.com/callback"],
+          client_name: "Test Client",
+          token_endpoint_auth_method: "none",
+          grant_types: ["authorization_code", "refresh_token"],
+          response_types: ["code"],
+        }),
+      }),
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.client_id).toBeDefined();
+  });
+
+  it("token endpoint rejects invalid grant", async () => {
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/oauth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "grant_type=authorization_code&code=invalid&client_id=fake&redirect_uri=https://example.com/cb&code_verifier=test",
+      }),
+    );
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.error).toBeDefined();
+  });
 });
 
 // ---- MCP tool behavior (service layer) ----
