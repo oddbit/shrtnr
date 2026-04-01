@@ -98,7 +98,7 @@ function approvalDialogHtml(p: ApprovalDialogHtmlParams): string {
     <div class="header">
       <div class="logo-wrap">
         <div class="logo-main">
-          <img src="/oddbit-logotype-white.svg" alt="${p.serverName}" width="168">
+          <img src="/logotype-white.svg" alt="${p.serverName}" width="168">
         </div>
         <div class="logo-sub">MCP SERVER</div>
       </div>
