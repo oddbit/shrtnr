@@ -4,276 +4,197 @@
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { env, SELF } from "cloudflare:test";
 import { applyMigrations, resetData } from "./setup";
+import {
+  listManagedLinks,
+  createManagedLink,
+  getManagedLink,
+  updateManagedLink,
+  disableManagedLink,
+  addVanitySlugToLink,
+  getManagedLinkAnalytics,
+} from "../services/link-management";
 
 beforeAll(applyMigrations);
 beforeEach(resetData);
 
-function makeJwt(email: string): string {
-  const header = btoa(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const body = btoa(JSON.stringify({ email }));
-  return `${header}.${body}.fakesig`;
-}
-
-async function createApiKey(scope = "create,read"): Promise<string> {
-  const res = await SELF.fetch(
-    new Request("https://shrtnr.test/_/admin/api/keys", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Cf-Access-Jwt-Assertion": makeJwt("test@example.com"),
-      },
-      body: JSON.stringify({ title: "mcp-test-key", scope }),
-    }),
-  );
-  const data = (await res.json()) as { raw_key: string };
-  return data.raw_key;
-}
-
-function mcpRequest(
-  body: unknown,
-  headers: Record<string, string> = {},
-): Request {
-  return new Request("https://shrtnr.test/_/mcp", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json, text/event-stream",
-      ...headers,
-    },
-    body: JSON.stringify(body),
-  });
-}
+// ---- MCP endpoint auth ----
 
 describe("MCP endpoint auth", () => {
   it("rejects unauthenticated requests", async () => {
     const res = await SELF.fetch(
-      mcpRequest({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {
-          protocolVersion: "2025-03-26",
-          capabilities: {},
-          clientInfo: { name: "test", version: "1.0.0" },
+      new Request("https://shrtnr.test/_/mcp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
         },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-03-26",
+            capabilities: {},
+            clientInfo: { name: "test", version: "1.0.0" },
+          },
+        }),
       }),
     );
     expect(res.status).toBe(401);
   });
 
-  it("accepts requests with a valid API key", async () => {
-    const apiKey = await createApiKey();
+  it("rejects API key Bearer tokens on the MCP endpoint", async () => {
+    // Create an API key via the admin API
+    const createRes = await SELF.fetch(
+      new Request("https://shrtnr.test/_/admin/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "mcp-test-key", scope: "create,read" }),
+      }),
+    );
+    const { raw_key } = (await createRes.json()) as { raw_key: string };
+
+    // Try to use API key on MCP endpoint: should be rejected
     const res = await SELF.fetch(
-      mcpRequest(
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          method: "initialize",
-          params: {
-            protocolVersion: "2025-03-26",
-            capabilities: {},
-            clientInfo: { name: "test", version: "1.0.0" },
-          },
-        },
-        { Authorization: `Bearer ${apiKey}` },
-      ),
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      jsonrpc: string;
-      result: { serverInfo: { name: string } };
-    };
-    expect(body.jsonrpc).toBe("2.0");
-    expect(body.result.serverInfo.name).toBe("shrtnr");
-  });
-});
-
-describe("MCP tool listing", () => {
-  it("lists all 8 tools", async () => {
-    const apiKey = await createApiKey();
-
-    // Initialize first
-    const initRes = await SELF.fetch(
-      mcpRequest(
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          method: "initialize",
-          params: {
-            protocolVersion: "2025-03-26",
-            capabilities: {},
-            clientInfo: { name: "test", version: "1.0.0" },
-          },
-        },
-        { Authorization: `Bearer ${apiKey}` },
-      ),
-    );
-    expect(initRes.status).toBe(200);
-    const initBody = (await initRes.json()) as { result: { serverInfo: { name: string } } };
-    expect(initBody.result.serverInfo.name).toBe("shrtnr");
-
-    // List tools
-    const toolsRes = await SELF.fetch(
-      mcpRequest(
-        {
-          jsonrpc: "2.0",
-          id: 2,
-          method: "tools/list",
-          params: {},
-        },
-        { Authorization: `Bearer ${apiKey}` },
-      ),
-    );
-    expect(toolsRes.status).toBe(200);
-    const toolsBody = (await toolsRes.json()) as {
-      result: { tools: { name: string }[] };
-    };
-    const names = toolsBody.result.tools.map((t) => t.name).sort();
-    expect(names).toEqual([
-      "add_vanity_slug",
-      "create_link",
-      "disable_link",
-      "get_link",
-      "get_link_analytics",
-      "health",
-      "list_links",
-      "update_link",
-    ]);
-  });
-});
-
-describe("MCP tool execution", () => {
-  it("health tool returns status ok", async () => {
-    const apiKey = await createApiKey();
-
-    // Initialize
-    await SELF.fetch(
-      mcpRequest(
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          method: "initialize",
-          params: {
-            protocolVersion: "2025-03-26",
-            capabilities: {},
-            clientInfo: { name: "test", version: "1.0.0" },
-          },
-        },
-        { Authorization: `Bearer ${apiKey}` },
-      ),
-    );
-
-    // Call health tool
-    const res = await SELF.fetch(
-      mcpRequest(
-        {
-          jsonrpc: "2.0",
-          id: 2,
-          method: "tools/call",
-          params: { name: "health", arguments: {} },
-        },
-        { Authorization: `Bearer ${apiKey}` },
-      ),
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      result: { content: { type: string; text: string }[] };
-    };
-    const parsed = JSON.parse(body.result.content[0].text);
-    expect(parsed.status).toBe("ok");
-  });
-
-  it("create_link tool shortens a URL", async () => {
-    const apiKey = await createApiKey();
-
-    await SELF.fetch(
-      mcpRequest(
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          method: "initialize",
-          params: {
-            protocolVersion: "2025-03-26",
-            capabilities: {},
-            clientInfo: { name: "test", version: "1.0.0" },
-          },
-        },
-        { Authorization: `Bearer ${apiKey}` },
-      ),
-    );
-
-    const res = await SELF.fetch(
-      mcpRequest(
-        {
-          jsonrpc: "2.0",
-          id: 2,
-          method: "tools/call",
-          params: {
-            name: "create_link",
-            arguments: { url: "https://example.com/test" },
-          },
-        },
-        { Authorization: `Bearer ${apiKey}` },
-      ),
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      result: { content: { type: string; text: string }[]; isError?: boolean };
-    };
-    expect(body.result.isError).toBeUndefined();
-    const link = JSON.parse(body.result.content[0].text);
-    expect(link.url).toBe("https://example.com/test");
-    expect(link.slugs.length).toBeGreaterThan(0);
-  });
-
-  it("list_links tool returns created links", async () => {
-    const apiKey = await createApiKey();
-
-    await SELF.fetch(
-      mcpRequest(
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          method: "initialize",
-          params: {
-            protocolVersion: "2025-03-26",
-            capabilities: {},
-            clientInfo: { name: "test", version: "1.0.0" },
-          },
-        },
-        { Authorization: `Bearer ${apiKey}` },
-      ),
-    );
-
-    // Create a link first via API
-    await SELF.fetch(
-      new Request("https://shrtnr.test/_/api/links", {
+      new Request("https://shrtnr.test/_/mcp", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
+          Accept: "application/json, text/event-stream",
+          Authorization: `Bearer ${raw_key}`,
         },
-        body: JSON.stringify({ url: "https://example.com/listed" }),
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-03-26",
+            capabilities: {},
+            clientInfo: { name: "test", version: "1.0.0" },
+          },
+        }),
       }),
     );
+    expect(res.status).toBe(401);
+  });
+});
 
+// ---- OAuth discovery ----
+
+describe("OAuth discovery", () => {
+  it("serves OAuth authorization server metadata", async () => {
     const res = await SELF.fetch(
-      mcpRequest(
-        {
-          jsonrpc: "2.0",
-          id: 2,
-          method: "tools/call",
-          params: { name: "list_links", arguments: {} },
-        },
-        { Authorization: `Bearer ${apiKey}` },
-      ),
+      new Request("https://shrtnr.test/.well-known/oauth-authorization-server"),
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      result: { content: { type: string; text: string }[] };
-    };
-    const links = JSON.parse(body.result.content[0].text);
-    expect(links.length).toBeGreaterThan(0);
-    expect(links[0].url).toBe("https://example.com/listed");
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.token_endpoint).toBeDefined();
+    expect(body.authorization_endpoint).toBeDefined();
+  });
+});
+
+// ---- MCP tool behavior (service layer) ----
+// These tests verify the same tool logic that the McpAgent exposes,
+// tested through the service functions directly since the OAuth flow
+// cannot be simulated in unit tests.
+
+describe("MCP tool behavior (service layer)", () => {
+  it("create_link creates a short link", async () => {
+    const result = await createManagedLink(env as never, {
+      url: "https://example.com/test",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.url).toBe("https://example.com/test");
+      expect(result.data.slugs.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("list_links returns created links", async () => {
+    await createManagedLink(env as never, {
+      url: "https://example.com/listed",
+    });
+    const result = await listManagedLinks(env as never);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.length).toBeGreaterThan(0);
+      expect(result.data[0].url).toBe("https://example.com/listed");
+    }
+  });
+
+  it("get_link returns a specific link", async () => {
+    const created = await createManagedLink(env as never, {
+      url: "https://example.com/detail",
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const result = await getManagedLink(env as never, created.data.id);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.url).toBe("https://example.com/detail");
+    }
+  });
+
+  it("update_link modifies a link", async () => {
+    const created = await createManagedLink(env as never, {
+      url: "https://example.com/original",
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const result = await updateManagedLink(env as never, created.data.id, {
+      url: "https://example.com/updated",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.url).toBe("https://example.com/updated");
+    }
+  });
+
+  it("disable_link disables a link", async () => {
+    const created = await createManagedLink(env as never, {
+      url: "https://example.com/disable-me",
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const result = await disableManagedLink(env as never, created.data.id);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.expires_at).toBeDefined();
+      expect(result.data.expires_at).not.toBeNull();
+    }
+  });
+
+  it("add_vanity_slug adds a custom slug", async () => {
+    const created = await createManagedLink(env as never, {
+      url: "https://example.com/vanity",
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const result = await addVanitySlugToLink(env as never, created.data.id, {
+      slug: "my-custom",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.slug).toBe("my-custom");
+    }
+  });
+
+  it("get_link_analytics returns click stats", async () => {
+    const created = await createManagedLink(env as never, {
+      url: "https://example.com/analytics",
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const result = await getManagedLinkAnalytics(env as never, created.data.id);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.total_clicks).toBe(0);
+      expect(result.data.countries).toEqual([]);
+    }
   });
 });

@@ -33,7 +33,9 @@ import {
 } from "./api/analytics";
 import { serveAsset } from "./assets";
 import { notFoundResponse } from "./404";
-import { handleMcpRequest } from "./mcp/handler";
+import OAuthProvider from "@cloudflare/workers-oauth-provider";
+import { ShrtnrMCP } from "./mcp/server";
+import { handleAccessRequest } from "./mcp/access-handler";
 
 import { Layout } from "./pages/layout";
 import { DashboardPage } from "./pages/dashboard";
@@ -100,7 +102,7 @@ app.get("/_/admin/dashboard", async (c) => {
   const stats = await getDashboardStats(db);
   return c.html(
     <Layout active="dashboard" theme={theme} t={t} lang={lang} translations={translations}>
-      <DashboardPage stats={stats} t={t} />
+      <DashboardPage stats={stats} t={t} lang={lang} />
     </Layout>,
   );
 });
@@ -137,7 +139,7 @@ app.get("/_/admin/links/:id", async (c) => {
   const analytics = await getLinkClickStats(db, id);
   return c.html(
     <Layout active="links" theme={theme} t={t} lang={lang} translations={translations}>
-      <LinkDetailPage link={link} analytics={analytics} t={t} />
+      <LinkDetailPage link={link} analytics={analytics} t={t} lang={lang} />
     </Layout>,
   );
 });
@@ -171,14 +173,6 @@ app.get("/_/links", (c) => c.redirect("/_/admin/links", 301));
 app.get("/_/links/:id", (c) => c.redirect(`/_/admin/links/${c.req.param("id")}`, 301));
 app.get("/_/keys", (c) => c.redirect("/_/admin/keys", 301));
 app.get("/_/settings", (c) => c.redirect("/_/admin/settings", 301));
-
-// ---- MCP endpoint (API key auth) ----
-
-app.all("/_/mcp", async (c) => {
-  const auth = await resolveAuth(c.req.raw, c.env);
-  if (!auth) return unauthorizedResponse();
-  return handleMcpRequest(c.req.raw, c.env, c.executionCtx);
-});
 
 // ---- Admin API routes ----
 
@@ -293,7 +287,26 @@ app.get("/:slug", (c) => {
 
 app.notFound(() => notFoundResponse());
 
-export default app;
+// ---- MCP OAuth provider (top-level Worker export) ----
+
+export { ShrtnrMCP };
+
+export default new OAuthProvider({
+  apiHandler: ShrtnrMCP.serve("/_/mcp"),
+  apiRoute: "/_/mcp",
+  authorizeEndpoint: "/authorize",
+  clientRegistrationEndpoint: "/register",
+  defaultHandler: {
+    fetch: async (request: Request, env: Env, ctx: ExecutionContext) => {
+      const { pathname } = new URL(request.url);
+      if (pathname === "/authorize" || pathname === "/callback") {
+        return handleAccessRequest(request, env as never, ctx);
+      }
+      return app.fetch(request, env, ctx);
+    },
+  },
+  tokenEndpoint: "/token",
+});
 
 // ---- Auth helpers ----
 

@@ -3,6 +3,18 @@
 
 export interface Env {
   DB: D1Database;
+
+  // OAuth / Cloudflare Access bindings
+  OAUTH_KV: KVNamespace;
+  ACCESS_CLIENT_ID: string;
+  ACCESS_CLIENT_SECRET: string;
+  ACCESS_TOKEN_URL: string;
+  ACCESS_AUTHORIZATION_URL: string;
+  ACCESS_JWKS_URL: string;
+  COOKIE_ENCRYPTION_KEY: string;
+
+  // Durable Object binding for MCP agent
+  MCP_OBJECT: DurableObjectNamespace;
 }
 
 export interface Link {

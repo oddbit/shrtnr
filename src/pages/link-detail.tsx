@@ -4,6 +4,7 @@
 import type { FC } from "hono/jsx";
 import type { LinkWithSlugs, ClickStats } from "../types";
 import type { TranslateFn } from "../i18n";
+import { countryName } from "../country";
 
 function escHtml(s: string): string {
   return s
@@ -53,9 +54,10 @@ type Props = {
   link: LinkWithSlugs;
   analytics: ClickStats;
   t: TranslateFn;
+  lang: string;
 };
 
-export const LinkDetailPage: FC<Props> = ({ link, analytics, t }) => {
+export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
   const now = Math.floor(Date.now() / 1000);
   const isExpired = !!(link.expires_at && link.expires_at < now);
   const primary = link.slugs.find((s) => !s.is_vanity);
@@ -271,7 +273,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t }) => {
           {analytics.countries.length > 0 ? (
             analytics.countries.map((c) => (
               <StatBar
-                name={c.name}
+                name={countryName(c.name, lang)}
                 count={c.count}
                 max={analytics.countries[0].count}
                 color="orange"

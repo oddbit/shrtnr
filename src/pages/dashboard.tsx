@@ -4,6 +4,7 @@
 import type { FC } from "hono/jsx";
 import type { DashboardStats, LinkWithSlugs } from "../types";
 import type { TranslateFn } from "../i18n";
+import { countryName } from "../country";
 
 function escHtml(s: string): string {
   return s
@@ -49,9 +50,10 @@ function primarySlug(link: LinkWithSlugs): string {
 type Props = {
   stats: DashboardStats;
   t: TranslateFn;
+  lang: string;
 };
 
-export const DashboardPage: FC<Props> = ({ stats, t }) => {
+export const DashboardPage: FC<Props> = ({ stats, t, lang }) => {
   const d = stats;
   const topCountryMax = d.top_countries[0]?.count || 1;
   const topRefMax = d.top_referrers[0]?.count || 1;
@@ -89,7 +91,7 @@ export const DashboardPage: FC<Props> = ({ stats, t }) => {
           </div>
           {d.top_countries.map((c) => (
             <StatBar
-              name={c.name}
+              name={countryName(c.name, lang)}
               count={c.count}
               max={topCountryMax}
               color="orange"

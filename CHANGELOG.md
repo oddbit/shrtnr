@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.10.0
+
+### MCP endpoint moved to OAuth via Cloudflare Access (breaking)
+
+The MCP endpoint at `/_/mcp` now uses OAuth authentication backed by Cloudflare Access for SaaS, replacing API key Bearer tokens. This enables native connectivity from claude.ai custom connectors and other OAuth-capable MCP clients.
+
+**Breaking changes:**
+
+- **API keys no longer accepted on `/_/mcp`.** MCP clients must authenticate through the OAuth flow. Users sign in via Cloudflare Access.
+- **New infrastructure requirements.** The Worker needs a KV namespace (`OAUTH_KV`) for OAuth session state, a Durable Object for MCP sessions, and six secrets from the Cloudflare Access for SaaS application.
+- **New dependency:** `@cloudflare/workers-oauth-provider` handles the OAuth 2.1 protocol.
+
+**Unchanged:**
+
+- API key authentication for `/_/api/*` (SDK and programmatic access) remains the same.
+- Admin UI authentication remains external (Cloudflare Access policies, IP rules, etc.).
+
+### Setup requirements
+
+1. Create a SaaS OIDC application in Cloudflare Zero Trust.
+2. Create a KV namespace: `wrangler kv namespace create OAUTH_KV`.
+3. Set secrets: `ACCESS_CLIENT_ID`, `ACCESS_CLIENT_SECRET`, `ACCESS_TOKEN_URL`, `ACCESS_AUTHORIZATION_URL`, `ACCESS_JWKS_URL`, `COOKIE_ENCRYPTION_KEY`.
+4. Deploy. See the MCP section in `README.md` for detailed instructions.
+
 ## 0.9.0
 
 ### Removed Cloudflare Access coupling (breaking)
