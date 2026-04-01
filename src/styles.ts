@@ -4,13 +4,16 @@
 export const GOOGLE_FONTS_HREF =
   "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap";
 
-// Base styles for standalone pages (404, MCP, etc.) that don't use the admin Layout.
-export const standalonePageStyles = `
+// Design tokens and box-model reset shared by all standalone pages.
+export const standaloneBaseStyles = `
   :root {
     --bg: #001110;
     --on-bg: #d3fcf6;
     --on-bg-muted: #8cb3ae;
     --primary: #ff9061;
+    --card-bg: #001e1c;
+    --border: #294e4b;
+    --radius: 8px;
     --font-display: 'Space Grotesk', system-ui, sans-serif;
     --font-body: 'Manrope', system-ui, sans-serif;
   }
@@ -18,6 +21,14 @@ export const standalonePageStyles = `
   body {
     background: var(--bg);
     color: var(--on-bg);
+    font-family: var(--font-body);
+    line-height: 1.6;
+  }
+`;
+
+// Full-screen centered layout for pages like 404. Extends standaloneBaseStyles.
+export const standaloneCenteredStyles = `${standaloneBaseStyles}
+  body {
     font-family: var(--font-display);
     min-height: 100vh;
     display: flex;
@@ -27,6 +38,9 @@ export const standalonePageStyles = `
     overflow: hidden;
   }
 `;
+
+/** @deprecated Use standaloneBaseStyles or standaloneCenteredStyles */
+export const standalonePageStyles = standaloneCenteredStyles;
 
 export const adminStyles = `
 :root, [data-theme="oddbit"] {

@@ -1,7 +1,7 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-import { GOOGLE_FONTS_HREF, standalonePageStyles } from "./styles";
+import { GOOGLE_FONTS_HREF, standaloneCenteredStyles } from "./styles";
 
 export function notFoundResponse(): Response {
   return new Response(NOT_FOUND_HTML, {
@@ -24,7 +24,7 @@ const NOT_FOUND_HTML = `<!DOCTYPE html>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="${GOOGLE_FONTS_HREF}" rel="stylesheet">
-  <style>${standalonePageStyles}
+  <style>${standaloneCenteredStyles}
     .code {
       font-size: clamp(10rem, 30vw, 28rem);
       font-weight: 700;
