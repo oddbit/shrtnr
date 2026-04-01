@@ -20,9 +20,8 @@ The MCP endpoint at `/_/mcp` now uses OAuth authentication backed by Cloudflare 
 ### Setup requirements
 
 1. Create a SaaS OIDC application in Cloudflare Zero Trust.
-2. Create a KV namespace: `wrangler kv namespace create OAUTH_KV`.
-3. Set secrets: `ACCESS_CLIENT_ID`, `ACCESS_CLIENT_SECRET`, `ACCESS_TOKEN_URL`, `ACCESS_AUTHORIZATION_URL`, `ACCESS_JWKS_URL`, `COOKIE_ENCRYPTION_KEY`.
-4. Deploy. See the MCP section in `README.md` for detailed instructions.
+2. Set six Worker secrets from the SaaS app: `ACCESS_CLIENT_ID`, `ACCESS_CLIENT_SECRET`, `ACCESS_TOKEN_URL`, `ACCESS_AUTHORIZATION_URL`, `ACCESS_JWKS_URL`, `COOKIE_ENCRYPTION_KEY`.
+3. Deploy. The KV namespace for OAuth state is created automatically on first deploy. See the MCP section in `README.md`.
 
 ## 0.9.0
 

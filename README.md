@@ -76,17 +76,13 @@ Shorten URLs, manage links, and read analytics from any TypeScript or JavaScript
 
 Every shrtnr deployment includes a built-in [MCP](https://modelcontextprotocol.io/) endpoint at `/_/mcp`. Claude, GitHub Copilot, Cursor, and any MCP-compatible client can connect to it over Streamable HTTP transport to create and manage short links.
 
-The MCP endpoint uses OAuth authentication backed by [Cloudflare Access for SaaS](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/saas-mcp/). Users sign in through Cloudflare Access when connecting from an MCP client. API keys are not used for MCP.
+The MCP endpoint authenticates through OAuth via [Cloudflare Access for SaaS](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/saas-mcp/). API keys are not used for MCP.
 
-#### MCP authentication setup
+#### MCP setup
 
-Follow Cloudflare's [Secure MCP servers with Access for SaaS](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/saas-mcp/) guide. The steps below summarize the Worker-specific configuration.
+**1. Create a SaaS OIDC application** in Cloudflare Zero Trust following the [Secure MCP servers with Access for SaaS](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/saas-mcp/) guide. Set the redirect URL to `https://your-domain.com/callback`. Copy these values from the application page:
 
-**1. Create a SaaS application in Cloudflare Zero Trust**
-
-In the [Zero Trust dashboard](https://one.dash.cloudflare.com/), go to **Access > Applications > Add an application** and choose **SaaS**. Configure it as an OIDC application. Copy these values from the application page:
-
-| Cloudflare field | Worker secret |
+| SaaS app field | Worker secret |
 |---|---|
 | Client ID | `ACCESS_CLIENT_ID` |
 | Client secret | `ACCESS_CLIENT_SECRET` |
@@ -94,40 +90,20 @@ In the [Zero Trust dashboard](https://one.dash.cloudflare.com/), go to **Access 
 | Authorization endpoint | `ACCESS_AUTHORIZATION_URL` |
 | Key endpoint (JWKS) | `ACCESS_JWKS_URL` |
 
-Set the **Redirect URL** in the SaaS app to:
-
-```
-https://your-domain.com/callback
-```
-
-**2. Create a KV namespace for OAuth state**
+**2. Set Worker secrets and deploy.**
 
 ```bash
-wrangler kv namespace create OAUTH_KV
-```
-
-Copy the resulting `id` into `wrangler.toml` under the `[[kv_namespaces]]` binding for `OAUTH_KV`.
-
-**3. Set Worker secrets**
-
-```bash
+# Generate the cookie encryption key
+openssl rand -hex 32
+# Then set all six secrets (wrangler prompts for each value)
 wrangler secret put ACCESS_CLIENT_ID
 wrangler secret put ACCESS_CLIENT_SECRET
 wrangler secret put ACCESS_TOKEN_URL
 wrangler secret put ACCESS_AUTHORIZATION_URL
 wrangler secret put ACCESS_JWKS_URL
 wrangler secret put COOKIE_ENCRYPTION_KEY
-```
 
-Generate `COOKIE_ENCRYPTION_KEY` with:
-
-```bash
-openssl rand -hex 32
-```
-
-**4. Deploy**
-
-```bash
+# Deploy (KV namespace is created automatically on first deploy)
 yarn deploy
 ```
 
@@ -144,18 +120,13 @@ yarn deploy
 | `add_vanity_slug` | Add a custom slug to an existing link |
 | `get_link_analytics` | Get click stats by country, referrer, device, and browser |
 
-#### Claude (claude.ai)
+#### Connecting MCP clients
 
-In Claude's settings, go to **Integrations > Add custom connector**:
+All clients connect to `https://your-domain.com/_/mcp`. The OAuth handshake is automatic: the client opens a browser for Cloudflare Access sign-in on first connect.
 
-- **Name:** shrtnr (or any name)
-- **URL:** `https://your-domain.com/_/mcp`
+**Claude (claude.ai):** Settings > Integrations > Add custom connector. Enter `https://your-domain.com/_/mcp` as the URL.
 
-Click **Add**. Claude handles the OAuth flow automatically. You will be prompted to sign in through Cloudflare Access.
-
-#### Claude Desktop
-
-Add to `claude_desktop_config.json`:
+**Claude Desktop** (`claude_desktop_config.json`):
 
 ```json
 {
@@ -168,11 +139,7 @@ Add to `claude_desktop_config.json`:
 }
 ```
 
-`mcp-remote` handles the OAuth handshake and opens a browser for Cloudflare Access sign-in.
-
-#### Claude Code
-
-Add to `.mcp.json` in your project root:
+**Claude Code** (`.mcp.json`):
 
 ```json
 {
@@ -185,9 +152,7 @@ Add to `.mcp.json` in your project root:
 }
 ```
 
-#### VS Code (GitHub Copilot)
-
-Add to `.vscode/mcp.json`:
+**VS Code / GitHub Copilot** (`.vscode/mcp.json`):
 
 ```json
 {
@@ -200,15 +165,7 @@ Add to `.vscode/mcp.json`:
 }
 ```
 
-VS Code handles the OAuth flow when you first connect.
-
-#### Any MCP client
-
-Point the client at your shrtnr endpoint:
-
-- **URL:** `https://your-domain.com/_/mcp`
-- **Transport:** Streamable HTTP
-- **Auth:** OAuth 2.1 (the server advertises its authorization endpoints via `/.well-known/oauth-authorization-server`)
+**Other clients:** Point at `https://your-domain.com/_/mcp` with Streamable HTTP transport. The server advertises its OAuth endpoints via `/.well-known/oauth-authorization-server`.
 
 Replace `your-domain.com` with your actual short domain.
 
