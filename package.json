@@ -15,19 +15,19 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.13.5",
-    "@cloudflare/workers-types": "^4.20260317.1",
-    "@vitest/runner": "^4.1.0",
-    "@vitest/snapshot": "^4.1.0",
+    "@cloudflare/vitest-pool-workers": "^0.14.0",
+    "@cloudflare/workers-types": "^4.20260401.1",
+    "@vitest/runner": "^4.1.2",
+    "@vitest/snapshot": "^4.1.2",
     "typescript": "^6.0.2",
-    "vitest": "^4.1.0",
-    "wrangler": "^4.77.0"
+    "vitest": "^4.1.2",
+    "wrangler": "^4.79.0"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.4.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "agents": "^0.8.7",
+    "agents": "^0.9.0",
     "hono": "^4.12.9",
     "zod": "^4.3.6"
   }
