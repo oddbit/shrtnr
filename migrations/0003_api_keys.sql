@@ -1,6 +1,6 @@
 -- API keys for third-party programmatic access
 
-CREATE TABLE api_keys (
+CREATE TABLE IF NOT EXISTS api_keys (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   email        TEXT NOT NULL,
   title        TEXT NOT NULL,
@@ -11,5 +11,5 @@ CREATE TABLE api_keys (
   last_used_at INTEGER
 );
 
-CREATE INDEX idx_api_keys_email ON api_keys(email);
-CREATE INDEX idx_api_keys_hash ON api_keys(key_hash);
+CREATE INDEX IF NOT EXISTS idx_api_keys_email ON api_keys(email);
+CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
