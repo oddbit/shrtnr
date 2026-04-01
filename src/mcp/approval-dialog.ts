@@ -71,9 +71,8 @@ function approvalDialogHtml(p: ApprovalDialogHtmlParams): string {
     ${standaloneBaseStyles}
     .container { max-width: 520px; margin: 3rem auto; padding: 1rem; }
     .header { text-align: center; margin-bottom: 2rem; display: flex; flex-direction: column; align-items: center; }
-    .logo-wrap { display: inline-flex; flex-direction: column; align-items: flex-end; }
-    .logo-main img { width: 168px; height: auto; display: block; }
-    .logo-sub { font-family: var(--font-display); font-size: 0.8rem; font-weight: 700; color: var(--on-bg-muted); letter-spacing: 0.4em; text-transform: uppercase; margin-top: 0.2rem; }
+    .logo-wrap img { width: 168px; height: auto; display: block; }
+    .logo-sub { font-family: var(--font-display); font-size: 0.8rem; font-weight: 700; color: var(--on-bg-muted); letter-spacing: 0.4em; text-transform: uppercase; margin-top: 0.2rem; text-align: right; }
     .header p { color: var(--on-bg-muted); font-size: 0.9rem; margin-top: 1.5rem; max-width: 400px; }
     .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
     .alert { font-size: 1.1rem; font-weight: 500; margin-bottom: 1rem; text-align: center; }
@@ -97,11 +96,9 @@ function approvalDialogHtml(p: ApprovalDialogHtmlParams): string {
   <div class="container">
     <div class="header">
       <div class="logo-wrap">
-        <div class="logo-main">
           <img src="/logotype-white.svg" alt="${p.serverName}" width="168">
+          <div class="logo-sub">MCP SERVER</div>
         </div>
-        <div class="logo-sub">MCP SERVER</div>
-      </div>
       ${p.serverDescription ? `<p>${p.serverDescription}</p>` : ""}
     </div>
     <div class="card">
