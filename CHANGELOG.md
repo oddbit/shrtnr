@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.12.0
+
+### Link creation tracking
+
+- Links record how they were created: `app` (admin UI), `api` (public API), `sdk` (SDK via `X-Client` header), or `mcp` (MCP tool).
+- A small badge on the link detail page shows the creation source.
+- SDK now sends `X-Client: sdk` on every request so the server can distinguish SDK calls from raw API calls.
+
+### QR code download
+
+- Admin link detail page has a download button in the QR modal that saves the code as a PNG.
+- QR codes encode the short URL with a `?qr` suffix so scans are tracked separately from text link clicks.
+
+### QR click channel analytics
+
+- Clicks record whether they came from a QR scan or a direct text link.
+- Link detail analytics show a Channels card breaking down QR vs direct clicks.
+- Database defaults: existing links get `created_via = 'app'`, existing clicks get `channel = 'direct'`.
+
+### API and SDK
+
+- New endpoint `GET /_/api/links/:id/qr` returns an SVG QR code (optional `?slug` param).
+- SDK `getLinkQR(linkId, slug?)` fetches the SVG.
+- MCP `get_link_qr` tool returns a base64-encoded SVG for use in AI contexts.
+
 ## 0.11.0
 
 ### MCP
