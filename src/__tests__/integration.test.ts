@@ -13,11 +13,8 @@ import {
   getDashboardStats,
   getSetting,
   setSetting,
-  getUserPreference,
-  setUserPreference,
-  getUserPreferences,
   createApiKey,
-  getApiKeysByEmail,
+  getAllApiKeys,
   deleteApiKey,
   authenticateApiKey,
 } from "../db";
@@ -313,65 +310,23 @@ describe("Settings", () => {
   });
 });
 
-// ---- User Preferences ----
-
-describe("User Preferences", () => {
-  it("should return null for a preference that has not been set", async () => {
-    const val = await getUserPreference(env.DB, "user@example.com", "theme");
-    expect(val).toBeNull();
-  });
-
-  it("should save and retrieve a user preference", async () => {
-    await setUserPreference(env.DB, "user@example.com", "theme", "dark");
-    const val = await getUserPreference(env.DB, "user@example.com", "theme");
-    expect(val).toBe("dark");
-  });
-
-  it("should update an existing preference", async () => {
-    await setUserPreference(env.DB, "user@example.com", "theme", "dark");
-    await setUserPreference(env.DB, "user@example.com", "theme", "light");
-    const val = await getUserPreference(env.DB, "user@example.com", "theme");
-    expect(val).toBe("light");
-  });
-
-  it("should isolate preferences between users", async () => {
-    await setUserPreference(env.DB, "alice@example.com", "theme", "dark");
-    await setUserPreference(env.DB, "bob@example.com", "theme", "light");
-    expect(await getUserPreference(env.DB, "alice@example.com", "theme")).toBe("dark");
-    expect(await getUserPreference(env.DB, "bob@example.com", "theme")).toBe("light");
-  });
-
-  it("should return all preferences for a user", async () => {
-    await setUserPreference(env.DB, "user@example.com", "theme", "dark");
-    const prefs = await getUserPreferences(env.DB, "user@example.com");
-    expect(prefs).toEqual({ theme: "dark" });
-  });
-
-  it("should return empty object when user has no preferences", async () => {
-    const prefs = await getUserPreferences(env.DB, "nobody@example.com");
-    expect(prefs).toEqual({});
-  });
-});
-
 // ---- API Keys ----
 
 describe("API Keys", () => {
   it("should create a key and return the raw key starting with sk_", async () => {
-    const { key, rawKey } = await createApiKey(env.DB, "user@example.com", "Test Key", "create");
+    const { key, rawKey } = await createApiKey(env.DB, "Test Key", "create");
     expect(rawKey).toMatch(/^sk_[0-9a-f]{48}$/);
     expect(key.title).toBe("Test Key");
     expect(key.scope).toBe("create");
-    expect(key.email).toBe("user@example.com");
     expect(key.key_prefix).toBe(rawKey.slice(0, 7));
     expect(key.last_used_at).toBeNull();
   });
 
   it("should authenticate with a valid raw key", async () => {
-    const { rawKey } = await createApiKey(env.DB, "user@example.com", "Auth Key", "read");
+    const { rawKey } = await createApiKey(env.DB, "Auth Key", "read");
     const found = await authenticateApiKey(env.DB, rawKey);
     expect(found).not.toBeNull();
     expect(found!.title).toBe("Auth Key");
-    expect(found!.email).toBe("user@example.com");
   });
 
   it("should reject an invalid key", async () => {
@@ -390,48 +345,47 @@ describe("API Keys", () => {
   });
 
   it("should update last_used_at on authentication", async () => {
-    const { key, rawKey } = await createApiKey(env.DB, "user@example.com", "Usage Key", "create");
+    const { key, rawKey } = await createApiKey(env.DB, "Usage Key", "create");
     expect(key.last_used_at).toBeNull();
     const authed = await authenticateApiKey(env.DB, rawKey);
     expect(authed!.last_used_at).not.toBeNull();
   });
 
-  it("should list keys for a specific user only", async () => {
-    await createApiKey(env.DB, "alice@example.com", "Alice Key", "create");
-    await createApiKey(env.DB, "bob@example.com", "Bob Key", "read");
-    const aliceKeys = await getApiKeysByEmail(env.DB, "alice@example.com");
-    expect(aliceKeys).toHaveLength(1);
-    expect(aliceKeys[0].title).toBe("Alice Key");
-    const bobKeys = await getApiKeysByEmail(env.DB, "bob@example.com");
-    expect(bobKeys).toHaveLength(1);
-    expect(bobKeys[0].title).toBe("Bob Key");
+  it("should list all keys regardless of creator", async () => {
+    await createApiKey(env.DB, "Key A", "create");
+    await createApiKey(env.DB, "Key B", "read");
+    const keys = await getAllApiKeys(env.DB);
+    expect(keys).toHaveLength(2);
+    const titles = keys.map((k) => k.title);
+    expect(titles).toContain("Key A");
+    expect(titles).toContain("Key B");
   });
 
   it("should not expose the raw key in listed keys", async () => {
-    const { rawKey } = await createApiKey(env.DB, "user@example.com", "Secret", "create");
-    const keys = await getApiKeysByEmail(env.DB, "user@example.com");
+    const { rawKey } = await createApiKey(env.DB, "Secret", "create");
+    const keys = await getAllApiKeys(env.DB);
     expect(keys[0].key_hash).not.toBe(rawKey);
     expect(keys[0].key_prefix).toHaveLength(7);
   });
 
-  it("should delete a key owned by the user", async () => {
-    const { key } = await createApiKey(env.DB, "user@example.com", "Deletable", "create");
-    const deleted = await deleteApiKey(env.DB, key.id, "user@example.com");
+  it("should delete a key by id", async () => {
+    const { key } = await createApiKey(env.DB, "Deletable", "create");
+    const deleted = await deleteApiKey(env.DB, key.id);
     expect(deleted).toBe(true);
-    const keys = await getApiKeysByEmail(env.DB, "user@example.com");
+    const keys = await getAllApiKeys(env.DB);
     expect(keys).toHaveLength(0);
   });
 
-  it("should not delete a key owned by a different user", async () => {
-    const { key } = await createApiKey(env.DB, "alice@example.com", "Alice Only", "create");
-    const deleted = await deleteApiKey(env.DB, key.id, "bob@example.com");
-    expect(deleted).toBe(false);
-    const keys = await getApiKeysByEmail(env.DB, "alice@example.com");
-    expect(keys).toHaveLength(1);
+  it("should allow any caller to delete any key", async () => {
+    const { key } = await createApiKey(env.DB, "Shared Key", "create");
+    const deleted = await deleteApiKey(env.DB, key.id);
+    expect(deleted).toBe(true);
+    const keys = await getAllApiKeys(env.DB);
+    expect(keys).toHaveLength(0);
   });
 
   it("should support create,read combined scope", async () => {
-    const { key } = await createApiKey(env.DB, "user@example.com", "Full Access", "create,read");
+    const { key } = await createApiKey(env.DB, "Full Access", "create,read");
     expect(key.scope).toBe("create,read");
   });
 });

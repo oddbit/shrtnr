@@ -632,71 +632,6 @@ describe("Settings API", () => {
   });
 });
 
-// ---- User Preferences API ----
-
-describe("User Preferences API", () => {
-  it("GET /_/admin/api/preferences should return empty object for new user", async () => {
-    const res = await SELF.fetch(authed("/_/admin/api/preferences"));
-    expect(res.status).toBe(200);
-    const body = await res.json() as any;
-    expect(body).toEqual({});
-  });
-
-  it("PUT /_/admin/api/preferences should save and return theme", async () => {
-    const res = await SELF.fetch(
-      authed("/_/admin/api/preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ theme: "dark" }),
-      })
-    );
-    expect(res.status).toBe(200);
-    const body = await res.json() as any;
-    expect(body.theme).toBe("dark");
-  });
-
-  it("GET /_/admin/api/preferences should return saved theme", async () => {
-    await SELF.fetch(
-      authed("/_/admin/api/preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ theme: "light" }),
-      })
-    );
-    const res = await SELF.fetch(authed("/_/admin/api/preferences"));
-    const body = await res.json() as any;
-    expect(body.theme).toBe("light");
-  });
-
-  it("PUT /_/admin/api/preferences with invalid theme should return 400", async () => {
-    const res = await SELF.fetch(
-      authed("/_/admin/api/preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ theme: "neon" }),
-      })
-    );
-    expect(res.status).toBe(400);
-  });
-
-  it("preferences should be scoped per user", async () => {
-    await SELF.fetch(
-      authed("/_/admin/api/preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ theme: "dark" }),
-      })
-    );
-    const otherJwt = makeJwt("other@example.com");
-    const otherRes = await SELF.fetch(
-      new Request("https://shrtnr.test/_/admin/api/preferences", {
-        headers: { "Cf-Access-Jwt-Assertion": otherJwt },
-      })
-    );
-    const body = await otherRes.json() as any;
-    expect(body.theme).toBeUndefined();
-  });
-});
 
 // ---- Analytics API ----
 
@@ -789,7 +724,7 @@ describe("API Keys Management", () => {
     expect(body[0].key_hash).toBeUndefined();
   });
 
-  it("GET /_/admin/api/keys should not include other users keys", async () => {
+  it("GET /_/admin/api/keys should return all keys regardless of who created them", async () => {
     await SELF.fetch(
       authed("/_/admin/api/keys", {
         method: "POST",
@@ -797,14 +732,10 @@ describe("API Keys Management", () => {
         body: JSON.stringify({ title: "Test Key", scope: "create" }),
       })
     );
-    const otherJwt = makeJwt("other@example.com");
-    const res = await SELF.fetch(
-      new Request("https://shrtnr.test/_/admin/api/keys", {
-        headers: { "Cf-Access-Jwt-Assertion": otherJwt },
-      })
-    );
+    const res = await SELF.fetch(unauthed("/_/admin/api/keys"));
     const body = await res.json() as any;
-    expect(body).toHaveLength(0);
+    expect(body).toHaveLength(1);
+    expect(body[0].title).toBe("Test Key");
   });
 
   it("DELETE /_/admin/api/keys/:id should revoke own key", async () => {
@@ -823,23 +754,19 @@ describe("API Keys Management", () => {
     expect(list).toHaveLength(0);
   });
 
-  it("DELETE /_/admin/api/keys/:id should not revoke another users key", async () => {
+  it("DELETE /_/admin/api/keys/:id should allow any admin to revoke any key", async () => {
     const createRes = await SELF.fetch(
       authed("/_/admin/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "Protected", scope: "create" }),
+        body: JSON.stringify({ title: "Shared Key", scope: "create" }),
       })
     );
     const created = await createRes.json() as any;
-    const otherJwt = makeJwt("other@example.com");
     const res = await SELF.fetch(
-      new Request(`https://shrtnr.test/_/admin/api/keys/${created.key.id}`, {
-        method: "DELETE",
-        headers: { "Cf-Access-Jwt-Assertion": otherJwt },
-      })
+      unauthed(`/_/admin/api/keys/${created.key.id}`, { method: "DELETE" })
     );
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
   });
 
   it("POST /_/admin/api/keys with invalid scope should return 400", async () => {
@@ -1288,17 +1215,6 @@ describe("Invalid JSON Bodies", () => {
   it("PUT /_/admin/api/settings with invalid JSON should return 400", async () => {
     const res = await SELF.fetch(
       authed("/_/admin/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: "not json",
-      })
-    );
-    expect(res.status).toBe(400);
-  });
-
-  it("PUT /_/admin/api/preferences with invalid JSON should return 400", async () => {
-    const res = await SELF.fetch(
-      authed("/_/admin/api/preferences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: "not json",

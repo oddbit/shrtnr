@@ -30,14 +30,6 @@ describe("Auth headers", () => {
     const [, init] = fetchSpy.mock.calls[0];
     expect(init.headers["Authorization"]).toBe("Bearer sk_abc");
   });
-
-  it("should send Cf-Access-Jwt-Assertion header for access token auth", async () => {
-    const client = new ShrtnrClient({ baseUrl: BASE, auth: { accessToken: "jwt123" } });
-    mockFetch(200, []);
-    await client.listLinks();
-    const [, init] = fetchSpy.mock.calls[0];
-    expect(init.headers["Cf-Access-Jwt-Assertion"]).toBe("jwt123");
-  });
 });
 
 // ---- Error handling ----
@@ -127,7 +119,7 @@ describe("getLinkAnalytics", () => {
 
 describe("getLink", () => {
   it("should GET /_/api/links/:id", async () => {
-    const client = new ShrtnrClient({ baseUrl: BASE, auth: { accessToken: "jwt" } });
+    const client = new ShrtnrClient({ baseUrl: BASE, auth: { apiKey: "sk_test" } });
     const link = { id: 3, url: "https://example.com", slugs: [], total_clicks: 0 };
     mockFetch(200, link);
     const result = await client.getLink(3);
@@ -139,7 +131,7 @@ describe("getLink", () => {
 
 describe("updateLink", () => {
   it("should PUT /_/api/links/:id", async () => {
-    const client = new ShrtnrClient({ baseUrl: BASE, auth: { accessToken: "jwt" } });
+    const client = new ShrtnrClient({ baseUrl: BASE, auth: { apiKey: "sk_test" } });
     const link = { id: 1, url: "https://new.com", slugs: [], total_clicks: 0 };
     mockFetch(200, link);
     await client.updateLink(1, { url: "https://new.com" });
@@ -152,7 +144,7 @@ describe("updateLink", () => {
 
 describe("disableLink", () => {
   it("should POST /_/api/links/:id/disable", async () => {
-    const client = new ShrtnrClient({ baseUrl: BASE, auth: { accessToken: "jwt" } });
+    const client = new ShrtnrClient({ baseUrl: BASE, auth: { apiKey: "sk_test" } });
     mockFetch(200, { id: 1 });
     await client.disableLink(1);
     const [url, init] = fetchSpy.mock.calls[0];
@@ -163,7 +155,7 @@ describe("disableLink", () => {
 
 describe("addVanitySlug", () => {
   it("should POST /_/api/links/:id/slugs", async () => {
-    const client = new ShrtnrClient({ baseUrl: BASE, auth: { accessToken: "jwt" } });
+    const client = new ShrtnrClient({ baseUrl: BASE, auth: { apiKey: "sk_test" } });
     mockFetch(201, { id: 10, slug: "custom", is_vanity: 1 });
     const result = await client.addVanitySlug(1, "custom");
     expect(result.slug).toBe("custom");
