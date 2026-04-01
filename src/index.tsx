@@ -31,9 +31,8 @@ import {
   handleDashboardStats as handleDashboardStatsApi,
   handleLinkAnalytics,
 } from "./api/analytics";
-import { raw } from "hono/html";
 import { notFoundResponse } from "./404";
-import { GOOGLE_FONTS_HREF, standalonePageStyles } from "./styles";
+import { mcpLandingResponse } from "./mcp/page";
 import OAuthProvider from "@cloudflare/workers-oauth-provider";
 import { ShrtnrMCP } from "./mcp/server";
 import { handleAccessRequest } from "./mcp/access-handler";
@@ -274,48 +273,7 @@ app.get("/", (c) => c.redirect("/_/admin/dashboard", 302));
 
 // ---- MCP discovery helper ----
 
-app.get("/_/mcp", (c) => {
-  return c.html(
-    <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>shrtnr: MCP</title>
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="manifest" href="/manifest.webmanifest" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
-        <link href={GOOGLE_FONTS_HREF} rel="stylesheet" />
-        <style>{raw(standalonePageStyles + `
-          .name {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--on-bg);
-            user-select: none;
-          }
-          .label {
-            font-size: clamp(1rem, 3vw, 1.75rem);
-            font-weight: 700;
-            color: var(--on-bg-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.3em;
-            margin-top: 0.5rem;
-          }
-        `)}</style>
-      </head>
-      <body>
-        <div class="name">
-          <img src="/logotype-white.svg" alt="shrtnr." style="height: clamp(5rem, 20vw, 12rem); width: auto;" />
-        </div>
-        <div class="label">MCP Server</div>
-      </body>
-    </html>,
-  );
-});
+app.get("/_/mcp", () => mcpLandingResponse());
 
 // ---- Slug redirect (catch-all) ----
 
