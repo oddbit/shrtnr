@@ -27,17 +27,6 @@ const link = await client.createLink({
 console.log(link); // { id: 1, slugs: [{ slug: "a3x", ... }], ... }
 ```
 
-### Cloudflare Access authentication
-
-If you run shrtnr behind Cloudflare Access and have a service token:
-
-```ts
-const client = new ShrtnrClient({
-  baseUrl: "https://your-shrtnr.example.com",
-  auth: { accessToken: "your_cf_access_token" },
-});
-```
-
 ## What This SDK Covers
 
 This package wraps the public link-management API:
@@ -48,7 +37,7 @@ This package wraps the public link-management API:
 - Read click analytics (referrer, country, device, browser)
 - Check service health
 
-Administrative operations (API key management, settings, dashboard stats) are not part of this package. Those require Cloudflare Access auth and the admin UI.
+Administrative operations (API key management, settings, dashboard stats) are not part of this package. Those are accessible through the admin UI.
 
 ## API Reference
 

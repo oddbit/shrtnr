@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.9.0
+
+### Removed Cloudflare Access coupling (breaking)
+
+The app no longer reads or depends on Cloudflare Access JWTs. All CF Access awareness has been stripped from the codebase. Protecting the admin UI is now the deployer's responsibility: use CF Access policies, IP restrictions, Cloudflare Tunnel, or any approach that suits your setup.
+
+**Breaking changes:**
+
+- **API keys are ownerless.** The `email` column is gone. All admin users manage all keys. Existing keys continue to work for authentication.
+- **Preferences moved to browser cookies.** Theme and language are stored as `theme` and `lang` cookies. The `user_preferences` table is dropped. Users will need to re-select their theme after upgrading.
+- **SDK `AccessTokenAuth` removed.** The SDK only supports `{ apiKey: "sk_..." }` auth. If you used `{ accessToken: "..." }`, switch to an API key.
+- **`/_/admin/api/preferences` endpoints removed.** The client now writes cookies directly.
+- **`Identity` type and `getIdentity()` removed** from the auth module.
+
+### Migration notes
+
+- Run the new `0004_remove_auth_scoping.sql` migration (applied automatically on deploy).
+- Update any CF Access application path if you still want Access protection.
+- No changes needed for API key authentication: existing Bearer tokens keep working.
+
 ## 0.8.0
 
 ### Admin routes moved under `/_/admin/`

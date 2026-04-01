@@ -21,7 +21,6 @@ It takes one click to deploy. You get a full admin UI, click analytics, a TypeSc
 - **API key authentication** with scoped Bearer tokens for programmatic access
 - **TypeScript SDK** ([`@oddbit/shrtnr`](https://www.npmjs.com/package/@oddbit/shrtnr)) for Node.js and browser apps
 - **Built-in MCP server** at `/_/mcp` so Claude, Copilot, and other AI assistants can shorten URLs
-- **SSO via Cloudflare Access** supporting Google, GitHub, OTP, SAML, OIDC, and any IdP
 - **One-click deploy** with automatic database provisioning and migrations
 
 ## Deploy
@@ -29,8 +28,6 @@ It takes one click to deploy. You get a full admin UI, click analytics, a TypeSc
 ### One-click
 
 Click the **Deploy to Cloudflare** button above. Cloudflare will fork the repo, provision a D1 database, apply schema migrations, and deploy the Worker. No manual database setup required.
-
-After deploying, set up authentication (see below).
 
 ### Manual
 
@@ -47,26 +44,16 @@ yarn deploy             # applies migrations and deploys the Worker
 
 The deploy button sets up [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) automatically. Cloudflare detects the `deploy` script in `package.json` and uses it as the deploy command. Each push to your production branch applies pending D1 migrations and redeploys the Worker.
 
-## Authentication
+## Access Control
 
-shrtnr uses [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/) to protect the admin UI. Access handles login, sessions, and identity at the edge. The Worker extracts the caller's identity from the validated JWT for per-user features (preferences, API key ownership) but does not enforce authentication itself.
+The admin UI (`/_/admin/*`) ships without built-in authentication. Protecting it is your responsibility. Choose whichever approach fits your setup:
 
-### Setup
+- [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/) policies on the `_/admin/*` path
+- IP allowlists or firewall rules
+- A private Cloudflare Tunnel
+- Running the worker on a private network
 
-1. Open **Zero Trust** in the [Cloudflare dashboard](https://one.dash.cloudflare.com/)
-2. Go to **Access > Applications > Add an application**
-3. Choose **Self-hosted**
-4. Set the application domain to your short domain (e.g. `oddb.it`) with path `_/admin/*`
-5. Add a policy, for example:
-   - **Action:** Allow
-   - **Include rule:** Emails ending in `@yourcompany.com`
-6. Under **Authentication**, enable at least one login method. "One-time PIN" works out of the box with no external IdP.
-
-That's it. Visit `https://yourdomain.com` and Cloudflare Access will prompt you to log in before reaching the admin dashboard.
-
-### Login methods
-
-Access supports Google, GitHub, Microsoft, Okta, SAML, OIDC, and a built-in one-time PIN. Configure whichever fits your team in the Zero Trust dashboard. See [Cloudflare's IdP guides](https://developers.cloudflare.com/cloudflare-one/identity/idp-integration/) for setup instructions.
+The app makes no assumptions about which method you use.
 
 ## Integrations
 
@@ -168,11 +155,11 @@ Replace `your-domain.com` with your actual short domain and `sk_your_api_key` wi
 
 Authentication model:
 
-- **Admin UI** (`/_/admin/*`) is protected by Cloudflare Access at the edge. The Worker does not enforce authentication on these routes.
+- **Admin UI** (`/_/admin/*`) has no built-in auth. Protect it externally (see Access Control above).
 - **API key Bearer tokens** grant scoped access to the public link-management API. Create keys from the admin UI under API Keys. Pass them as `Authorization: Bearer sk_...`.
 - The health endpoint is public and does not require auth.
 
-Administrative endpoints (settings, preferences, dashboard stats, key management) live under `/_/admin/api/*` and are not accessible via API keys.
+Administrative endpoints (settings, dashboard stats, key management) live under `/_/admin/api/*` and are not accessible via API keys.
 
 | Method | Path | Description |
 |---|---|---|
