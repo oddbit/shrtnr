@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.13.0
+
+### CF Access auth awareness
+
+- Admin pages (`/_/admin/*`) now validate Cloudflare Access JWTs when the `ACCESS_AUD` environment variable is set.
+- Authenticated user email is shown in the sidebar with a logout link.
+- `GET /_/admin/logout` clears the Access cookie and redirects to the CF Access logout endpoint.
+- When `ACCESS_AUD` is not set the app falls back to trusting CF Access at the network layer (no change for existing deployments).
+- No impact on slug resolution, `/_/api/*`, or `/_/mcp`.
+
+### QR code modal
+
+- QR button on the link detail page opens a modal with a large QR image.
+- Download buttons in the modal save the code as SVG or PNG.
+
+### Link detail page improvements
+
+- Inline editing for label and expiry directly on the detail page.
+- Responsive mobile layout: the three-column hero collapses to a stacked single-column view on narrow screens.
+
+### PWA install
+
+- Settings version card includes an Install App button on supported browsers.
+
 ## 0.12.0
 
 ### Link creation tracking
