@@ -8,8 +8,8 @@
     "deploy": "wrangler deploy && npm run db:migrate:remote",
     "wrangler-login": "wrangler login",
     "db:create": "wrangler d1 create shrtnr-db",
-    "db:migrate": "wrangler d1 migrations apply shrtnr-db --local",
-    "db:migrate:remote": "wrangler d1 migrations apply shrtnr-db --remote",
+    "db:migrate": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "secret:put": "wrangler secret put",
     "test": "vitest run",
     "test:watch": "vitest"
