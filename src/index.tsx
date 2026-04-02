@@ -3,7 +3,7 @@
 
 import { Hono } from "hono";
 import type { Env } from "./types";
-import { verifyAccessJwt, type AccessUser } from "./access";
+import { verifyAccessJwt, extractIdentity, type AccessUser } from "./access";
 import { handleRedirect } from "./redirect";
 import { unauthorizedResponse } from "./auth";
 import {
@@ -13,7 +13,6 @@ import {
   getDashboardStats,
   getLinkClickStats,
   getAllApiKeys,
-  getSetting,
 } from "./db";
 import { DEFAULT_SLUG_LENGTH } from "./constants";
 import { createTranslateFn, getTranslations } from "./i18n";
@@ -27,6 +26,7 @@ import {
 } from "./api/links";
 import { handleAddVanitySlug } from "./api/slugs";
 import { handleGetSettings, handleUpdateSettings } from "./api/settings";
+import { getAppSettings } from "./services/admin-management";
 import { handleListKeys, handleCreateKey, handleDeleteKey } from "./api/keys";
 import {
   handleDashboardStats as handleDashboardStatsApi,
@@ -58,6 +58,7 @@ type HonoEnv = {
   Variables: {
     auth: AuthContext;
     user: AccessUser | null;
+    identity: string;
   };
 };
 
@@ -76,6 +77,8 @@ app.use("/_/admin/*", async (c, next) => {
     return c.text("Unauthorized", 403);
   }
   c.set("user", user);
+  const identity = await extractIdentity(c.req.raw, c.env);
+  c.set("identity", identity);
   await next();
 });
 
@@ -105,21 +108,24 @@ function getCookie(request: Request, name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-async function getPageData(c: { env: Env; req: { raw: Request } }) {
+async function getPageData(c: { env: Env; req: { raw: Request } }, identity: string) {
   const db = c.env.DB;
-  const theme = getCookie(c.req.raw, "theme") || "oddbit";
-  const lang = getCookie(c.req.raw, "lang") || "en";
+  // Load all user settings in one query; fall back to cookie, then defaults.
+  const settingsResult = await getAppSettings(c.env, identity);
+  const settings = settingsResult.ok ? settingsResult.data : null;
+  const theme = settings?.theme ?? getCookie(c.req.raw, "theme") ?? "oddbit";
+  const lang = settings?.lang ?? getCookie(c.req.raw, "lang") ?? "en";
+  const slugLength = settings?.slug_default_length ?? DEFAULT_SLUG_LENGTH;
   const t = createTranslateFn(lang);
   const translations = getTranslations(lang);
-  const slugLengthStr = await getSetting(db, "slug_default_length");
-  const slugLength = slugLengthStr ? parseInt(slugLengthStr, 10) : DEFAULT_SLUG_LENGTH;
   return { db, theme, slugLength, lang, t, translations };
 }
 
 // ---- Admin pages ----
 
 app.get("/_/admin/dashboard", async (c) => {
-  const { db, theme, t, lang, translations } = await getPageData(c);
+  const identity = c.var.identity;
+  const { db, theme, t, lang, translations } = await getPageData(c, identity);
   const stats = await getDashboardStats(db);
   const userEmail = c.var.user?.email ?? null;
   return c.html(
@@ -130,7 +136,8 @@ app.get("/_/admin/dashboard", async (c) => {
 });
 
 app.get("/_/admin/links", async (c) => {
-  const { db, theme, slugLength, t, lang, translations } = await getPageData(c);
+  const identity = c.var.identity;
+  const { db, theme, slugLength, t, lang, translations } = await getPageData(c, identity);
   const links = await getAllLinks(db);
   const sort = c.req.query("sort") || "recent";
   const page = parseInt(c.req.query("page") || "1", 10) || 1;
@@ -155,7 +162,8 @@ app.get("/_/admin/links", async (c) => {
 app.get("/_/admin/links/:id", async (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return notFoundResponse();
-  const { db, theme, t, lang, translations } = await getPageData(c);
+  const identity = c.var.identity;
+  const { db, theme, t, lang, translations } = await getPageData(c, identity);
   const link = await getLinkById(db, id);
   if (!link) return notFoundResponse();
   const analytics = await getLinkClickStats(db, id);
@@ -168,8 +176,9 @@ app.get("/_/admin/links/:id", async (c) => {
 });
 
 app.get("/_/admin/keys", async (c) => {
-  const { db, theme, t, lang, translations } = await getPageData(c);
-  const keys = await getAllApiKeys(db);
+  const identity = c.var.identity;
+  const { db, theme, t, lang, translations } = await getPageData(c, identity);
+  const keys = await getAllApiKeys(db, identity);
   const userEmail = c.var.user?.email ?? null;
   return c.html(
     <Layout active="keys" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
@@ -179,7 +188,8 @@ app.get("/_/admin/keys", async (c) => {
 });
 
 app.get("/_/admin/settings", async (c) => {
-  const { theme, slugLength, t, lang, translations } = await getPageData(c);
+  const identity = c.var.identity;
+  const { theme, slugLength, t, lang, translations } = await getPageData(c, identity);
   const mcpConfigured = Boolean(
     c.env.ACCESS_CLIENT_ID &&
     c.env.ACCESS_CLIENT_SECRET &&
@@ -210,16 +220,16 @@ app.get("/_/settings", (c) => c.redirect("/_/admin/settings", 301));
 // ---- Admin API routes ----
 
 // Keys
-app.get("/_/admin/api/keys", (c) => handleListKeys(c.env));
-app.post("/_/admin/api/keys", (c) => handleCreateKey(c.req.raw, c.env));
+app.get("/_/admin/api/keys", (c) => handleListKeys(c.env, c.var.identity));
+app.post("/_/admin/api/keys", (c) => handleCreateKey(c.req.raw, c.env, c.var.identity));
 app.delete("/_/admin/api/keys/:id", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  return handleDeleteKey(c.env, id);
+  return handleDeleteKey(c.env, c.var.identity, id);
 });
 
 // Links (admin path: no scope checks, full access)
-app.post("/_/admin/api/links", (c) => handleCreateLink(c.req.raw, c.env, "app"));
+app.post("/_/admin/api/links", (c) => handleCreateLink(c.req.raw, c.env, "app", c.var.identity));
 app.get("/_/admin/api/links", (c) => handleListLinks(c.env));
 app.get("/_/admin/api/links/:id", (c) => {
   const id = parseInt(c.req.param("id"), 10);
@@ -253,8 +263,8 @@ app.get("/_/admin/api/links/:id/qr", (c) => {
 });
 
 // Settings
-app.get("/_/admin/api/settings", (c) => handleGetSettings(c.env));
-app.put("/_/admin/api/settings", (c) => handleUpdateSettings(c.req.raw, c.env));
+app.get("/_/admin/api/settings", (c) => handleGetSettings(c.env, c.var.identity));
+app.put("/_/admin/api/settings", (c) => handleUpdateSettings(c.req.raw, c.env, c.var.identity));
 
 // Dashboard stats
 app.get("/_/admin/api/dashboard", (c) => handleDashboardStatsApi(c.env));

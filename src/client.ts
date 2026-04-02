@@ -81,13 +81,16 @@ function applyTheme(theme) {
 function setTheme(theme) {
   applyTheme(theme);
   document.cookie = 'theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax';
+  api('/settings', { method: 'PUT', body: JSON.stringify({ theme: theme }) });
   toast(t('client.themeUpdated'));
 }
 
 // ---- Language ----
 function setLanguage(lang) {
   document.cookie = 'lang=' + lang + ';path=/;max-age=31536000;SameSite=Lax';
-  window.location.reload();
+  api('/settings', { method: 'PUT', body: JSON.stringify({ lang: lang }) }).then(function() {
+    window.location.reload();
+  });
 }
 
 // ---- Country names ----

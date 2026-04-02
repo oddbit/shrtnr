@@ -8,12 +8,12 @@ import {
 } from "../services/admin-management";
 import { json, fromServiceResult } from "./response";
 
-export async function handleGetSettings(env: Env): Promise<Response> {
-  return fromServiceResult(await getAppSettings(env));
+export async function handleGetSettings(env: Env, identity: string): Promise<Response> {
+  return fromServiceResult(await getAppSettings(env, identity));
 }
 
-export async function handleUpdateSettings(request: Request, env: Env): Promise<Response> {
-  let body: { slug_default_length?: number };
+export async function handleUpdateSettings(request: Request, env: Env, identity: string): Promise<Response> {
+  let body: { slug_default_length?: number; theme?: string; lang?: string };
 
   try {
     body = await request.json();
@@ -21,5 +21,5 @@ export async function handleUpdateSettings(request: Request, env: Env): Promise<
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  return fromServiceResult(await updateAppSettings(env, body));
+  return fromServiceResult(await updateAppSettings(env, identity, body));
 }

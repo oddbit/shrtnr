@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { verifyAccessJwt, type AccessUser } from "../access";
+import { verifyAccessJwt, extractIdentity, type AccessUser } from "../access";
 import type { Env } from "../types";
 
 function fakeEnv(overrides: Partial<Env> = {}): Env {
@@ -108,5 +108,54 @@ describe("verifyAccessJwt", () => {
       const user = await verifyAccessJwt(req, env);
       expect(user).toBeNull();
     });
+  });
+});
+
+describe("extractIdentity", () => {
+  const env = fakeEnv();
+
+  it("should return email from JWT", async () => {
+    const token = makeJwt({ email: "user@example.com" });
+    const req = makeRequest({ "Cf-Access-Jwt-Assertion": token });
+    expect(await extractIdentity(req, env)).toBe("user@example.com");
+  });
+
+  it("should return phone when email is absent", async () => {
+    const token = makeJwt({ phone: "+15550001234" });
+    const req = makeRequest({ "Cf-Access-Jwt-Assertion": token });
+    expect(await extractIdentity(req, env)).toBe("+15550001234");
+  });
+
+  it("should return sub when email and phone are absent", async () => {
+    const token = makeJwt({ sub: "sub-12345" });
+    const req = makeRequest({ "Cf-Access-Jwt-Assertion": token });
+    expect(await extractIdentity(req, env)).toBe("sub-12345");
+  });
+
+  it("should fall back to Cf-Access-Authenticated-User-Email header", async () => {
+    const req = makeRequest({ "Cf-Access-Authenticated-User-Email": "header@example.com" });
+    expect(await extractIdentity(req, env)).toBe("header@example.com");
+  });
+
+  it("should return 'anonymous' when no token and no header", async () => {
+    const req = makeRequest();
+    expect(await extractIdentity(req, env)).toBe("anonymous");
+  });
+
+  it("should return 'anonymous' for malformed JWT", async () => {
+    const req = makeRequest({ "Cf-Access-Jwt-Assertion": "bad.jwt" });
+    expect(await extractIdentity(req, env)).toBe("anonymous");
+  });
+
+  it("should return 'anonymous' for JWT payload with no identity claims", async () => {
+    const token = makeJwt({ iat: 1234567890 });
+    const req = makeRequest({ "Cf-Access-Jwt-Assertion": token });
+    expect(await extractIdentity(req, env)).toBe("anonymous");
+  });
+
+  it("should prefer email over phone and sub", async () => {
+    const token = makeJwt({ email: "email@example.com", phone: "+1555", sub: "sub-1" });
+    const req = makeRequest({ "Cf-Access-Jwt-Assertion": token });
+    expect(await extractIdentity(req, env)).toBe("email@example.com");
   });
 });

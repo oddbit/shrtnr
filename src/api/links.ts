@@ -19,7 +19,7 @@ export async function handleGetLink(env: Env, id: number): Promise<Response> {
   return fromServiceResult(await getManagedLink(env, id));
 }
 
-export async function handleCreateLink(request: Request, env: Env, createdVia?: string): Promise<Response> {
+export async function handleCreateLink(request: Request, env: Env, createdVia?: string, createdBy?: string): Promise<Response> {
   let body: {
     url?: string;
     label?: string;
@@ -34,7 +34,7 @@ export async function handleCreateLink(request: Request, env: Env, createdVia?: 
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  return fromServiceResult(await createManagedLink(env, { ...body, created_via: createdVia }));
+  return fromServiceResult(await createManagedLink(env, { ...body, created_via: createdVia, created_by: createdBy }));
 }
 
 export async function handleUpdateLink(request: Request, env: Env, id: number): Promise<Response> {

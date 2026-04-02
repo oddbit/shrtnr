@@ -712,7 +712,7 @@ describe("API Keys Management", () => {
     expect(body[0].key_hash).toBeUndefined();
   });
 
-  it("GET /_/admin/api/keys should return all keys regardless of who created them", async () => {
+  it("GET /_/admin/api/keys should only return keys for the requesting identity", async () => {
     await SELF.fetch(
       authed("/_/admin/api/keys", {
         method: "POST",
@@ -720,10 +720,10 @@ describe("API Keys Management", () => {
         body: JSON.stringify({ title: "Test Key", scope: "create" }),
       })
     );
+    // unauthed = anonymous identity — should see 0 keys
     const res = await SELF.fetch(unauthed("/_/admin/api/keys"));
     const body = await res.json() as any;
-    expect(body).toHaveLength(1);
-    expect(body[0].title).toBe("Test Key");
+    expect(body).toHaveLength(0);
   });
 
   it("DELETE /_/admin/api/keys/:id should revoke own key", async () => {
@@ -742,7 +742,7 @@ describe("API Keys Management", () => {
     expect(list).toHaveLength(0);
   });
 
-  it("DELETE /_/admin/api/keys/:id should allow any admin to revoke any key", async () => {
+  it("DELETE /_/admin/api/keys/:id should return 404 when trying to revoke a key owned by another user", async () => {
     const createRes = await SELF.fetch(
       authed("/_/admin/api/keys", {
         method: "POST",
@@ -754,7 +754,7 @@ describe("API Keys Management", () => {
     const res = await SELF.fetch(
       unauthed(`/_/admin/api/keys/${created.key.id}`, { method: "DELETE" })
     );
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(404);
   });
 
   it("POST /_/admin/api/keys with invalid scope should return 400", async () => {

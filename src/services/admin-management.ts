@@ -14,6 +14,8 @@ import { Env } from "../types";
 import { ServiceResult } from "../api/response";
 
 const VALID_SCOPES = ["create", "read", "create,read"];
+const VALID_SETTING_KEYS = ["slug_default_length", "theme", "lang"] as const;
+type SettingKey = typeof VALID_SETTING_KEYS[number];
 
 function ok<T>(data: T, status = 200): ServiceResult<T> {
   return { ok: true, status, data };
@@ -23,14 +25,15 @@ function fail<T>(status: number, error: string): ServiceResult<T> {
   return { ok: false, status, error };
 }
 
-export async function listAllApiKeys(env: Env): Promise<ServiceResult<unknown[]>> {
-  const keys = await getAllApiKeys(env.DB);
-  const safe = keys.map(({ key_hash, ...rest }) => rest);
+export async function listAllApiKeys(env: Env, identity: string): Promise<ServiceResult<unknown[]>> {
+  const keys = await getAllApiKeys(env.DB, identity);
+  const safe = keys.map(({ key_hash, identity: _id, ...rest }) => rest);
   return ok(safe);
 }
 
 export async function createNewApiKey(
   env: Env,
+  identity: string,
   body: { title?: string; scope?: string }
 ): Promise<ServiceResult<{ key: unknown; raw_key: string }>> {
   if (!body.title || typeof body.title !== "string" || !body.title.trim()) {
@@ -40,31 +43,49 @@ export async function createNewApiKey(
     return fail(400, "Scope must be one of: " + VALID_SCOPES.join(", "));
   }
 
-  const { key, rawKey } = await createApiKey(env.DB, body.title.trim(), body.scope);
-  const { key_hash, ...safeKey } = key;
+  const { key, rawKey } = await createApiKey(env.DB, identity, body.title.trim(), body.scope);
+  const { key_hash, identity: _id, ...safeKey } = key;
   return ok({ key: safeKey, raw_key: rawKey }, 201);
 }
 
-export async function deleteApiKeyById(env: Env, id: number): Promise<ServiceResult<{ ok: true }>> {
-  const deleted = await deleteApiKey(env.DB, id);
+export async function deleteApiKeyById(env: Env, identity: string, id: number): Promise<ServiceResult<{ ok: true }>> {
+  const deleted = await deleteApiKey(env.DB, identity, id);
   if (!deleted) return fail(404, "Key not found");
   return ok({ ok: true });
 }
 
-export async function getAppSettings(env: Env): Promise<ServiceResult<{ slug_default_length: number }>> {
-  const slugLength = await getSetting(env.DB, "slug_default_length");
-  return ok({ slug_default_length: parseInt(slugLength ?? String(DEFAULT_SLUG_LENGTH), 10) });
+export async function getAppSettings(
+  env: Env,
+  identity: string,
+): Promise<ServiceResult<{ slug_default_length: number; theme: string | null; lang: string | null }>> {
+  const [slugLength, theme, lang] = await Promise.all([
+    getSetting(env.DB, identity, "slug_default_length"),
+    getSetting(env.DB, identity, "theme"),
+    getSetting(env.DB, identity, "lang"),
+  ]);
+  return ok({
+    slug_default_length: parseInt(slugLength ?? String(DEFAULT_SLUG_LENGTH), 10),
+    theme: theme ?? null,
+    lang: lang ?? null,
+  });
 }
 
 export async function updateAppSettings(
   env: Env,
-  body: { slug_default_length?: number }
-): Promise<ServiceResult<{ slug_default_length: number }>> {
+  identity: string,
+  body: { slug_default_length?: number; theme?: string; lang?: string }
+): Promise<ServiceResult<{ slug_default_length: number; theme: string | null; lang: string | null }>> {
   if (body.slug_default_length !== undefined) {
     const err = validateSlugLength(body.slug_default_length);
     if (err) return fail(400, err);
-    await setSetting(env.DB, "slug_default_length", String(body.slug_default_length));
+    await setSetting(env.DB, identity, "slug_default_length", String(body.slug_default_length));
+  }
+  if (body.theme !== undefined && typeof body.theme === "string") {
+    await setSetting(env.DB, identity, "theme", body.theme);
+  }
+  if (body.lang !== undefined && typeof body.lang === "string") {
+    await setSetting(env.DB, identity, "lang", body.lang);
   }
 
-  return getAppSettings(env);
+  return getAppSettings(env, identity);
 }

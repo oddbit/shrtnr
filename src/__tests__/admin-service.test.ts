@@ -7,12 +7,14 @@ import {
   updateAppSettings,
 } from "../services/admin-management";
 
+const TEST_IDENTITY = "test@example.com";
+
 beforeAll(applyMigrations);
 beforeEach(resetData);
 
 describe("admin-management service", () => {
   it("rejects invalid API key scope", async () => {
-    const result = await createNewApiKey(env as any, {
+    const result = await createNewApiKey(env as any, TEST_IDENTITY, {
       title: "Bad",
       scope: "admin",
     });
@@ -25,7 +27,7 @@ describe("admin-management service", () => {
   });
 
   it("rejects slug default length below minimum", async () => {
-    const result = await updateAppSettings(env as any, { slug_default_length: 2 });
+    const result = await updateAppSettings(env as any, TEST_IDENTITY, { slug_default_length: 2 });
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -34,7 +36,7 @@ describe("admin-management service", () => {
   });
 
   it("rejects slug default length above maximum", async () => {
-    const result = await updateAppSettings(env as any, { slug_default_length: 200 });
+    const result = await updateAppSettings(env as any, TEST_IDENTITY, { slug_default_length: 200 });
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -43,10 +45,10 @@ describe("admin-management service", () => {
   });
 
   it("updates settings and returns persisted value", async () => {
-    const updated = await updateAppSettings(env as any, { slug_default_length: 5 });
+    const updated = await updateAppSettings(env as any, TEST_IDENTITY, { slug_default_length: 5 });
     expect(updated.ok).toBe(true);
 
-    const settings = await getAppSettings(env as any);
+    const settings = await getAppSettings(env as any, TEST_IDENTITY);
     expect(settings.ok).toBe(true);
     if (settings.ok) {
       expect(settings.data.slug_default_length).toBe(5);
@@ -56,7 +58,7 @@ describe("admin-management service", () => {
   it("returns hardcoded default when setting is missing", async () => {
     await env.DB.exec("DELETE FROM settings WHERE key = 'slug_default_length'");
 
-    const settings = await getAppSettings({ DB: env.DB } as any);
+    const settings = await getAppSettings({ DB: env.DB } as any, TEST_IDENTITY);
 
     expect(settings.ok).toBe(true);
     if (settings.ok) {

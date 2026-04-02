@@ -20,18 +20,67 @@ function getJwks(jwksUrl: string): ReturnType<typeof createRemoteJWKSet> {
 }
 
 /**
- * Extract email from an unverified JWT payload (dev/test mode only).
- * Returns null if the token is malformed or missing an email claim.
+ * Parse the payload of an unverified JWT without validating the signature.
+ * Returns the raw payload object or null if malformed.
  */
-function extractUnverifiedEmail(token: string): string | null {
+function parseJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split(".");
   if (parts.length !== 3) return null;
   try {
-    const payload = JSON.parse(atob(parts[1]));
-    if (typeof payload.email === "string" && payload.email) return payload.email;
-    return null;
+    return JSON.parse(atob(parts[1]));
   } catch {
     return null;
+  }
+}
+
+/**
+ * Extract a stable identity string from a request.
+ *
+ * In dev/test mode (ACCESS_AUD not set), reads from an unverified JWT or the
+ * Cf-Access-Authenticated-User-Email header. In production mode, reads from
+ * the verified JWT payload.
+ *
+ * Tries claims in order: email → phone → sub. Falls back to "anonymous" so
+ * the return value is always a non-empty string safe to use as a DB key.
+ */
+export async function extractIdentity(request: Request, env: Env): Promise<string> {
+  function fromPayload(payload: Record<string, unknown>): string | null {
+    for (const claim of ["email", "phone", "sub"] as const) {
+      const val = payload[claim];
+      if (typeof val === "string" && val.trim()) return val.trim();
+    }
+    return null;
+  }
+
+  const token = request.headers.get("Cf-Access-Jwt-Assertion");
+  const aud = env.ACCESS_AUD;
+
+  if (!aud) {
+    // Dev/test mode: no cryptographic validation.
+    if (token) {
+      const payload = parseJwtPayload(token);
+      if (payload) {
+        const id = fromPayload(payload);
+        if (id) return id;
+      }
+    }
+    const emailHeader = request.headers.get("Cf-Access-Authenticated-User-Email");
+    if (emailHeader?.trim()) return emailHeader.trim();
+    return "anonymous";
+  }
+
+  // Production mode: validate JWT before trusting claims.
+  if (!token) return "anonymous";
+  try {
+    const jwks = getJwks(env.ACCESS_JWKS_URL);
+    const { payload } = await jwtVerify(token, jwks, {
+      audience: aud,
+      algorithms: ["RS256", "ES256"],
+    });
+    const id = fromPayload(payload as Record<string, unknown>);
+    return id ?? "anonymous";
+  } catch {
+    return "anonymous";
   }
 }
 
@@ -55,8 +104,9 @@ export async function verifyAccessJwt(
   // Dev/test mode: no audience configured, skip cryptographic validation.
   if (!aud) {
     if (token) {
-      const email = extractUnverifiedEmail(token);
-      return email ? { email } : null;
+      const payload = parseJwtPayload(token);
+      const email = payload?.email;
+      return typeof email === "string" && email ? { email } : null;
     }
     const emailHeader = request.headers.get("Cf-Access-Authenticated-User-Email");
     return emailHeader ? { email: emailHeader } : null;

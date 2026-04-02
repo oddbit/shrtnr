@@ -58,13 +58,14 @@ export async function createLink(
   label?: string | null,
   vanitySlug?: string | null,
   expiresAt?: number | null,
-  createdVia?: string | null
+  createdVia?: string | null,
+  createdBy?: string | null,
 ): Promise<LinkWithSlugs> {
   const now = Math.floor(Date.now() / 1000);
 
   const linkResult = await db
-    .prepare("INSERT INTO links (url, label, created_at, expires_at, created_via) VALUES (?, ?, ?, ?, ?)")
-    .bind(url, label ?? null, now, expiresAt ?? null, createdVia ?? "app")
+    .prepare("INSERT INTO links (url, label, created_at, expires_at, created_via, created_by) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(url, label ?? null, now, expiresAt ?? null, createdVia ?? "app", createdBy ?? "anonymous")
     .run();
 
   const linkId = linkResult.meta.last_row_id as number;
@@ -133,18 +134,18 @@ export async function slugExists(db: D1Database, slug: string): Promise<boolean>
   return row !== null;
 }
 
-export async function getSetting(db: D1Database, key: string): Promise<string | null> {
+export async function getSetting(db: D1Database, identity: string, key: string): Promise<string | null> {
   const row = await db
-    .prepare("SELECT value FROM settings WHERE key = ?")
-    .bind(key)
+    .prepare("SELECT value FROM settings WHERE identity = ? AND key = ?")
+    .bind(identity, key)
     .first<{ value: string }>();
   return row?.value ?? null;
 }
 
-export async function setSetting(db: D1Database, key: string, value: string): Promise<void> {
+export async function setSetting(db: D1Database, identity: string, key: string, value: string): Promise<void> {
   await db
-    .prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?")
-    .bind(key, value, value)
+    .prepare("INSERT INTO settings (identity, key, value) VALUES (?, ?, ?) ON CONFLICT(identity, key) DO UPDATE SET value = ?")
+    .bind(identity, key, value, value)
     .run();
 }
 
@@ -168,6 +169,7 @@ async function hashKey(raw: string): Promise<string> {
 
 export async function createApiKey(
   db: D1Database,
+  identity: string,
   title: string,
   scope: string,
 ): Promise<{ key: ApiKeyRow; rawKey: string }> {
@@ -178,8 +180,8 @@ export async function createApiKey(
   const now = Math.floor(Date.now() / 1000);
 
   await db
-    .prepare("INSERT INTO api_keys (title, key_prefix, key_hash, scope, created_at) VALUES (?, ?, ?, ?, ?)")
-    .bind(title, keyPrefix, keyHash, scope, now)
+    .prepare("INSERT INTO api_keys (identity, title, key_prefix, key_hash, scope, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(identity, title, keyPrefix, keyHash, scope, now)
     .run();
 
   const row = await db
@@ -190,17 +192,18 @@ export async function createApiKey(
   return { key: row!, rawKey };
 }
 
-export async function getAllApiKeys(db: D1Database): Promise<ApiKeyRow[]> {
+export async function getAllApiKeys(db: D1Database, identity: string): Promise<ApiKeyRow[]> {
   const { results } = await db
-    .prepare("SELECT * FROM api_keys ORDER BY created_at DESC")
+    .prepare("SELECT * FROM api_keys WHERE identity = ? ORDER BY created_at DESC")
+    .bind(identity)
     .all<ApiKeyRow>();
   return results ?? [];
 }
 
-export async function deleteApiKey(db: D1Database, id: number): Promise<boolean> {
+export async function deleteApiKey(db: D1Database, identity: string, id: number): Promise<boolean> {
   const result = await db
-    .prepare("DELETE FROM api_keys WHERE id = ?")
-    .bind(id)
+    .prepare("DELETE FROM api_keys WHERE id = ? AND identity = ?")
+    .bind(id, identity)
     .run();
   return (result.meta.changes ?? 0) > 0;
 }

@@ -9,11 +9,11 @@ import {
 } from "../services/admin-management";
 import { json, fromServiceResult } from "./response";
 
-export async function handleListKeys(env: Env): Promise<Response> {
-  return fromServiceResult(await listAllApiKeys(env));
+export async function handleListKeys(env: Env, identity: string): Promise<Response> {
+  return fromServiceResult(await listAllApiKeys(env, identity));
 }
 
-export async function handleCreateKey(request: Request, env: Env): Promise<Response> {
+export async function handleCreateKey(request: Request, env: Env, identity: string): Promise<Response> {
   let body: { title?: string; scope?: string };
   try {
     body = await request.json();
@@ -21,9 +21,9 @@ export async function handleCreateKey(request: Request, env: Env): Promise<Respo
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  return fromServiceResult(await createNewApiKey(env, body));
+  return fromServiceResult(await createNewApiKey(env, identity, body));
 }
 
-export async function handleDeleteKey(env: Env, id: number): Promise<Response> {
-  return fromServiceResult(await deleteApiKeyById(env, id));
+export async function handleDeleteKey(env: Env, identity: string, id: number): Promise<Response> {
+  return fromServiceResult(await deleteApiKeyById(env, identity, id));
 }
