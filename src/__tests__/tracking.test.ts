@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { env, SELF } from "cloudflare:test";
 import { applyMigrations, resetData } from "./setup";
-import { createLink, recordClick, getLinkClickStats } from "../db";
+import { dbCreateLink, dbRecordClick, dbGetLinkClickStats } from "../db";
 import { createManagedLink } from "../services/link-management";
 import { makeQR, renderQrSvg } from "../qr";
 
@@ -121,12 +121,12 @@ describe("created_via tracking", () => {
   });
 
   it("createLink db function accepts created_via parameter", async () => {
-    const link = await createLink(env.DB, "https://example.com", "abc", null, null, null, "mcp");
+    const link = await dbCreateLink(env.DB, "https://example.com", "abc", null, null, null, "mcp");
     expect(link.created_via).toBe("mcp");
   });
 
   it("createLink db function defaults created_via to 'app'", async () => {
-    const link = await createLink(env.DB, "https://example.com", "abc");
+    const link = await dbCreateLink(env.DB, "https://example.com", "abc");
     expect(link.created_via).toBe("app");
   });
 
@@ -146,9 +146,9 @@ describe("created_via tracking", () => {
 
 describe("QR click channel tracking", () => {
   it("recordClick stores channel when provided", async () => {
-    const link = await createLink(env.DB, "https://example.com", "abc");
+    const link = await dbCreateLink(env.DB, "https://example.com", "abc");
     const slugId = link.slugs[0].id;
-    await recordClick(env.DB, slugId, null, "US", "mobile", "Chrome", "qr");
+    await dbRecordClick(env.DB, slugId, null, "US", "mobile", "Chrome", "qr");
 
     const row = await env.DB
       .prepare("SELECT channel FROM clicks WHERE slug_id = ?")
@@ -158,9 +158,9 @@ describe("QR click channel tracking", () => {
   });
 
   it("recordClick defaults channel to 'direct' for regular clicks", async () => {
-    const link = await createLink(env.DB, "https://example.com", "abc");
+    const link = await dbCreateLink(env.DB, "https://example.com", "abc");
     const slugId = link.slugs[0].id;
-    await recordClick(env.DB, slugId, null, "US", "mobile", "Chrome");
+    await dbRecordClick(env.DB, slugId, null, "US", "mobile", "Chrome");
 
     const row = await env.DB
       .prepare("SELECT channel FROM clicks WHERE slug_id = ?")
@@ -170,7 +170,7 @@ describe("QR click channel tracking", () => {
   });
 
   it("redirect with ?qr records channel as 'qr'", async () => {
-    const link = await createLink(env.DB, "https://example.com", "test1");
+    const link = await dbCreateLink(env.DB, "https://example.com", "test1");
     const res = await SELF.fetch(
       new Request("https://shrtnr.test/test1?qr", { redirect: "manual" }),
     );
@@ -187,7 +187,7 @@ describe("QR click channel tracking", () => {
   });
 
   it("redirect without ?qr records channel as 'direct'", async () => {
-    const link = await createLink(env.DB, "https://example.com", "test2");
+    const link = await dbCreateLink(env.DB, "https://example.com", "test2");
     const res = await SELF.fetch(
       new Request("https://shrtnr.test/test2", { redirect: "manual" }),
     );
@@ -203,13 +203,13 @@ describe("QR click channel tracking", () => {
   });
 
   it("analytics includes channel breakdown", async () => {
-    const link = await createLink(env.DB, "https://example.com", "abc");
+    const link = await dbCreateLink(env.DB, "https://example.com", "abc");
     const slugId = link.slugs[0].id;
-    await recordClick(env.DB, slugId, null, null, null, null, "qr");
-    await recordClick(env.DB, slugId, null, null, null, null, "qr");
-    await recordClick(env.DB, slugId, null, null, null, null);
+    await dbRecordClick(env.DB, slugId, null, null, null, null, "qr");
+    await dbRecordClick(env.DB, slugId, null, null, null, null, "qr");
+    await dbRecordClick(env.DB, slugId, null, null, null, null);
 
-    const stats = await getLinkClickStats(env.DB, link.id);
+    const stats = await dbGetLinkClickStats(env.DB, link.id);
     expect(stats.channels).toEqual(
       expect.arrayContaining([
         { name: "qr", count: 2 },

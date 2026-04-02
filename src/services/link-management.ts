@@ -2,16 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-  addVanitySlug,
-  createLink,
-  disableLink,
-  getAllLinks,
-  getDashboardStats,
-  getLinkById,
-  getLinkClickStats,
-  getSetting,
-  slugExists,
-  updateLink,
+  dbAddVanitySlug as dbAddVanitySlug,
+  dbCreateLink as dbCreateLink,
+  dbDisableLink as dbDisableLink,
+  dbGetAllLinks,
+  dbGetDashboardStats as dbGetDashboardStats,
+  dbGetLinkById,
+  dbGetLinkBySlug as dbGetLinkBySlug,
+  dbGetLinkClickStats,
+  dbGetSetting,
+  dbSlugExists,
+  dbUpdateLink as dbUpdateLink,
 } from "../db";
 import { DEFAULT_SLUG_LENGTH } from "../constants";
 import { generateUniqueSlug, validateSlugLength, validateVanitySlug } from "../slugs";
@@ -27,11 +28,17 @@ function fail<T>(status: number, error: string): ServiceResult<T> {
 }
 
 export async function listManagedLinks(env: Env): Promise<ServiceResult<LinkWithSlugs[]>> {
-  return ok(await getAllLinks(env.DB));
+  return ok(await dbGetAllLinks(env.DB));
 }
 
 export async function getManagedLink(env: Env, id: number): Promise<ServiceResult<LinkWithSlugs>> {
-  const link = await getLinkById(env.DB, id);
+  const link = await dbGetLinkById(env.DB, id);
+  if (!link) return fail(404, "Link not found");
+  return ok(link);
+}
+
+export async function getManagedLinkBySlug(env: Env, slug: string): Promise<ServiceResult<LinkWithSlugs>> {
+  const link = await getLinkBySlug(env.DB, slug);
   if (!link) return fail(404, "Link not found");
   return ok(link);
 }
@@ -58,7 +65,7 @@ export async function createManagedLink(
     slugLength = body.slug_length;
   } else {
     const identity = body.created_by ?? "anonymous";
-    const dbDefault = await getSetting(env.DB, identity, "slug_default_length");
+    const dbDefault = await dbGetSetting(env.DB, identity, "slug_default_length");
     slugLength = parseInt(dbDefault ?? String(DEFAULT_SLUG_LENGTH), 10);
   }
 
@@ -69,7 +76,7 @@ export async function createManagedLink(
     const vanityErr = validateVanitySlug(body.vanity_slug);
     if (vanityErr) return fail(400, vanityErr);
 
-    if (await slugExists(env.DB, body.vanity_slug)) {
+    if (await dbSlugExists(env.DB, body.vanity_slug)) {
       return fail(409, "Vanity slug already exists");
     }
   }
@@ -117,7 +124,7 @@ export async function addVanitySlugToLink(
   linkId: number,
   body: { slug?: string }
 ): Promise<ServiceResult<Slug>> {
-  const link = await getLinkById(env.DB, linkId);
+  const link = await dbGetLinkById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
 
   if (!body.slug || typeof body.slug !== "string") {
@@ -131,7 +138,7 @@ export async function addVanitySlugToLink(
     return fail(409, "Link already has a vanity slug");
   }
 
-  if (await slugExists(env.DB, body.slug)) {
+  if (await dbSlugExists(env.DB, body.slug)) {
     return fail(409, "Slug already exists");
   }
 
@@ -140,9 +147,9 @@ export async function addVanitySlugToLink(
 }
 
 export async function getManagedLinkAnalytics(env: Env, linkId: number): Promise<ServiceResult<ClickStats>> {
-  const link = await getLinkById(env.DB, linkId);
+  const link = await dbGetLinkById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
-  return ok(await getLinkClickStats(env.DB, linkId));
+  return ok(await dbGetLinkClickStats(env.DB, linkId));
 }
 
 export async function getManagedDashboardStats(env: Env): Promise<ServiceResult<DashboardStats>> {

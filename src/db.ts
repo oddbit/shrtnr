@@ -3,7 +3,7 @@
 
 import { Link, Slug, LinkWithSlugs, ClickStats, DashboardStats } from "./types";
 
-export async function findSlugByValue(db: D1Database, slug: string): Promise<(Slug & { url: string; expires_at: number | null }) | null> {
+export async function dbFindSlugByValue(db: D1Database, slug: string): Promise<(Slug & { url: string; expires_at: number | null }) | null> {
   const result = await db
     .prepare(
       "SELECT s.*, l.url, l.expires_at FROM slugs s JOIN links l ON s.link_id = l.id WHERE s.slug = ?"
@@ -13,7 +13,7 @@ export async function findSlugByValue(db: D1Database, slug: string): Promise<(Sl
   return result;
 }
 
-export async function getAllLinks(db: D1Database): Promise<LinkWithSlugs[]> {
+export async function dbGetAllLinks(db: D1Database): Promise<LinkWithSlugs[]> {
   const links = await db
     .prepare("SELECT * FROM links ORDER BY created_at DESC")
     .all<Link>();
@@ -31,7 +31,16 @@ export async function getAllLinks(db: D1Database): Promise<LinkWithSlugs[]> {
   });
 }
 
-export async function getLinkById(db: D1Database, id: number): Promise<LinkWithSlugs | null> {
+export async function dbGetLinkBySlug(db: D1Database, slug: string): Promise<LinkWithSlugs | null> {
+  const row = await db
+    .prepare("SELECT link_id FROM slugs WHERE slug = ?")
+    .bind(slug)
+    .first<{ link_id: number }>();
+  if (!row) return null;
+  return dbGetLinkById(db, row.link_id);
+}
+
+export async function dbGetLinkById(db: D1Database, id: number): Promise<LinkWithSlugs | null> {
   const link = await db
     .prepare("SELECT * FROM links WHERE id = ?")
     .bind(id)
@@ -51,7 +60,7 @@ export async function getLinkById(db: D1Database, id: number): Promise<LinkWithS
   };
 }
 
-export async function createLink(
+export async function dbCreateLink(
   db: D1Database,
   url: string,
   slug: string,
@@ -82,10 +91,10 @@ export async function createLink(
       .run();
   }
 
-  return (await getLinkById(db, linkId))!;
+  return (await dbGetLinkById(db, linkId))!;
 }
 
-export async function updateLink(
+export async function dbUpdateLink(
   db: D1Database,
   id: number,
   updates: { url?: string; label?: string | null; expires_at?: number | null }
@@ -102,18 +111,18 @@ export async function updateLink(
     .bind(url, label, expiresAt, id)
     .run();
 
-  return getLinkById(db, id);
+  return dbGetLinkById(db, id);
 }
 
-export async function disableLink(db: D1Database, id: number): Promise<LinkWithSlugs | null> {
+export async function dbDisableLink(db: D1Database, id: number): Promise<LinkWithSlugs | null> {
   const link = await db.prepare("SELECT * FROM links WHERE id = ?").bind(id).first<Link>();
   if (!link) return null;
   const now = Math.floor(Date.now() / 1000);
   await db.prepare("UPDATE links SET expires_at = ? WHERE id = ?").bind(now, id).run();
-  return getLinkById(db, id);
+  return dbGetLinkById(db, id);
 }
 
-export async function addVanitySlug(db: D1Database, linkId: number, slug: string): Promise<Slug> {
+export async function dbAddVanitySlug(db: D1Database, linkId: number, slug: string): Promise<Slug> {
   const now = Math.floor(Date.now() / 1000);
   await db
     .prepare("INSERT INTO slugs (link_id, slug, is_vanity, click_count, created_at) VALUES (?, ?, 1, 0, ?)")
@@ -126,7 +135,7 @@ export async function addVanitySlug(db: D1Database, linkId: number, slug: string
     .first<Slug>())!;
 }
 
-export async function slugExists(db: D1Database, slug: string): Promise<boolean> {
+export async function dbSlugExists(db: D1Database, slug: string): Promise<boolean> {
   const row = await db
     .prepare("SELECT 1 FROM slugs WHERE slug = ?")
     .bind(slug)
@@ -134,7 +143,7 @@ export async function slugExists(db: D1Database, slug: string): Promise<boolean>
   return row !== null;
 }
 
-export async function getSetting(db: D1Database, identity: string, key: string): Promise<string | null> {
+export async function dbGetSetting(db: D1Database, identity: string, key: string): Promise<string | null> {
   const row = await db
     .prepare("SELECT value FROM settings WHERE identity = ? AND key = ?")
     .bind(identity, key)
@@ -142,7 +151,7 @@ export async function getSetting(db: D1Database, identity: string, key: string):
   return row?.value ?? null;
 }
 
-export async function setSetting(db: D1Database, identity: string, key: string, value: string): Promise<void> {
+export async function dbSetSetting(db: D1Database, identity: string, key: string, value: string): Promise<void> {
   await db
     .prepare("INSERT INTO settings (identity, key, value) VALUES (?, ?, ?) ON CONFLICT(identity, key) DO UPDATE SET value = ?")
     .bind(identity, key, value, value)
@@ -167,7 +176,7 @@ async function hashKey(raw: string): Promise<string> {
   return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-export async function createApiKey(
+export async function dbCreateApiKey(
   db: D1Database,
   identity: string,
   title: string,
@@ -192,7 +201,7 @@ export async function createApiKey(
   return { key: row!, rawKey };
 }
 
-export async function getAllApiKeys(db: D1Database, identity: string): Promise<ApiKeyRow[]> {
+export async function dbGetAllApiKeys(db: D1Database, identity: string): Promise<ApiKeyRow[]> {
   const { results } = await db
     .prepare("SELECT * FROM api_keys WHERE identity = ? ORDER BY created_at DESC")
     .bind(identity)
@@ -200,7 +209,7 @@ export async function getAllApiKeys(db: D1Database, identity: string): Promise<A
   return results ?? [];
 }
 
-export async function deleteApiKey(db: D1Database, identity: string, id: number): Promise<boolean> {
+export async function dbDeleteApiKey(db: D1Database, identity: string, id: number): Promise<boolean> {
   const result = await db
     .prepare("DELETE FROM api_keys WHERE id = ? AND identity = ?")
     .bind(id, identity)
@@ -208,7 +217,7 @@ export async function deleteApiKey(db: D1Database, identity: string, id: number)
   return (result.meta.changes ?? 0) > 0;
 }
 
-export async function authenticateApiKey(db: D1Database, rawKey: string): Promise<ApiKeyRow | null> {
+export async function dbAuthenticateApiKey(db: D1Database, rawKey: string): Promise<ApiKeyRow | null> {
   const keyHash = await hashKey(rawKey);
   const row = await db
     .prepare("SELECT * FROM api_keys WHERE key_hash = ?")
@@ -229,7 +238,7 @@ export async function authenticateApiKey(db: D1Database, rawKey: string): Promis
 
 // --- Click analytics ---
 
-export async function recordClick(
+export async function dbRecordClick(
   db: D1Database,
   slugId: number,
   referrer: string | null,
@@ -251,7 +260,7 @@ export async function recordClick(
   ]);
 }
 
-export async function getLinkClickStats(db: D1Database, linkId: number): Promise<ClickStats> {
+export async function dbGetLinkClickStats(db: D1Database, linkId: number): Promise<ClickStats> {
   const slugIds = await db
     .prepare("SELECT id FROM slugs WHERE link_id = ?")
     .bind(linkId)
@@ -285,11 +294,11 @@ export async function getLinkClickStats(db: D1Database, linkId: number): Promise
   };
 }
 
-export async function getDashboardStats(db: D1Database): Promise<DashboardStats> {
+export async function dbGetDashboardStats(db: D1Database): Promise<DashboardStats> {
   const [linkCount, clickCount, recentLinks, topCountries, topReferrers] = await Promise.all([
     db.prepare("SELECT COUNT(*) as cnt FROM links").first<{ cnt: number }>(),
     db.prepare("SELECT COUNT(*) as cnt FROM clicks").first<{ cnt: number }>(),
-    getAllLinks(db),
+    dbGetAllLinks(db),
     db.prepare("SELECT country as name, COUNT(*) as count FROM clicks WHERE country IS NOT NULL GROUP BY country ORDER BY count DESC LIMIT 5").all<{ name: string; count: number }>(),
     db.prepare("SELECT referrer as name, COUNT(*) as count FROM clicks WHERE referrer IS NOT NULL GROUP BY referrer ORDER BY count DESC LIMIT 5").all<{ name: string; count: number }>(),
   ]);

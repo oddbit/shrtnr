@@ -6,6 +6,7 @@ import {
   createManagedLink,
   disableManagedLink,
   getManagedLink,
+  getManagedLinkBySlug,
   listManagedLinks,
   updateManagedLink,
 } from "../services/link-management";
@@ -17,6 +18,10 @@ export async function handleListLinks(env: Env): Promise<Response> {
 
 export async function handleGetLink(env: Env, id: number): Promise<Response> {
   return fromServiceResult(await getManagedLink(env, id));
+}
+
+export async function handleGetLinkBySlug(env: Env, slug: string): Promise<Response> {
+  return fromServiceResult(await getManagedLinkBySlug(env, slug));
 }
 
 export async function handleCreateLink(request: Request, env: Env, createdVia?: string, createdBy?: string): Promise<Response> {

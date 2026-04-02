@@ -17,7 +17,7 @@ import {
   getManagedLinkAnalytics,
 } from "../services/link-management";
 import { renderQrSvg } from "../qr";
-import { getLinkById } from "../db";
+import { dbGetLinkById } from "../db";
 import pkg from "../../package.json";
 
 type ToolResult = {
@@ -153,7 +153,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         base_url: z.string().url().describe("Base URL of the shrtnr instance, e.g. https://oddb.it"),
       },
       async ({ link_id, slug: requestedSlug, base_url }) => {
-        const link = await getLinkById(this.env.DB, link_id);
+        const link = await dbGetLinkById(this.env.DB, link_id);
         if (!link) return fail("Link not found");
 
         const target = requestedSlug

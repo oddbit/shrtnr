@@ -1,7 +1,7 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-import { slugExists } from "./db";
+import { dbSlugExists } from "./db";
 
 // Unambiguous characters: removed I, O, l, o, 0, 1 to avoid confusion
 const RANDOM_CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
@@ -17,7 +17,7 @@ export function generateRandomSlug(length: number): string {
 export async function generateUniqueSlug(db: D1Database, length: number): Promise<string> {
   for (let i = 0; i < 10; i++) {
     const slug = generateRandomSlug(length);
-    if (!(await slugExists(db, slug))) {
+    if (!(await dbSlugExists(db, slug))) {
       return slug;
     }
   }

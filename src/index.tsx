@@ -7,12 +7,12 @@ import { verifyAccessJwt, extractIdentity, type AccessUser } from "./access";
 import { handleRedirect } from "./redirect";
 import { unauthorizedResponse } from "./auth";
 import {
-  authenticateApiKey,
-  getAllLinks,
-  getLinkById,
-  getDashboardStats,
-  getLinkClickStats,
-  getAllApiKeys,
+  dbAuthenticateApiKey,
+  dbGetAllLinks,
+  dbGetLinkById,
+  dbGetDashboardStats,
+  dbGetLinkClickStats,
+  dbGetAllApiKeys,
 } from "./db";
 import { DEFAULT_SLUG_LENGTH } from "./constants";
 import { createTranslateFn, getTranslations } from "./i18n";
@@ -126,7 +126,7 @@ async function getPageData(c: { env: Env; req: { raw: Request } }, identity: str
 app.get("/_/admin/dashboard", async (c) => {
   const identity = c.var.identity;
   const { db, theme, t, lang, translations } = await getPageData(c, identity);
-  const stats = await getDashboardStats(db);
+  const stats = await dbGetDashboardStats(db);
   const userEmail = c.var.user?.email ?? null;
   return c.html(
     <Layout active="dashboard" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
@@ -138,7 +138,7 @@ app.get("/_/admin/dashboard", async (c) => {
 app.get("/_/admin/links", async (c) => {
   const identity = c.var.identity;
   const { db, theme, slugLength, t, lang, translations } = await getPageData(c, identity);
-  const links = await getAllLinks(db);
+  const links = await dbGetAllLinks(db);
   const sort = c.req.query("sort") || "recent";
   const page = parseInt(c.req.query("page") || "1", 10) || 1;
   const perPage = parseInt(c.req.query("per_page") || "25", 10) || 25;
@@ -164,9 +164,9 @@ app.get("/_/admin/links/:id", async (c) => {
   if (isNaN(id)) return notFoundResponse();
   const identity = c.var.identity;
   const { db, theme, t, lang, translations } = await getPageData(c, identity);
-  const link = await getLinkById(db, id);
+  const link = await dbGetLinkById(db, id);
   if (!link) return notFoundResponse();
-  const analytics = await getLinkClickStats(db, id);
+  const analytics = await dbGetLinkClickStats(db, id);
   const userEmail = c.var.user?.email ?? null;
   return c.html(
     <Layout active="links" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
@@ -178,7 +178,7 @@ app.get("/_/admin/links/:id", async (c) => {
 app.get("/_/admin/keys", async (c) => {
   const identity = c.var.identity;
   const { db, theme, t, lang, translations } = await getPageData(c, identity);
-  const keys = await getAllApiKeys(db, identity);
+  const keys = await dbGetAllApiKeys(db, identity);
   const userEmail = c.var.user?.email ?? null;
   return c.html(
     <Layout active="keys" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
@@ -390,7 +390,7 @@ async function resolveAuth(
   const authHeader = request.headers.get("Authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
-    const key = await authenticateApiKey(env.DB, token);
+    const key = await dbAuthenticateApiKey(env.DB, token);
     if (key) {
       return { source: "apikey", scope: key.scope };
     }

@@ -7,7 +7,7 @@ import {
   getManagedLink,
   updateManagedLink,
 } from "../services/link-management";
-import { setSetting } from "../db";
+import { dbSetSetting } from "../db";
 
 beforeAll(applyMigrations);
 beforeEach(resetData);
@@ -24,7 +24,7 @@ describe("link-management service", () => {
   });
 
   it("uses configured default slug length when slug_length is omitted", async () => {
-    await setSetting(env.DB, "anonymous", "slug_default_length", "6");
+    await dbSetSetting(env.DB, "anonymous", "slug_default_length", "6");
 
     const result = await createManagedLink(env as any, { url: "https://example.com" });
 

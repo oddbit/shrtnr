@@ -1,7 +1,7 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-import { findSlugByValue, recordClick } from "./db";
+import { dbFindSlugByValue, dbRecordClick } from "./db";
 import { parseDeviceType, parseBrowser } from "./ua";
 import { notFoundResponse } from "./404";
 
@@ -11,7 +11,7 @@ export async function handleRedirect(
   db: D1Database,
   ctx: ExecutionContext
 ): Promise<Response> {
-  const record = await findSlugByValue(db, slug);
+  const record = await dbFindSlugByValue(db, slug);
 
   if (!record) {
     return notFoundResponse();
@@ -32,7 +32,7 @@ export async function handleRedirect(
   const channel = url.searchParams.has("qr") ? "qr" : "direct";
 
   // Async click recording, does not block the redirect
-  ctx.waitUntil(recordClick(db, record.id, referrer, country, deviceType, browser, channel));
+  ctx.waitUntil(dbRecordClick(db, record.id, referrer, country, deviceType, browser, channel));
 
   return Response.redirect(record.url, 301);
 }
