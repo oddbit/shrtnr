@@ -243,14 +243,30 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--on-bg)
 .detail-back { background: none; border: none; color: var(--on-bg-muted); cursor: pointer; padding: 0.4rem; border-radius: var(--radius); text-decoration: none; display: inline-flex; }
 .detail-back:hover { color: var(--on-bg); background: var(--surface); }
 .detail-hero { background: var(--surface); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.4rem; }
-.detail-hero-grid { display: grid; grid-template-columns: 1fr auto auto; gap: 0; align-items: stretch; }
-.detail-hero-main { min-width: 0; padding-right: 2rem; display: flex; flex-direction: column; justify-content: center; }
-.detail-hero-meta { display: flex; flex-direction: column; gap: 1rem; padding: 0 2rem; border-left: 1px solid var(--border); justify-content: center; min-width: 160px; }
-.detail-hero-config { display: flex; flex-direction: column; gap: 1rem; padding-left: 2rem; border-left: 1px solid var(--border); justify-content: center; min-width: 220px; }
+.detail-hero-grid { display: grid; grid-template-columns: 1fr auto; gap: 0; align-items: stretch; }
+.detail-hero-main { min-width: 0; padding-right: 2rem; display: flex; flex-direction: column; justify-content: center; grid-row: span 2; }
+.detail-hero-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem 2rem; padding: 0 0 0.75rem 2rem; border-left: 1px solid var(--border); align-content: end; min-width: 340px; }
+.detail-hero-config { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem 2rem; padding: 0.75rem 0 0 2rem; border-left: 1px solid var(--border); border-top: 1px solid var(--border); align-content: start; min-width: 340px; }
 .detail-short-url { font-family: var(--font-display); font-size: 1.75rem; font-weight: 700; color: var(--primary); word-break: break-all; }
 .detail-dest { font-size: 0.85rem; color: var(--on-bg-muted); margin-top: 0.25rem; word-break: break-all; }
 .detail-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.4rem; }
 .detail-grid .bento-card { margin-bottom: 0; }
+
+/* Inline edit */
+.inline-edit { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; border-radius: var(--radius); padding: 0.2rem 0.4rem; margin: -0.2rem -0.4rem; transition: background 0.15s; }
+.inline-edit:hover { background: var(--surface-low); }
+.inline-edit-value { font-size: 0.9rem; color: var(--on-bg); }
+.inline-edit-placeholder { font-size: 0.85rem; color: var(--on-bg-muted); font-style: italic; }
+.inline-edit-icon { font-size: 14px; color: var(--on-bg-muted); opacity: 0; transition: opacity 0.15s; }
+.inline-edit:hover .inline-edit-icon { opacity: 0.7; }
+.inline-edit-form { display: flex; align-items: center; gap: 0.35rem; }
+.inline-edit-btn { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; border-radius: var(--radius); cursor: pointer; padding: 0; transition: background 0.15s; }
+.inline-edit-btn .icon { font-size: 16px; }
+.inline-edit-btn.confirm { background: rgba(181,242,175,0.15); color: var(--secondary); }
+.inline-edit-btn.confirm:hover { background: rgba(181,242,175,0.3); }
+.inline-edit-btn.cancel { background: transparent; color: var(--on-bg-muted); }
+.inline-edit-btn.cancel:hover { background: var(--surface-low); color: var(--on-bg); }
+.form-input-sm { padding: 0.4rem 0.65rem; font-size: 0.85rem; }
 
 /* Settings bar */
 .settings-inline { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.25rem; background: var(--surface); border-radius: var(--radius-lg); margin-bottom: 1.4rem; }
@@ -318,9 +334,10 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--on-bg)
   .bento-value { font-size: 1.5rem; }
   .detail-grid { grid-template-columns: 1fr; }
   .detail-hero-grid { grid-template-columns: 1fr; }
-  .detail-hero-meta { border-left: none; border-top: 1px solid var(--border); padding: 1.25rem 0 0; }
-  .detail-hero-config { border-left: none; border-top: 1px solid var(--border); padding: 1.25rem 0 0; }
-  .detail-hero-main { padding-right: 0; }
+  .detail-hero-main { grid-row: span 1; padding-right: 0; }
+  .detail-hero-meta { border-left: none; border-top: 1px solid var(--border); padding: 1.25rem 0 0; min-width: 0; }
+  .detail-hero-config { border-left: none; border-top: 1px solid var(--border); padding: 1.25rem 0 0; min-width: 0; }
+  .detail-hero-meta, .detail-hero-config { grid-template-columns: 1fr; }
   .hero-input-wrap { flex-direction: column; }
   .form-row { flex-direction: column; }
   .toolbar { flex-wrap: wrap; gap: 0.5rem; }

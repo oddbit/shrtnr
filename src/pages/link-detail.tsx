@@ -149,23 +149,30 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
         <div class="detail-hero-meta">
           <div>
             <label class="form-label">{t("linkDetail.label")}</label>
-            {link.label ? (
-              <div style="font-size:0.9rem;color:var(--on-bg)">{link.label}</div>
-            ) : (
-              <div style="font-size:0.85rem;color:var(--on-bg-muted)">—</div>
-            )}
+            <div class="inline-edit" id="label-display" onclick={`beginEditLabel(${link.id})`}>
+              {link.label ? (
+                <span class="inline-edit-value">{link.label}</span>
+              ) : (
+                <span class="inline-edit-placeholder">{t("linkDetail.setLabel")}</span>
+              )}
+              <span class="icon inline-edit-icon">edit</span>
+            </div>
+            <div class="inline-edit-form" id="label-form" style="display:none">
+              <input
+                class="form-input form-input-sm"
+                id="detail-label"
+                value={link.label || ""}
+                placeholder={t("linkDetail.labelPlaceholder")}
+                onkeydown={`if(event.key==='Enter')saveDetailLabel(${link.id});if(event.key==='Escape')cancelEditLabel();`}
+              />
+              <button class="inline-edit-btn confirm" onclick={`saveDetailLabel(${link.id})`}>
+                <span class="icon">check</span>
+              </button>
+              <button class="inline-edit-btn cancel" onclick="cancelEditLabel()">
+                <span class="icon">close</span>
+              </button>
+            </div>
           </div>
-          <div>
-            <label class="form-label">{t("linkDetail.createdBy")}</label>
-            {link.created_via ? (
-              <div style="font-size:0.9rem;color:var(--on-bg)">{link.created_via}</div>
-            ) : (
-              <div style="font-size:0.85rem;color:var(--on-bg-muted)">—</div>
-            )}
-          </div>
-        </div>
-
-        <div class="detail-hero-config">
           <div>
             <label class="form-label">{t("linkDetail.vanitySlug")}</label>
             {vanity.length > 0 ? (
@@ -179,7 +186,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
             ) : (
               <div style="display:flex;gap:0.5rem">
                 <input
-                  class="form-input"
+                  class="form-input form-input-sm"
                   id="detail-vanity"
                   placeholder="my-custom-slug"
                 />
@@ -192,31 +199,53 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
               </div>
             )}
           </div>
+        </div>
+
+        <div class="detail-hero-config">
+          <div>
+            <label class="form-label">{t("linkDetail.createdBy")}</label>
+            {link.created_via ? (
+              <div style="font-size:0.9rem;color:var(--on-bg)">{link.created_via}</div>
+            ) : (
+              <div style="font-size:0.85rem;color:var(--on-bg-muted)">&mdash;</div>
+            )}
+          </div>
           <div>
             <label class="form-label">{t("linkDetail.expiresAt")}</label>
-            <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+            <div class="inline-edit" id="expiry-display" onclick={`beginEditExpiry(${link.id})`}>
+              {link.expires_at ? (
+                <span class="inline-edit-value">
+                  {new Date(link.expires_at * 1000).toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric" })}
+                  {", "}
+                  {new Date(link.expires_at * 1000).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              ) : (
+                <span class="inline-edit-placeholder">{t("linkDetail.noExpiry")}</span>
+              )}
+              <span class="icon inline-edit-icon">edit</span>
+            </div>
+            <div class="inline-edit-form" id="expiry-form" style="display:none">
               <input
-                class="form-input"
+                class="form-input form-input-sm"
                 id="detail-expires"
                 type="datetime-local"
                 value={expVal}
                 style="width:auto"
-                oninput="document.getElementById('expiry-save-btn').disabled = !this.value"
               />
-              <button
-                class="btn btn-ghost btn-sm"
-                onclick={`clearDetailExpiry(${link.id})`}
-                disabled={!link.expires_at}
-              >
-                {t("linkDetail.clear")}
+              <button class="inline-edit-btn confirm" onclick={`saveDetailExpiry(${link.id})`}>
+                <span class="icon">check</span>
               </button>
-              <button
-                class="btn btn-secondary btn-sm"
-                id="expiry-save-btn"
-                onclick={`saveDetailExpiry(${link.id})`}
-                disabled={!expVal}
-              >
-                {t("linkDetail.save")}
+              {link.expires_at && (
+                <button
+                  class="btn btn-ghost btn-sm"
+                  style="font-size:0.75rem"
+                  onclick={`clearDetailExpiry(${link.id})`}
+                >
+                  {t("linkDetail.clear")}
+                </button>
+              )}
+              <button class="inline-edit-btn cancel" onclick="cancelEditExpiry()">
+                <span class="icon">close</span>
               </button>
             </div>
           </div>

@@ -248,6 +248,41 @@ function addVanityFromDetail(linkId) {
   });
 }
 
+// ---- Inline edit: Label ----
+function beginEditLabel() {
+  document.getElementById('label-display').style.display = 'none';
+  document.getElementById('label-form').style.display = 'flex';
+  var inp = document.getElementById('detail-label');
+  inp.focus();
+  inp.select();
+}
+
+function cancelEditLabel() {
+  document.getElementById('label-form').style.display = 'none';
+  document.getElementById('label-display').style.display = 'flex';
+}
+
+function saveDetailLabel(linkId) {
+  var val = document.getElementById('detail-label').value.trim();
+  var body = { label: val || null };
+  api('/links/' + linkId, { method: 'PUT', body: JSON.stringify(body) }).then(function(res) {
+    if (res.ok) { toast(t('client.labelUpdated')); window.location.reload(); }
+    else res.json().then(function(data) { toast(data.error || t('client.labelError'), 'error'); });
+  });
+}
+
+// ---- Inline edit: Expiry ----
+function beginEditExpiry() {
+  document.getElementById('expiry-display').style.display = 'none';
+  document.getElementById('expiry-form').style.display = 'flex';
+  document.getElementById('detail-expires').focus();
+}
+
+function cancelEditExpiry() {
+  document.getElementById('expiry-form').style.display = 'none';
+  document.getElementById('expiry-display').style.display = 'flex';
+}
+
 function saveDetailExpiry(linkId) {
   var exp = document.getElementById('detail-expires').value;
   var body = { expires_at: exp ? Math.floor(new Date(exp).getTime() / 1000) : null };
