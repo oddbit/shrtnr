@@ -31,13 +31,23 @@ It takes one click to deploy. You get a full admin UI, click analytics, a TypeSc
 
 Click the **Deploy to Cloudflare** button above. Cloudflare will fork the repo, provision a D1 database and KV namespace, and deploy the Worker.
 
-After the initial deploy finishes, apply database migrations once:
+**Important: GitHub Actions workflows are not copied when Cloudflare forks your repo.** This means the automatic migration workflow (`.github/workflows/migrate.yml`) does not exist in your fork after the initial deploy. You must set up migrations yourself. Without running migrations, the database schema will be missing and the app will not work.
+
+After the initial deploy, apply the database migrations immediately:
 
 ```bash
 cd shrtnr
 yarn install
 npx wrangler d1 migrations apply DB --remote
 ```
+
+Then, every time you pull updates and push them to your fork, re-run migrations to apply any new schema changes:
+
+```bash
+npx wrangler d1 migrations apply DB --remote
+```
+
+To automate this, copy `.github/workflows/migrate.yml` from the source repo into your fork and add the required secrets (see [Continuous deployment](#continuous-deployment) below).
 
 ### Manual
 
@@ -55,7 +65,10 @@ yarn db:migrate:remote
 
 Cloudflare [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) redeploys the Worker on every push to your production branch. Database migrations are handled separately by the included GitHub Actions workflow at `.github/workflows/migrate.yml`, which triggers when Cloudflare's check suite completes successfully.
 
-To enable automatic migrations, add two repository secrets in GitHub under **Settings > Secrets and variables > Actions**:
+**If you used one-click deploy:** Cloudflare forks the repo but does not copy GitHub Actions workflows. To get automatic migrations, copy the file manually:
+
+1. In your forked repo, create `.github/workflows/migrate.yml` with the contents from the [source repo](https://github.com/oddbit/shrtnr/blob/main/.github/workflows/migrate.yml).
+2. Add two repository secrets in GitHub under **Settings > Secrets and variables > Actions**:
 
 - `CLOUDFLARE_API_TOKEN`: a Cloudflare API token with **Workers Scripts: Edit** and **D1: Edit** permissions
 - `CLOUDFLARE_ACCOUNT_ID`: your Cloudflare account ID (visible in the dashboard URL or the right sidebar of any zone page)
