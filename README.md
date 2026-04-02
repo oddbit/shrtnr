@@ -1,4 +1,5 @@
-# shrtnr: Open-Source URL Shortener on Cloudflare Workers
+![SHRTNR. logotype](./public/logotype-white.svg)
+# Open-Source URL Shortener on Cloudflare Workers
 
 > A free, self-hosted URL shortener with click analytics, an admin dashboard, and AI integration. Runs on Cloudflare's free tier. Zero servers, zero monthly cost.
 
@@ -25,13 +26,19 @@ It takes one click to deploy. You get a full admin UI, click analytics, a TypeSc
 
 ## Deploy
 
-**Prefer someone else handle this?** [Oddbit](https://oddbit.id) built shrtnr and helps teams deploy, configure, and integrate it. [Reach out.](https://oddbit.id)
+![Oddbit logotype](https://oddbit.id/logo/oddbit-primary-logo-mint-green.png)
+**👉 Running into issues or prefer someone else handle this? 👈** 
+
+[Oddbit](https://oddbit.id) built shrtnr and helps teams deploy, configure, and integrate it. Just [reach out](https://oddbit.id) and we'll get you sorted 🤓🚀
 
 ### One-click
 
 Click the **Deploy to Cloudflare** button above. Cloudflare will fork the repo, provision a D1 database and KV namespace, and deploy the Worker.
 
-**Important: GitHub Actions workflows are not copied when Cloudflare forks your repo.** This means the automatic migration workflow (`.github/workflows/migrate.yml`) does not exist in your fork after the initial deploy. You must set up migrations yourself. Without running migrations, the database schema will be missing and the app will not work.
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/oddbit/shrtnr)
+
+
+**⚠️ Important: GitHub Actions workflows are not copied when Cloudflare forks your repo.** This means the automatic migration workflow (`.github/workflows/migrate.yml`) does not exist in your fork after the initial deploy. You must set up migrations yourself. Without running migrations, the database schema will be missing and the app will not work.
 
 After the initial deploy, apply the database migrations immediately:
 
