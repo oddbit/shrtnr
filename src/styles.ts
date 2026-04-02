@@ -248,10 +248,6 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--on-bg)
 .detail-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.4rem; }
 .detail-grid .bento-card { margin-bottom: 0; }
 
-/* QR */
-.qr-wrap { display: flex; justify-content: center; padding: 1rem; }
-.qr-wrap img { border-radius: var(--radius); }
-
 /* Settings bar */
 .settings-inline { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.25rem; background: var(--surface); border-radius: var(--radius-lg); margin-bottom: 1.4rem; }
 .settings-inline .form-label { margin: 0; }
