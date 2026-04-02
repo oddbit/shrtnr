@@ -124,6 +124,10 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--on-bg)
 .nav-item:hover { color: var(--on-bg); background: var(--surface); }
 .nav-item.active { color: var(--secondary); background: var(--secondary-container); }
 .sidebar-footer { margin-top: auto; display: flex; flex-direction: column; gap: 0.75rem; }
+.sidebar-user { border-top: 1px solid var(--border); padding: 0.75rem 0.5rem 0; }
+.sidebar-user-email { font-size: 0.75rem; color: var(--on-bg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-logout { display: inline-flex; align-items: center; font-size: 0.7rem; color: var(--on-bg-muted); text-decoration: none; margin-top: 0.4rem; opacity: 0.7; transition: opacity 0.2s, color 0.2s; }
+.sidebar-logout:hover { opacity: 1; color: var(--on-bg); }
 .sidebar-oddbit { text-align: center; padding: 0.75rem 0 0.25rem; }
 .sidebar-oddbit a { display: inline-block; opacity: 0.5; transition: opacity 0.2s; color: var(--on-bg-muted); }
 .sidebar-oddbit a:hover { opacity: 0.8; }

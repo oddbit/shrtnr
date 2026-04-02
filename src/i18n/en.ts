@@ -10,6 +10,8 @@ const en = {
   "nav.apiKeys": "API Keys",
   "nav.settings": "Settings",
   "nav.openNavigation": "Open navigation",
+  "nav.logout": "Log out",
+  "nav.signedInAs": "Signed in as",
 
   // Dashboard
   "dashboard.title": "Dashboard",

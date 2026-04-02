@@ -13,6 +13,9 @@ export interface Env {
   ACCESS_JWKS_URL: string;
   COOKIE_ENCRYPTION_KEY: string;
 
+  // Cloudflare Access JWT audience tag for admin routes
+  ACCESS_AUD: string;
+
   // Durable Object binding for MCP agent
   MCP_OBJECT: DurableObjectNamespace;
 }

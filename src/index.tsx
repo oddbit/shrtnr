@@ -3,6 +3,7 @@
 
 import { Hono } from "hono";
 import type { Env } from "./types";
+import { verifyAccessJwt, type AccessUser } from "./access";
 import { handleRedirect } from "./redirect";
 import { unauthorizedResponse } from "./auth";
 import {
@@ -56,6 +57,7 @@ type HonoEnv = {
   Bindings: Env;
   Variables: {
     auth: AuthContext;
+    user: AccessUser | null;
   };
 };
 
@@ -64,6 +66,36 @@ const app = new Hono<HonoEnv>();
 // ---- Health check (public) ----
 
 app.get("/_/health", () => handleHealth());
+
+// ---- Admin auth middleware ----
+
+app.use("/_/admin/*", async (c, next) => {
+  const user = await verifyAccessJwt(c.req.raw, c.env);
+  // When ACCESS_AUD is configured, reject unauthenticated requests
+  if (c.env.ACCESS_AUD && !user) {
+    return c.text("Unauthorized", 403);
+  }
+  c.set("user", user);
+  await next();
+});
+
+// ---- Admin logout ----
+
+app.get("/_/admin/logout", (c) => {
+  const teamDomain = c.env.ACCESS_JWKS_URL
+    ? new URL(c.env.ACCESS_JWKS_URL).origin
+    : null;
+  const logoutUrl = teamDomain
+    ? `${teamDomain}/cdn-cgi/access/logout`
+    : "/_/admin/dashboard";
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: logoutUrl,
+      "Set-Cookie": "CF_Authorization=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+    },
+  });
+});
 
 // ---- Admin page helpers ----
 
@@ -89,8 +121,9 @@ async function getPageData(c: { env: Env; req: { raw: Request } }) {
 app.get("/_/admin/dashboard", async (c) => {
   const { db, theme, t, lang, translations } = await getPageData(c);
   const stats = await getDashboardStats(db);
+  const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="dashboard" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="dashboard" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
       <DashboardPage stats={stats} t={t} lang={lang} />
     </Layout>,
   );
@@ -103,8 +136,9 @@ app.get("/_/admin/links", async (c) => {
   const page = parseInt(c.req.query("page") || "1", 10) || 1;
   const perPage = parseInt(c.req.query("per_page") || "25", 10) || 25;
   const showDisabled = c.req.query("show_disabled") === "1";
+  const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="links" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="links" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
       <LinksPage
         links={links}
         sort={sort}
@@ -125,8 +159,9 @@ app.get("/_/admin/links/:id", async (c) => {
   const link = await getLinkById(db, id);
   if (!link) return notFoundResponse();
   const analytics = await getLinkClickStats(db, id);
+  const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="links" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="links" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
       <LinkDetailPage link={link} analytics={analytics} t={t} lang={lang} />
     </Layout>,
   );
@@ -135,8 +170,9 @@ app.get("/_/admin/links/:id", async (c) => {
 app.get("/_/admin/keys", async (c) => {
   const { db, theme, t, lang, translations } = await getPageData(c);
   const keys = await getAllApiKeys(db);
+  const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="keys" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="keys" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
       <KeysPage keys={keys} t={t} lang={lang} />
     </Layout>,
   );
@@ -152,8 +188,9 @@ app.get("/_/admin/settings", async (c) => {
     c.env.ACCESS_JWKS_URL &&
     c.env.COOKIE_ENCRYPTION_KEY,
   );
+  const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="settings" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="settings" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
       <SettingsPage theme={theme} slugLength={slugLength} lang={lang} t={t} mcpConfigured={mcpConfigured} />
     </Layout>,
   );

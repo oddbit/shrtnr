@@ -15,6 +15,7 @@ type LayoutProps = {
   lang?: string;
   t: TranslateFn;
   translations: Translations;
+  userEmail?: string | null;
 };
 
 export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
@@ -23,6 +24,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
   lang,
   t,
   translations,
+  userEmail,
   children,
 }) => {
   const year = new Date().getFullYear();
@@ -85,6 +87,18 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
             ))}
           </div>
           <div class="sidebar-footer">
+            {userEmail && (
+              <div class="sidebar-user">
+                <div class="sidebar-user-email" title={userEmail}>
+                  <span class="icon" style="font-size:16px;vertical-align:-3px;margin-right:0.35rem">person</span>
+                  {userEmail}
+                </div>
+                <a href="/_/admin/logout" class="sidebar-logout">
+                  <span class="icon" style="font-size:14px;vertical-align:-2px;margin-right:0.25rem">logout</span>
+                  {t("nav.logout")}
+                </a>
+              </div>
+            )}
             <div class="sidebar-oddbit">
               <a
                 href="https://oddbit.id"
