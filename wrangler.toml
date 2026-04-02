@@ -27,8 +27,3 @@ class_name = "ShrtnrMCP"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["ShrtnrMCP"]
-
-# Cloudflare Access audience tag for admin route JWT validation.
-# Set via: wrangler secret put ACCESS_AUD
-# Find this value in the Cloudflare Zero Trust dashboard under
-# Access > Applications > your app > Overview > Application Audience (AUD) Tag.
