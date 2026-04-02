@@ -8,13 +8,13 @@ import type { Env } from "../types";
 import type { Props } from "./oauth-types";
 import { handleHealth } from "../api/health";
 import {
-  listManagedLinks,
-  getManagedLink,
-  createManagedLink,
-  updateManagedLink,
-  disableManagedLink,
+  listLinks,
+  getLink,
+  createLink,
+  updateLink,
+  disableLink,
   addVanitySlugToLink,
-  getManagedLinkAnalytics,
+  getLinkAnalytics,
 } from "../services/link-management";
 import { renderQrSvg } from "../qr";
 import { dbGetLinkById } from "../db";
@@ -52,7 +52,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "List all short links with their slugs and click counts",
       {},
       async () => {
-        const result = await listManagedLinks(this.env);
+        const result = await listLinks(this.env);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -65,7 +65,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         link_id: z.number().int().positive().describe("Numeric ID of the link"),
       },
       async ({ link_id }) => {
-        const result = await getManagedLink(this.env, link_id);
+        const result = await getLink(this.env, link_id);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -82,7 +82,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         expires_at: z.number().int().optional().describe("Unix timestamp when the link expires"),
       },
       async (opts) => {
-        const result = await createManagedLink(this.env, { ...opts, created_via: "mcp" });
+        const result = await createLink(this.env, { ...opts, created_via: "mcp" });
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -98,7 +98,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         expires_at: z.number().int().nullable().optional().describe("New expiry Unix timestamp (null removes it)"),
       },
       async ({ link_id, ...opts }) => {
-        const result = await updateManagedLink(this.env, link_id, opts);
+        const result = await updateLink(this.env, link_id, opts);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -111,7 +111,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         link_id: z.number().int().positive().describe("Numeric ID of the link to disable"),
       },
       async ({ link_id }) => {
-        const result = await disableManagedLink(this.env, link_id);
+        const result = await disableLink(this.env, link_id);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -138,7 +138,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         link_id: z.number().int().positive().describe("Numeric ID of the link"),
       },
       async ({ link_id }) => {
-        const result = await getManagedLinkAnalytics(this.env, link_id);
+        const result = await getLinkAnalytics(this.env, link_id);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },

@@ -2,17 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-  dbAddVanitySlug as dbAddVanitySlug,
-  dbCreateLink as dbCreateLink,
-  dbDisableLink as dbDisableLink,
+  dbAddVanitySlug,
+  dbCreateLink,
+  dbDisableLink,
   dbGetAllLinks,
-  dbGetDashboardStats as dbGetDashboardStats,
+  dbGetDashboardStats,
   dbGetLinkById,
-  dbGetLinkBySlug as dbGetLinkBySlug,
+  dbGetLinkBySlug,
   dbGetLinkClickStats,
   dbGetSetting,
   dbSlugExists,
-  dbUpdateLink as dbUpdateLink,
+  dbUpdateLink,
 } from "../db";
 import { DEFAULT_SLUG_LENGTH } from "../constants";
 import { generateUniqueSlug, validateSlugLength, validateVanitySlug } from "../slugs";
@@ -27,23 +27,23 @@ function fail<T>(status: number, error: string): ServiceResult<T> {
   return { ok: false, status, error };
 }
 
-export async function listManagedLinks(env: Env): Promise<ServiceResult<LinkWithSlugs[]>> {
+export async function listLinks(env: Env): Promise<ServiceResult<LinkWithSlugs[]>> {
   return ok(await dbGetAllLinks(env.DB));
 }
 
-export async function getManagedLink(env: Env, id: number): Promise<ServiceResult<LinkWithSlugs>> {
+export async function getLink(env: Env, id: number): Promise<ServiceResult<LinkWithSlugs>> {
   const link = await dbGetLinkById(env.DB, id);
   if (!link) return fail(404, "Link not found");
   return ok(link);
 }
 
-export async function getManagedLinkBySlug(env: Env, slug: string): Promise<ServiceResult<LinkWithSlugs>> {
-  const link = await getLinkBySlug(env.DB, slug);
+export async function getLinkBySlug(env: Env, slug: string): Promise<ServiceResult<LinkWithSlugs>> {
+  const link = await dbGetLinkBySlug(env.DB, slug);
   if (!link) return fail(404, "Link not found");
   return ok(link);
 }
 
-export async function createManagedLink(
+export async function createLink(
   env: Env,
   body: { url?: string; label?: string; slug_length?: number; vanity_slug?: string; expires_at?: number; created_via?: string; created_by?: string }
 ): Promise<ServiceResult<LinkWithSlugs>> {
@@ -88,11 +88,11 @@ export async function createManagedLink(
     return fail(500, (e as Error).message);
   }
 
-  const link = await createLink(env.DB, body.url, slug, body.label, body.vanity_slug, body.expires_at, body.created_via, body.created_by);
+  const link = await dbCreateLink(env.DB, body.url, slug, body.label, body.vanity_slug, body.expires_at, body.created_via, body.created_by);
   return ok(link, 201);
 }
 
-export async function updateManagedLink(
+export async function updateLink(
   env: Env,
   id: number,
   body: { url?: string; label?: string | null; expires_at?: number | null }
@@ -108,13 +108,13 @@ export async function updateManagedLink(
     }
   }
 
-  const link = await updateLink(env.DB, id, body);
+  const link = await dbUpdateLink(env.DB, id, body);
   if (!link) return fail(404, "Link not found");
   return ok(link);
 }
 
-export async function disableManagedLink(env: Env, id: number): Promise<ServiceResult<LinkWithSlugs>> {
-  const link = await disableLink(env.DB, id);
+export async function disableLink(env: Env, id: number): Promise<ServiceResult<LinkWithSlugs>> {
+  const link = await dbDisableLink(env.DB, id);
   if (!link) return fail(404, "Link not found");
   return ok(link);
 }
@@ -142,16 +142,16 @@ export async function addVanitySlugToLink(
     return fail(409, "Slug already exists");
   }
 
-  const slug = await addVanitySlug(env.DB, linkId, body.slug);
+  const slug = await dbAddVanitySlug(env.DB, linkId, body.slug);
   return ok(slug, 201);
 }
 
-export async function getManagedLinkAnalytics(env: Env, linkId: number): Promise<ServiceResult<ClickStats>> {
+export async function getLinkAnalytics(env: Env, linkId: number): Promise<ServiceResult<ClickStats>> {
   const link = await dbGetLinkById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
   return ok(await dbGetLinkClickStats(env.DB, linkId));
 }
 
-export async function getManagedDashboardStats(env: Env): Promise<ServiceResult<DashboardStats>> {
-  return ok(await getDashboardStats(env.DB));
+export async function getDashboardStats(env: Env): Promise<ServiceResult<DashboardStats>> {
+  return ok(await dbGetDashboardStats(env.DB));
 }

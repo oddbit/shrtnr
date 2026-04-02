@@ -5,13 +5,13 @@ import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { env, SELF } from "cloudflare:test";
 import { applyMigrations, resetData } from "./setup";
 import {
-  listManagedLinks,
-  createManagedLink,
-  getManagedLink,
-  updateManagedLink,
-  disableManagedLink,
+  listLinks,
+  createLink,
+  getLink,
+  updateLink,
+  disableLink,
   addVanitySlugToLink,
-  getManagedLinkAnalytics,
+  getLinkAnalytics,
 } from "../services/link-management";
 
 beforeAll(applyMigrations);
@@ -151,7 +151,7 @@ describe("OAuth discovery", () => {
 
 describe("MCP tool behavior (service layer)", () => {
   it("create_link creates a short link", async () => {
-    const result = await createManagedLink(env as never, {
+    const result = await createLink(env as never, {
       url: "https://example.com/test",
     });
     expect(result.ok).toBe(true);
@@ -162,10 +162,10 @@ describe("MCP tool behavior (service layer)", () => {
   });
 
   it("list_links returns created links", async () => {
-    await createManagedLink(env as never, {
+    await createLink(env as never, {
       url: "https://example.com/listed",
     });
-    const result = await listManagedLinks(env as never);
+    const result = await listLinks(env as never);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.length).toBeGreaterThan(0);
@@ -174,13 +174,13 @@ describe("MCP tool behavior (service layer)", () => {
   });
 
   it("get_link returns a specific link", async () => {
-    const created = await createManagedLink(env as never, {
+    const created = await createLink(env as never, {
       url: "https://example.com/detail",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const result = await getManagedLink(env as never, created.data.id);
+    const result = await getLink(env as never, created.data.id);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.url).toBe("https://example.com/detail");
@@ -188,13 +188,13 @@ describe("MCP tool behavior (service layer)", () => {
   });
 
   it("update_link modifies a link", async () => {
-    const created = await createManagedLink(env as never, {
+    const created = await createLink(env as never, {
       url: "https://example.com/original",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const result = await updateManagedLink(env as never, created.data.id, {
+    const result = await updateLink(env as never, created.data.id, {
       url: "https://example.com/updated",
     });
     expect(result.ok).toBe(true);
@@ -204,13 +204,13 @@ describe("MCP tool behavior (service layer)", () => {
   });
 
   it("disable_link disables a link", async () => {
-    const created = await createManagedLink(env as never, {
+    const created = await createLink(env as never, {
       url: "https://example.com/disable-me",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const result = await disableManagedLink(env as never, created.data.id);
+    const result = await disableLink(env as never, created.data.id);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.expires_at).toBeDefined();
@@ -219,7 +219,7 @@ describe("MCP tool behavior (service layer)", () => {
   });
 
   it("add_vanity_slug adds a custom slug", async () => {
-    const created = await createManagedLink(env as never, {
+    const created = await createLink(env as never, {
       url: "https://example.com/vanity",
     });
     expect(created.ok).toBe(true);
@@ -235,13 +235,13 @@ describe("MCP tool behavior (service layer)", () => {
   });
 
   it("get_link_analytics returns click stats", async () => {
-    const created = await createManagedLink(env as never, {
+    const created = await createLink(env as never, {
       url: "https://example.com/analytics",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const result = await getManagedLinkAnalytics(env as never, created.data.id);
+    const result = await getLinkAnalytics(env as never, created.data.id);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.total_clicks).toBe(0);

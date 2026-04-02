@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { env, SELF } from "cloudflare:test";
 import { applyMigrations, resetData } from "./setup";
 import { dbCreateLink, dbRecordClick, dbGetLinkClickStats } from "../db";
-import { createManagedLink } from "../services/link-management";
+import { createLink } from "../services/link-management";
 import { makeQR, renderQrSvg } from "../qr";
 
 function makeJwt(email: string): string {
@@ -131,7 +131,7 @@ describe("created_via tracking", () => {
   });
 
   it("createManagedLink passes created_via through", async () => {
-    const result = await createManagedLink(env as any, {
+    const result = await createLink(env as any, {
       url: "https://example.com",
       created_via: "mcp",
     });

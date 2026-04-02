@@ -3,25 +3,25 @@
 
 import { Env } from "../types";
 import {
-  createManagedLink,
-  disableManagedLink,
-  getManagedLink,
-  getManagedLinkBySlug,
-  listManagedLinks,
-  updateManagedLink,
+  createLink,
+  disableLink,
+  getLink,
+  getLinkBySlug,
+  listLinks,
+  updateLink,
 } from "../services/link-management";
 import { json, fromServiceResult } from "./response";
 
 export async function handleListLinks(env: Env): Promise<Response> {
-  return fromServiceResult(await listManagedLinks(env));
+  return fromServiceResult(await listLinks(env));
 }
 
 export async function handleGetLink(env: Env, id: number): Promise<Response> {
-  return fromServiceResult(await getManagedLink(env, id));
+  return fromServiceResult(await getLink(env, id));
 }
 
 export async function handleGetLinkBySlug(env: Env, slug: string): Promise<Response> {
-  return fromServiceResult(await getManagedLinkBySlug(env, slug));
+  return fromServiceResult(await getLinkBySlug(env, slug));
 }
 
 export async function handleCreateLink(request: Request, env: Env, createdVia?: string, createdBy?: string): Promise<Response> {
@@ -39,7 +39,7 @@ export async function handleCreateLink(request: Request, env: Env, createdVia?: 
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  return fromServiceResult(await createManagedLink(env, { ...body, created_via: createdVia, created_by: createdBy }));
+  return fromServiceResult(await createLink(env, { ...body, created_via: createdVia, created_by: createdBy }));
 }
 
 export async function handleUpdateLink(request: Request, env: Env, id: number): Promise<Response> {
@@ -51,9 +51,9 @@ export async function handleUpdateLink(request: Request, env: Env, id: number): 
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  return fromServiceResult(await updateManagedLink(env, id, body));
+  return fromServiceResult(await updateLink(env, id, body));
 }
 
 export async function handleDisableLink(env: Env, id: number): Promise<Response> {
-  return fromServiceResult(await disableManagedLink(env, id));
+  return fromServiceResult(await disableLink(env, id));
 }
