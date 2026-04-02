@@ -1167,6 +1167,57 @@ describe("API Key Authentication", () => {
     );
     expect(res.status).toBe(403);
   });
+
+  it("GET /_/api/slugs/:slug should return link details", async () => {
+    // 1. Create a link
+    const createLinkRes = await SELF.fetch(
+      authed("/_/admin/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com", vanity_slug: "find-me" }),
+      })
+    );
+    const link = await createLinkRes.json() as any;
+
+    // 2. Create a key
+    const keyRes = await SELF.fetch(
+      authed("/_/admin/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Reader", scope: "read" }),
+      })
+    );
+    const { raw_key } = await keyRes.json() as any;
+
+    // 3. Get link by slug
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/api/slugs/find-me", {
+        headers: { "Authorization": `Bearer ${raw_key}` },
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.id).toBe(link.id);
+    expect(body.url).toBe("https://example.com");
+  });
+
+  it("GET /_/api/slugs/:slug should return 404 for non-existent slug", async () => {
+    const keyRes = await SELF.fetch(
+      authed("/_/admin/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Reader", scope: "read" }),
+      })
+    );
+    const { raw_key } = await keyRes.json() as any;
+
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/api/slugs/no-such-slug", {
+        headers: { "Authorization": `Bearer ${raw_key}` },
+      })
+    );
+    expect(res.status).toBe(404);
+  });
 });
 
 // ---- Vanity Slug Redirect ----

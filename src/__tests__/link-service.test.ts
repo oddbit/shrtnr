@@ -5,6 +5,7 @@ import {
   addVanitySlugToLink,
   createLink,
   getLink,
+  getLinkBySlug,
   updateLink,
 } from "../services/link-management";
 import { dbSetSetting } from "../db";
@@ -138,6 +139,30 @@ describe("link-management service", () => {
     expect(updated.ok).toBe(true);
     if (updated.ok) {
       expect(updated.data.label).toBe("Updated");
+    }
+  });
+
+  it("can get a link by its slug", async () => {
+    const created = await createLink(env as any, {
+      url: "https://example.com",
+      vanity_slug: "my-custom-slug",
+    });
+    expect(created.ok).toBe(true);
+
+    const fetched = await getLinkBySlug(env as any, "my-custom-slug");
+    expect(fetched.ok).toBe(true);
+    if (fetched.ok) {
+      expect(fetched.data.url).toBe("https://example.com");
+      expect(fetched.data.id).toBe(created.ok ? created.data.id : -1);
+    }
+  });
+
+  it("returns 404 for non-existent slug", async () => {
+    const fetched = await getLinkBySlug(env as any, "non-existent");
+    expect(fetched.ok).toBe(false);
+    if (!fetched.ok) {
+      expect(fetched.status).toBe(404);
+      expect(fetched.error).toBe("Link not found");
     }
   });
 });

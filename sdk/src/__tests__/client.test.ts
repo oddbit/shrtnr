@@ -165,6 +165,27 @@ describe("addVanitySlug", () => {
   });
 });
 
+describe("getLinkBySlug", () => {
+  it("should GET /_/api/slugs/:slug", async () => {
+    const client = new ShrtnrClient({ baseUrl: BASE, auth: { apiKey: "sk_test" } });
+    const link = { id: 7, url: "https://example.com", slugs: [{ slug: "find-me" }], total_clicks: 0 };
+    mockFetch(200, link);
+    const result = await client.getLinkBySlug("find-me");
+    expect(result.id).toBe(7);
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe(BASE + "/_/api/slugs/find-me");
+    expect(init.method).toBe("GET");
+  });
+
+  it("should encode slug in URL", async () => {
+    const client = new ShrtnrClient({ baseUrl: BASE, auth: { apiKey: "sk_test" } });
+    mockFetch(200, {});
+    await client.getLinkBySlug("foo/bar");
+    const [url] = fetchSpy.mock.calls[0];
+    expect(url).toBe(BASE + "/_/api/slugs/foo%2Fbar");
+  });
+});
+
 // ---- Base URL handling ----
 
 describe("Base URL normalization", () => {

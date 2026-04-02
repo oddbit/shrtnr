@@ -70,6 +70,14 @@ Get a single link by ID, including its slugs and click count.
 const link = await client.getLink(123);
 ```
 
+### `getLinkBySlug`
+
+Get a single link by its short URL slug (including vanity slugs).
+
+```ts
+const link = await client.getLinkBySlug("my-custom-slug");
+```
+
 ### `updateLink`
 
 Update a link's URL, label, or expiry.

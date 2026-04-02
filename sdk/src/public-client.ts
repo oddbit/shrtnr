@@ -45,6 +45,10 @@ export class ShrtnrClient extends ShrtnrBaseClient {
     return this.request("POST", `/_/api/links/${linkId}/slugs`, { slug });
   }
 
+  async getLinkBySlug(slug: string): Promise<Link> {
+    return this.request("GET", `/_/api/slugs/${encodeURIComponent(slug)}`);
+  }
+
   async getLinkAnalytics(linkId: number): Promise<ClickStats> {
     return this.request("GET", `/_/api/links/${linkId}/analytics`);
   }

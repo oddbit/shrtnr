@@ -23,6 +23,7 @@ import {
   handleCreateLink,
   handleUpdateLink,
   handleDisableLink,
+  handleGetLinkBySlug,
 } from "./api/links";
 import { handleAddVanitySlug } from "./api/slugs";
 import { handleGetSettings, handleUpdateSettings } from "./api/settings";
@@ -324,6 +325,10 @@ app.get("/_/api/links/:id/qr", (c) => {
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
   if (!hasScope(c.var.auth, "read")) return forbiddenResponse();
   return handleLinkQr(c.req.raw, c.env, id);
+});
+app.get("/_/api/slugs/:slug", (c) => {
+  if (!hasScope(c.var.auth, "read")) return forbiddenResponse();
+  return handleGetLinkBySlug(c.env, c.req.param("slug"));
 });
 
 // ---- Root redirect ----
