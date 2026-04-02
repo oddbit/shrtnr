@@ -99,7 +99,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
         </div>
       </div>
 
-      <div class="detail-hero" style="display:grid;grid-template-columns:1fr auto auto auto;gap:0;align-items:stretch">
+      <div class="detail-hero" style="display:grid;grid-template-columns:1fr auto auto;gap:0;align-items:stretch">
         <div style="min-width:0;padding-right:2rem;display:flex;flex-direction:column;justify-content:center">
           {isExpired && (
             <div style="display:inline-block;background:var(--danger);color:var(--on-danger);font-size:0.7rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:var(--radius);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em">
@@ -119,6 +119,12 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
               onclick={`copyUrl('${escHtml(displaySlug)}')`}
             >
               <span class="icon">content_copy</span> {t("linkDetail.copy")}
+            </button>
+            <button
+              class="btn btn-ghost btn-sm"
+              onclick={`showQRModal(${link.id}, '${escHtml(displaySlug)}')`}
+            >
+              <span class="icon">qr_code_2</span> {t("linkDetail.qr")}
             </button>
             {vanitySlug && (
               <>
@@ -214,14 +220,6 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
               </button>
             </div>
           </div>
-        </div>
-
-        <div style="border-left:1px solid var(--border);padding-left:1.5rem;display:flex;align-items:center;justify-content:center">
-          <img
-            src={`/_/admin/api/links/${link.id}/qr?slug=${encodeURIComponent(displaySlug)}`}
-            alt="QR code"
-            style="width:110px;height:110px;border-radius:var(--radius);display:block"
-          />
         </div>
       </div>
 
