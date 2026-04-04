@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.15.0
+
+### Repository and service layer refactor
+
+- `LinkRepository` and `SlugRepository` replace the previous flat database functions. All database access goes through these classes.
+- Service functions are updated to call repository methods directly, removing the intermediate managed-service naming layer.
+- `getLinkBySlug` is exposed as a standalone repository query.
+- `wrangler.jsonc` replaces `wrangler.toml` as the config file format.
+
+### Link search
+
+- `LinkRepository.search()` queries links by label or slug substring, case-insensitive.
+- `searchLinks()` service function wraps the repository call.
+- `search_links` MCP tool lets AI clients find links by name, topic, or slug keyword.
+
 ## 0.14.0
 
 ### Per-user identity
