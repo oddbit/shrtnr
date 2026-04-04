@@ -106,4 +106,26 @@ export class LinkRepository {
     await db.prepare("UPDATE links SET expires_at = ? WHERE id = ?").bind(now, id).run();
     return LinkRepository.getById(db, id);
   }
+
+  static async search(db: D1Database, query: string): Promise<LinkWithSlugs[]> {
+    if (!query.trim()) return [];
+
+    const pattern = `%${query.trim().toLowerCase()}%`;
+
+    const matched = await db
+      .prepare(
+        `SELECT DISTINCT l.id FROM links l
+         LEFT JOIN slugs s ON s.link_id = l.id
+         WHERE lower(l.label) LIKE ? OR lower(s.slug) LIKE ?
+         ORDER BY l.created_at DESC`,
+      )
+      .bind(pattern, pattern)
+      .all<{ id: number }>();
+
+    const ids = matched.results ?? [];
+    if (ids.length === 0) return [];
+
+    const results = await Promise.all(ids.map(({ id }) => LinkRepository.getById(db, id)));
+    return results.filter((l): l is LinkWithSlugs => l !== null);
+  }
 }

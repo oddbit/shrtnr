@@ -15,6 +15,7 @@ import {
   disableLink,
   addVanitySlugToLink,
   getLinkAnalytics,
+  searchLinks,
 } from "../services/link-management";
 import { renderQrSvg } from "../qr";
 import pkg from "../../package.json";
@@ -140,6 +141,20 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         const result = await getLinkAnalytics(this.env, link_id);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
+      },
+    );
+
+    this.server.tool(
+      "search_links",
+      "Search for short links by label or slug. Returns all links whose label or any slug contains the query string. Use this to find links by name, topic, or slug keyword — e.g. 'oddbit website', 'pricing', or 'newsletter'.",
+      {
+        query: z.string().describe("Search term to match against link labels and slugs"),
+      },
+      async ({ query }) => {
+        const result = await searchLinks(this.env, query);
+        if (!result.ok) return fail(result.error);
+        if (result.data.length === 0) return ok({ results: [], message: "No links found matching that query." });
+        return ok({ results: result.data, count: result.data.length });
       },
     );
 

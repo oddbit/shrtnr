@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "./setup";
-import { LinkRepository } from "../db";
+import { LinkRepository, SlugRepository } from "../db";
 
 beforeAll(applyMigrations);
 beforeEach(resetData);
@@ -174,5 +174,96 @@ describe("LinkRepository.disable", () => {
 
   it("returns null for a non-existent link", async () => {
     expect(await LinkRepository.disable(env.DB, 99999)).toBeNull();
+  });
+});
+
+describe("LinkRepository.search", () => {
+  it("finds a link by label substring", async () => {
+    await LinkRepository.create(env.DB, { url: "https://oddbit.id", slug: "aaa", label: "Oddbit website" });
+    await LinkRepository.create(env.DB, { url: "https://example.com", slug: "bbb", label: "Some other site" });
+
+    const results = await LinkRepository.search(env.DB, "oddbit");
+
+    expect(results).toHaveLength(1);
+    expect(results[0].label).toBe("Oddbit website");
+  });
+
+  it("finds a link by slug substring", async () => {
+    await LinkRepository.create(env.DB, { url: "https://oddbit.id/pricing", slug: "pricing-page" });
+    await LinkRepository.create(env.DB, { url: "https://example.com", slug: "unrelated" });
+
+    const results = await LinkRepository.search(env.DB, "pricing");
+
+    expect(results).toHaveLength(1);
+    expect(results[0].url).toBe("https://oddbit.id/pricing");
+  });
+
+  it("finds a link when query matches the vanity slug", async () => {
+    await LinkRepository.create(env.DB, { url: "https://oddbit.id", slug: "abc", vanitySlug: "oddbit-home" });
+
+    const results = await LinkRepository.search(env.DB, "oddbit-home");
+
+    expect(results).toHaveLength(1);
+    expect(results[0].url).toBe("https://oddbit.id");
+  });
+
+  it("returns multiple links when several match", async () => {
+    await LinkRepository.create(env.DB, { url: "https://oddbit.id", slug: "aaa", label: "Oddbit website" });
+    await LinkRepository.create(env.DB, { url: "https://oddbit.id/blog", slug: "oddbit-blog" });
+
+    const results = await LinkRepository.search(env.DB, "oddbit");
+
+    expect(results).toHaveLength(2);
+  });
+
+  it("is case-insensitive for labels", async () => {
+    await LinkRepository.create(env.DB, { url: "https://oddbit.id", slug: "aaa", label: "Oddbit Website" });
+
+    const lower = await LinkRepository.search(env.DB, "oddbit website");
+    const upper = await LinkRepository.search(env.DB, "ODDBIT WEBSITE");
+
+    expect(lower).toHaveLength(1);
+    expect(upper).toHaveLength(1);
+  });
+
+  it("is case-insensitive for slugs", async () => {
+    await LinkRepository.create(env.DB, { url: "https://oddbit.id", slug: "newsletter-q1" });
+
+    const results = await LinkRepository.search(env.DB, "NEWSLETTER");
+
+    expect(results).toHaveLength(1);
+  });
+
+  it("returns empty array when nothing matches", async () => {
+    await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc", label: "Some page" });
+
+    const results = await LinkRepository.search(env.DB, "xyzzy-no-match");
+
+    expect(results).toHaveLength(0);
+  });
+
+  it("returns empty array for a blank query", async () => {
+    await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+
+    expect(await LinkRepository.search(env.DB, "")).toHaveLength(0);
+    expect(await LinkRepository.search(env.DB, "   ")).toHaveLength(0);
+  });
+
+  it("returns results with all slugs attached", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://oddbit.id", slug: "aaa", vanitySlug: "oddbit-home" });
+    await SlugRepository.addVanity(env.DB, link.id, "ob-home");
+
+    const results = await LinkRepository.search(env.DB, "oddbit");
+
+    expect(results[0].slugs.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("does not return duplicate links when multiple slugs match the query", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://oddbit.id", slug: "oddbit-1" });
+    await SlugRepository.addVanity(env.DB, link.id, "oddbit-2");
+
+    const results = await LinkRepository.search(env.DB, "oddbit");
+
+    expect(results).toHaveLength(1);
   });
 });

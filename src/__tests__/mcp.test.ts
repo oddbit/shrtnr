@@ -12,6 +12,7 @@ import {
   disableLink,
   addVanitySlugToLink,
   getLinkAnalytics,
+  searchLinks,
 } from "../services/link-management";
 
 beforeAll(applyMigrations);
@@ -246,6 +247,71 @@ describe("MCP tool behavior (service layer)", () => {
     if (result.ok) {
       expect(result.data.total_clicks).toBe(0);
       expect(result.data.countries).toEqual([]);
+    }
+  });
+
+  it("search_links finds a link by label", async () => {
+    await createLink(env as never, { url: "https://oddbit.id", label: "Oddbit website" });
+    await createLink(env as never, { url: "https://example.com", label: "Unrelated page" });
+
+    const result = await searchLinks(env as never, "oddbit");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].label).toBe("Oddbit website");
+    }
+  });
+
+  it("search_links finds a link by slug", async () => {
+    await createLink(env as never, { url: "https://oddbit.id/pricing", vanity_slug: "pricing-page" });
+    await createLink(env as never, { url: "https://example.com" });
+
+    const result = await searchLinks(env as never, "pricing");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].url).toBe("https://oddbit.id/pricing");
+    }
+  });
+
+  it("search_links returns all slugs on matched links", async () => {
+    await createLink(env as never, {
+      url: "https://oddbit.id",
+      label: "Oddbit website",
+      vanity_slug: "oddbit-home",
+    });
+
+    const result = await searchLinks(env as never, "oddbit");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data[0].slugs.length).toBeGreaterThanOrEqual(2);
+      const slugNames = result.data[0].slugs.map((s) => s.slug);
+      expect(slugNames).toContain("oddbit-home");
+    }
+  });
+
+  it("search_links returns empty array when no match", async () => {
+    await createLink(env as never, { url: "https://example.com", label: "Some page" });
+
+    const result = await searchLinks(env as never, "xyzzy-no-match");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(0);
+    }
+  });
+
+  it("search_links returns empty array for blank query", async () => {
+    await createLink(env as never, { url: "https://example.com" });
+
+    const result = await searchLinks(env as never, "");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(0);
     }
   });
 });

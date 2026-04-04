@@ -166,3 +166,43 @@ describe("link-management service", () => {
     }
   });
 });
+
+describe("searchLinks service", () => {
+  it("returns links matching a label query", async () => {
+    await createLink(env as any, { url: "https://oddbit.id", label: "Oddbit website" });
+    await createLink(env as any, { url: "https://example.com", label: "Some other site" });
+
+    const { searchLinks } = await import("../services/link-management");
+    const result = await searchLinks(env as any, "oddbit");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].label).toBe("Oddbit website");
+    }
+  });
+
+  it("returns links matching a slug query", async () => {
+    await createLink(env as any, { url: "https://oddbit.id/pricing", vanity_slug: "pricing-page" });
+
+    const { searchLinks } = await import("../services/link-management");
+    const result = await searchLinks(env as any, "pricing");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(1);
+    }
+  });
+
+  it("returns empty array for a blank query", async () => {
+    await createLink(env as any, { url: "https://example.com" });
+
+    const { searchLinks } = await import("../services/link-management");
+    const result = await searchLinks(env as any, "");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(0);
+    }
+  });
+});

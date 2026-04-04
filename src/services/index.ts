@@ -11,6 +11,7 @@ export {
   addVanitySlugToLink,
   getLinkAnalytics,
   getDashboardStats,
+  searchLinks,
   findSlugForRedirect,
   recordClick,
 } from "./link-management";

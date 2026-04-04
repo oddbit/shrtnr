@@ -153,6 +153,10 @@ export async function findSlugForRedirect(
   return SlugRepository.findByValue(env.DB, slug);
 }
 
+export async function searchLinks(env: Env, query: string): Promise<ServiceResult<LinkWithSlugs[]>> {
+  return ok(await LinkRepository.search(env.DB, query));
+}
+
 export async function recordClick(
   env: Env,
   slugId: number,
