@@ -68,7 +68,6 @@ export interface CreateLinkOptions {
   url: string;
   label?: string;
   slug_length?: number;
-  custom_slug?: string;
   expires_at?: number;
 }
 

@@ -45,7 +45,7 @@ describe("Error handling", () => {
     const client = new ShrtnrClient({ baseUrl: BASE, auth: { apiKey: "sk_abc" } });
     mockFetch(409, { error: "Slug already exists" });
     try {
-      await client.createLink({ url: "https://example.com", custom_slug: "taken" });
+      await client.addCustomSlug(1, "taken");
       expect.unreachable();
     } catch (e) {
       expect(e).toBeInstanceOf(ShrtnrError);

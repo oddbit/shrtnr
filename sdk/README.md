@@ -1,6 +1,6 @@
 # @oddbit/shrtnr: URL Shortener SDK for TypeScript
 
-TypeScript client for creating short links, managing URLs, and reading click analytics from a [shrtnr](https://github.com/oddbit/shrtnr) instance. Works in Node.js, Deno, Bun, and the browser.
+TypeScript client for creating short links, managing URLs, and reading click analytics from a [shrtnr](https://oddb.it/github-shrtnr-npm) instance. Works in Node.js, Deno, Bun, and the browser.
 
 ## Install
 
@@ -31,9 +31,9 @@ console.log(link); // { id: 1, slugs: [{ slug: "a3x", ... }], ... }
 
 This package wraps the public link-management API:
 
-- Shorten URLs (create short links with optional custom slugs)
+- Shorten URLs (create short links)
+- Add custom slugs after creation, with partial-success reporting
 - List, read, update, and disable links
-- Add custom slugs to existing links
 - Read click analytics (referrer, country, device, browser)
 - Check service health
 
@@ -43,15 +43,21 @@ Administrative operations (API key management, settings, dashboard stats) are no
 
 ### `createLink`
 
-Shorten a URL. Optionally provide a label, custom slug, or expiry timestamp.
+Shorten a URL. Returns a `Link` with a random slug.
 
 ```ts
 const link = await client.createLink({
   url: "https://example.com",
-  label: "Example",
-  custom_slug: "example",
+  label: "My link to the example page",
   expires_at: Math.floor(Date.now() / 1000) + 86400,
 });
+```
+
+To add a custom slug, call `addCustomSlug` after creation:
+
+```ts
+const link = await client.createLink({ url: "https://example.com" });
+const slug = await client.addCustomSlug(link.id, "my-campaign");
 ```
 
 ### `listLinks`
@@ -99,7 +105,8 @@ const disabled = await client.disableLink(123);
 
 ### `addCustomSlug`
 
-Add a custom short URL slug to an existing link.
+Add a custom short URL slug to an existing link. Throws `ShrtnrError` with
+status 409 if the slug already exists, or 400 for invalid format.
 
 ```ts
 const slug = await client.addCustomSlug(123, "campaign");
@@ -147,6 +154,9 @@ try {
   }
 }
 ```
+
+Custom slug collisions and format errors from `addCustomSlug` throw
+`ShrtnrError` (status 409 or 400). Handle them per-call.
 
 ## License
 
