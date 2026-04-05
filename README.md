@@ -16,7 +16,7 @@ Read more on our [website](https://oddbit.id).
 ## Features
 
 - **Free hosting** on Cloudflare Workers + D1 (no VPS, no containers, no monthly bill)
-- **Short slugs** starting at 3 characters (175,616 unique combinations at that length)
+- **Short slugs** starting at 3 characters (32,768 unique combinations at that length)
 - **Custom slugs** like `/my-campaign` alongside random slugs
 - **Click analytics** with referrer, country, device, and browser tracking
 - **Admin dashboard** for link management, analytics charts, and QR code generation

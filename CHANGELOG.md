@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.18.0 (2026-04-05)
+
+### Slug charset: lowercase only
+
+- Random slug charset narrowed from 56 characters (mixed case + digits) to 32 characters: `abcdefghijkmnpqrstuvwxyz23456789`. Removes all uppercase letters and retains the existing exclusions of `l`, `o`, `0`, `1` to avoid visual ambiguity.
+- Combination counts updated throughout settings UI and client JS — now derived from `RANDOM_CHARSET.length` rather than a hardcoded number.
+
+### Case-insensitive routing
+
+- Incoming short links are lowercased before lookup. A link stored as `abc` is reached by `ABC`, `Abc`, or `abc`.
+- Custom slugs are lowercased at write time (create and add), so what is stored is always lowercase.
+
+### Renamed: vanity slug → custom slug
+
+- All internal references to "vanity slug" renamed to "custom slug" across source, tests, SDK, README, and CHANGELOG.
+- MCP retains backward compatibility: the `add_vanity_slug` tool alias and the `vanity_slug` parameter on `create_link` remain accepted.
+
+### Settings page
+
+- Version and account sections redesigned. Account now shows email and logout inline in one row. Version status and install button sit in the same row.
+- MCP integration card converted to a clickable link, matching the TypeScript SDK card pattern. "Configured" badge removed; a clean doc link replaces it.
+
+### Minimum slug length constant
+
+- Introduced `MIN_SLUG_LENGTH` in `constants.ts`. All validation, UI, and JS now reference this constant instead of hardcoding `3`.
+
 ## 0.17.0 (2026-04-05)
 
 ### Schema and data model
