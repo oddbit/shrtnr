@@ -3,7 +3,7 @@
 
 > A free, self-hosted URL shortener with click analytics, an admin dashboard, and AI integration. Runs on Cloudflare's free tier. Zero servers, zero monthly cost.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://oddb.it/shrtnr-deploy)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://oddb.it/shrtnr-deploy-top)
 
 ## Why shrtnr
 
@@ -37,7 +37,7 @@ Read more on our [website](https://oddb.it/cCq).
 
 Click the **Deploy to Cloudflare** button above. Cloudflare will fork the repo, provision a D1 database and KV namespace, and deploy the Worker.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://oddb.it/shrtnr-deploy)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://oddb.it/shrtnr-deploy-howto)
 
 
 **⚠️ Important: GitHub Actions workflows are not copied when Cloudflare forks your repo.** This means the automatic migration workflow (`.github/workflows/migrate.yml`) does not exist in your fork after the initial deploy. You must set up migrations yourself. Without running migrations, the database schema will be missing and the app will not work.
