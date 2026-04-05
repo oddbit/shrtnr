@@ -269,7 +269,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
                 </div>
 
                 <div class="slugs-row-slug">
-                  <span style="font-family:var(--font-family-mono);font-size:0.875rem">/{s.slug}</span>
+                  <span style="font-family:var(--font-family-mono);font-size:0.875rem">{s.slug}</span>
                   {isPrimary && (
                     <span class="slug-badge-primary" title={t("linkDetail.primarySlug")}>
                       <span class="icon" style="font-size:12px;vertical-align:-1px">star</span>

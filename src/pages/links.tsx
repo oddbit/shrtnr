@@ -194,7 +194,7 @@ export const LinksPage: FC<Props> = ({
                         title={t("links.clickToCopy")}
                         style={s.disabled_at ? "opacity:0.4" : undefined}
                       >
-                        /{s.slug} <span class="icon">content_copy</span>
+                        {s.slug} <span class="icon">content_copy</span>
                       </span>
                     ))}
                     {disabled && (

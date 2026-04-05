@@ -118,7 +118,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang }) => {
                     onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(slug)}')`}
                     title={t("dashboard.clickToCopy")}
                   >
-                    /{slug}{" "}
+                    {slug}{" "}
                     <span class="icon" style="font-size:14px">
                       content_copy
                     </span>
@@ -172,7 +172,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang }) => {
                       class="stat-name"
                       style="font-family:var(--font-family-mono)"
                     >
-                      /{slug}
+                      {slug}
                     </span>
                     <div class="stat-bar">
                       <div
