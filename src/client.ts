@@ -111,11 +111,16 @@ function quickShorten() {
   if (!url) { toast(t('client.pasteUrl'), 'error'); return; }
   api('/links', { method: 'POST', body: JSON.stringify({ url: url }) }).then(function(res) {
     if (res.ok) {
+      var isDuplicate = res.status === 200;
       return res.json().then(function(link) {
-        var primary = link.slugs.find(function(s) { return !s.is_vanity; });
-        if (primary) copyUrl(primary.slug);
-        toast(t('client.linkCreatedCopied'));
-        window.location.href = '/_/admin/links/' + link.id;
+        if (!isDuplicate) {
+          var primary = link.slugs.find(function(s) { return !s.is_vanity; });
+          if (primary) copyUrl(primary.slug);
+          toast(t('client.linkCreatedCopied'));
+        }
+        var dest = '/_/admin/links/' + link.id;
+        if (isDuplicate) dest += '?existing=1';
+        window.location.href = dest;
       });
     } else {
       return res.json().then(function(data) {
@@ -154,9 +159,30 @@ function createLink() {
 
   api('/links', { method: 'POST', body: JSON.stringify(body) }).then(function(res) {
     if (res.ok) {
+      var isDuplicate = res.status === 200;
       return res.json().then(function(link) {
         closeModal();
-        toast(t('client.linkCreated'));
+        if (!isDuplicate) toast(t('client.linkCreated'));
+        var dest = '/_/admin/links/' + link.id;
+        if (isDuplicate) dest += '?existing=1';
+        window.location.href = dest;
+      });
+    } else {
+      return res.json().then(function(data) {
+        toast(data.error || t('client.createLinkError'), 'error');
+      });
+    }
+  });
+}
+
+// ---- Duplicate link ----
+function createDuplicate(url) {
+  api('/links', { method: 'POST', body: JSON.stringify({ url: url, allow_duplicate: true }) }).then(function(res) {
+    if (res.ok) {
+      return res.json().then(function(link) {
+        var primary = link.slugs.find(function(s) { return !s.is_vanity; });
+        if (primary) copyUrl(primary.slug);
+        toast(t('client.linkCreatedCopied'));
         window.location.href = '/_/admin/links/' + link.id;
       });
     } else {

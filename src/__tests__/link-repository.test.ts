@@ -177,6 +177,34 @@ describe("LinkRepository.disable", () => {
   });
 });
 
+describe("LinkRepository.findByUrl", () => {
+  it("returns an array with the matching link", async () => {
+    const created = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const found = await LinkRepository.findByUrl(env.DB, "https://example.com");
+    expect(found).toHaveLength(1);
+    expect(found[0].id).toBe(created.id);
+    expect(found[0].url).toBe("https://example.com");
+  });
+
+  it("returns empty array when no link has the URL", async () => {
+    const found = await LinkRepository.findByUrl(env.DB, "https://no-match.com");
+    expect(found).toHaveLength(0);
+  });
+
+  it("returns all links when multiple share the same URL", async () => {
+    await LinkRepository.create(env.DB, { url: "https://example.com", slug: "first" });
+    await LinkRepository.create(env.DB, { url: "https://example.com", slug: "second" });
+    const found = await LinkRepository.findByUrl(env.DB, "https://example.com");
+    expect(found).toHaveLength(2);
+  });
+
+  it("includes slugs in each returned link", async () => {
+    await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc", vanitySlug: "my-vanity" });
+    const found = await LinkRepository.findByUrl(env.DB, "https://example.com");
+    expect(found[0].slugs).toHaveLength(2);
+  });
+});
+
 describe("LinkRepository.search", () => {
   it("finds a link by label substring", async () => {
     await LinkRepository.create(env.DB, { url: "https://oddbit.id", slug: "aaa", label: "Oddbit website" });

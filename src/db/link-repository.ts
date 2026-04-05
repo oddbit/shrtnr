@@ -43,6 +43,19 @@ export class LinkRepository {
     return LinkRepository.getById(db, row.link_id);
   }
 
+  static async findByUrl(db: D1Database, url: string): Promise<LinkWithSlugs[]> {
+    const rows = await db
+      .prepare("SELECT id FROM links WHERE url = ? ORDER BY created_at DESC")
+      .bind(url)
+      .all<{ id: number }>();
+
+    const ids = rows.results ?? [];
+    if (ids.length === 0) return [];
+
+    const results = await Promise.all(ids.map(({ id }) => LinkRepository.getById(db, id)));
+    return results.filter((l): l is LinkWithSlugs => l !== null);
+  }
+
   static async create(
     db: D1Database,
     data: {

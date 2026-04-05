@@ -55,9 +55,10 @@ type Props = {
   analytics: ClickStats;
   t: TranslateFn;
   lang: string;
+  showExisting?: boolean;
 };
 
-export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
+export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, showExisting }) => {
   const now = Math.floor(Date.now() / 1000);
   const isExpired = !!(link.expires_at && link.expires_at < now);
   const primary = link.slugs.find((s) => !s.is_vanity);
@@ -98,6 +99,26 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
           )}
         </div>
       </div>
+
+      {showExisting && (
+        <div class="existing-banner" id="existing-banner">
+          <span class="icon" style="font-size:18px;vertical-align:-4px;margin-right:0.35rem">info</span>
+          {t("linkDetail.alreadyShortened")}{" "}
+          <a
+            href="#"
+            onclick={`event.preventDefault();createDuplicate('${escHtml(link.url)}')`}
+          >
+            {t("linkDetail.createAnother")}
+          </a>
+          <button
+            class="existing-banner-close"
+            onclick="document.getElementById('existing-banner').remove()"
+            aria-label="Close"
+          >
+            <span class="icon" style="font-size:16px">close</span>
+          </button>
+        </div>
+      )}
 
       <div class="detail-hero detail-hero-grid">
         <div class="detail-hero-main">

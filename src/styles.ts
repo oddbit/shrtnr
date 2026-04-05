@@ -246,6 +246,11 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--on-bg)
 .detail-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
 .detail-back { background: none; border: none; color: var(--on-bg-muted); cursor: pointer; padding: 0.4rem; border-radius: var(--radius); text-decoration: none; display: inline-flex; }
 .detail-back:hover { color: var(--on-bg); background: var(--surface); }
+.existing-banner { position: relative; background: var(--surface-high); border: 1px solid var(--outline); border-radius: var(--radius); padding: 0.75rem 2.5rem 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.875rem; color: var(--on-bg-muted); }
+.existing-banner a { color: var(--primary); text-decoration: none; font-weight: 500; }
+.existing-banner a:hover { text-decoration: underline; }
+.existing-banner-close { position: absolute; top: 0.5rem; right: 0.5rem; background: none; border: none; color: var(--on-bg-muted); cursor: pointer; padding: 0.2rem; border-radius: var(--radius); line-height: 1; }
+.existing-banner-close:hover { color: var(--on-bg); background: var(--surface); }
 .detail-hero { background: var(--surface); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.4rem; }
 .detail-hero-grid { display: grid; grid-template-columns: 1fr auto; gap: 0; align-items: stretch; }
 .detail-hero-main { min-width: 0; padding-right: 2rem; display: flex; flex-direction: column; justify-content: center; grid-row: span 2; }

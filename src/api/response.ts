@@ -12,5 +12,8 @@ export function json(data: unknown, status = 200): Response {
 
 export function fromServiceResult<T>(result: import("../services/result").ServiceResult<T>): Response {
   if (!result.ok) return json({ error: result.error }, result.status);
+  if (result.meta && typeof result.data === "object" && result.data !== null) {
+    return json({ ...result.data, ...result.meta }, result.status);
+  }
   return json(result.data, result.status);
 }

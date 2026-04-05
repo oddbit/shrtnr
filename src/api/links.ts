@@ -31,6 +31,7 @@ export async function handleCreateLink(request: Request, env: Env, createdVia?: 
     slug_length?: number;
     vanity_slug?: string;
     expires_at?: number;
+    allow_duplicate?: boolean;
   };
 
   try {

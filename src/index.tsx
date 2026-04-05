@@ -171,9 +171,10 @@ app.get("/_/admin/links/:id", async (c) => {
   const analyticsResult = await getLinkAnalytics(c.env, id);
   const analytics = analyticsResult.ok ? analyticsResult.data : { total_clicks: 0, countries: [], referrers: [], devices: [], browsers: [], channels: [], clicks_over_time: [] };
   const userEmail = c.var.user?.email ?? null;
+  const showExisting = c.req.query("existing") === "1";
   return c.html(
     <Layout active="links" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
-      <LinkDetailPage link={linkResult.data} analytics={analytics} t={t} lang={lang} />
+      <LinkDetailPage link={linkResult.data} analytics={analytics} t={t} lang={lang} showExisting={showExisting} />
     </Layout>,
   );
 });

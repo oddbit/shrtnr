@@ -77,6 +77,8 @@ const sv: Translations = {
   "linkDetail.channels": "Kanaler",
   "linkDetail.noData": "Ingen data ännu",
   "linkDetail.clickToCopy": "Klicka för att kopiera",
+  "linkDetail.alreadyShortened": "Redan förkortad.",
+  "linkDetail.createAnother": "Spåra denna destination separat \u2192",
 
   // API Keys
   "keys.title": "API-nycklar",

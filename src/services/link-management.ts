@@ -27,7 +27,7 @@ export async function getLinkBySlug(env: Env, slug: string): Promise<ServiceResu
 
 export async function createLink(
   env: Env,
-  body: { url?: string; label?: string; slug_length?: number; vanity_slug?: string; expires_at?: number; created_via?: string; created_by?: string },
+  body: { url?: string; label?: string; slug_length?: number; vanity_slug?: string; expires_at?: number; created_via?: string; created_by?: string; allow_duplicate?: boolean },
 ): Promise<ServiceResult<LinkWithSlugs>> {
   if (!body.url || typeof body.url !== "string") {
     return fail(400, "url is required");
@@ -40,6 +40,13 @@ export async function createLink(
     }
   } catch {
     return fail(400, "url must be a valid URL");
+  }
+
+  if (!body.allow_duplicate) {
+    const existing = await LinkRepository.findByUrl(env.DB, body.url);
+    if (existing.length > 0) {
+      return ok(existing[0], 200, { duplicate: true });
+    }
   }
 
   let slugLength: number;

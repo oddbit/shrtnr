@@ -255,6 +255,62 @@ describe("Links API", () => {
     expect(body.expires_at).toBe(future);
   });
 
+  it("POST /_/admin/api/links with existing URL should return 200 with duplicate flag", async () => {
+    await SELF.fetch(
+      authed("/_/admin/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com" }),
+      })
+    );
+    const res = await SELF.fetch(
+      authed("/_/admin/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com" }),
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.duplicate).toBe(true);
+    expect(body.url).toBe("https://example.com");
+  });
+
+  it("POST /_/admin/api/links with allow_duplicate should create new link", async () => {
+    const first = await SELF.fetch(
+      authed("/_/admin/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com" }),
+      })
+    );
+    const firstBody = await first.json() as any;
+    const res = await SELF.fetch(
+      authed("/_/admin/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com", allow_duplicate: true }),
+      })
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json() as any;
+    expect(body.id).not.toBe(firstBody.id);
+    expect(body.url).toBe("https://example.com");
+  });
+
+  it("POST /_/admin/api/links first-time creation should return 201", async () => {
+    const res = await SELF.fetch(
+      authed("/_/admin/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://brand-new.com" }),
+      })
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json() as any;
+    expect(body.duplicate).toBeUndefined();
+  });
+
   it("GET /_/admin/api/links should return all links", async () => {
     await SELF.fetch(
       authed("/_/admin/api/links", {

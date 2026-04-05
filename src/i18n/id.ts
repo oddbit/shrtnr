@@ -77,6 +77,8 @@ const id: Translations = {
   "linkDetail.channels": "Kanal",
   "linkDetail.noData": "Belum ada data",
   "linkDetail.clickToCopy": "Klik untuk menyalin",
+  "linkDetail.alreadyShortened": "Sudah dipersingkat.",
+  "linkDetail.createAnother": "Lacak tujuan ini secara terpisah \u2192",
 
   // API Keys
   "keys.title": "Kunci API",

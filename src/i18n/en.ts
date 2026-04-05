@@ -74,6 +74,8 @@ const en = {
   "linkDetail.channels": "Channels",
   "linkDetail.noData": "No data yet",
   "linkDetail.clickToCopy": "Click to copy",
+  "linkDetail.alreadyShortened": "Already shortened.",
+  "linkDetail.createAnother": "Track this destination separately \u2192",
 
   // API Keys
   "keys.title": "API Keys",
