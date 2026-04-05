@@ -100,7 +100,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
                 </button>
               </div>
               <div
-                style="font-size:0.75rem;color:var(--on-bg-muted);margin-top:0.4rem"
+                style="font-size:0.75rem;color:var(--color-text-muted);margin-top:0.4rem"
                 id="slug-combo-hint"
               >
                 {comboHint}
@@ -112,7 +112,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">{t("settings.version")}</label>
               <div id="version-status" style="font-size:0.875rem;margin-top:0.5rem">
-                <span style="color:var(--on-bg-muted)">
+                <span style="color:var(--color-text-muted)">
                   <span
                     class="icon"
                     style="font-size:16px;vertical-align:text-bottom;animation:spin 1s linear infinite"
@@ -133,7 +133,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
         </div>
 
         <div style="min-width:240px;max-width:300px;display:flex;flex-direction:column;gap:1.4rem">
-          <div style="font-size:0.75rem;color:var(--secondary);font-weight:600;text-transform:uppercase">
+          <div style="font-size:0.75rem;color:var(--color-success);font-weight:600;text-transform:uppercase">
             {t("settings.integrations")}
           </div>
           <a
@@ -144,15 +144,15 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
             style="text-decoration:none;color:inherit;display:block"
           >
             <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
-              <span class="icon" style="color:var(--primary)">
+              <span class="icon" style="color:var(--color-accent)">
                 terminal
               </span>
               <span style="font-weight:600">{t("settings.sdkTitle")}</span>
             </div>
-            <div style="font-size:0.813rem;color:var(--on-bg-muted);line-height:1.45">
+            <div style="font-size:0.813rem;color:var(--color-text-muted);line-height:1.45">
               {t("settings.sdkDesc")}
             </div>
-            <div style="font-size:0.7rem;color:var(--secondary);margin-top:0.6rem;display:flex;align-items:center;gap:0.25rem">
+            <div style="font-size:0.7rem;color:var(--color-success);margin-top:0.6rem;display:flex;align-items:center;gap:0.25rem">
               <span class="icon" style="font-size:14px">
                 open_in_new
               </span>{" "}
@@ -161,12 +161,12 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
           </a>
           <div class="bento-card">
             <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
-              <span class="icon" style="color:var(--primary)">
+              <span class="icon" style="color:var(--color-accent)">
                 smart_toy
               </span>
               <span style="font-weight:600">{t("settings.mcpTitle")}</span>
             </div>
-            <div style="font-size:0.813rem;color:var(--on-bg-muted);line-height:1.45">
+            <div style="font-size:0.813rem;color:var(--color-text-muted);line-height:1.45">
               {t("settings.mcpDesc")}
             </div>
             <div style="font-size:0.813rem;margin-top:1rem;display:flex;align-items:center;gap:0.4rem">
@@ -178,7 +178,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
               ) : (
                 <>
                   <span class="icon" style="font-size:16px;color:var(--warning, #f59e0b)">warning</span>
-                  <span style="color:var(--on-bg-muted)">{t("settings.mcpNotConfigured")}</span>
+                  <span style="color:var(--color-text-muted)">{t("settings.mcpNotConfigured")}</span>
                 </>
               )}
             </div>
@@ -187,7 +187,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
                 href="https://github.com/oddbit/shrtnr#mcp-server-ai-integration"
                 target="_blank"
                 rel="noopener"
-                style="font-size:0.75rem;color:var(--secondary);margin-top:0.75rem;display:inline-flex;align-items:center;gap:0.25rem"
+                style="font-size:0.75rem;color:var(--color-success);margin-top:0.75rem;display:inline-flex;align-items:center;gap:0.25rem"
               >
                 <span class="icon" style="font-size:14px">open_in_new</span>
                 {t("settings.mcpSetupLink")}
@@ -197,7 +197,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
               href="https://github.com/oddbit/shrtnr#mcp-server-ai-integration"
               target="_blank"
               rel="noopener"
-              style="font-size:0.7rem;color:var(--secondary);margin-top:0.75rem;display:inline-flex;align-items:center;gap:0.25rem"
+              style="font-size:0.7rem;color:var(--color-success);margin-top:0.75rem;display:inline-flex;align-items:center;gap:0.25rem"
             >
               <span class="icon" style="font-size:14px">
                 open_in_new

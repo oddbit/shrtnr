@@ -44,10 +44,10 @@ const MCP_LANDING_HTML = `<!DOCTYPE html>
       width: auto;
     }
     .label {
-      font-family: var(--font-display);
+      font-family: var(--font-family-display);
       font-size: clamp(0.75rem, 2vw, 1rem);
       font-weight: 700;
-      color: var(--on-bg-muted);
+      color: var(--color-text-muted);
       text-transform: uppercase;
       letter-spacing: 0.4em;
       margin-top: 0.35em;

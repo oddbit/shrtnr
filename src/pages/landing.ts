@@ -32,26 +32,26 @@ const LANDING_HTML = `<!DOCTYPE html>
       user-select: none;
     }
     .subtitle {
-      font-family: var(--font-display);
+      font-family: var(--font-family-display);
       font-size: clamp(0.65rem, 2vw, 0.9rem);
       font-weight: 700;
       letter-spacing: 0.35em;
-      color: var(--on-bg-muted);
+      color: var(--color-text-muted);
       margin-top: 1rem;
     }
     .login-link {
       margin-top: 3.5rem;
-      font-family: var(--font-body);
+      font-family: var(--font-family-body);
       font-size: 0.9rem;
       font-weight: 500;
-      color: var(--primary);
+      color: var(--color-accent);
       text-decoration: none;
       letter-spacing: 0.05em;
       border-bottom: 1px solid transparent;
       transition: border-color 0.15s;
     }
     .login-link:hover {
-      border-color: var(--primary);
+      border-color: var(--color-accent);
     }
     .footer {
       position: fixed;
@@ -69,9 +69,9 @@ const LANDING_HTML = `<!DOCTYPE html>
       display: block;
     }
     .footer-copy {
-      font-family: var(--font-body);
+      font-family: var(--font-family-body);
       font-size: 0.7rem;
-      color: var(--on-bg-muted);
+      color: var(--color-text-muted);
       white-space: nowrap;
     }
   </style>

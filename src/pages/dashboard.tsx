@@ -86,7 +86,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang }) => {
           <div class="bento-label">{t("dashboard.topCountries")}</div>
           <div class="bento-value small">
             {d.top_countries.length === 0 && (
-              <span style="color:var(--on-bg-muted)">{t("dashboard.noData")}</span>
+              <span style="color:var(--color-text-muted)">{t("dashboard.noData")}</span>
             )}
           </div>
           {d.top_countries.map((c) => (
@@ -102,7 +102,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang }) => {
         <div class="bento-card span-2">
           <div class="bento-label">{t("dashboard.recentLinks")}</div>
           {d.recent_links.length === 0 ? (
-            <div style="color:var(--on-bg-muted);font-size:0.875rem">
+            <div style="color:var(--color-text-muted);font-size:0.875rem">
               {t("dashboard.noLinks")}
             </div>
           ) : (
@@ -123,10 +123,10 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang }) => {
                       content_copy
                     </span>
                   </span>
-                  <span style="flex:1;min-width:0;font-size:0.8rem;color:var(--on-bg-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                  <span style="flex:1;min-width:0;font-size:0.8rem;color:var(--color-text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                     {link.url}
                   </span>
-                  <span style="font-family:var(--font-display);font-weight:700;color:var(--primary);flex-shrink:0">
+                  <span style="font-family:var(--font-family-display);font-weight:700;color:var(--color-accent);flex-shrink:0">
                     {link.total_clicks}
                   </span>
                 </a>
@@ -138,7 +138,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang }) => {
         <div class="bento-card">
           <div class="bento-label">{t("dashboard.topSources")}</div>
           {d.top_referrers.length === 0 ? (
-            <div style="color:var(--on-bg-muted);font-size:0.875rem">
+            <div style="color:var(--color-text-muted);font-size:0.875rem">
               {t("dashboard.noData")}
             </div>
           ) : (
@@ -156,7 +156,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang }) => {
         <div class="bento-card span-3">
           <div class="bento-label">{t("dashboard.mostClicked")}</div>
           {d.top_links.length === 0 ? (
-            <div style="color:var(--on-bg-muted);font-size:0.875rem">
+            <div style="color:var(--color-text-muted);font-size:0.875rem">
               {t("dashboard.noData")}
             </div>
           ) : (
@@ -170,7 +170,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang }) => {
                   <div class="stat-row">
                     <span
                       class="stat-name"
-                      style="font-family:var(--font-mono)"
+                      style="font-family:var(--font-family-mono)"
                     >
                       /{slug}
                     </span>
@@ -182,7 +182,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang }) => {
                     </div>
                     <span class="stat-count">{link.total_clicks}</span>
                   </div>
-                  <div style="font-size:0.75rem;color:var(--on-bg-muted);margin:-0.15rem 0 0.5rem 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                  <div style="font-size:0.75rem;color:var(--color-text-muted);margin:-0.15rem 0 0.5rem 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                     {link.url}
                   </div>
                 </a>

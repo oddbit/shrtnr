@@ -116,7 +116,7 @@ export const LinksPage: FC<Props> = ({
 
       {searchQuery && (
         <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">
-          <span style="font-size:0.85rem;color:var(--on-bg-muted)">{t("links.searchResults", { count: filtered.length })}</span>
+          <span style="font-size:0.85rem;color:var(--color-text-muted)">{t("links.searchResults", { count: filtered.length })}</span>
           <a href="/_/admin/links" class="btn btn-ghost btn-sm" style="font-size:0.8rem">
             <span class="icon" style="font-size:14px">close</span> {t("links.clearSearch")}
           </a>

@@ -30,14 +30,14 @@ const NOT_FOUND_HTML = `<!DOCTYPE html>
       font-size: clamp(10rem, 30vw, 28rem);
       font-weight: 700;
       line-height: 1;
-      color: var(--primary);
+      color: var(--color-accent);
       letter-spacing: -0.02em;
       user-select: none;
     }
     .label {
       font-size: clamp(1rem, 3vw, 1.75rem);
       font-weight: 700;
-      color: var(--on-bg-muted);
+      color: var(--color-text-muted);
       text-transform: uppercase;
       letter-spacing: 0.3em;
       margin-top: 0.5rem;

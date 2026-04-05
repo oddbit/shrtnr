@@ -27,7 +27,7 @@ const StatBar: FC<{
     <div class="stat-row">
       <span
         class="stat-name"
-        style={mono ? "font-family:var(--font-mono)" : undefined}
+        style={mono ? "font-family:var(--font-family-mono)" : undefined}
       >
         {icon && (
           <span class="icon" style="font-size:16px;vertical-align:text-bottom">
@@ -122,7 +122,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
       <div class="detail-hero detail-hero-grid">
         <div class="detail-hero-main">
           {isExpired && (
-            <div style="display:inline-block;background:var(--danger);color:var(--on-danger);font-size:0.7rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:var(--radius);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em">
+            <div style="display:inline-block;background:var(--color-danger);color:var(--color-danger-foreground);font-size:0.7rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:var(--radius-md);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em">
               {t("linkDetail.disabled")}
             </div>
           )}
@@ -184,9 +184,9 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
             <div class="detail-info-item">
               <label class="form-label">{t("linkDetail.createdBy")}</label>
               {link.created_via ? (
-                <div style="font-size:0.9rem;color:var(--on-bg)">{link.created_via}</div>
+                <div style="font-size:0.9rem;color:var(--color-text)">{link.created_via}</div>
               ) : (
-                <div style="font-size:0.85rem;color:var(--on-bg-muted)">&mdash;</div>
+                <div style="font-size:0.85rem;color:var(--color-text-muted)">&mdash;</div>
               )}
             </div>
             <div class="detail-info-item">
@@ -269,7 +269,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
                 </div>
 
                 <div class="slugs-row-slug">
-                  <span style="font-family:var(--font-mono);font-size:0.875rem">/{s.slug}</span>
+                  <span style="font-family:var(--font-family-mono);font-size:0.875rem">/{s.slug}</span>
                   {isPrimary && (
                     <span class="slug-badge-primary" title={t("linkDetail.primarySlug")}>
                       <span class="icon" style="font-size:12px;vertical-align:-1px">star</span>
@@ -360,7 +360,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
                 </div>
               </>
             ) : (
-              <div style="color:var(--on-bg-muted);font-size:0.875rem;padding:2rem 0;text-align:center">
+              <div style="color:var(--color-text-muted);font-size:0.875rem;padding:2rem 0;text-align:center">
                 {t("linkDetail.noClickData")}
               </div>
             )}
@@ -378,7 +378,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
                 />
               ))
             ) : (
-              <div style="color:var(--on-bg-muted);font-size:0.875rem">
+              <div style="color:var(--color-text-muted);font-size:0.875rem">
                 {t("linkDetail.noData")}
               </div>
             )}
@@ -398,7 +398,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
                 />
               ))
             ) : (
-              <div style="color:var(--on-bg-muted);font-size:0.875rem">
+              <div style="color:var(--color-text-muted);font-size:0.875rem">
                 {t("linkDetail.noData")}
               </div>
             )}
@@ -417,7 +417,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
                 />
               ))
             ) : (
-              <div style="color:var(--on-bg-muted);font-size:0.875rem">
+              <div style="color:var(--color-text-muted);font-size:0.875rem">
                 {t("linkDetail.noData")}
               </div>
             )}
@@ -435,7 +435,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
                 />
               ))
             ) : (
-              <div style="color:var(--on-bg-muted);font-size:0.875rem">
+              <div style="color:var(--color-text-muted);font-size:0.875rem">
                 {t("linkDetail.noData")}
               </div>
             )}

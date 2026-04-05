@@ -72,19 +72,19 @@ function approvalDialogHtml(p: ApprovalDialogHtmlParams): string {
     .container { max-width: 520px; margin: 3rem auto; padding: 1rem; }
     .header { text-align: center; margin-bottom: 2rem; display: flex; flex-direction: column; align-items: center; }
     .logo-wrap img { width: 168px; height: auto; display: block; }
-    .logo-sub { font-family: var(--font-display); font-size: 0.8rem; font-weight: 700; color: var(--on-bg-muted); letter-spacing: 0.4em; text-transform: uppercase; margin-top: 0.2rem; text-align: center; }
-    .header p { color: var(--on-bg-muted); font-size: 0.9rem; margin-top: 1.5rem; max-width: 400px; }
-    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+    .logo-sub { font-family: var(--font-family-display); font-size: 0.8rem; font-weight: 700; color: var(--color-text-muted); letter-spacing: 0.4em; text-transform: uppercase; margin-top: 0.2rem; text-align: center; }
+    .header p { color: var(--color-text-muted); font-size: 0.9rem; margin-top: 1.5rem; max-width: 400px; }
+    .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 1.5rem; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
     .alert { font-size: 1.1rem; font-weight: 500; margin-bottom: 1rem; text-align: center; }
-    .client-info { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 1.5rem; }
+    .client-info { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.5rem; }
     .detail { display: flex; margin-bottom: 0.5rem; align-items: baseline; }
-    .detail-label { font-weight: 500; min-width: 100px; color: var(--on-bg-muted); font-size: 0.85rem; }
+    .detail-label { font-weight: 500; min-width: 100px; color: var(--color-text-muted); font-size: 0.85rem; }
     .detail-value { font-size: 0.85rem; word-break: break-all; }
-    .detail-value a { color: var(--primary); text-decoration: none; }
+    .detail-value a { color: var(--color-accent); text-decoration: none; }
     .actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
-    .btn { padding: 0.6rem 1.25rem; border-radius: var(--radius); font-weight: 500; cursor: pointer; border: none; font-size: 0.9rem; }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--on-bg); }
+    .btn { padding: 0.6rem 1.25rem; border-radius: var(--radius-md); font-weight: 500; cursor: pointer; border: none; font-size: 0.9rem; }
+    .btn-primary { background: var(--color-accent); color: #fff; }
+    .btn-secondary { background: transparent; border: 1px solid var(--color-border); color: var(--color-text); }
     @media (max-width: 540px) {
       .container { margin: 1rem auto; }
       .actions { flex-direction: column; }
@@ -111,7 +111,7 @@ function approvalDialogHtml(p: ApprovalDialogHtmlParams): string {
         ${p.clientUri ? `<div class="detail"><div class="detail-label">Website</div><div class="detail-value"><a href="${p.clientUri}" target="_blank" rel="noopener noreferrer">${p.clientUri}</a></div></div>` : ""}
         ${p.redirectUris.length > 0 ? `<div class="detail"><div class="detail-label">Redirect</div><div class="detail-value">${p.redirectUris.join("<br>")}</div></div>` : ""}
       </div>
-      <p style="font-size:0.85rem;color:var(--on-bg-muted)">Approving will redirect you to sign in with your identity provider. Only approve if you trust this client.</p>
+      <p style="font-size:0.85rem;color:var(--color-text-muted)">Approving will redirect you to sign in with your identity provider. Only approve if you trust this client.</p>
       <form method="post" action="${p.action}">
         <input type="hidden" name="state" value="${p.encodedState}">
         <input type="hidden" name="csrf_token" value="${p.csrfToken}">

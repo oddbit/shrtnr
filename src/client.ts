@@ -210,9 +210,9 @@ function showCreateKeyModal() {
     '<div class="form-group"><label class="form-label">' + esc(t('client.keyTitleLabel')) + '</label><input class="form-input" id="m-key-title" placeholder="e.g. CI Pipeline, Mobile App"></div>' +
     '<div class="form-group"><label class="form-label">' + esc(t('client.keyScopeLabel')) + '</label>' +
     '<div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.25rem">' +
-    '<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem"><input type="radio" name="key-scope" value="create"> <strong>' + esc(t('client.scopeCreate')) + '</strong> <span style="color:var(--on-bg-muted)">\\u2014 ' + esc(t('client.scopeCreateDesc')) + '</span></label>' +
-    '<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem"><input type="radio" name="key-scope" value="read"> <strong>' + esc(t('client.scopeRead')) + '</strong> <span style="color:var(--on-bg-muted)">\\u2014 ' + esc(t('client.scopeReadDesc')) + '</span></label>' +
-    '<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem"><input type="radio" name="key-scope" value="create,read" checked> <strong>' + esc(t('client.scopeCreateRead')) + '</strong> <span style="color:var(--on-bg-muted)">\\u2014 ' + esc(t('client.scopeCreateReadDesc')) + '</span></label>' +
+    '<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem"><input type="radio" name="key-scope" value="create"> <strong>' + esc(t('client.scopeCreate')) + '</strong> <span style="color:var(--color-text-muted)">\\u2014 ' + esc(t('client.scopeCreateDesc')) + '</span></label>' +
+    '<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem"><input type="radio" name="key-scope" value="read"> <strong>' + esc(t('client.scopeRead')) + '</strong> <span style="color:var(--color-text-muted)">\\u2014 ' + esc(t('client.scopeReadDesc')) + '</span></label>' +
+    '<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem"><input type="radio" name="key-scope" value="create,read" checked> <strong>' + esc(t('client.scopeCreateRead')) + '</strong> <span style="color:var(--color-text-muted)">\\u2014 ' + esc(t('client.scopeCreateReadDesc')) + '</span></label>' +
     '</div></div>' +
     '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="createKey()">' + esc(t('client.createKey')) + '</button></div>'
   );
@@ -236,7 +236,7 @@ function createKey() {
 function showKeyRevealModal(rawKey) {
   openModal(
     '<div class="modal-title">' + esc(t('client.keyCreated')) + '</div>' +
-    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:1rem">' + esc(t('client.keyCreatedDesc')) + '</p>' +
+    '<p style="font-size:0.875rem;color:var(--color-text-muted);margin-bottom:1rem">' + esc(t('client.keyCreatedDesc')) + '</p>' +
     '<div class="key-revealed" id="revealed-key">' + esc(rawKey) + '</div>' +
     '<div class="key-warning"><span class="icon" style="font-size:18px">warning</span> ' + esc(t('client.keyWarning')) + '</div>' +
     '<div class="modal-actions"><button class="btn btn-secondary" onclick="copyRawKey()"><span class="icon">content_copy</span> ' + esc(t('client.copy')) + '</button><button class="btn btn-ghost" onclick="closeKeyRevealModal()">' + esc(t('client.done')) + '</button></div>'
@@ -284,7 +284,7 @@ function showDisableLinkModal(id) {
   document.getElementById('detail-menu').style.display = 'none';
   openModal(
     '<div class="modal-title">' + esc(t('linkDetail.disable')) + '</div>' +
-    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmDisable')) + '</p>' +
+    '<p style="font-size:0.875rem;color:var(--color-text-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmDisable')) + '</p>' +
     '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-danger" onclick="doDisableLink(' + id + ')">' + esc(t('linkDetail.disable')) + '</button></div>'
   );
 }
@@ -299,7 +299,7 @@ function showEnableLinkModal(id) {
   document.getElementById('detail-menu').style.display = 'none';
   openModal(
     '<div class="modal-title">' + esc(t('linkDetail.enable')) + '</div>' +
-    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmEnable')) + '</p>' +
+    '<p style="font-size:0.875rem;color:var(--color-text-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmEnable')) + '</p>' +
     '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="doEnableLink(' + id + ')">' + esc(t('linkDetail.enable')) + '</button></div>'
   );
 }
@@ -339,10 +339,10 @@ function showChangePrimaryModal(linkId) {
       var html = '<div class="modal-title">' + esc(t('linkDetail.selectPrimary')) + '</div>';
       html += '<div style="display:flex;flex-direction:column;gap:0.25rem;margin-bottom:1rem">';
       link.slugs.forEach(function(s) {
-        var active = s.is_primary ? ' style="background:var(--primary-glow);border-color:var(--primary)"' : '';
-        html += '<button class="btn btn-ghost" ' + active + ' onclick="doSetPrimary(' + linkId + ',' + s.id + ')" style="justify-content:flex-start;font-family:var(--font-mono);font-size:0.875rem">';
+        var active = s.is_primary ? ' style="background:var(--color-selection);border-color:var(--color-accent)"' : '';
+        html += '<button class="btn btn-ghost" ' + active + ' onclick="doSetPrimary(' + linkId + ',' + s.id + ')" style="justify-content:flex-start;font-family:var(--font-family-mono);font-size:0.875rem">';
         html += '/' + esc(s.slug);
-        if (s.is_primary) html += ' <span class="icon" style="font-size:14px;color:var(--primary);margin-left:auto">star</span>';
+        if (s.is_primary) html += ' <span class="icon" style="font-size:14px;color:var(--color-accent);margin-left:auto">star</span>';
         html += '</button>';
       });
       html += '</div>';
@@ -363,8 +363,8 @@ function showDuplicateModal(linkId, url) {
   document.getElementById('detail-menu').style.display = 'none';
   openModal(
     '<div class="modal-title">' + esc(t('linkDetail.duplicateTitle')) + '</div>' +
-    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:0.75rem">' + esc(t('linkDetail.duplicateBody')) + '</p>' +
-    '<p style="font-size:0.8rem;color:var(--on-bg-muted);margin-bottom:1.5rem;opacity:0.7">' + esc(t('linkDetail.duplicateHelper')) + '</p>' +
+    '<p style="font-size:0.875rem;color:var(--color-text-muted);margin-bottom:0.75rem">' + esc(t('linkDetail.duplicateBody')) + '</p>' +
+    '<p style="font-size:0.8rem;color:var(--color-text-muted);margin-bottom:1.5rem;opacity:0.7">' + esc(t('linkDetail.duplicateHelper')) + '</p>' +
     '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="doDuplicate(\\'' + esc(url).replace(/'/g, "\\\\'") + '\\')">' + esc(t('linkDetail.duplicate')) + '</button></div>'
   );
 }
@@ -377,7 +377,7 @@ function doDuplicate(url) {
 function confirmDeleteSlug(linkId, slugId, slugText) {
   openModal(
     '<div class="modal-title">' + esc(t('linkDetail.deleteSlug')) + '</div>' +
-    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmDeleteSlug').replace('{slug}', slugText)) + '</p>' +
+    '<p style="font-size:0.875rem;color:var(--color-text-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmDeleteSlug').replace('{slug}', slugText)) + '</p>' +
     '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-danger" onclick="doDeleteSlug(' + linkId + ',' + slugId + ')">' + esc(t('linkDetail.deleteSlug')) + '</button></div>'
   );
 }
@@ -391,7 +391,7 @@ function doDeleteSlug(linkId, slugId) {
 function confirmDisableSlug(linkId, slugId, slugText) {
   openModal(
     '<div class="modal-title">' + esc(t('linkDetail.disableSlug')) + '</div>' +
-    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmDisableSlug').replace('{slug}', slugText)) + '</p>' +
+    '<p style="font-size:0.875rem;color:var(--color-text-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmDisableSlug').replace('{slug}', slugText)) + '</p>' +
     '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-danger" onclick="doDisableSlug(' + linkId + ',' + slugId + ')">' + esc(t('linkDetail.disableSlug')) + '</button></div>'
   );
 }
@@ -405,7 +405,7 @@ function doDisableSlug(linkId, slugId) {
 function confirmEnableSlug(linkId, slugId, slugText) {
   openModal(
     '<div class="modal-title">' + esc(t('linkDetail.enableSlug')) + '</div>' +
-    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmEnableSlug').replace('{slug}', slugText)) + '</p>' +
+    '<p style="font-size:0.875rem;color:var(--color-text-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmEnableSlug').replace('{slug}', slugText)) + '</p>' +
     '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="doEnableSlug(' + linkId + ',' + slugId + ')">' + esc(t('linkDetail.enableSlug')) + '</button></div>'
   );
 }
@@ -477,9 +477,9 @@ function showQRModal(linkId, slug) {
   var shortUrl = location.origin + '/' + slug + '?qr';
   openModal(
     '<div class="modal-title">' + esc(t('client.qrCode')) + '</div>' +
-    '<p style="text-align:center;font-size:0.85rem;color:var(--on-bg-muted);margin:0 0 1.25rem">' + esc(shortUrl) + '</p>' +
+    '<p style="text-align:center;font-size:0.85rem;color:var(--color-text-muted);margin:0 0 1.25rem">' + esc(shortUrl) + '</p>' +
     '<div style="display:flex;justify-content:center;margin-bottom:1.25rem">' +
-      '<img id="qr-img" src="' + _qrSrc + '" style="width:280px;height:280px;border-radius:var(--radius);background:#fff;padding:12px;box-sizing:border-box">' +
+      '<img id="qr-img" src="' + _qrSrc + '" style="width:280px;height:280px;border-radius:var(--radius-md);background:#fff;padding:12px;box-sizing:border-box">' +
     '</div>' +
     '<div class="modal-actions">' +
       '<button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.close')) + '</button>' +
@@ -572,32 +572,32 @@ function checkForUpdates() {
     if (compareVersions(APP_VERSION, latest) < 0) {
       var html = '<div style="display:flex;flex-direction:column;gap:0.75rem">';
       html += '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">';
-      html += '<div><span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--on-bg-muted)">&rarr;</span> <span style="font-family:var(--font-mono);color:var(--secondary);font-weight:600">' + esc(latest) + '</span> <span style="color:var(--on-bg-muted);font-size:0.8rem">' + esc(t('client.updateAvailable')) + '</span></div>';
+      html += '<div><span style="font-family:var(--font-family-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--color-text-muted)">&rarr;</span> <span style="font-family:var(--font-family-mono);color:var(--color-success);font-weight:600">' + esc(latest) + '</span> <span style="color:var(--color-text-muted);font-size:0.8rem">' + esc(t('client.updateAvailable')) + '</span></div>';
       html += '</div>';
       html += '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">';
       html += '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">open_in_new</span> ' + esc(t('client.releaseNotes')) + '</a>';
       html += '<a href="' + REPO_URL + '" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">code</span> ' + esc(t('client.viewRepo')) + '</a>';
       html += '</div>';
-      html += '<div style="font-size:0.75rem;color:var(--on-bg-muted);line-height:1.5">' + esc(t('client.updateHint')) + '</div>';
+      html += '<div style="font-size:0.75rem;color:var(--color-text-muted);line-height:1.5">' + esc(t('client.updateHint')) + '</div>';
       html += '</div>';
       el.innerHTML = html;
     } else {
       el.innerHTML =
         '<div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">' +
           '<div style="display:flex;align-items:center;gap:0.4rem">' +
-            '<span style="font-family:var(--font-mono);font-weight:600">' + esc(APP_VERSION) + '</span>' +
-            '<span style="color:var(--secondary);display:inline-flex;align-items:center;gap:0.2rem">' +
+            '<span style="font-family:var(--font-family-mono);font-weight:600">' + esc(APP_VERSION) + '</span>' +
+            '<span style="color:var(--color-success);display:inline-flex;align-items:center;gap:0.2rem">' +
               '<span class="icon" style="font-size:15px;vertical-align:text-bottom">check_circle</span> ' + esc(t('client.upToDate')) +
             '</span>' +
           '</div>' +
           '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" ' +
-            'style="color:var(--on-bg-muted);font-size:0.8rem;text-decoration:none;display:inline-flex;align-items:center;gap:0.2rem">' +
+            'style="color:var(--color-text-muted);font-size:0.8rem;text-decoration:none;display:inline-flex;align-items:center;gap:0.2rem">' +
             esc(t('client.whatsNew')) + ' <span class="icon" style="font-size:13px">open_in_new</span>' +
           '</a>' +
         '</div>';
     }
   }).catch(function() {
-    el.innerHTML = '<span style="font-family:var(--font-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--on-bg-muted)">&middot; ' + esc(t('client.updateCheckFailed')) + '</span>';
+    el.innerHTML = '<span style="font-family:var(--font-family-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--color-text-muted)">&middot; ' + esc(t('client.updateCheckFailed')) + '</span>';
   });
 }
 

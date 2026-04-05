@@ -46,13 +46,13 @@ export const KeysPage: FC<Props> = ({ keys, t, lang }) => {
         <div class="page-subtitle">
           {t("keys.subtitle")}
         </div>
-        <div style="font-size:0.813rem;color:var(--on-bg-muted);margin-top:0.4rem">
+        <div style="font-size:0.813rem;color:var(--color-text-muted);margin-top:0.4rem">
           {t("keys.sdkNote")}{" "}
           <a
             href="https://oddb.it/shrtnr-npm"
             target="_blank"
             rel="noopener"
-            style="color:var(--secondary)"
+            style="color:var(--color-success)"
           >
             @oddbit/shrtnr
           </a>
@@ -98,7 +98,7 @@ export const KeysPage: FC<Props> = ({ keys, t, lang }) => {
                         {k.title}
                       </td>
                       <td data-label={t("keys.colKey")}>
-                        <span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--on-bg-muted)">
+                        <span style="font-family:var(--font-family-mono);font-size:0.8rem;color:var(--color-text-muted)">
                           {k.key_prefix}&hellip;
                         </span>
                       </td>
@@ -109,7 +109,7 @@ export const KeysPage: FC<Props> = ({ keys, t, lang }) => {
                       </td>
                       <td
                         data-label={t("keys.colCreated")}
-                        style="color:var(--on-bg-muted);font-size:0.8rem"
+                        style="color:var(--color-text-muted);font-size:0.8rem"
                       >
                         {formatDate(k.created_at, lang)}
                       </td>
@@ -117,7 +117,7 @@ export const KeysPage: FC<Props> = ({ keys, t, lang }) => {
                         {k.last_used_at ? (
                           formatDate(k.last_used_at, lang)
                         ) : (
-                          <span style="color:var(--on-bg-muted)">{t("keys.never")}</span>
+                          <span style="color:var(--color-text-muted)">{t("keys.never")}</span>
                         )}
                       </td>
                       <td>
