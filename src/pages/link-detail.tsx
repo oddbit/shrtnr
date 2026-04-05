@@ -55,17 +55,21 @@ type Props = {
   analytics: ClickStats;
   t: TranslateFn;
   lang: string;
-  showExisting?: boolean;
 };
 
-export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, showExisting }) => {
+export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
   const now = Math.floor(Date.now() / 1000);
   const isExpired = !!(link.expires_at && link.expires_at < now);
-  const primary = link.slugs.find((s) => !s.is_vanity);
-  const slug = primary ? primary.slug : link.slugs[0]?.slug || "";
-  const vanitySlug = link.slugs.find((s) => s.is_vanity);
-  const displaySlug = vanitySlug ? vanitySlug.slug : slug;
+
+  // Primary slug is the one marked is_primary, falling back to first vanity, then random
+  const primarySlug = link.slugs.find((s) => s.is_primary)
+    || link.slugs.find((s) => s.is_vanity)
+    || link.slugs[0];
+  const displaySlug = primarySlug?.slug || "";
+  const randomSlug = link.slugs.find((s) => !s.is_vanity);
   const vanity = link.slugs.filter((s) => s.is_vanity);
+  const hasMultipleSlugs = vanity.length > 0;
+
   const expVal = link.expires_at
     ? new Date(link.expires_at * 1000).toISOString().slice(0, 16)
     : "";
@@ -81,44 +85,39 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, showExisti
           </span>
         </a>
         <div class="page-title">{t("linkDetail.title")}</div>
-        <div style="margin-left:auto">
-          {isExpired ? (
-            <button
-              class="btn btn-secondary btn-sm"
-              onclick={`enableLink(${link.id})`}
-            >
-              <span class="icon">check_circle</span> {t("linkDetail.enable")}
+        <div style="margin-left:auto;position:relative">
+          <button
+            class="btn btn-ghost btn-sm"
+            onclick="toggleDetailMenu()"
+            aria-label="More actions"
+          >
+            <span class="icon" style="font-size:24px">more_vert</span>
+          </button>
+          <div class="detail-menu" id="detail-menu" style="display:none">
+            <button class="detail-menu-item" onclick={`showAddSlugModal(${link.id})`}>
+              <span class="icon">add_link</span> {t("linkDetail.addCustomSlug")}
             </button>
-          ) : (
-            <button
-              class="btn btn-danger btn-sm"
-              onclick={`disableLink(${link.id})`}
-            >
-              <span class="icon">block</span> {t("linkDetail.disable")}
+            {hasMultipleSlugs && (
+              <button class="detail-menu-item" onclick={`showChangePrimaryModal(${link.id})`}>
+                <span class="icon">star</span> {t("linkDetail.changePrimary")}
+              </button>
+            )}
+            <button class="detail-menu-item" onclick={`showDuplicateModal(${link.id}, '${escHtml(link.url)}')`}>
+              <span class="icon">content_copy</span> {t("linkDetail.duplicate")}
             </button>
-          )}
+            <div class="detail-menu-divider" />
+            {isExpired ? (
+              <button class="detail-menu-item" onclick={`showEnableLinkModal(${link.id})`}>
+                <span class="icon">check_circle</span> {t("linkDetail.enable")}
+              </button>
+            ) : (
+              <button class="detail-menu-item detail-menu-danger" onclick={`showDisableLinkModal(${link.id})`}>
+                <span class="icon">block</span> {t("linkDetail.disable")}
+              </button>
+            )}
+          </div>
         </div>
       </div>
-
-      {showExisting && (
-        <div class="existing-banner" id="existing-banner">
-          <span class="icon" style="font-size:18px;vertical-align:-4px;margin-right:0.35rem">info</span>
-          {t("linkDetail.alreadyShortened")}{" "}
-          <a
-            href="#"
-            onclick={`event.preventDefault();createDuplicate('${escHtml(link.url)}')`}
-          >
-            {t("linkDetail.createAnother")}
-          </a>
-          <button
-            class="existing-banner-close"
-            onclick="document.getElementById('existing-banner').remove()"
-            aria-label="Close"
-          >
-            <span class="icon" style="font-size:16px">close</span>
-          </button>
-        </div>
-      )}
 
       <div class="detail-hero detail-hero-grid">
         <div class="detail-hero-main">
@@ -131,7 +130,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, showExisti
             class="detail-short-url"
             style={isExpired ? "opacity:0.4" : undefined}
           >
-            {`${displaySlug}`}
+            {displaySlug}
           </div>
           <div class="detail-dest">{link.url}</div>
           <div style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center">
@@ -147,27 +146,10 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, showExisti
             >
               <span class="icon">qr_code_2</span> {t("linkDetail.qr")}
             </button>
-            {vanitySlug && (
-              <>
-                <span style="color:var(--on-bg-muted);font-size:0.75rem;margin-left:0.5rem">
-                  {t("linkDetail.or")}
-                </span>
-                <button
-                  class="btn btn-ghost btn-sm"
-                  style="font-size:0.75rem;opacity:0.7"
-                  onclick={`copyUrl('${escHtml(slug)}')`}
-                >
-                  <span class="icon" style="font-size:14px">
-                    content_copy
-                  </span>{" "}
-                  /{slug}
-                </button>
-              </>
-            )}
           </div>
         </div>
 
-        <div class="detail-hero-meta">
+        <div class="detail-hero-side">
           <div>
             <label class="form-label">{t("linkDetail.label")}</label>
             <div class="inline-edit" id="label-display" onclick={`beginEditLabel(${link.id})`}>
@@ -194,35 +176,6 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, showExisti
               </button>
             </div>
           </div>
-          <div>
-            <label class="form-label">{t("linkDetail.vanitySlug")}</label>
-            {vanity.length > 0 ? (
-              <div style="display:flex;flex-wrap:wrap;gap:0.4rem">
-                {vanity.map((v) => (
-                  <span class="slug-chip vanity" style="cursor:default">
-                    /{v.slug}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <div style="display:flex;gap:0.5rem">
-                <input
-                  class="form-input form-input-sm"
-                  id="detail-vanity"
-                  placeholder="my-custom-slug"
-                />
-                <button
-                  class="btn btn-secondary btn-sm"
-                  onclick={`addVanityFromDetail(${link.id})`}
-                >
-                  {t("linkDetail.add")}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div class="detail-hero-config">
           <div>
             <label class="form-label">{t("linkDetail.createdBy")}</label>
             {link.created_via ? (
@@ -270,6 +223,84 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, showExisti
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Slugs management section */}
+      <div class="bento-card" style="margin-bottom:1.4rem">
+        <div class="bento-label">{t("linkDetail.slugs")}</div>
+        <div class="slugs-table">
+          {link.slugs.map((s) => {
+            const isDisabled = !!s.disabled_at;
+            const canDelete = s.is_vanity && s.click_count === 0 && !isDisabled;
+            const canDisable = s.is_vanity && !isDisabled;
+            const canEnable = s.is_vanity && isDisabled;
+            return (
+              <div class={`slugs-row${isDisabled ? " slugs-row-disabled" : ""}${s.is_primary ? " slugs-row-primary" : ""}`}>
+                <div class="slugs-row-slug">
+                  <span style="font-family:var(--font-mono);font-size:0.875rem">/{s.slug}</span>
+                  {s.is_primary && (
+                    <span class="slug-badge-primary" title={t("linkDetail.primarySlug")}>
+                      <span class="icon" style="font-size:12px;vertical-align:-1px">star</span>
+                    </span>
+                  )}
+                  {!s.is_vanity && (
+                    <span class="slug-badge-auto" title={t("linkDetail.autoGenerated")}>auto</span>
+                  )}
+                </div>
+                <div class="slugs-row-clicks">
+                  {s.click_count} {t("linkDetail.clicks")}
+                </div>
+                <div class="slugs-row-actions">
+                  {!isDisabled && (
+                    <>
+                      <button
+                        class="btn-icon"
+                        onclick={`copyUrl('${escHtml(s.slug)}')`}
+                        title={t("linkDetail.copy")}
+                      >
+                        <span class="icon">content_copy</span>
+                      </button>
+                      <button
+                        class="btn-icon"
+                        onclick={`showQRModal(${link.id}, '${escHtml(s.slug)}')`}
+                        title={t("linkDetail.qr")}
+                      >
+                        <span class="icon">qr_code_2</span>
+                      </button>
+                    </>
+                  )}
+                  {canDelete && (
+                    <button
+                      class="btn-icon btn-icon-danger"
+                      onclick={`confirmDeleteSlug(${link.id}, ${s.id}, '${escHtml(s.slug)}')`}
+                      title={t("linkDetail.deleteSlug")}
+                    >
+                      <span class="icon">delete</span>
+                    </button>
+                  )}
+                  {canDisable && s.click_count > 0 && (
+                    <button
+                      class="btn-icon btn-icon-danger"
+                      onclick={`confirmDisableSlug(${link.id}, ${s.id}, '${escHtml(s.slug)}')`}
+                      title={t("linkDetail.disableSlug")}
+                    >
+                      <span class="icon">block</span>
+                    </button>
+                  )}
+                  {canEnable && (
+                    <button
+                      class="btn-icon"
+                      onclick={`confirmEnableSlug(${link.id}, ${s.id}, '${escHtml(s.slug)}')`}
+                      title={t("linkDetail.enableSlug")}
+                    >
+                      <span class="icon">check_circle</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

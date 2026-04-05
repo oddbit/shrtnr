@@ -113,14 +113,18 @@ function quickShorten() {
     if (res.ok) {
       var isDuplicate = res.status === 200;
       return res.json().then(function(link) {
-        if (!isDuplicate) {
+        if (isDuplicate) {
+          if (link.duplicate_count > 1) {
+            window.location.href = '/_/admin/links?search=' + encodeURIComponent(url);
+          } else {
+            window.location.href = '/_/admin/links/' + link.id;
+          }
+        } else {
           var primary = link.slugs.find(function(s) { return !s.is_vanity; });
           if (primary) copyUrl(primary.slug);
           toast(t('client.linkCreatedCopied'));
+          window.location.href = '/_/admin/links/' + link.id;
         }
-        var dest = '/_/admin/links/' + link.id;
-        if (isDuplicate) dest += '?existing=1';
-        window.location.href = dest;
       });
     } else {
       return res.json().then(function(data) {
@@ -162,10 +166,16 @@ function createLink() {
       var isDuplicate = res.status === 200;
       return res.json().then(function(link) {
         closeModal();
-        if (!isDuplicate) toast(t('client.linkCreated'));
-        var dest = '/_/admin/links/' + link.id;
-        if (isDuplicate) dest += '?existing=1';
-        window.location.href = dest;
+        if (isDuplicate) {
+          if (link.duplicate_count > 1) {
+            window.location.href = '/_/admin/links?search=' + encodeURIComponent(body.url);
+          } else {
+            window.location.href = '/_/admin/links/' + link.id;
+          }
+        } else {
+          toast(t('client.linkCreated'));
+          window.location.href = '/_/admin/links/' + link.id;
+        }
       });
     } else {
       return res.json().then(function(data) {
@@ -252,28 +262,157 @@ function deleteKey(id, title) {
   });
 }
 
+// ---- Triple-dot menu ----
+function toggleDetailMenu() {
+  var menu = document.getElementById('detail-menu');
+  var visible = menu.style.display !== 'none';
+  menu.style.display = visible ? 'none' : 'block';
+  if (!visible) {
+    document.addEventListener('click', closeDetailMenuOnOutside);
+  }
+}
+function closeDetailMenuOnOutside(e) {
+  var menu = document.getElementById('detail-menu');
+  if (menu && !menu.parentElement.contains(e.target)) {
+    menu.style.display = 'none';
+    document.removeEventListener('click', closeDetailMenuOnOutside);
+  }
+}
+
 // ---- Link actions (detail page) ----
-function disableLink(id) {
-  if (!confirm(t('client.confirmDisable'))) return;
+function showDisableLinkModal(id) {
+  document.getElementById('detail-menu').style.display = 'none';
+  openModal(
+    '<div class="modal-title">' + esc(t('linkDetail.disable')) + '</div>' +
+    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmDisable')) + '</p>' +
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-danger" onclick="doDisableLink(' + id + ')">' + esc(t('linkDetail.disable')) + '</button></div>'
+  );
+}
+function doDisableLink(id) {
   api('/links/' + id + '/disable', { method: 'POST' }).then(function(res) {
-    if (res.ok) { toast(t('client.linkDisabled')); window.location.reload(); }
+    if (res.ok) { closeModal(); toast(t('client.linkDisabled')); window.location.reload(); }
     else toast(t('client.disableError'), 'error');
   });
 }
 
-function enableLink(id) {
+function showEnableLinkModal(id) {
+  document.getElementById('detail-menu').style.display = 'none';
+  openModal(
+    '<div class="modal-title">' + esc(t('linkDetail.enable')) + '</div>' +
+    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmEnable')) + '</p>' +
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="doEnableLink(' + id + ')">' + esc(t('linkDetail.enable')) + '</button></div>'
+  );
+}
+function doEnableLink(id) {
   api('/links/' + id, { method: 'PUT', body: JSON.stringify({ expires_at: null }) }).then(function(res) {
-    if (res.ok) { toast(t('client.linkEnabled')); window.location.reload(); }
+    if (res.ok) { closeModal(); toast(t('client.linkEnabled')); window.location.reload(); }
     else toast(t('client.enableError'), 'error');
   });
 }
 
-function addVanityFromDetail(linkId) {
-  var slug = document.getElementById('detail-vanity').value.trim();
-  if (!slug) return;
+// ---- Add custom slug modal ----
+function showAddSlugModal(linkId) {
+  document.getElementById('detail-menu').style.display = 'none';
+  openModal(
+    '<div class="modal-title">' + esc(t('linkDetail.addCustomSlug')) + '</div>' +
+    '<div class="form-group"><label class="form-label">Slug</label><input class="form-input" id="m-new-slug" placeholder="my-custom-slug"></div>' +
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="doAddSlug(' + linkId + ')">' + esc(t('linkDetail.add')) + '</button></div>'
+  );
+  setTimeout(function() { document.getElementById('m-new-slug').focus(); }, 100);
+}
+function doAddSlug(linkId) {
+  var slug = document.getElementById('m-new-slug').value.trim();
+  if (!slug) { toast(t('client.urlRequired'), 'error'); return; }
   api('/links/' + linkId + '/slugs', { method: 'POST', body: JSON.stringify({ slug: slug }) }).then(function(res) {
-    if (res.ok) { toast(t('client.vanityAdded')); window.location.reload(); }
+    if (res.ok) { closeModal(); toast(t('client.vanityAdded')); window.location.reload(); }
     else res.json().then(function(data) { toast(data.error || t('client.vanityError'), 'error'); });
+  });
+}
+
+// ---- Change primary slug modal ----
+function showChangePrimaryModal(linkId) {
+  document.getElementById('detail-menu').style.display = 'none';
+  // Fetch link data to render slug list
+  api('/links/' + linkId).then(function(res) {
+    if (!res.ok) { toast(t('client.createLinkError'), 'error'); return; }
+    return res.json().then(function(link) {
+      var html = '<div class="modal-title">' + esc(t('linkDetail.selectPrimary')) + '</div>';
+      html += '<div style="display:flex;flex-direction:column;gap:0.25rem;margin-bottom:1rem">';
+      link.slugs.forEach(function(s) {
+        var active = s.is_primary ? ' style="background:var(--primary-glow);border-color:var(--primary)"' : '';
+        html += '<button class="btn btn-ghost" ' + active + ' onclick="doSetPrimary(' + linkId + ',' + s.id + ')" style="justify-content:flex-start;font-family:var(--font-mono);font-size:0.875rem">';
+        html += '/' + esc(s.slug);
+        if (s.is_primary) html += ' <span class="icon" style="font-size:14px;color:var(--primary);margin-left:auto">star</span>';
+        html += '</button>';
+      });
+      html += '</div>';
+      html += '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button></div>';
+      openModal(html);
+    });
+  });
+}
+function doSetPrimary(linkId, slugId) {
+  api('/links/' + linkId + '/slugs/primary', { method: 'PUT', body: JSON.stringify({ slug_id: slugId }) }).then(function(res) {
+    if (res.ok) { closeModal(); toast(t('client.labelUpdated')); window.location.reload(); }
+    else res.json().then(function(data) { toast(data.error || 'Error', 'error'); });
+  });
+}
+
+// ---- Duplicate link modal ----
+function showDuplicateModal(linkId, url) {
+  document.getElementById('detail-menu').style.display = 'none';
+  openModal(
+    '<div class="modal-title">' + esc(t('linkDetail.duplicateTitle')) + '</div>' +
+    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:0.75rem">' + esc(t('linkDetail.duplicateBody')) + '</p>' +
+    '<p style="font-size:0.8rem;color:var(--on-bg-muted);margin-bottom:1.5rem;opacity:0.7">' + esc(t('linkDetail.duplicateHelper')) + '</p>' +
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="doDuplicate(\'' + esc(url).replace(/'/g, "\\'") + '\')">' + esc(t('linkDetail.duplicate')) + '</button></div>'
+  );
+}
+function doDuplicate(url) {
+  createDuplicate(url);
+  closeModal();
+}
+
+// ---- Slug actions (detail page) ----
+function confirmDeleteSlug(linkId, slugId, slugText) {
+  openModal(
+    '<div class="modal-title">' + esc(t('linkDetail.deleteSlug')) + '</div>' +
+    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmDeleteSlug').replace('{slug}', slugText)) + '</p>' +
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-danger" onclick="doDeleteSlug(' + linkId + ',' + slugId + ')">' + esc(t('linkDetail.deleteSlug')) + '</button></div>'
+  );
+}
+function doDeleteSlug(linkId, slugId) {
+  api('/links/' + linkId + '/slugs/' + slugId, { method: 'DELETE' }).then(function(res) {
+    if (res.ok) { closeModal(); toast(t('client.vanityAdded')); window.location.reload(); }
+    else res.json().then(function(data) { toast(data.error || 'Error', 'error'); });
+  });
+}
+
+function confirmDisableSlug(linkId, slugId, slugText) {
+  openModal(
+    '<div class="modal-title">' + esc(t('linkDetail.disableSlug')) + '</div>' +
+    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmDisableSlug').replace('{slug}', slugText)) + '</p>' +
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-danger" onclick="doDisableSlug(' + linkId + ',' + slugId + ')">' + esc(t('linkDetail.disableSlug')) + '</button></div>'
+  );
+}
+function doDisableSlug(linkId, slugId) {
+  api('/links/' + linkId + '/slugs/' + slugId + '/disable', { method: 'POST' }).then(function(res) {
+    if (res.ok) { closeModal(); window.location.reload(); }
+    else res.json().then(function(data) { toast(data.error || 'Error', 'error'); });
+  });
+}
+
+function confirmEnableSlug(linkId, slugId, slugText) {
+  openModal(
+    '<div class="modal-title">' + esc(t('linkDetail.enableSlug')) + '</div>' +
+    '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:1.5rem">' + esc(t('linkDetail.confirmEnableSlug').replace('{slug}', slugText)) + '</p>' +
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="doEnableSlug(' + linkId + ',' + slugId + ')">' + esc(t('linkDetail.enableSlug')) + '</button></div>'
+  );
+}
+function doEnableSlug(linkId, slugId) {
+  api('/links/' + linkId + '/slugs/' + slugId + '/enable', { method: 'POST' }).then(function(res) {
+    if (res.ok) { closeModal(); window.location.reload(); }
+    else res.json().then(function(data) { toast(data.error || 'Error', 'error'); });
   });
 }
 

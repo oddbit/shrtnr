@@ -28,6 +28,7 @@ type Props = {
   page: number;
   perPage: number;
   showDisabled: boolean;
+  searchQuery?: string;
   t: TranslateFn;
   lang: string;
 };
@@ -38,6 +39,7 @@ export const LinksPage: FC<Props> = ({
   page,
   perPage,
   showDisabled,
+  searchQuery,
   t,
   lang,
 }) => {
@@ -105,11 +107,24 @@ export const LinksPage: FC<Props> = ({
           id="quick-url"
           type="url"
           placeholder={t("dashboard.urlPlaceholder")}
+          value={searchQuery || ""}
         />
         <button class="btn btn-primary btn-lg" onclick="quickShorten()">
           <span class="icon">bolt</span> {t("dashboard.shorten")}
         </button>
       </div>
+
+      {searchQuery && (
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">
+          <span style="font-size:0.85rem;color:var(--on-bg-muted)">{t("links.searchResults", { count: filtered.length })}</span>
+          <a href="/_/admin/links" class="btn btn-ghost btn-sm" style="font-size:0.8rem">
+            <span class="icon" style="font-size:14px">close</span> {t("links.clearSearch")}
+          </a>
+          <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:0.8rem" onclick={`createDuplicate('${escHtml(searchQuery)}')`}>
+            <span class="icon" style="font-size:14px">add</span> {t("links.createNew")}
+          </button>
+        </div>
+      )}
 
       <div class="toolbar">
         <div style="display:flex;align-items:center;gap:1rem">
@@ -160,8 +175,10 @@ export const LinksPage: FC<Props> = ({
       ) : (
         <>
           {pageLinks.map((link) => {
-            const primary = link.slugs.find((s) => !s.is_vanity);
-            const vanity = link.slugs.filter((s) => s.is_vanity);
+            const primarySlug = link.slugs.find((s) => s.is_primary)
+              || link.slugs.find((s) => s.is_vanity)
+              || link.slugs[0];
+            const otherSlugs = link.slugs.filter((s) => s !== primarySlug);
             const disabled = !!(link.expires_at && link.expires_at < now);
             return (
               <a
@@ -170,23 +187,24 @@ export const LinksPage: FC<Props> = ({
               >
                 <div class="link-info">
                   <div class="link-slugs">
-                    {primary && (
+                    {primarySlug && (
                       <span
-                        class="slug-chip"
-                        onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(primary.slug)}')`}
+                        class={`slug-chip${primarySlug.is_vanity ? " vanity" : ""}`}
+                        onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(primarySlug.slug)}')`}
                         title={t("links.clickToCopy")}
                       >
-                        /{primary.slug}{" "}
+                        /{primarySlug.slug}{" "}
                         <span class="icon">content_copy</span>
                       </span>
                     )}
-                    {vanity.map((v) => (
+                    {otherSlugs.map((s) => (
                       <span
-                        class="slug-chip vanity"
-                        onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(v.slug)}')`}
+                        class={`slug-chip${s.is_vanity ? " vanity" : ""}${s.disabled_at ? " slug-chip-disabled" : ""}`}
+                        onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(s.slug)}')`}
                         title={t("links.clickToCopy")}
+                        style={s.disabled_at ? "opacity:0.4" : undefined}
                       >
-                        /{v.slug} <span class="icon">content_copy</span>
+                        /{s.slug} <span class="icon">content_copy</span>
                       </span>
                     ))}
                     {disabled && (
