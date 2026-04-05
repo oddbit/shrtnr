@@ -236,7 +236,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
       <div class="bento-card" style="margin-bottom:1.4rem">
         <div class="bento-label">{t("linkDetail.slugs")}</div>
         <div class="slugs-table">
-          {link.slugs.map((s) => {
+          {[...link.slugs].sort((a, b) => a.is_vanity - b.is_vanity).map((s) => {
             const isDisabled = !!s.disabled_at;
             const isPrimary = s.is_primary === 1;
             const isVanity = s.is_vanity === 1;

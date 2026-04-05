@@ -178,7 +178,9 @@ export const LinksPage: FC<Props> = ({
             const primarySlug = link.slugs.find((s) => s.is_primary)
               || link.slugs.find((s) => s.is_vanity)
               || link.slugs[0];
-            const otherSlugs = link.slugs.filter((s) => s !== primarySlug);
+            const otherSlugs = link.slugs
+              .filter((s) => s !== primarySlug)
+              .sort((a, b) => a.is_vanity - b.is_vanity);
             const disabled = !!(link.expires_at && link.expires_at < now);
             return (
               <a
