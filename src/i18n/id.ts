@@ -128,6 +128,7 @@ const id: Translations = {
   "settings.combos": "{count} kemungkinan kombinasi",
   "settings.minLength": "Panjang minimum 3 karakter",
   "settings.version": "Versi",
+  "settings.account": "Akun",
   "settings.checkingUpdates": "Memeriksa pembaruan...",
   "settings.installApp": "Instal Aplikasi",
   "settings.integrations": "Integrasi",

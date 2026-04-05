@@ -128,6 +128,7 @@ const sv: Translations = {
   "settings.combos": "{count} möjliga kombinationer",
   "settings.minLength": "Minsta längd är 3 tecken",
   "settings.version": "Version",
+  "settings.account": "Konto",
   "settings.checkingUpdates": "Söker efter uppdateringar...",
   "settings.installApp": "Installera app",
   "settings.integrations": "Integrationer",

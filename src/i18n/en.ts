@@ -125,6 +125,7 @@ const en = {
   "settings.combos": "{count} possible combinations",
   "settings.minLength": "Minimum length is 3 characters",
   "settings.version": "Version",
+  "settings.account": "Account",
   "settings.checkingUpdates": "Checking for updates...",
   "settings.installApp": "Install App",
   "settings.integrations": "Integrations",

@@ -11,9 +11,10 @@ type Props = {
   lang: string;
   t: TranslateFn;
   mcpConfigured: boolean;
+  userEmail?: string | null;
 };
 
-export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigured }) => {
+export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigured, userEmail }) => {
   const combos = Math.pow(56, Math.max(slugLength, 3));
   const comboHint =
     slugLength >= 3
@@ -110,8 +111,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
 
           <div class="bento-card" style="margin-top:1.4rem">
             <div class="form-group" style="margin-bottom:0">
-              <label class="form-label">{t("settings.version")}</label>
-              <div id="version-status" style="font-size:0.875rem;margin-top:0.5rem">
+              <label class="form-label">{t("settings.version")}</label>              <div id="version-status" style="font-size:0.875rem;margin-top:0.5rem">
                 <span style="color:var(--color-text-muted)">
                   <span
                     class="icon"
@@ -130,6 +130,24 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
               </div>
             </div>
           </div>
+
+          {userEmail && (
+            <div class="bento-card" style="margin-top:1.4rem">
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">{t("settings.account")}</label>
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem">
+                  <span class="icon" style="font-size:18px;color:var(--color-text-muted)">person</span>
+                  <span style="font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{userEmail}</span>
+                </div>
+                <div style="margin-top:0.875rem">
+                  <a href="/_/admin/logout" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem">
+                    <span class="icon" style="font-size:16px">logout</span>
+                    {t("nav.logout")}
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div style="min-width:240px;max-width:300px;display:flex;flex-direction:column;gap:1.4rem">

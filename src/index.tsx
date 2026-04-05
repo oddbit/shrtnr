@@ -216,7 +216,7 @@ app.get("/_/admin/settings", async (c) => {
   const userEmail = c.var.user?.email ?? null;
   return c.html(
     <Layout active="settings" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
-      <SettingsPage theme={theme} slugLength={slugLength} lang={lang} t={t} mcpConfigured={mcpConfigured} />
+      <SettingsPage theme={theme} slugLength={slugLength} lang={lang} t={t} mcpConfigured={mcpConfigured} userEmail={userEmail} />
     </Layout>,
   );
 });
