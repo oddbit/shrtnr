@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.19.0 (2026-04-05)
+
+### Separated link creation from custom slugs
+
+Link creation and custom slug assignment are now separate operations at every layer.
+
+**HTTP API**: `POST /_/api/links` no longer accepts `custom_slug`. Links are created with a random slug only. Custom slugs are added one-by-one via `POST /_/api/links/:id/slugs`, which returns 409 on collision.
+
+**Service layer**: `createLink` generates a random slug. `addCustomSlugToLink` handles custom slugs individually with validation and collision checking.
+
+**SDK** (`@oddbit/shrtnr` 0.4.0): `createLink` no longer accepts `custom_slug`. Use `addCustomSlug` after creation. The return type is `Link` (removed `CreateLinkResult` and `SlugRejection`).
+
+**MCP**: `create_link` tool accepts `custom_slug` as before. Internally chains the same way as the SDK.
+
+**Browser client**: The admin UI create-link form chains a create call followed by an add-slug call when a custom slug is provided.
+
 ## 0.18.1 (2026-04-06)
 
 ### Settings page
