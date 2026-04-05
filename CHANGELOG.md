@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.16.0 (2026-04-05)
+
+### UI/UX Improvements
+
+- **Redesigned Link Details header:** New layout featuring a prominent total clicks counter and a cleaner metadata grid for label, creator, and expiry information.
+- **Unified Slugs management:** Merged slug management and performance statistics into a single, cohesive table view with aligned progress bars and click counts.
+- **Reorganized Analytics:** Restructured the analytics layout into two columns for better space utilization, placing time-series and source data in a wider left column and other stats in a narrower right column.
+- **Responsive Enhancements:** Improved layout behavior for smaller screens and mobile devices.
+
+### Bug Fixes
+
+- Fixed an issue where numeric 0 values were rendered as literal text in JSX.
+- Fixed escaping of single quotes in the link duplication modal.
+
 ## 0.15.0
 
 ### Repository and service layer refactor
