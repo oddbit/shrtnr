@@ -365,7 +365,7 @@ function showDuplicateModal(linkId, url) {
     '<div class="modal-title">' + esc(t('linkDetail.duplicateTitle')) + '</div>' +
     '<p style="font-size:0.875rem;color:var(--on-bg-muted);margin-bottom:0.75rem">' + esc(t('linkDetail.duplicateBody')) + '</p>' +
     '<p style="font-size:0.8rem;color:var(--on-bg-muted);margin-bottom:1.5rem;opacity:0.7">' + esc(t('linkDetail.duplicateHelper')) + '</p>' +
-    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="doDuplicate(\'' + esc(url).replace(/'/g, "\\'") + '\')">' + esc(t('linkDetail.duplicate')) + '</button></div>'
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="doDuplicate(\\'' + esc(url).replace(/'/g, "\\\\'") + '\\')">' + esc(t('linkDetail.duplicate')) + '</button></div>'
   );
 }
 function doDuplicate(url) {
