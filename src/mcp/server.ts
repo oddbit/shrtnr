@@ -78,14 +78,34 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         url: z.string().url().describe("Destination URL to shorten"),
         label: z.string().optional().describe("Human-readable label for the link"),
         slug_length: z.number().int().min(3).optional().describe("Length of the random slug (default: 3)"),
-        custom_slug: z.string().optional().describe("Custom slug (also called vanity slug or extra link), e.g. 'my-blog-post'"),
-        vanity_slug: z.string().optional().describe("Alias for custom_slug"),
+        custom_slug: z.union([z.string(), z.array(z.string())]).optional().describe("Custom slug(s), e.g. 'my-blog-post' or ['slug-a', 'slug-b']. Added after creation; collisions are reported, not fatal."),
+        vanity_slug: z.string().optional().describe("Alias for custom_slug (single string)"),
         expires_at: z.number().int().optional().describe("Unix timestamp when the link expires"),
       },
-      async ({ vanity_slug, ...opts }) => {
-        const result = await createLink(this.env, { ...opts, custom_slug: opts.custom_slug ?? vanity_slug, created_via: "mcp" });
+      async ({ custom_slug, vanity_slug, ...opts }) => {
+        const result = await createLink(this.env, { ...opts, created_via: "mcp" });
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+
+        const requestedSlugs = custom_slug
+          ? (Array.isArray(custom_slug) ? custom_slug : [custom_slug])
+          : vanity_slug ? [vanity_slug] : [];
+
+        const rejections: { slug: string; reason: string }[] = [];
+        for (const slug of requestedSlugs) {
+          const addResult = await addCustomSlugToLink(this.env, result.data.id, { slug });
+          if (!addResult.ok) {
+            rejections.push({ slug, reason: addResult.error });
+          }
+        }
+
+        const link = requestedSlugs.length > 0
+          ? (await getLink(this.env, result.data.id))
+          : result;
+        if (!link.ok) return fail(link.error);
+
+        const response: Record<string, unknown> = { ...link.data };
+        if (rejections.length > 0) response.slug_rejections = rejections;
+        return ok(response);
       },
     );
 
