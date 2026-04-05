@@ -175,12 +175,10 @@ export const LinksPage: FC<Props> = ({
       ) : (
         <>
           {pageLinks.map((link) => {
-            const primarySlug = link.slugs.find((s) => s.is_primary)
-              || link.slugs.find((s) => s.is_custom)
-              || link.slugs[0];
-            const otherSlugs = link.slugs
-              .filter((s) => s !== primarySlug)
-              .sort((a, b) => a.is_custom - b.is_custom);
+            const orderedSlugs = [...link.slugs].sort((a, b) => {
+              if (a.is_custom !== b.is_custom) return a.is_custom - b.is_custom;
+              return a.created_at - b.created_at;
+            });
             const disabled = !!(link.expires_at && link.expires_at < now);
             return (
               <a
@@ -189,17 +187,7 @@ export const LinksPage: FC<Props> = ({
               >
                 <div class="link-info">
                   <div class="link-slugs">
-                    {primarySlug && (
-                      <span
-                        class={`slug-chip${primarySlug.is_custom ? " custom" : ""}`}
-                        onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(primarySlug.slug)}')`}
-                        title={t("links.clickToCopy")}
-                      >
-                        /{primarySlug.slug}{" "}
-                        <span class="icon">content_copy</span>
-                      </span>
-                    )}
-                    {otherSlugs.map((s) => (
+                    {orderedSlugs.map((s) => (
                       <span
                         class={`slug-chip${s.is_custom ? " custom" : ""}${s.disabled_at ? " slug-chip-disabled" : ""}`}
                         onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(s.slug)}')`}
