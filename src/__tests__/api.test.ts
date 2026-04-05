@@ -164,40 +164,67 @@ describe("Links API", () => {
     expect(res.status).toBe(400);
   });
 
-  it("POST /_/admin/api/links with custom slug should attach both slugs", async () => {
-    const res = await SELF.fetch(
+  it("POST /_/admin/api/links then POST slugs should attach both slugs", async () => {
+    const createRes = await SELF.fetch(
       authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://example.com", custom_slug: "my-slug" }),
+        body: JSON.stringify({ url: "https://example.com" }),
       })
     );
-    expect(res.status).toBe(201);
-    const body = await res.json() as any;
+    expect(createRes.status).toBe(201);
+    const created = await createRes.json() as any;
+    const slugRes = await SELF.fetch(
+      authed(`/_/admin/api/links/${created.id}/slugs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "my-slug" }),
+      })
+    );
+    expect(slugRes.status).toBe(201);
+    const linkRes = await SELF.fetch(authed(`/_/admin/api/links/${created.id}`));
+    const body = await linkRes.json() as any;
     expect(body.slugs).toHaveLength(2);
     expect(body.slugs.some((s: any) => s.slug === "my-slug" && s.is_custom === 1)).toBe(true);
   });
 
-  it("POST /_/admin/api/links slugs should be ordered: auto at index 0, custom at index 1", async () => {
-    const res = await SELF.fetch(
+  it("POST /_/admin/api/links then POST slugs should be ordered: auto at index 0, custom at index 1", async () => {
+    const createRes = await SELF.fetch(
       authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://example.com", custom_slug: "custom" }),
+        body: JSON.stringify({ url: "https://example.com" }),
       })
     );
-    const body = await res.json() as any;
+    const created = await createRes.json() as any;
+    await SELF.fetch(
+      authed(`/_/admin/api/links/${created.id}/slugs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "custom" }),
+      })
+    );
+    const linkRes = await SELF.fetch(authed(`/_/admin/api/links/${created.id}`));
+    const body = await linkRes.json() as any;
     expect(body.slugs[0].is_custom).toBe(0);
     expect(body.slugs[1].is_custom).toBe(1);
     expect(body.slugs[1].slug).toBe("custom");
   });
 
   it("GET /_/admin/api/links should preserve slug ordering per link", async () => {
-    await SELF.fetch(
+    const createRes = await SELF.fetch(
       authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://example.com", custom_slug: "ordered" }),
+        body: JSON.stringify({ url: "https://example.com" }),
+      })
+    );
+    const created = await createRes.json() as any;
+    await SELF.fetch(
+      authed(`/_/admin/api/links/${created.id}/slugs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "ordered" }),
       })
     );
     const res = await SELF.fetch(authed("/_/admin/api/links"));
@@ -212,10 +239,17 @@ describe("Links API", () => {
       authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://example.com", custom_slug: "detail-order" }),
+        body: JSON.stringify({ url: "https://example.com" }),
       })
     );
     const created = await createRes.json() as any;
+    await SELF.fetch(
+      authed(`/_/admin/api/links/${created.id}/slugs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "detail-order" }),
+      })
+    );
     const res = await SELF.fetch(authed(`/_/admin/api/links/${created.id}`));
     const body = await res.json() as any;
     expect(body.slugs[0].is_custom).toBe(0);
@@ -223,22 +257,18 @@ describe("Links API", () => {
     expect(body.slugs[1].slug).toBe("detail-order");
   });
 
-  it("POST /_/admin/api/links with duplicate custom slug should return 409", async () => {
-    await SELF.fetch(
-      authed("/_/admin/api/links", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://example.com", custom_slug: "taken" }),
-      })
-    );
+  it("POST /_/admin/api/links creates link without custom_slug field", async () => {
     const res = await SELF.fetch(
       authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://other.com", custom_slug: "taken" }),
+        body: JSON.stringify({ url: "https://example.com" }),
       })
     );
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(201);
+    const body = await res.json() as any;
+    expect(body.slugs).toHaveLength(1);
+    expect(body.slugs[0].is_custom).toBe(0);
   });
 
   it("POST /_/admin/api/links with label and expires_at should store them", async () => {
@@ -463,10 +493,17 @@ describe("Custom Slugs API", () => {
       authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://example.com", custom_slug: "taken" }),
+        body: JSON.stringify({ url: "https://example.com" }),
       })
     );
     const created = await createRes.json() as any;
+    await SELF.fetch(
+      authed(`/_/admin/api/links/${created.id}/slugs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "taken" }),
+      })
+    );
     const res = await SELF.fetch(
       authed(`/_/admin/api/links/${created.id}/slugs`, {
         method: "POST",
@@ -482,10 +519,17 @@ describe("Custom Slugs API", () => {
       authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://example.com", custom_slug: "existing" }),
+        body: JSON.stringify({ url: "https://example.com" }),
       })
     );
     const created = await createRes.json() as any;
+    await SELF.fetch(
+      authed(`/_/admin/api/links/${created.id}/slugs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "existing" }),
+      })
+    );
     const res = await SELF.fetch(
       authed(`/_/admin/api/links/${created.id}/slugs`, {
         method: "POST",
@@ -1244,10 +1288,19 @@ describe("API Key Authentication", () => {
       authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://example.com", custom_slug: "find-me" }),
+        body: JSON.stringify({ url: "https://example.com" }),
       })
     );
     const link = await createLinkRes.json() as any;
+
+    // 1b. Add a custom slug
+    await SELF.fetch(
+      authed(`/_/admin/api/links/${link.id}/slugs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "find-me" }),
+      })
+    );
 
     // 2. Create a key
     const keyRes = await SELF.fetch(
@@ -1294,11 +1347,19 @@ describe("API Key Authentication", () => {
 
 describe("Custom Slug Redirect", () => {
   it("should 301 redirect via a custom slug", async () => {
-    await SELF.fetch(
+    const createRes = await SELF.fetch(
       authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://custom-target.com", custom_slug: "go" }),
+        body: JSON.stringify({ url: "https://custom-target.com" }),
+      })
+    );
+    const created = await createRes.json() as any;
+    await SELF.fetch(
+      authed(`/_/admin/api/links/${created.id}/slugs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "go" }),
       })
     );
     const res = await SELF.fetch(unauthed("/go"), { redirect: "manual" });

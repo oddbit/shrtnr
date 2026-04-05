@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "./setup";
-import { LinkRepository, ClickRepository } from "../db";
+import { LinkRepository, ClickRepository, SlugRepository } from "../db";
 
 beforeAll(applyMigrations);
 beforeEach(resetData);
@@ -95,9 +95,11 @@ describe("ClickRepository.getStats", () => {
   });
 
   it("aggregates clicks across multiple slugs", async () => {
-    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc", customSlug: "custom" });
-    const autoSlug = link.slugs.find((s) => s.is_custom === 0)!;
-    const customSlug = link.slugs.find((s) => s.is_custom === 1)!;
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await SlugRepository.addCustom(env.DB, link.id, "custom");
+    const fetched = (await LinkRepository.getById(env.DB, link.id))!;
+    const autoSlug = fetched.slugs.find((s) => s.is_custom === 0)!;
+    const customSlug = fetched.slugs.find((s) => s.is_custom === 1)!;
     await ClickRepository.record(env.DB, autoSlug.id, null, "US", "desktop", "Chrome");
     await ClickRepository.record(env.DB, customSlug.id, null, "DE", "mobile", "Firefox");
     const stats = await ClickRepository.getStats(env.DB, link.id);

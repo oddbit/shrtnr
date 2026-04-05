@@ -264,7 +264,10 @@ describe("MCP tool behavior (service layer)", () => {
   });
 
   it("search_links finds a link by slug", async () => {
-    await createLink(env as never, { url: "https://oddbit.id/pricing", custom_slug: "pricing-page" });
+    const created = await createLink(env as never, { url: "https://oddbit.id/pricing" });
+    if (created.ok) {
+      await addCustomSlugToLink(env as never, created.data.id, { slug: "pricing-page" });
+    }
     await createLink(env as never, { url: "https://example.com" });
 
     const result = await searchLinks(env as never, "pricing");
@@ -277,11 +280,13 @@ describe("MCP tool behavior (service layer)", () => {
   });
 
   it("search_links returns all slugs on matched links", async () => {
-    await createLink(env as never, {
+    const created = await createLink(env as never, {
       url: "https://oddbit.id",
       label: "Oddbit website",
-      custom_slug: "oddbit-home",
     });
+    if (created.ok) {
+      await addCustomSlugToLink(env as never, created.data.id, { slug: "oddbit-home" });
+    }
 
     const result = await searchLinks(env as never, "oddbit");
 

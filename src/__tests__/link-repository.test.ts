@@ -28,21 +28,25 @@ describe("LinkRepository.create", () => {
     expect(link.expires_at).toBe(future);
   });
 
-  it("creates a link with both random and custom slugs", async () => {
-    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc", customSlug: "my-custom" });
-    expect(link.slugs).toHaveLength(2);
-    const auto = link.slugs.find((s) => s.is_custom === 0);
-    const custom = link.slugs.find((s) => s.is_custom === 1);
+  it("supports adding a custom slug after creation", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await SlugRepository.addCustom(env.DB, link.id, "my-custom");
+    const fetched = (await LinkRepository.getById(env.DB, link.id))!;
+    expect(fetched.slugs).toHaveLength(2);
+    const auto = fetched.slugs.find((s) => s.is_custom === 0);
+    const custom = fetched.slugs.find((s) => s.is_custom === 1);
     expect(auto!.slug).toBe("abc");
     expect(custom!.slug).toBe("my-custom");
   });
 
   it("returns random slug at index 0 and custom at index 1", async () => {
-    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc", customSlug: "my-custom" });
-    expect(link.slugs[0].is_custom).toBe(0);
-    expect(link.slugs[0].slug).toBe("abc");
-    expect(link.slugs[1].is_custom).toBe(1);
-    expect(link.slugs[1].slug).toBe("my-custom");
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await SlugRepository.addCustom(env.DB, link.id, "my-custom");
+    const fetched = (await LinkRepository.getById(env.DB, link.id))!;
+    expect(fetched.slugs[0].is_custom).toBe(0);
+    expect(fetched.slugs[0].slug).toBe("abc");
+    expect(fetched.slugs[1].is_custom).toBe(1);
+    expect(fetched.slugs[1].slug).toBe("my-custom");
   });
 
   it("stores created_via when provided", async () => {
@@ -68,7 +72,8 @@ describe("LinkRepository.list", () => {
   });
 
   it("returns custom slug at correct index after create", async () => {
-    await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc", customSlug: "my-custom" });
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await SlugRepository.addCustom(env.DB, link.id, "my-custom");
     const links = await LinkRepository.list(env.DB);
     expect(links[0].slugs[0].is_custom).toBe(0);
     expect(links[0].slugs[1].is_custom).toBe(1);
@@ -109,7 +114,8 @@ describe("LinkRepository.getById", () => {
 
 describe("LinkRepository.getBySlug", () => {
   it("returns the link that owns the slug", async () => {
-    const created = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "xyz", customSlug: "my-slug" });
+    const created = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "xyz" });
+    await SlugRepository.addCustom(env.DB, created.id, "my-slug");
     const fetched = await LinkRepository.getBySlug(env.DB, "my-slug");
     expect(fetched).not.toBeNull();
     expect(fetched!.id).toBe(created.id);
@@ -199,7 +205,8 @@ describe("LinkRepository.findByUrl", () => {
   });
 
   it("includes slugs in each returned link", async () => {
-    await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc", customSlug: "my-custom" });
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await SlugRepository.addCustom(env.DB, link.id, "my-custom");
     const found = await LinkRepository.findByUrl(env.DB, "https://example.com");
     expect(found[0].slugs).toHaveLength(2);
   });
@@ -227,7 +234,8 @@ describe("LinkRepository.search", () => {
   });
 
   it("finds a link when query matches the custom slug", async () => {
-    await LinkRepository.create(env.DB, { url: "https://oddbit.id", slug: "abc", customSlug: "oddbit-home" });
+    const link = await LinkRepository.create(env.DB, { url: "https://oddbit.id", slug: "abc" });
+    await SlugRepository.addCustom(env.DB, link.id, "oddbit-home");
 
     const results = await LinkRepository.search(env.DB, "oddbit-home");
 
@@ -278,7 +286,8 @@ describe("LinkRepository.search", () => {
   });
 
   it("returns results with all slugs attached", async () => {
-    const link = await LinkRepository.create(env.DB, { url: "https://oddbit.id", slug: "aaa", customSlug: "oddbit-home" });
+    const link = await LinkRepository.create(env.DB, { url: "https://oddbit.id", slug: "aaa" });
+    await SlugRepository.addCustom(env.DB, link.id, "oddbit-home");
     await SlugRepository.addCustom(env.DB, link.id, "ob-home");
 
     const results = await LinkRepository.search(env.DB, "oddbit");

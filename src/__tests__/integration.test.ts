@@ -37,21 +37,25 @@ describe("Link CRUD", () => {
     expect(link.expires_at).toBe(future);
   });
 
-  it("should create a link with both auto-generated and custom slugs", async () => {
-    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc", customSlug: "my-custom" });
-    expect(link.slugs).toHaveLength(2);
-    const auto = link.slugs.find((s) => s.is_custom === 0);
-    const custom = link.slugs.find((s) => s.is_custom === 1);
+  it("should support adding a custom slug after link creation", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await SlugRepository.addCustom(env.DB, link.id, "my-custom");
+    const fetched = (await LinkRepository.getById(env.DB, link.id))!;
+    expect(fetched.slugs).toHaveLength(2);
+    const auto = fetched.slugs.find((s) => s.is_custom === 0);
+    const custom = fetched.slugs.find((s) => s.is_custom === 1);
     expect(auto!.slug).toBe("abc");
     expect(custom!.slug).toBe("my-custom");
   });
 
   it("should always return auto-generated slug at index 0 and custom at index 1", async () => {
-    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc", customSlug: "my-custom" });
-    expect(link.slugs[0].is_custom).toBe(0);
-    expect(link.slugs[0].slug).toBe("abc");
-    expect(link.slugs[1].is_custom).toBe(1);
-    expect(link.slugs[1].slug).toBe("my-custom");
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await SlugRepository.addCustom(env.DB, link.id, "my-custom");
+    const fetched = (await LinkRepository.getById(env.DB, link.id))!;
+    expect(fetched.slugs[0].is_custom).toBe(0);
+    expect(fetched.slugs[0].slug).toBe("abc");
+    expect(fetched.slugs[1].is_custom).toBe(1);
+    expect(fetched.slugs[1].slug).toBe("my-custom");
   });
 
   it("should preserve slug ordering after adding a custom slug later", async () => {
@@ -66,7 +70,8 @@ describe("Link CRUD", () => {
   });
 
   it("should preserve slug ordering in list", async () => {
-    await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc", customSlug: "my-custom" });
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await SlugRepository.addCustom(env.DB, link.id, "my-custom");
     const links = await LinkRepository.list(env.DB);
     expect(links[0].slugs[0].is_custom).toBe(0);
     expect(links[0].slugs[1].is_custom).toBe(1);
@@ -248,9 +253,11 @@ describe("Analytics", () => {
   });
 
   it("should aggregate clicks across multiple slugs of a link", async () => {
-    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc", customSlug: "custom" });
-    const autoSlug = link.slugs.find((s) => s.is_custom === 0)!;
-    const customSlug = link.slugs.find((s) => s.is_custom === 1)!;
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await SlugRepository.addCustom(env.DB, link.id, "custom");
+    const fetched = (await LinkRepository.getById(env.DB, link.id))!;
+    const autoSlug = fetched.slugs.find((s) => s.is_custom === 0)!;
+    const customSlug = fetched.slugs.find((s) => s.is_custom === 1)!;
     await ClickRepository.record(env.DB, autoSlug.id, null, "US", "desktop", "Chrome");
     await ClickRepository.record(env.DB, customSlug.id, null, "DE", "mobile", "Firefox");
     const stats = await ClickRepository.getStats(env.DB, link.id);

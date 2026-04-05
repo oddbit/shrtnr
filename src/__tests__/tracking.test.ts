@@ -306,10 +306,18 @@ describe("QR download API", () => {
       authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://example.com", custom_slug: "my-link" }),
+        body: JSON.stringify({ url: "https://example.com" }),
       }),
     );
     const created = (await createRes.json()) as any;
+
+    await SELF.fetch(
+      authed(`/_/admin/api/links/${created.id}/slugs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "my-link" }),
+      }),
+    );
 
     const res = await SELF.fetch(authed(`/_/admin/api/links/${created.id}/qr?slug=my-link`));
     expect(res.status).toBe(200);

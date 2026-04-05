@@ -53,12 +53,12 @@ describe("link-management service", () => {
   it("allows multiple custom slugs per link", async () => {
     const created = await createLink(env as any, {
       url: "https://example.com",
-      custom_slug: "initial-custom",
     });
 
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
+    await addCustomSlugToLink(env as any, created.data.id, { slug: "initial-custom" });
     const result = await addCustomSlugToLink(env as any, created.data.id, { slug: "second-custom" });
 
     expect(result.ok).toBe(true);
@@ -142,15 +142,15 @@ describe("link-management service", () => {
     }
   });
 
-  it("lowercases custom_slug on create", async () => {
-    const result = await createLink(env as any, {
-      url: "https://example.com",
-      custom_slug: "My-Custom-Slug",
-    });
+  it("lowercases custom slug when added to existing link", async () => {
+    const created = await createLink(env as any, { url: "https://example.com" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const result = await addCustomSlugToLink(env as any, created.data.id, { slug: "My-Custom-Slug" });
     expect(result.ok).toBe(true);
     if (result.ok) {
-      const custom = result.data.slugs.find((s) => s.is_custom === 1);
-      expect(custom?.slug).toBe("my-custom-slug");
+      expect(result.data.slug).toBe("my-custom-slug");
     }
   });
 
@@ -167,17 +167,17 @@ describe("link-management service", () => {
   });
 
   it("can get a link by its slug", async () => {
-    const created = await createLink(env as any, {
-      url: "https://example.com",
-      custom_slug: "my-custom-slug",
-    });
+    const created = await createLink(env as any, { url: "https://example.com" });
     expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    await addCustomSlugToLink(env as any, created.data.id, { slug: "my-custom-slug" });
 
     const fetched = await getLinkBySlug(env as any, "my-custom-slug");
     expect(fetched.ok).toBe(true);
     if (fetched.ok) {
       expect(fetched.data.url).toBe("https://example.com");
-      expect(fetched.data.id).toBe(created.ok ? created.data.id : -1);
+      expect(fetched.data.id).toBe(created.data.id);
     }
   });
 
@@ -207,7 +207,10 @@ describe("searchLinks service", () => {
   });
 
   it("returns links matching a slug query", async () => {
-    await createLink(env as any, { url: "https://oddbit.id/pricing", custom_slug: "pricing-page" });
+    const created = await createLink(env as any, { url: "https://oddbit.id/pricing" });
+    if (created.ok) {
+      await addCustomSlugToLink(env as any, created.data.id, { slug: "pricing-page" });
+    }
 
     const { searchLinks } = await import("../services/link-management");
     const result = await searchLinks(env as any, "pricing");
