@@ -13,6 +13,7 @@ import {
   getLinkAnalytics,
   listLinks,
   getLink,
+  searchLinks,
   listAllApiKeys,
 } from "./services";
 import { DEFAULT_SLUG_LENGTH } from "./constants";
@@ -26,7 +27,13 @@ import {
   handleDisableLink,
   handleGetLinkBySlug,
 } from "./api/links";
-import { handleAddVanitySlug } from "./api/slugs";
+import {
+  handleAddVanitySlug,
+  handleSetPrimarySlug,
+  handleDisableSlug,
+  handleEnableSlug,
+  handleRemoveSlug,
+} from "./api/slugs";
 import { handleGetSettings, handleUpdateSettings } from "./api/settings";
 import { handleListKeys, handleCreateKey, handleDeleteKey } from "./api/keys";
 import {
@@ -139,7 +146,10 @@ app.get("/_/admin/dashboard", async (c) => {
 app.get("/_/admin/links", async (c) => {
   const identity = c.var.identity;
   const { theme, slugLength, t, lang, translations } = await getPageData(c, identity);
-  const linksResult = await listLinks(c.env);
+  const searchQuery = c.req.query("search") || "";
+  const linksResult = searchQuery
+    ? await searchLinks(c.env, searchQuery)
+    : await listLinks(c.env);
   const links = linksResult.ok ? linksResult.data : [];
   const sort = c.req.query("sort") || "recent";
   const page = parseInt(c.req.query("page") || "1", 10) || 1;
@@ -154,6 +164,7 @@ app.get("/_/admin/links", async (c) => {
         page={page}
         perPage={perPage}
         showDisabled={showDisabled}
+        searchQuery={searchQuery}
         t={t}
         lang={lang}
       />
@@ -171,10 +182,9 @@ app.get("/_/admin/links/:id", async (c) => {
   const analyticsResult = await getLinkAnalytics(c.env, id);
   const analytics = analyticsResult.ok ? analyticsResult.data : { total_clicks: 0, countries: [], referrers: [], devices: [], browsers: [], channels: [], clicks_over_time: [] };
   const userEmail = c.var.user?.email ?? null;
-  const showExisting = c.req.query("existing") === "1";
   return c.html(
     <Layout active="links" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
-      <LinkDetailPage link={linkResult.data} analytics={analytics} t={t} lang={lang} showExisting={showExisting} />
+      <LinkDetailPage link={linkResult.data} analytics={analytics} t={t} lang={lang} />
     </Layout>,
   );
 });
@@ -260,6 +270,29 @@ app.post("/_/admin/api/links/:id/slugs", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
   return handleAddVanitySlug(c.req.raw, c.env, id);
+});
+app.put("/_/admin/api/links/:id/slugs/primary", (c) => {
+  const id = parseInt(c.req.param("id"), 10);
+  if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
+  return handleSetPrimarySlug(c.req.raw, c.env, id);
+});
+app.post("/_/admin/api/links/:id/slugs/:slugId/disable", (c) => {
+  const id = parseInt(c.req.param("id"), 10);
+  const slugId = parseInt(c.req.param("slugId"), 10);
+  if (isNaN(id) || isNaN(slugId)) return c.json({ error: "Not Found" }, 404);
+  return handleDisableSlug(c.env, id, slugId);
+});
+app.post("/_/admin/api/links/:id/slugs/:slugId/enable", (c) => {
+  const id = parseInt(c.req.param("id"), 10);
+  const slugId = parseInt(c.req.param("slugId"), 10);
+  if (isNaN(id) || isNaN(slugId)) return c.json({ error: "Not Found" }, 404);
+  return handleEnableSlug(c.env, id, slugId);
+});
+app.delete("/_/admin/api/links/:id/slugs/:slugId", (c) => {
+  const id = parseInt(c.req.param("id"), 10);
+  const slugId = parseInt(c.req.param("slugId"), 10);
+  if (isNaN(id) || isNaN(slugId)) return c.json({ error: "Not Found" }, 404);
+  return handleRemoveSlug(c.env, id, slugId);
 });
 app.get("/_/admin/api/links/:id/qr", (c) => {
   const id = parseInt(c.req.param("id"), 10);

@@ -477,7 +477,7 @@ describe("Vanity Slugs API", () => {
     expect(res.status).toBe(409);
   });
 
-  it("should return 409 when link already has a vanity slug", async () => {
+  it("should allow adding a second vanity slug to a link", async () => {
     const createRes = await SELF.fetch(
       authed("/_/admin/api/links", {
         method: "POST",
@@ -493,9 +493,10 @@ describe("Vanity Slugs API", () => {
         body: JSON.stringify({ slug: "another" }),
       })
     );
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(201);
     const body = await res.json() as any;
-    expect(body.error).toMatch(/already has a vanity slug/i);
+    expect(body.slug).toBe("another");
+    expect(body.is_vanity).toBe(1);
   });
 
   it("should return 400 for invalid vanity slug", async () => {

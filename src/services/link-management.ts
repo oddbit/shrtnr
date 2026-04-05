@@ -45,7 +45,7 @@ export async function createLink(
   if (!body.allow_duplicate) {
     const existing = await LinkRepository.findByUrl(env.DB, body.url);
     if (existing.length > 0) {
-      return ok(existing[0], 200, { duplicate: true });
+      return ok(existing[0], 200, { duplicate: true, duplicate_count: existing.length });
     }
   }
 
@@ -131,16 +131,75 @@ export async function addVanitySlugToLink(
   const err = validateVanitySlug(body.slug);
   if (err) return fail(400, err);
 
-  if (link.slugs.some((s) => s.is_vanity)) {
-    return fail(409, "Link already has a vanity slug");
-  }
-
   if (await SlugRepository.exists(env.DB, body.slug)) {
     return fail(409, "Slug already exists");
   }
 
   const slug = await SlugRepository.addVanity(env.DB, linkId, body.slug);
   return ok(slug, 201);
+}
+
+export async function setSlugPrimary(
+  env: Env,
+  linkId: number,
+  slugId: number,
+): Promise<ServiceResult<LinkWithSlugs>> {
+  const link = await LinkRepository.getById(env.DB, linkId);
+  if (!link) return fail(404, "Link not found");
+
+  const slug = link.slugs.find((s) => s.id === slugId);
+  if (!slug) return fail(404, "Slug not found on this link");
+
+  await SlugRepository.setPrimary(env.DB, linkId, slugId);
+  return ok((await LinkRepository.getById(env.DB, linkId))!);
+}
+
+export async function disableSlug(
+  env: Env,
+  linkId: number,
+  slugId: number,
+): Promise<ServiceResult<Slug>> {
+  const link = await LinkRepository.getById(env.DB, linkId);
+  if (!link) return fail(404, "Link not found");
+
+  const slug = link.slugs.find((s) => s.id === slugId);
+  if (!slug) return fail(404, "Slug not found on this link");
+  if (!slug.is_vanity) return fail(400, "Cannot disable the random slug");
+
+  const disabled = await SlugRepository.disable(env.DB, slugId);
+  return ok(disabled!);
+}
+
+export async function enableSlug(
+  env: Env,
+  linkId: number,
+  slugId: number,
+): Promise<ServiceResult<Slug>> {
+  const link = await LinkRepository.getById(env.DB, linkId);
+  if (!link) return fail(404, "Link not found");
+
+  const slug = link.slugs.find((s) => s.id === slugId);
+  if (!slug) return fail(404, "Slug not found on this link");
+
+  const enabled = await SlugRepository.enable(env.DB, slugId);
+  return ok(enabled!);
+}
+
+export async function removeSlug(
+  env: Env,
+  linkId: number,
+  slugId: number,
+): Promise<ServiceResult<{ removed: boolean }>> {
+  const link = await LinkRepository.getById(env.DB, linkId);
+  if (!link) return fail(404, "Link not found");
+
+  const slug = link.slugs.find((s) => s.id === slugId);
+  if (!slug) return fail(404, "Slug not found on this link");
+  if (!slug.is_vanity) return fail(400, "Cannot remove the random slug");
+  if (slug.click_count > 0) return fail(400, "Cannot remove a slug with clicks, disable it instead");
+
+  await SlugRepository.remove(env.DB, slugId);
+  return ok({ removed: true });
 }
 
 export async function getLinkAnalytics(env: Env, linkId: number): Promise<ServiceResult<ClickStats>> {

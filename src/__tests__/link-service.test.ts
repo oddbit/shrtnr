@@ -50,7 +50,7 @@ describe("link-management service", () => {
     }
   });
 
-  it("enforces one vanity slug per link", async () => {
+  it("allows multiple vanity slugs per link", async () => {
     const created = await createLink(env as any, {
       url: "https://example.com",
       vanity_slug: "initial-vanity",
@@ -61,10 +61,10 @@ describe("link-management service", () => {
 
     const result = await addVanitySlugToLink(env as any, created.data.id, { slug: "second-vanity" });
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.status).toBe(409);
-      expect(result.error).toBe("Link already has a vanity slug");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.slug).toBe("second-vanity");
+      expect(result.data.is_vanity).toBe(1);
     }
   });
 

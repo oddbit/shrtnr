@@ -22,6 +22,10 @@ export async function handleRedirect(
     return notFoundResponse();
   }
 
+  if (record.disabled_at) {
+    return notFoundResponse();
+  }
+
   const referrer = request.headers.get("Referer") || null;
   const country = (request as unknown as { cf?: { country?: string } }).cf?.country ?? request.headers.get("cf-ipcountry") ?? null;
   const ua = request.headers.get("User-Agent") || "";
