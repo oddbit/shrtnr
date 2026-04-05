@@ -1,6 +1,34 @@
 # Changelog
 
-## 0.16.0 (2026-04-05)
+## 0.17.0 (2026-04-05)
+
+### Schema and data model
+
+- Renamed `is_vanity` column to `is_custom` in the `slugs` table. All queries, types, and service calls updated to match.
+- Removed the stored `click_count` column from `slugs`. Click count is now computed at query time as `link_click_count + qr_click_count`.
+- Consolidated all migrations into a single `0001_initial.sql` baseline.
+
+### QR code click tracking
+
+- Appended `?utm_medium=qr` to URLs encoded into QR codes. The redirect handler detects this parameter and increments `qr_click_count` instead of `link_click_count`.
+- Both counts combine into a single `click_count` alias returned by all queries, so existing display logic requires no changes.
+- The QR dialog does not expose the UTM-tagged URL to users.
+
+### MCP backward compatibility
+
+- `add_vanity_slug` tool kept as an alias for `add_custom_slug`.
+- `create_link` accepts both `custom_slug` and `vanity_slug` input fields.
+
+### Slug display order
+
+- In the links list, the original random slug always appears first, followed by the primary custom slug, then remaining slugs ordered by creation date.
+
+### Settings page
+
+- Account section moved from the sidebar footer into a dedicated card on the settings page. Displays the signed-in email and a logout button.
+- Sidebar no longer shows the account/logout block.
+
+
 
 ### UI/UX Improvements
 
