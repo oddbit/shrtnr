@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   generateRandomSlug,
   validateRandomSlug,
-  validateVanitySlug,
+  validateCustomSlug,
   validateSlugLength,
   RANDOM_CHARSET,
 } from "../slugs";
@@ -72,36 +72,36 @@ describe("validateRandomSlug", () => {
   });
 });
 
-describe("validateVanitySlug", () => {
+describe("validateCustomSlug", () => {
   it("should accept a single character", () => {
-    expect(validateVanitySlug("a")).toBeNull();
-    expect(validateVanitySlug("Z")).toBeNull();
-    expect(validateVanitySlug("5")).toBeNull();
+    expect(validateCustomSlug("a")).toBeNull();
+    expect(validateCustomSlug("z")).toBeNull();
+    expect(validateCustomSlug("5")).toBeNull();
   });
 
   it("should accept slugs with hyphens in the middle", () => {
-    expect(validateVanitySlug("my-slug")).toBeNull();
-    expect(validateVanitySlug("a-b-c")).toBeNull();
+    expect(validateCustomSlug("my-slug")).toBeNull();
+    expect(validateCustomSlug("a-b-c")).toBeNull();
   });
 
   it("should reject slugs starting with a hyphen", () => {
-    expect(validateVanitySlug("-slug")).toBe(
+    expect(validateCustomSlug("-slug")).toBe(
       "Custom slug must not start or end with a hyphen"
     );
   });
 
   it("should reject slugs ending with a hyphen", () => {
-    expect(validateVanitySlug("slug-")).toBe(
+    expect(validateCustomSlug("slug-")).toBe(
       "Custom slug must not start or end with a hyphen"
     );
   });
 
   it("should reject slugs starting with underscore", () => {
-    expect(validateVanitySlug("_slug")).toBe("Slug must not start with underscore");
+    expect(validateCustomSlug("_slug")).toBe("Slug must not start with underscore");
   });
 
   it("should reject empty slugs", () => {
-    expect(validateVanitySlug("")).toBe("Custom slug must not be empty");
+    expect(validateCustomSlug("")).toBe("Custom slug must not be empty");
   });
 });
 

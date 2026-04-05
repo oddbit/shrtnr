@@ -45,6 +45,6 @@
     "typescript",
     "link-management",
     "click-analytics",
-    "vanity-url"
+    "custom-slug"
   ]
 }

@@ -31,9 +31,9 @@ console.log(link); // { id: 1, slugs: [{ slug: "a3x", ... }], ... }
 
 This package wraps the public link-management API:
 
-- Shorten URLs (create short links with optional vanity slugs)
+- Shorten URLs (create short links with optional custom slugs)
 - List, read, update, and disable links
-- Add vanity slugs to existing links
+- Add custom slugs to existing links
 - Read click analytics (referrer, country, device, browser)
 - Check service health
 
@@ -43,13 +43,13 @@ Administrative operations (API key management, settings, dashboard stats) are no
 
 ### `createLink`
 
-Shorten a URL. Optionally provide a label, vanity slug, or expiry timestamp.
+Shorten a URL. Optionally provide a label, custom slug, or expiry timestamp.
 
 ```ts
 const link = await client.createLink({
   url: "https://example.com",
   label: "Example",
-  vanity_slug: "example",
+  custom_slug: "example",
   expires_at: Math.floor(Date.now() / 1000) + 86400,
 });
 ```
@@ -72,7 +72,7 @@ const link = await client.getLink(123);
 
 ### `getLinkBySlug`
 
-Get a single link by its short URL slug (including vanity slugs).
+Get a single link by its short URL slug (including custom slugs).
 
 ```ts
 const link = await client.getLinkBySlug("my-custom-slug");
@@ -97,12 +97,12 @@ Disable a link so it stops redirecting.
 const disabled = await client.disableLink(123);
 ```
 
-### `addVanitySlug`
+### `addCustomSlug`
 
 Add a custom short URL slug to an existing link.
 
 ```ts
-const slug = await client.addVanitySlug(123, "campaign");
+const slug = await client.addCustomSlug(123, "campaign");
 ```
 
 ### `getLinkAnalytics`

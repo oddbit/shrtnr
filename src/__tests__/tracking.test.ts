@@ -306,7 +306,7 @@ describe("QR download API", () => {
       authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://example.com", vanity_slug: "my-link" }),
+        body: JSON.stringify({ url: "https://example.com", custom_slug: "my-link" }),
       }),
     );
     const created = (await createRes.json()) as any;

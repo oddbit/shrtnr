@@ -41,7 +41,7 @@ export class ShrtnrClient extends ShrtnrBaseClient {
     return this.request("POST", `/_/api/links/${id}/disable`);
   }
 
-  async addVanitySlug(linkId: number, slug: string): Promise<Slug> {
+  async addCustomSlug(linkId: number, slug: string): Promise<Slug> {
     return this.request("POST", `/_/api/links/${linkId}/slugs`, { slug });
   }
 

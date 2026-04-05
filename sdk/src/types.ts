@@ -20,7 +20,7 @@ export interface Slug {
   id: number;
   link_id: number;
   slug: string;
-  is_vanity: number;
+  is_custom: number;
   click_count: number;
   created_at: number;
 }
@@ -68,7 +68,7 @@ export interface CreateLinkOptions {
   url: string;
   label?: string;
   slug_length?: number;
-  vanity_slug?: string;
+  custom_slug?: string;
   expires_at?: number;
 }
 

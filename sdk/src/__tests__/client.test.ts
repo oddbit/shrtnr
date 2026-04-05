@@ -45,7 +45,7 @@ describe("Error handling", () => {
     const client = new ShrtnrClient({ baseUrl: BASE, auth: { apiKey: "sk_abc" } });
     mockFetch(409, { error: "Slug already exists" });
     try {
-      await client.createLink({ url: "https://example.com", vanity_slug: "taken" });
+      await client.createLink({ url: "https://example.com", custom_slug: "taken" });
       expect.unreachable();
     } catch (e) {
       expect(e).toBeInstanceOf(ShrtnrError);
@@ -153,11 +153,11 @@ describe("disableLink", () => {
   });
 });
 
-describe("addVanitySlug", () => {
+describe("addCustomSlug", () => {
   it("should POST /_/api/links/:id/slugs", async () => {
     const client = new ShrtnrClient({ baseUrl: BASE, auth: { apiKey: "sk_test" } });
-    mockFetch(201, { id: 10, slug: "custom", is_vanity: 1 });
-    const result = await client.addVanitySlug(1, "custom");
+    mockFetch(201, { id: 10, slug: "custom", is_custom: 1 });
+    const result = await client.addCustomSlug(1, "custom");
     expect(result.slug).toBe("custom");
     const [url, init] = fetchSpy.mock.calls[0];
     expect(url).toBe(BASE + "/_/api/links/1/slugs");

@@ -95,7 +95,7 @@ describe("ClickRepository.getStats", () => {
   });
 
   it("aggregates clicks across multiple slugs", async () => {
-    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc", customSlug: "vanity" });
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc", customSlug: "custom" });
     const autoSlug = link.slugs.find((s) => s.is_custom === 0)!;
     const customSlug = link.slugs.find((s) => s.is_custom === 1)!;
     await ClickRepository.record(env.DB, autoSlug.id, null, "US", "desktop", "Chrome");

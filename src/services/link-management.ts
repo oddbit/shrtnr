@@ -27,7 +27,7 @@ export async function getLinkBySlug(env: Env, slug: string): Promise<ServiceResu
 
 export async function createLink(
   env: Env,
-  body: { url?: string; label?: string; slug_length?: number; custom_slug?: string; vanity_slug?: string; expires_at?: number; created_via?: string; created_by?: string; allow_duplicate?: boolean },
+  body: { url?: string; label?: string; slug_length?: number; custom_slug?: string; expires_at?: number; created_via?: string; created_by?: string; allow_duplicate?: boolean },
 ): Promise<ServiceResult<LinkWithSlugs>> {
   if (!body.url || typeof body.url !== "string") {
     return fail(400, "url is required");
@@ -61,7 +61,7 @@ export async function createLink(
   const lengthErr = validateSlugLength(slugLength);
   if (lengthErr) return fail(400, lengthErr);
 
-  const customSlug = (body.custom_slug ?? body.vanity_slug)?.toLowerCase();
+  const customSlug = body.custom_slug?.toLowerCase();
 
   if (customSlug) {
     const customErr = validateCustomSlug(customSlug);
@@ -143,8 +143,6 @@ export async function addCustomSlugToLink(
   return ok(slug, 201);
 }
 
-/** @deprecated Use addCustomSlugToLink */
-export const addVanitySlugToLink = addCustomSlugToLink;
 
 export async function setSlugPrimary(
   env: Env,

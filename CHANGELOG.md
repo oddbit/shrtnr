@@ -4,7 +4,7 @@
 
 ### Schema and data model
 
-- Renamed `is_vanity` column to `is_custom` in the `slugs` table. All queries, types, and service calls updated to match.
+- Renamed `is_custom` column to `is_custom` in the `slugs` table. All queries, types, and service calls updated to match.
 - Removed the stored `click_count` column from `slugs`. Click count is now computed at query time as `link_click_count + qr_click_count`.
 - Consolidated all migrations into a single `0001_initial.sql` baseline.
 
@@ -16,8 +16,8 @@
 
 ### MCP backward compatibility
 
-- `add_vanity_slug` tool kept as an alias for `add_custom_slug`.
-- `create_link` accepts both `custom_slug` and `vanity_slug` input fields.
+- `add_custom_slug` tool kept as an alias for `add_custom_slug`.
+- `create_link` accepts both `custom_slug` and `custom_slug` input fields.
 
 ### Slug display order
 
@@ -336,7 +336,7 @@ Replace `npx @oddbit/shrtnr-mcp` with a remote MCP connection to your shrtnr dep
 ### Internal
 - Extracted shared `ServiceResult` type, `json()`, and `fromServiceResult()` into `src/api/response.ts`, removing duplication across 8 files
 - Removed dead `Click` type, unused `incrementClickCount` function, and redundant `top_links` type annotation
-- Added 14 API tests: read-scope write denial, create-scope read denial, vanity slug redirects, invalid JSON body handling, and 404s for nonexistent resources
+- Added 14 API tests: read-scope write denial, create-scope read denial, custom slug redirects, invalid JSON body handling, and 404s for nonexistent resources
 
 ## 0.3.1
 
@@ -371,9 +371,9 @@ Replace `npx @oddbit/shrtnr-mcp` with a remote MCP connection to your shrtnr dep
 - Automatic last-used tracking on each API call
 - Admin UI page for key management with table overview, create/delete, and scope badges
 
-### Vanity slugs
-- Limit to one vanity slug per link
-- Removed DELETE endpoint for vanity slugs
+### Custom slugs
+- Limit to one custom slug per link
+- Removed DELETE endpoint for custom slugs
 
 ### Theme
 - Semantic on-color CSS variables (--on-primary, --on-secondary, --on-danger) for consistent contrast across all themes
@@ -386,7 +386,7 @@ Replace `npx @oddbit/shrtnr-mcp` with a remote MCP connection to your shrtnr dep
 
 Initial release.
 
-- URL shortening with auto-generated and vanity slugs
+- URL shortening with auto-generated and custom slugs
 - Click analytics with country, referrer, device, and browser tracking
 - Dashboard with top links, recent links, and country stats
 - Link detail page with performance breakdown and QR code generation

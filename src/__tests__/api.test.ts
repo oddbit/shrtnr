@@ -433,9 +433,9 @@ describe("Disable / Enable API", () => {
   });
 });
 
-// ---- Vanity Slugs API ----
+// ---- Custom Slugs API ----
 
-describe("Vanity Slugs API", () => {
+describe("Custom Slugs API", () => {
   it("POST /_/admin/api/links/:id/slugs should add a custom slug", async () => {
     const createRes = await SELF.fetch(
       authed("/_/admin/api/links", {
@@ -1290,20 +1290,20 @@ describe("API Key Authentication", () => {
   });
 });
 
-// ---- Vanity Slug Redirect ----
+// ---- Custom Slug Redirect ----
 
-describe("Vanity Slug Redirect", () => {
+describe("Custom Slug Redirect", () => {
   it("should 301 redirect via a custom slug", async () => {
     await SELF.fetch(
       authed("/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://vanity-target.com", custom_slug: "go" }),
+        body: JSON.stringify({ url: "https://custom-target.com", custom_slug: "go" }),
       })
     );
     const res = await SELF.fetch(unauthed("/go"), { redirect: "manual" });
     expect(res.status).toBe(301);
-    expect(res.headers.get("Location")).toBe("https://vanity-target.com/");
+    expect(res.headers.get("Location")).toBe("https://custom-target.com/");
   });
 });
 

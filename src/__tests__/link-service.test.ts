@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "./setup";
 import {
-  addVanitySlugToLink,
+  addCustomSlugToLink,
   createLink,
   getLink,
   getLinkBySlug,
@@ -50,20 +50,20 @@ describe("link-management service", () => {
     }
   });
 
-  it("allows multiple vanity slugs per link", async () => {
+  it("allows multiple custom slugs per link", async () => {
     const created = await createLink(env as any, {
       url: "https://example.com",
-      custom_slug: "initial-vanity",
+      custom_slug: "initial-custom",
     });
 
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const result = await addVanitySlugToLink(env as any, created.data.id, { slug: "second-vanity" });
+    const result = await addCustomSlugToLink(env as any, created.data.id, { slug: "second-custom" });
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.data.slug).toBe("second-vanity");
+      expect(result.data.slug).toBe("second-custom");
       expect(result.data.is_custom).toBe(1);
     }
   });
@@ -159,7 +159,7 @@ describe("link-management service", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const result = await addVanitySlugToLink(env as any, created.data.id, { slug: "UPPER-CASE" });
+    const result = await addCustomSlugToLink(env as any, created.data.id, { slug: "UPPER-CASE" });
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.slug).toBe("upper-case");

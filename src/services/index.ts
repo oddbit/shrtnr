@@ -9,7 +9,6 @@ export {
   updateLink,
   disableLink,
   addCustomSlugToLink,
-  addVanitySlugToLink,
   getLinkAnalytics,
   getDashboardStats,
   searchLinks,

@@ -28,7 +28,7 @@ import {
   handleGetLinkBySlug,
 } from "./api/links";
 import {
-  handleAddVanitySlug,
+  handleAddCustomSlug,
   handleSetPrimarySlug,
   handleDisableSlug,
   handleEnableSlug,
@@ -269,7 +269,7 @@ app.post("/_/admin/api/links/:id/disable", (c) => {
 app.post("/_/admin/api/links/:id/slugs", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  return handleAddVanitySlug(c.req.raw, c.env, id);
+  return handleAddCustomSlug(c.req.raw, c.env, id);
 });
 app.put("/_/admin/api/links/:id/slugs/primary", (c) => {
   const id = parseInt(c.req.param("id"), 10);
@@ -355,7 +355,7 @@ app.post("/_/api/links/:id/slugs", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
   if (!hasScope(c.var.auth, "create")) return forbiddenResponse();
-  return handleAddVanitySlug(c.req.raw, c.env, id);
+  return handleAddCustomSlug(c.req.raw, c.env, id);
 });
 app.get("/_/api/links/:id/qr", (c) => {
   const id = parseInt(c.req.param("id"), 10);

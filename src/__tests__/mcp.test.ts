@@ -10,7 +10,7 @@ import {
   getLink,
   updateLink,
   disableLink,
-  addVanitySlugToLink,
+  addCustomSlugToLink,
   getLinkAnalytics,
   searchLinks,
 } from "../services/link-management";
@@ -219,14 +219,14 @@ describe("MCP tool behavior (service layer)", () => {
     }
   });
 
-  it("add_vanity_slug adds a custom slug", async () => {
+  it("add_custom_slug adds a custom slug", async () => {
     const created = await createLink(env as never, {
-      url: "https://example.com/vanity",
+      url: "https://example.com/custom",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const result = await addVanitySlugToLink(env as never, created.data.id, {
+    const result = await addCustomSlugToLink(env as never, created.data.id, {
       slug: "my-custom",
     });
     expect(result.ok).toBe(true);
@@ -264,7 +264,7 @@ describe("MCP tool behavior (service layer)", () => {
   });
 
   it("search_links finds a link by slug", async () => {
-    await createLink(env as never, { url: "https://oddbit.id/pricing", vanity_slug: "pricing-page" });
+    await createLink(env as never, { url: "https://oddbit.id/pricing", custom_slug: "pricing-page" });
     await createLink(env as never, { url: "https://example.com" });
 
     const result = await searchLinks(env as never, "pricing");
@@ -280,7 +280,7 @@ describe("MCP tool behavior (service layer)", () => {
     await createLink(env as never, {
       url: "https://oddbit.id",
       label: "Oddbit website",
-      vanity_slug: "oddbit-home",
+      custom_slug: "oddbit-home",
     });
 
     const result = await searchLinks(env as never, "oddbit");

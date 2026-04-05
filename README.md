@@ -17,7 +17,7 @@ Read more on our [website](https://oddbit.id).
 
 - **Free hosting** on Cloudflare Workers + D1 (no VPS, no containers, no monthly bill)
 - **Short slugs** starting at 3 characters (175,616 unique combinations at that length)
-- **Vanity URLs** like `/my-campaign` alongside random slugs
+- **Custom slugs** like `/my-campaign` alongside random slugs
 - **Click analytics** with referrer, country, device, and browser tracking
 - **Admin dashboard** for link management, analytics charts, and QR code generation
 - **Multi-language admin UI** with English, Indonesian, and Swedish built in
@@ -171,10 +171,10 @@ Go to [Cloudflare Dashboard](https://dash.cloudflare.com/) > your zone > **Secur
 | `health` | Check server health and version |
 | `list_links` | List all short links with slugs and click counts |
 | `get_link` | Get details for a link by ID |
-| `create_link` | Shorten a URL (supports labels, vanity slugs, expiry) |
+| `create_link` | Shorten a URL (supports labels, custom slugs, expiry) |
 | `update_link` | Update a link's URL, label, or expiry |
 | `disable_link` | Disable a link so it stops redirecting |
-| `add_vanity_slug` | Add a custom slug to an existing link |
+| `add_custom_slug` | Add a custom slug to an existing link |
 | `get_link_analytics` | Get click stats by country, referrer, device, and browser |
 
 #### Connecting MCP clients
@@ -243,7 +243,7 @@ Administrative endpoints (settings, dashboard stats, key management) live under 
 | `POST` | `/_/api/links` | Bearer token | Shorten a URL (create a new link) |
 | `GET` | `/_/api/links/:id` | Bearer token | Get a link with click stats |
 | `PUT` | `/_/api/links/:id` | Bearer token | Update a link's URL, label, or expiry |
-| `POST` | `/_/api/links/:id/slugs` | Bearer token | Add a vanity slug to a link |
+| `POST` | `/_/api/links/:id/slugs` | Bearer token | Add a custom slug to a link |
 | `POST` | `/_/api/links/:id/disable` | Bearer token | Disable a link |
 | `GET` | `/_/api/links/:id/analytics` | Bearer token | Get click analytics (referrer, country, device, browser) |
 | `GET` | `/_/health` | Public | Health check |

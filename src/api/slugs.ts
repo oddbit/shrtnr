@@ -26,8 +26,6 @@ export async function handleAddCustomSlug(
   return fromServiceResult(await addCustomSlugToLink(env, linkId, body));
 }
 
-/** @deprecated Use handleAddCustomSlug */
-export const handleAddVanitySlug = handleAddCustomSlug;
 
 export async function handleSetPrimarySlug(
   request: Request,
