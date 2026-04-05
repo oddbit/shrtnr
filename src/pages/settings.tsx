@@ -122,12 +122,6 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
                   {t("settings.checkingUpdates")}
                 </span>
               </div>
-              <div id="install-app-btn" style="display:none;margin-top:0.75rem">
-                <button class="btn btn-secondary btn-sm" onclick="installApp()" style="display:inline-flex;align-items:center;gap:0.4rem">
-                  <span class="icon" style="font-size:16px">install_desktop</span>
-                  {t("settings.installApp")}
-                </button>
-              </div>
             </div>
           </div>
 
@@ -135,13 +129,16 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
             <div class="bento-card" style="margin-top:1.4rem">
               <div class="form-group" style="margin-bottom:0">
                 <label class="form-label">{t("settings.account")}</label>
-                <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem">
-                  <span class="icon" style="font-size:18px;color:var(--color-text-muted)">person</span>
-                  <span style="font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{userEmail}</span>
-                </div>
-                <div style="margin-top:0.875rem">
-                  <a href="/_/admin/logout" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem">
-                    <span class="icon" style="font-size:16px">logout</span>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:0.5rem">
+                  <div style="display:flex;align-items:center;gap:0.5rem;min-width:0">
+                    <span class="icon" style="font-size:18px;color:var(--color-text-muted);flex-shrink:0">person</span>
+                    <span style="font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{userEmail}</span>
+                  </div>
+                  <a
+                    href="/_/admin/logout"
+                    style="font-size:0.813rem;color:var(--color-text-muted);text-decoration:none;white-space:nowrap;display:inline-flex;align-items:center;gap:0.3rem"
+                  >
+                    <span class="icon" style="font-size:15px">logout</span>
                     {t("nav.logout")}
                   </a>
                 </div>
@@ -177,7 +174,13 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
               @oddbit/shrtnr
             </div>
           </a>
-          <div class="bento-card">
+          <a
+            href="https://oddb.it/mcp-documentation-app"
+            target="_blank"
+            rel="noopener"
+            class="bento-card"
+            style="text-decoration:none;color:inherit;display:block"
+          >
             <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
               <span class="icon" style="color:var(--color-accent)">
                 smart_toy
@@ -187,42 +190,18 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
             <div style="font-size:0.813rem;color:var(--color-text-muted);line-height:1.45">
               {t("settings.mcpDesc")}
             </div>
-            <div style="font-size:0.813rem;margin-top:1rem;display:flex;align-items:center;gap:0.4rem">
-              {mcpConfigured ? (
-                <>
-                  <span class="icon" style="font-size:16px;color:var(--success, #22c55e)">check_circle</span>
-                  <span>{t("settings.mcpConfigured")}</span>
-                </>
-              ) : (
-                <>
-                  <span class="icon" style="font-size:16px;color:var(--warning, #f59e0b)">warning</span>
-                  <span style="color:var(--color-text-muted)">{t("settings.mcpNotConfigured")}</span>
-                </>
-              )}
-            </div>
-            {!mcpConfigured && (
-              <a
-                href="https://github.com/oddbit/shrtnr#mcp-server-ai-integration"
-                target="_blank"
-                rel="noopener"
-                style="font-size:0.75rem;color:var(--color-success);margin-top:0.75rem;display:inline-flex;align-items:center;gap:0.25rem"
-              >
-                <span class="icon" style="font-size:14px">open_in_new</span>
+            {mcpConfigured ? (
+              <div style="font-size:0.7rem;color:var(--color-success);margin-top:0.6rem;display:flex;align-items:center;gap:0.25rem">
+                <span class="icon" style="font-size:14px">open_in_new</span>{" "}
+                oddbit/shrtnr
+              </div>
+            ) : (
+              <div style="font-size:0.7rem;color:var(--color-success);margin-top:0.6rem;display:flex;align-items:center;gap:0.25rem">
+                <span class="icon" style="font-size:14px">open_in_new</span>{" "}
                 {t("settings.mcpSetupLink")}
-              </a>
+              </div>
             )}
-            <a
-              href="https://github.com/oddbit/shrtnr#mcp-server-ai-integration"
-              target="_blank"
-              rel="noopener"
-              style="font-size:0.7rem;color:var(--color-success);margin-top:0.75rem;display:inline-flex;align-items:center;gap:0.25rem"
-            >
-              <span class="icon" style="font-size:14px">
-                open_in_new
-              </span>{" "}
-              /_/mcp
-            </a>
-          </div>
+          </a>
         </div>
       </div>
     </>

@@ -9,7 +9,7 @@ export function adminClientScript(version: string, translations: Translations): 
 'use strict';
 var API = '/_/admin/api';
 var APP_VERSION = '${version}';
-var REPO_URL = 'https://github.com/oddbit/shrtnr';
+var REPO_URL = 'https://oddb.it/github-shrtnr-app';
 var T = ${tJson};
 
 function t(key, params) {
@@ -577,6 +577,7 @@ function checkForUpdates() {
       html += '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">';
       html += '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">open_in_new</span> ' + esc(t('client.releaseNotes')) + '</a>';
       html += '<a href="' + REPO_URL + '" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">code</span> ' + esc(t('client.viewRepo')) + '</a>';
+      html += '<button id="install-app-btn" class="btn btn-secondary btn-sm" onclick="installApp()" style="display:none;align-items:center;gap:0.4rem"><span class="icon" style="font-size:16px">install_desktop</span> ' + esc(t('settings.installApp')) + '</button>';
       html += '</div>';
       html += '<div style="font-size:0.75rem;color:var(--color-text-muted);line-height:1.5">' + esc(t('client.updateHint')) + '</div>';
       html += '</div>';
@@ -594,6 +595,7 @@ function checkForUpdates() {
             'style="color:var(--color-text-muted);font-size:0.8rem;text-decoration:none;display:inline-flex;align-items:center;gap:0.2rem">' +
             esc(t('client.whatsNew')) + ' <span class="icon" style="font-size:13px">open_in_new</span>' +
           '</a>' +
+          '<button id="install-app-btn" class="btn btn-secondary btn-sm" onclick="installApp()" style="display:none;align-items:center;gap:0.4rem"><span class="icon" style="font-size:14px">install_desktop</span> ' + esc(t('settings.installApp')) + '</button>' +
         '</div>';
     }
   }).catch(function() {
@@ -607,7 +609,7 @@ window.addEventListener('beforeinstallprompt', function(e) {
   e.preventDefault();
   _installPrompt = e;
   var btn = document.getElementById('install-app-btn');
-  if (btn) btn.style.display = '';
+  if (btn) btn.style.display = 'inline-flex';
 });
 window.addEventListener('appinstalled', function() {
   var btn = document.getElementById('install-app-btn');
