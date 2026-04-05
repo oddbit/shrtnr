@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.18.1 (2026-04-06)
+
+### Settings page
+
+- Integration card link labels are now translatable. SDK card shows "npm package: @oddbit/shrtnr", MCP card shows "MCP documentation" (or "Setup guide in README" when not configured). Translations added for Indonesian and Swedish.
+
+### Translations
+
+- "More actions" button aria-label on the link detail page was hardcoded; now translated.
+- "auto" badge text on auto-generated slugs was hardcoded; now translated.
+
 ## 0.18.0 (2026-04-05)
 
 ### Slug charset: lowercase only
