@@ -105,6 +105,15 @@ Add a custom short URL slug to an existing link.
 const slug = await client.addCustomSlug(123, "campaign");
 ```
 
+### `getLinkQR`
+
+Fetch the QR code SVG for a link as a string. Optionally specify which slug to encode.
+
+```ts
+const svg = await client.getLinkQR(123);
+const svgForSlug = await client.getLinkQR(123, "my-campaign");
+```
+
 ### `getLinkAnalytics`
 
 Read click analytics for a link: referrer, country, device type, and browser breakdown.
