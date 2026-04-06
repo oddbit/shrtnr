@@ -31,6 +31,8 @@ const en = {
   // Links
   "links.title": "Links",
   "links.subtitle": "Manage all your short links",
+  "links.inputPlaceholder": "Paste URL or search links...",
+  "links.go": "Go",
   "links.count": "{count} link",
   "links.countPlural": "{count} links",
   "links.recent": "Recent",

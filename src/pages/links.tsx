@@ -105,12 +105,12 @@ export const LinksPage: FC<Props> = ({
         <input
           class="hero-input"
           id="quick-url"
-          type="url"
-          placeholder={t("dashboard.urlPlaceholder")}
+          type="text"
+          placeholder={t("links.inputPlaceholder")}
           value={searchQuery || ""}
         />
-        <button class="btn btn-primary btn-lg" onclick="quickShorten()">
-          <span class="icon">bolt</span> {t("dashboard.shorten")}
+        <button class="btn btn-primary btn-lg" id="quick-action-btn" onclick="quickShorten()">
+          <span class="icon" id="quick-action-icon">bolt</span> <span id="quick-action-label">{t("dashboard.shorten")}</span>
         </button>
       </div>
 

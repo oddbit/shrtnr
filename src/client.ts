@@ -109,17 +109,25 @@ function formatDate(ts) {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-// ---- Quick shorten (dashboard) ----
+// ---- Quick shorten / search ----
+function isUrl(value) {
+  try { var u = new URL(value); return u.protocol === 'http:' || u.protocol === 'https:'; } catch(e) { return false; }
+}
+
 function quickShorten() {
-  var url = document.getElementById('quick-url').value.trim();
-  if (!url) { toast(t('client.pasteUrl'), 'error'); return; }
-  api('/links', { method: 'POST', body: JSON.stringify({ url: url }) }).then(function(res) {
+  var value = document.getElementById('quick-url').value.trim();
+  if (!value) { toast(t('client.pasteUrl'), 'error'); return; }
+  if (!isUrl(value)) {
+    window.location.href = '/_/admin/links?search=' + encodeURIComponent(value);
+    return;
+  }
+  api('/links', { method: 'POST', body: JSON.stringify({ url: value }) }).then(function(res) {
     if (res.ok) {
       var isDuplicate = res.status === 200;
       return res.json().then(function(link) {
         if (isDuplicate) {
           if (link.duplicate_count > 1) {
-            window.location.href = '/_/admin/links?search=' + encodeURIComponent(url);
+            window.location.href = '/_/admin/links?search=' + encodeURIComponent(value);
           } else {
             window.location.href = '/_/admin/links/' + link.id;
           }
@@ -136,6 +144,21 @@ function quickShorten() {
       });
     }
   });
+}
+
+function updateQuickActionButton() {
+  var el = document.getElementById('quick-url');
+  var iconEl = document.getElementById('quick-action-icon');
+  var labelEl = document.getElementById('quick-action-label');
+  if (!el || !iconEl || !labelEl) return;
+  var value = el.value.trim();
+  if (value && !isUrl(value)) {
+    iconEl.textContent = 'search';
+    labelEl.textContent = t('links.go');
+  } else {
+    iconEl.textContent = 'bolt';
+    labelEl.textContent = t('dashboard.shorten');
+  }
 }
 
 // ---- Create link (modal) ----
@@ -640,7 +663,11 @@ function installApp() {
 
 // ---- Init ----
 var quickUrlEl = document.getElementById('quick-url');
-if (quickUrlEl) quickUrlEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') quickShorten(); });
+if (quickUrlEl) {
+  quickUrlEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') quickShorten(); });
+  quickUrlEl.addEventListener('input', updateQuickActionButton);
+  updateQuickActionButton();
+}
 
 var slugLengthEl = document.getElementById('slug-length-input');
 if (slugLengthEl) slugLengthEl.addEventListener('input', updateComboHint);
