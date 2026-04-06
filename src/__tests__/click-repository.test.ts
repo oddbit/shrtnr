@@ -224,3 +224,73 @@ describe("ClickRepository.getDashboardStats", () => {
     expect(stats.recent_links).toHaveLength(5);
   });
 });
+
+describe("ClickRepository.getTimeline", () => {
+  it("returns empty buckets for a link with no clicks", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const tl = await ClickRepository.getTimeline(env.DB, link.id, "7d");
+    expect(tl.range).toBe("7d");
+    expect(tl.summary.last_24h).toBe(0);
+    expect(tl.summary.last_7d).toBe(0);
+    expect(tl.summary.last_30d).toBe(0);
+    expect(tl.summary.last_90d).toBe(0);
+    expect(tl.summary.last_1y).toBe(0);
+    expect(tl.buckets).toHaveLength(7);
+    expect(tl.buckets.every((b) => b.count === 0)).toBe(true);
+  });
+
+  it("returns 24 hourly buckets for 24h range", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const tl = await ClickRepository.getTimeline(env.DB, link.id, "24h");
+    expect(tl.buckets).toHaveLength(24);
+  });
+
+  it("returns 30 daily buckets for 30d range", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const tl = await ClickRepository.getTimeline(env.DB, link.id, "30d");
+    expect(tl.buckets).toHaveLength(30);
+  });
+
+  it("returns 90 daily buckets for 90d range", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const tl = await ClickRepository.getTimeline(env.DB, link.id, "90d");
+    expect(tl.buckets).toHaveLength(90);
+  });
+
+  it("counts clicks in summary stats", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await ClickRepository.record(env.DB, link.slugs[0].id);
+    await ClickRepository.record(env.DB, link.slugs[0].id);
+    const tl = await ClickRepository.getTimeline(env.DB, link.id, "7d");
+    expect(tl.summary.last_24h).toBe(2);
+    expect(tl.summary.last_7d).toBe(2);
+    expect(tl.summary.last_30d).toBe(2);
+    expect(tl.summary.last_90d).toBe(2);
+    expect(tl.summary.last_1y).toBe(2);
+  });
+
+  it("places click counts in the correct bucket", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await ClickRepository.record(env.DB, link.slugs[0].id);
+    const tl = await ClickRepository.getTimeline(env.DB, link.id, "7d");
+    // The last bucket (today) should have the click
+    const lastBucket = tl.buckets[tl.buckets.length - 1];
+    expect(lastBucket.count).toBe(1);
+  });
+
+  it("returns empty for nonexistent link", async () => {
+    const tl = await ClickRepository.getTimeline(env.DB, 99999, "7d");
+    expect(tl.summary.last_24h).toBe(0);
+    expect(tl.buckets).toHaveLength(0);
+  });
+
+  it("all range returns monthly buckets", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await ClickRepository.record(env.DB, link.slugs[0].id);
+    const tl = await ClickRepository.getTimeline(env.DB, link.id, "all");
+    expect(tl.range).toBe("all");
+    expect(tl.buckets.length).toBeGreaterThanOrEqual(1);
+    // Monthly labels look like "YYYY-MM"
+    expect(tl.buckets[0].label).toMatch(/^\d{4}-\d{2}$/);
+  });
+});
