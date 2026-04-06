@@ -110,7 +110,7 @@ export const LinksPage: FC<Props> = ({
           value={searchQuery || ""}
         />
         <button class="btn btn-primary btn-lg" id="quick-action-btn" onclick="quickShorten()">
-          <span class="icon" id="quick-action-icon">bolt</span> <span id="quick-action-label">{t("dashboard.shorten")}</span>
+          <span class="icon" id="quick-action-icon">search</span> <span id="quick-action-label">{t("links.go")}</span>
         </button>
       </div>
 

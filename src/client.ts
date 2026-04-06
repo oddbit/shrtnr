@@ -152,12 +152,12 @@ function updateQuickActionButton() {
   var labelEl = document.getElementById('quick-action-label');
   if (!el || !iconEl || !labelEl) return;
   var value = el.value.trim();
-  if (value && !isUrl(value)) {
-    iconEl.textContent = 'search';
-    labelEl.textContent = t('links.go');
-  } else {
+  if (value && isUrl(value)) {
     iconEl.textContent = 'bolt';
     labelEl.textContent = t('dashboard.shorten');
+  } else {
+    iconEl.textContent = 'search';
+    labelEl.textContent = t('links.go');
   }
 }
 
