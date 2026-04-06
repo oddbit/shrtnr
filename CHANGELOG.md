@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.21.0 (2026-04-06)
+
+### Expanded analytics and interactive timeline chart
+
+**Richer click tracking**: Each click now captures OS (parsed from User-Agent), referrer host, and link mode (link vs QR). The database schema and `ClickData` type reflect these additions.
+
+**New analytics panels**: The link detail page gains dedicated breakdown panels for referrer hosts, operating systems, and access method (link vs QR), alongside the existing country, device, browser, and channel breakdowns.
+
+**Interactive timeline chart**: The static clicks-over-time bar chart is replaced with a range-selectable timeline. Choose 24h (hourly), 7d, 30d, 90d (daily), 1y (weekly), or all-time (monthly). A summary row shows totals for each preset period at a glance. The chart fills zero-count buckets so the series is always continuous.
+
 ## 0.20.0 (2026-04-06)
 
 ### Admin UI improvements
