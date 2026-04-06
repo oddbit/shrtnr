@@ -12,6 +12,17 @@ export function parseDeviceType(ua: string): string {
   return "desktop";
 }
 
+export function parseOS(ua: string): string {
+  // Order matters: check more specific patterns first
+  if (/iPhone|iPad|iPod/.test(ua)) return "ios";
+  if (/Android/.test(ua)) return "android";
+  if (/Windows/.test(ua)) return "windows";
+  if (/CrOS/.test(ua)) return "chromeos";
+  if (/Mac OS X|Macintosh/.test(ua)) return "macos";
+  if (/Linux/.test(ua)) return "linux";
+  return "other";
+}
+
 export function parseBrowser(ua: string): string {
   // Order matters: check more specific patterns first
   if (/EdgA?\//.test(ua)) return "Edge";

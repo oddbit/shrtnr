@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseDeviceType, parseBrowser } from "../ua";
+import { parseDeviceType, parseBrowser, parseOS } from "../ua";
 
 describe("parseDeviceType", () => {
   it("should detect Mobile Safari as mobile", () => {
@@ -94,5 +94,71 @@ describe("parseBrowser", () => {
 
   it("should return Other for unknown UA", () => {
     expect(parseBrowser("curl/7.68.0")).toBe("Other");
+  });
+});
+
+describe("parseOS", () => {
+  it("should detect iOS from iPhone UA", () => {
+    expect(
+      parseOS(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+      )
+    ).toBe("ios");
+  });
+
+  it("should detect iOS from iPad UA", () => {
+    expect(
+      parseOS(
+        "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/604.1"
+      )
+    ).toBe("ios");
+  });
+
+  it("should detect Android", () => {
+    expect(
+      parseOS(
+        "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+      )
+    ).toBe("android");
+  });
+
+  it("should detect Windows", () => {
+    expect(
+      parseOS(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      )
+    ).toBe("windows");
+  });
+
+  it("should detect macOS", () => {
+    expect(
+      parseOS(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+      )
+    ).toBe("macos");
+  });
+
+  it("should detect Linux (not Android)", () => {
+    expect(
+      parseOS(
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      )
+    ).toBe("linux");
+  });
+
+  it("should detect ChromeOS", () => {
+    expect(
+      parseOS(
+        "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      )
+    ).toBe("chromeos");
+  });
+
+  it("should return other for empty UA", () => {
+    expect(parseOS("")).toBe("other");
+  });
+
+  it("should return other for unknown UA", () => {
+    expect(parseOS("curl/7.68.0")).toBe("other");
   });
 });
