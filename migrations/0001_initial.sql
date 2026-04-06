@@ -26,19 +26,41 @@ CREATE INDEX idx_slugs_slug ON slugs(slug);
 CREATE INDEX idx_slugs_link_id ON slugs(link_id);
 
 CREATE TABLE clicks (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  slug_id     INTEGER NOT NULL REFERENCES slugs(id) ON DELETE CASCADE,
-  clicked_at  INTEGER NOT NULL,
-  referrer    TEXT,
-  country     TEXT,
-  device_type TEXT,
-  browser     TEXT,
-  channel     TEXT DEFAULT 'direct'
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug_id       INTEGER NOT NULL REFERENCES slugs(id) ON DELETE CASCADE,
+  clicked_at    INTEGER NOT NULL,
+
+  referrer      TEXT,
+  referrer_host TEXT,
+
+  country       TEXT,
+  region        TEXT,
+  city          TEXT,
+
+  device_type   TEXT,
+  os            TEXT,
+  browser       TEXT,
+  language      TEXT,
+
+  link_mode     TEXT DEFAULT 'link',
+  channel       TEXT,
+
+  utm_source    TEXT,
+  utm_medium    TEXT,
+  utm_campaign  TEXT,
+  utm_term      TEXT,
+  utm_content   TEXT,
+
+  user_agent    TEXT,
+  is_bot        INTEGER DEFAULT 0
 );
 
 CREATE INDEX idx_clicks_slug_id ON clicks(slug_id);
 CREATE INDEX idx_clicks_clicked_at ON clicks(clicked_at);
 CREATE INDEX idx_clicks_country ON clicks(country);
+CREATE INDEX idx_clicks_link_mode ON clicks(link_mode);
+CREATE INDEX idx_clicks_referrer_host ON clicks(referrer_host);
+CREATE INDEX idx_clicks_os ON clicks(os);
 
 CREATE TABLE settings (
   identity TEXT NOT NULL,
