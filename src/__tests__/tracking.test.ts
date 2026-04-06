@@ -141,34 +141,43 @@ describe("created_via tracking", () => {
   });
 });
 
-// ---- Feature 2: QR click channel tracking ----
+// ---- Feature 2: QR link mode tracking ----
 
-describe("QR click channel tracking", () => {
-  it("ClickRepository.record stores channel when provided", async () => {
+describe("QR link mode tracking", () => {
+  it("ClickRepository.record stores link_mode when provided", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     const slugId = link.slugs[0].id;
-    await ClickRepository.record(env.DB, slugId, null, "US", "mobile", "Chrome", "qr");
+    await ClickRepository.record(env.DB, slugId, {
+      country: "US",
+      deviceType: "mobile",
+      browser: "Chrome",
+      linkMode: "qr",
+    });
 
     const row = await env.DB
-      .prepare("SELECT channel FROM clicks WHERE slug_id = ?")
+      .prepare("SELECT link_mode FROM clicks WHERE slug_id = ?")
       .bind(slugId)
-      .first<{ channel: string | null }>();
-    expect(row!.channel).toBe("qr");
+      .first<{ link_mode: string | null }>();
+    expect(row!.link_mode).toBe("qr");
   });
 
-  it("ClickRepository.record defaults channel to 'direct' for regular clicks", async () => {
+  it("ClickRepository.record defaults link_mode to 'link' for regular clicks", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     const slugId = link.slugs[0].id;
-    await ClickRepository.record(env.DB, slugId, null, "US", "mobile", "Chrome");
+    await ClickRepository.record(env.DB, slugId, {
+      country: "US",
+      deviceType: "mobile",
+      browser: "Chrome",
+    });
 
     const row = await env.DB
-      .prepare("SELECT channel FROM clicks WHERE slug_id = ?")
+      .prepare("SELECT link_mode FROM clicks WHERE slug_id = ?")
       .bind(slugId)
-      .first<{ channel: string | null }>();
-    expect(row!.channel).toBe("direct");
+      .first<{ link_mode: string | null }>();
+    expect(row!.link_mode).toBe("link");
   });
 
-  it("redirect with ?utm_medium=qr records channel as 'qr'", async () => {
+  it("redirect with ?utm_medium=qr records link_mode as 'qr'", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "test1" });
     const res = await SELF.fetch(
       new Request("https://shrtnr.test/test1?utm_medium=qr", { redirect: "manual" }),
@@ -178,13 +187,13 @@ describe("QR click channel tracking", () => {
     await new Promise((r) => setTimeout(r, 100));
 
     const row = await env.DB
-      .prepare("SELECT channel FROM clicks WHERE slug_id = ?")
+      .prepare("SELECT link_mode FROM clicks WHERE slug_id = ?")
       .bind(link.slugs[0].id)
-      .first<{ channel: string | null }>();
-    expect(row!.channel).toBe("qr");
+      .first<{ link_mode: string | null }>();
+    expect(row!.link_mode).toBe("qr");
   });
 
-  it("redirect without utm_medium records channel as 'direct'", async () => {
+  it("redirect without utm_medium records link_mode as 'link'", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "test2" });
     const res = await SELF.fetch(
       new Request("https://shrtnr.test/test2", { redirect: "manual" }),
@@ -194,13 +203,13 @@ describe("QR click channel tracking", () => {
     await new Promise((r) => setTimeout(r, 100));
 
     const row = await env.DB
-      .prepare("SELECT channel FROM clicks WHERE slug_id = ?")
+      .prepare("SELECT link_mode FROM clicks WHERE slug_id = ?")
       .bind(link.slugs[0].id)
-      .first<{ channel: string | null }>();
-    expect(row!.channel).toBe("direct");
+      .first<{ link_mode: string | null }>();
+    expect(row!.link_mode).toBe("link");
   });
 
-  it("redirect with uppercase ?utm_medium=QR records channel as 'qr'", async () => {
+  it("redirect with uppercase ?utm_medium=QR records link_mode as 'qr'", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "test3" });
     const res = await SELF.fetch(
       new Request("https://shrtnr.test/test3?utm_medium=QR", { redirect: "manual" }),
@@ -210,13 +219,13 @@ describe("QR click channel tracking", () => {
     await new Promise((r) => setTimeout(r, 100));
 
     const row = await env.DB
-      .prepare("SELECT channel FROM clicks WHERE slug_id = ?")
+      .prepare("SELECT link_mode FROM clicks WHERE slug_id = ?")
       .bind(link.slugs[0].id)
-      .first<{ channel: string | null }>();
-    expect(row!.channel).toBe("qr");
+      .first<{ link_mode: string | null }>();
+    expect(row!.link_mode).toBe("qr");
   });
 
-  it("redirect with unrecognized utm_medium records channel as 'direct'", async () => {
+  it("redirect with non-qr utm_medium records link_mode as 'link'", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "test4" });
     const res = await SELF.fetch(
       new Request("https://shrtnr.test/test4?utm_medium=email", { redirect: "manual" }),
@@ -226,30 +235,140 @@ describe("QR click channel tracking", () => {
     await new Promise((r) => setTimeout(r, 100));
 
     const row = await env.DB
-      .prepare("SELECT channel FROM clicks WHERE slug_id = ?")
+      .prepare("SELECT link_mode FROM clicks WHERE slug_id = ?")
       .bind(link.slugs[0].id)
-      .first<{ channel: string | null }>();
-    expect(row!.channel).toBe("direct");
+      .first<{ link_mode: string | null }>();
+    expect(row!.link_mode).toBe("link");
   });
 
-  it("analytics includes channel breakdown", async () => {
+  it("analytics includes link_mode breakdown", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     const slugId = link.slugs[0].id;
-    await ClickRepository.record(env.DB, slugId, null, null, null, null, "qr");
-    await ClickRepository.record(env.DB, slugId, null, null, null, null, "qr");
-    await ClickRepository.record(env.DB, slugId, null, null, null, null);
+    await ClickRepository.record(env.DB, slugId, { linkMode: "qr" });
+    await ClickRepository.record(env.DB, slugId, { linkMode: "qr" });
+    await ClickRepository.record(env.DB, slugId);
 
     const stats = await ClickRepository.getStats(env.DB, link.id);
-    expect(stats.channels).toEqual(
+    expect(stats.link_modes).toEqual(
       expect.arrayContaining([
         { name: "qr", count: 2 },
-        { name: "direct", count: 1 },
+        { name: "link", count: 1 },
       ]),
     );
   });
 });
 
-// ---- Feature 3: QR SVG generation ----
+// ---- Feature 3: UTM parameter tracking ----
+
+describe("UTM parameter tracking", () => {
+  it("redirect stores all UTM parameters from query string", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "utm1" });
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/utm1?utm_source=newsletter&utm_medium=email&utm_campaign=spring-launch&utm_term=deals&utm_content=cta-button", { redirect: "manual" }),
+    );
+    expect(res.status).toBe(301);
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const row = await env.DB
+      .prepare("SELECT utm_source, utm_medium, utm_campaign, utm_term, utm_content FROM clicks WHERE slug_id = ?")
+      .bind(link.slugs[0].id)
+      .first<{ utm_source: string; utm_medium: string; utm_campaign: string; utm_term: string; utm_content: string }>();
+    expect(row!.utm_source).toBe("newsletter");
+    expect(row!.utm_medium).toBe("email");
+    expect(row!.utm_campaign).toBe("spring-launch");
+    expect(row!.utm_term).toBe("deals");
+    expect(row!.utm_content).toBe("cta-button");
+  });
+
+  it("redirect stores utm_medium=qr and sets link_mode=qr simultaneously", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "utm2" });
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/utm2?utm_medium=qr&utm_source=poster&utm_campaign=promo-2026", { redirect: "manual" }),
+    );
+    expect(res.status).toBe(301);
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const row = await env.DB
+      .prepare("SELECT link_mode, utm_medium, utm_source, utm_campaign FROM clicks WHERE slug_id = ?")
+      .bind(link.slugs[0].id)
+      .first<{ link_mode: string; utm_medium: string; utm_source: string; utm_campaign: string }>();
+    expect(row!.link_mode).toBe("qr");
+    expect(row!.utm_medium).toBe("qr");
+    expect(row!.utm_source).toBe("poster");
+    expect(row!.utm_campaign).toBe("promo-2026");
+  });
+});
+
+// ---- Feature 4: OS and referrer_host tracking ----
+
+describe("OS and referrer_host tracking", () => {
+  it("redirect stores OS parsed from User-Agent", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "os1" });
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/os1", {
+        redirect: "manual",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
+        },
+      }),
+    );
+    expect(res.status).toBe(301);
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const row = await env.DB
+      .prepare("SELECT os FROM clicks WHERE slug_id = ?")
+      .bind(link.slugs[0].id)
+      .first<{ os: string }>();
+    expect(row!.os).toBe("ios");
+  });
+
+  it("redirect stores referrer_host extracted from Referer header", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "ref1" });
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/ref1", {
+        redirect: "manual",
+        headers: {
+          Referer: "https://google.com/search?q=test",
+        },
+      }),
+    );
+    expect(res.status).toBe(301);
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const row = await env.DB
+      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug_id = ?")
+      .bind(link.slugs[0].id)
+      .first<{ referrer: string; referrer_host: string }>();
+    expect(row!.referrer).toBe("https://google.com/search?q=test");
+    expect(row!.referrer_host).toBe("google.com");
+  });
+
+  it("redirect stores user_agent string", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "ua1" });
+    const uaString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/ua1", {
+        redirect: "manual",
+        headers: { "User-Agent": uaString },
+      }),
+    );
+    expect(res.status).toBe(301);
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const row = await env.DB
+      .prepare("SELECT user_agent FROM clicks WHERE slug_id = ?")
+      .bind(link.slugs[0].id)
+      .first<{ user_agent: string }>();
+    expect(row!.user_agent).toBe(uaString);
+  });
+});
+
+// ---- Feature 5: QR SVG generation ----
 
 describe("QR code generation", () => {
   it("makeQR generates a valid matrix for a short URL", () => {

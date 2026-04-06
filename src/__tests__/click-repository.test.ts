@@ -9,24 +9,24 @@ beforeEach(resetData);
 describe("ClickRepository.record", () => {
   it("increments slug click_count", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, null, null, null, null);
+    await ClickRepository.record(env.DB, link.slugs[0].id);
     const updated = await LinkRepository.getById(env.DB, link.id);
     expect(updated!.slugs[0].click_count).toBe(1);
     expect(updated!.total_clicks).toBe(1);
   });
 
-  it("increments link_click_count for direct clicks", async () => {
+  it("increments link_click_count for link mode clicks", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, null, null, null, null, "direct");
+    await ClickRepository.record(env.DB, link.slugs[0].id, { linkMode: "link" });
     const updated = await LinkRepository.getById(env.DB, link.id);
     expect(updated!.slugs[0].link_click_count).toBe(1);
     expect(updated!.slugs[0].qr_click_count).toBe(0);
     expect(updated!.slugs[0].click_count).toBe(1);
   });
 
-  it("increments qr_click_count for qr clicks", async () => {
+  it("increments qr_click_count for qr mode clicks", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, null, null, null, null, "qr");
+    await ClickRepository.record(env.DB, link.slugs[0].id, { linkMode: "qr" });
     const updated = await LinkRepository.getById(env.DB, link.id);
     expect(updated!.slugs[0].link_click_count).toBe(0);
     expect(updated!.slugs[0].qr_click_count).toBe(1);
@@ -36,9 +36,9 @@ describe("ClickRepository.record", () => {
   it("click_count is the sum of link and qr clicks", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     const slugId = link.slugs[0].id;
-    await ClickRepository.record(env.DB, slugId, null, null, null, null, "direct");
-    await ClickRepository.record(env.DB, slugId, null, null, null, null, "direct");
-    await ClickRepository.record(env.DB, slugId, null, null, null, null, "qr");
+    await ClickRepository.record(env.DB, slugId, { linkMode: "link" });
+    await ClickRepository.record(env.DB, slugId, { linkMode: "link" });
+    await ClickRepository.record(env.DB, slugId, { linkMode: "qr" });
     const updated = await LinkRepository.getById(env.DB, link.id);
     expect(updated!.slugs[0].link_click_count).toBe(2);
     expect(updated!.slugs[0].qr_click_count).toBe(1);
@@ -47,7 +47,12 @@ describe("ClickRepository.record", () => {
 
   it("stores referrer, country, device type, and browser", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, "https://referrer.com", "US", "mobile", "Safari");
+    await ClickRepository.record(env.DB, link.slugs[0].id, {
+      referrer: "https://referrer.com",
+      country: "US",
+      deviceType: "mobile",
+      browser: "Safari",
+    });
     const stats = await ClickRepository.getStats(env.DB, link.id);
     expect(stats.total_clicks).toBe(1);
     expect(stats.countries).toEqual([{ name: "US", count: 1 }]);
@@ -56,29 +61,79 @@ describe("ClickRepository.record", () => {
     expect(stats.browsers).toEqual([{ name: "Safari", count: 1 }]);
   });
 
-  it("stores channel when provided", async () => {
+  it("stores link_mode when provided", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, null, "US", "mobile", "Chrome", "qr");
-    const row = await env.DB.prepare("SELECT channel FROM clicks WHERE slug_id = ?").bind(link.slugs[0].id).first<{ channel: string }>();
-    expect(row!.channel).toBe("qr");
+    await ClickRepository.record(env.DB, link.slugs[0].id, {
+      country: "US",
+      deviceType: "mobile",
+      browser: "Chrome",
+      linkMode: "qr",
+    });
+    const row = await env.DB.prepare("SELECT link_mode FROM clicks WHERE slug_id = ?").bind(link.slugs[0].id).first<{ link_mode: string }>();
+    expect(row!.link_mode).toBe("qr");
   });
 
-  it("defaults channel to direct when not provided", async () => {
+  it("defaults link_mode to link when not provided", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, null, null, null, null);
-    const row = await env.DB.prepare("SELECT channel FROM clicks WHERE slug_id = ?").bind(link.slugs[0].id).first<{ channel: string }>();
-    expect(row!.channel).toBe("direct");
+    await ClickRepository.record(env.DB, link.slugs[0].id);
+    const row = await env.DB.prepare("SELECT link_mode FROM clicks WHERE slug_id = ?").bind(link.slugs[0].id).first<{ link_mode: string }>();
+    expect(row!.link_mode).toBe("link");
   });
 
   it("handles null values without error", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, null, null, null, null);
+    await ClickRepository.record(env.DB, link.slugs[0].id);
     const stats = await ClickRepository.getStats(env.DB, link.id);
     expect(stats.total_clicks).toBe(1);
     expect(stats.countries).toEqual([]);
     expect(stats.referrers).toEqual([]);
     expect(stats.devices).toEqual([]);
     expect(stats.browsers).toEqual([]);
+  });
+
+  it("stores os when provided", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await ClickRepository.record(env.DB, link.slugs[0].id, { os: "ios" });
+    const stats = await ClickRepository.getStats(env.DB, link.id);
+    expect(stats.os).toEqual([{ name: "ios", count: 1 }]);
+  });
+
+  it("stores referrer_host when provided", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await ClickRepository.record(env.DB, link.slugs[0].id, {
+      referrer: "https://google.com/search?q=test",
+      referrerHost: "google.com",
+    });
+    const stats = await ClickRepository.getStats(env.DB, link.id);
+    expect(stats.referrer_hosts).toEqual([{ name: "google.com", count: 1 }]);
+  });
+
+  it("stores UTM parameters", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await ClickRepository.record(env.DB, link.slugs[0].id, {
+      utmSource: "newsletter",
+      utmMedium: "email",
+      utmCampaign: "spring-launch",
+    });
+    const row = await env.DB.prepare("SELECT utm_source, utm_medium, utm_campaign FROM clicks WHERE slug_id = ?")
+      .bind(link.slugs[0].id)
+      .first<{ utm_source: string; utm_medium: string; utm_campaign: string }>();
+    expect(row!.utm_source).toBe("newsletter");
+    expect(row!.utm_medium).toBe("email");
+    expect(row!.utm_campaign).toBe("spring-launch");
+  });
+
+  it("stores channel (traffic source) separately from link_mode", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await ClickRepository.record(env.DB, link.slugs[0].id, {
+      linkMode: "qr",
+      channel: "social",
+    });
+    const row = await env.DB.prepare("SELECT link_mode, channel FROM clicks WHERE slug_id = ?")
+      .bind(link.slugs[0].id)
+      .first<{ link_mode: string; channel: string }>();
+    expect(row!.link_mode).toBe("qr");
+    expect(row!.channel).toBe("social");
   });
 });
 
@@ -89,8 +144,12 @@ describe("ClickRepository.getStats", () => {
     expect(stats.total_clicks).toBe(0);
     expect(stats.countries).toEqual([]);
     expect(stats.referrers).toEqual([]);
+    expect(stats.referrer_hosts).toEqual([]);
     expect(stats.devices).toEqual([]);
+    expect(stats.os).toEqual([]);
     expect(stats.browsers).toEqual([]);
+    expect(stats.link_modes).toEqual([]);
+    expect(stats.channels).toEqual([]);
     expect(stats.clicks_over_time).toEqual([]);
   });
 
@@ -100,31 +159,55 @@ describe("ClickRepository.getStats", () => {
     const fetched = (await LinkRepository.getById(env.DB, link.id))!;
     const autoSlug = fetched.slugs.find((s) => s.is_custom === 0)!;
     const customSlug = fetched.slugs.find((s) => s.is_custom === 1)!;
-    await ClickRepository.record(env.DB, autoSlug.id, null, "US", "desktop", "Chrome");
-    await ClickRepository.record(env.DB, customSlug.id, null, "DE", "mobile", "Firefox");
+    await ClickRepository.record(env.DB, autoSlug.id, { country: "US", deviceType: "desktop", browser: "Chrome" });
+    await ClickRepository.record(env.DB, customSlug.id, { country: "DE", deviceType: "mobile", browser: "Firefox" });
     const stats = await ClickRepository.getStats(env.DB, link.id);
     expect(stats.total_clicks).toBe(2);
   });
 
-  it("returns channel breakdown", async () => {
+  it("returns link_mode breakdown", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, null, null, null, null, "qr");
-    await ClickRepository.record(env.DB, link.slugs[0].id, null, null, null, null, "qr");
-    await ClickRepository.record(env.DB, link.slugs[0].id, null, null, null, null);
+    await ClickRepository.record(env.DB, link.slugs[0].id, { linkMode: "qr" });
+    await ClickRepository.record(env.DB, link.slugs[0].id, { linkMode: "qr" });
+    await ClickRepository.record(env.DB, link.slugs[0].id);
     const stats = await ClickRepository.getStats(env.DB, link.id);
-    expect(stats.channels).toEqual(
+    expect(stats.link_modes).toEqual(
       expect.arrayContaining([
         { name: "qr", count: 2 },
-        { name: "direct", count: 1 },
+        { name: "link", count: 1 },
       ]),
     );
+  });
+
+  it("returns os breakdown", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await ClickRepository.record(env.DB, link.slugs[0].id, { os: "ios" });
+    await ClickRepository.record(env.DB, link.slugs[0].id, { os: "android" });
+    await ClickRepository.record(env.DB, link.slugs[0].id, { os: "ios" });
+    const stats = await ClickRepository.getStats(env.DB, link.id);
+    expect(stats.os).toEqual([
+      { name: "ios", count: 2 },
+      { name: "android", count: 1 },
+    ]);
+  });
+
+  it("returns referrer_hosts breakdown", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await ClickRepository.record(env.DB, link.slugs[0].id, { referrerHost: "google.com" });
+    await ClickRepository.record(env.DB, link.slugs[0].id, { referrerHost: "google.com" });
+    await ClickRepository.record(env.DB, link.slugs[0].id, { referrerHost: "facebook.com" });
+    const stats = await ClickRepository.getStats(env.DB, link.id);
+    expect(stats.referrer_hosts).toEqual([
+      { name: "google.com", count: 2 },
+      { name: "facebook.com", count: 1 },
+    ]);
   });
 });
 
 describe("ClickRepository.getDashboardStats", () => {
   it("returns totals and top lists", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, null, "US", "desktop", "Chrome");
+    await ClickRepository.record(env.DB, link.slugs[0].id, { country: "US", deviceType: "desktop", browser: "Chrome" });
     const stats = await ClickRepository.getDashboardStats(env.DB);
     expect(stats.total_links).toBe(1);
     expect(stats.total_clicks).toBe(1);

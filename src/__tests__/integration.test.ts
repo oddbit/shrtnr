@@ -89,7 +89,7 @@ describe("Link CRUD", () => {
 
   it("should include slugs and total click count in fetched links", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, null, null, null, null);
+    await ClickRepository.record(env.DB, link.slugs[0].id);
     const links = await LinkRepository.list(env.DB);
     expect(links[0].slugs).toHaveLength(1);
     expect(links[0].total_clicks).toBe(1);
@@ -194,7 +194,7 @@ describe("Delete Link", () => {
 
   it("should reject deletion of a link with clicks", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://popular.com", slug: "pop" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, null, null, null, null);
+    await ClickRepository.record(env.DB, link.slugs[0].id);
     const deleted = await LinkRepository.delete(env.DB, link.id);
     expect(deleted).toBe(false);
     const fetched = await LinkRepository.getById(env.DB, link.id);
@@ -260,7 +260,7 @@ describe("Analytics", () => {
   it("should record a click and increment slug click_count", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     const slugId = link.slugs[0].id;
-    await ClickRepository.record(env.DB, slugId, "https://referrer.com", "US", "desktop", "Chrome");
+    await ClickRepository.record(env.DB, slugId, { referrer: "https://referrer.com", country: "US", deviceType: "desktop", browser: "Chrome" });
     const updated = await LinkRepository.getById(env.DB, link.id);
     expect(updated!.slugs[0].click_count).toBe(1);
     expect(updated!.total_clicks).toBe(1);
@@ -269,7 +269,7 @@ describe("Analytics", () => {
   it("should capture referrer, country, device type, and browser", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     const slugId = link.slugs[0].id;
-    await ClickRepository.record(env.DB, slugId, "https://referrer.com", "US", "mobile", "Safari");
+    await ClickRepository.record(env.DB, slugId, { referrer: "https://referrer.com", country: "US", deviceType: "mobile", browser: "Safari" });
     const stats = await ClickRepository.getStats(env.DB, link.id);
     expect(stats.total_clicks).toBe(1);
     expect(stats.countries).toEqual([{ name: "US", count: 1 }]);
@@ -281,7 +281,7 @@ describe("Analytics", () => {
   it("should handle null values for referrer, country, and UA", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     const slugId = link.slugs[0].id;
-    await ClickRepository.record(env.DB, slugId, null, null, null, null);
+    await ClickRepository.record(env.DB, slugId);
     const stats = await ClickRepository.getStats(env.DB, link.id);
     expect(stats.total_clicks).toBe(1);
     expect(stats.countries).toEqual([]);
@@ -296,15 +296,15 @@ describe("Analytics", () => {
     const fetched = (await LinkRepository.getById(env.DB, link.id))!;
     const autoSlug = fetched.slugs.find((s) => s.is_custom === 0)!;
     const customSlug = fetched.slugs.find((s) => s.is_custom === 1)!;
-    await ClickRepository.record(env.DB, autoSlug.id, null, "US", "desktop", "Chrome");
-    await ClickRepository.record(env.DB, customSlug.id, null, "DE", "mobile", "Firefox");
+    await ClickRepository.record(env.DB, autoSlug.id, { country: "US", deviceType: "desktop", browser: "Chrome" });
+    await ClickRepository.record(env.DB, customSlug.id, { country: "DE", deviceType: "mobile", browser: "Firefox" });
     const stats = await ClickRepository.getStats(env.DB, link.id);
     expect(stats.total_clicks).toBe(2);
   });
 
   it("should return dashboard stats with totals and top lists", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, null, "US", "desktop", "Chrome");
+    await ClickRepository.record(env.DB, link.slugs[0].id, { country: "US", deviceType: "desktop", browser: "Chrome" });
     const stats = await ClickRepository.getDashboardStats(env.DB);
     expect(stats.total_links).toBe(1);
     expect(stats.total_clicks).toBe(1);
