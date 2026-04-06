@@ -370,7 +370,18 @@ app.get("/_/api/slugs/:slug", (c) => {
 
 // ---- Root landing page ----
 
-app.get("/", () => landingResponse());
+app.get("/", async (c) => {
+  // Redirect to admin when the visitor has an active session.
+  // Only check explicit auth signals (JWT header, cookie), not DEV_IDENTITY.
+  const hasJwt = c.req.raw.headers.has("Cf-Access-Jwt-Assertion");
+  const cookies = c.req.raw.headers.get("Cookie") ?? "";
+  const hasCookie = cookies.includes("CF_Authorization=");
+  if (hasJwt || hasCookie) {
+    const user = await verifyAccessJwt(c.req.raw, c.env);
+    if (user) return c.redirect("/_/admin/dashboard", 302);
+  }
+  return landingResponse();
+});
 
 // ---- Slug redirect (catch-all) ----
 
