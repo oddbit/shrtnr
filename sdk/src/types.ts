@@ -40,8 +40,11 @@ export interface ClickStats {
   total_clicks: number;
   countries: NameCount[];
   referrers: NameCount[];
+  referrer_hosts: NameCount[];
   devices: NameCount[];
+  os: NameCount[];
   browsers: NameCount[];
+  link_modes: NameCount[];
   channels: NameCount[];
   clicks_over_time: DateCount[];
 }

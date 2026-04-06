@@ -50,12 +50,36 @@ export interface LinkWithSlugs extends Link {
   total_clicks: number;
 }
 
+export interface ClickData {
+  referrer?: string | null;
+  referrerHost?: string | null;
+  country?: string | null;
+  region?: string | null;
+  city?: string | null;
+  deviceType?: string | null;
+  os?: string | null;
+  browser?: string | null;
+  language?: string | null;
+  linkMode?: string;
+  channel?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  utmTerm?: string | null;
+  utmContent?: string | null;
+  userAgent?: string | null;
+  isBot?: number;
+}
+
 export interface ClickStats {
   total_clicks: number;
   countries: { name: string; count: number }[];
   referrers: { name: string; count: number }[];
+  referrer_hosts: { name: string; count: number }[];
   devices: { name: string; count: number }[];
+  os: { name: string; count: number }[];
   browsers: { name: string; count: number }[];
+  link_modes: { name: string; count: number }[];
   channels: { name: string; count: number }[];
   clicks_over_time: { date: string; count: number }[];
 }
