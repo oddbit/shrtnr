@@ -345,42 +345,48 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
 
       <div class="detail-analytics">
         <div class="detail-analytics-left">
-          <div class="bento-card">
-            <div class="bento-label">{t("linkDetail.clicksOverTime")}</div>
-            {analytics.clicks_over_time.length > 0 ? (
-              <>
-                <div class="chart-container">
-                  {analytics.clicks_over_time.map((d) => {
-                    const maxVal = Math.max(
-                      1,
-                      ...analytics.clicks_over_time.map((x) => x.count),
-                    );
-                    const pct = ((d.count / maxVal) * 100).toFixed(0);
-                    return (
-                      <div
-                        class="chart-bar"
-                        style={`height:${Math.max(2, Number(pct))}%`}
-                        data-label={`${d.date}: ${d.count}`}
-                      />
-                    );
-                  })}
-                </div>
-                <div class="chart-dates">
-                  <span>{analytics.clicks_over_time[0].date}</span>
-                  <span>
-                    {
-                      analytics.clicks_over_time[
-                        analytics.clicks_over_time.length - 1
-                      ].date
-                    }
-                  </span>
-                </div>
-              </>
-            ) : (
+          <div class="bento-card timeline-card">
+            <div class="timeline-header">
+              <div class="bento-label">{t("linkDetail.clicksOverTime")}</div>
+              <div class="timeline-range-selector" id="timeline-range">
+                {(["24h", "7d", "30d", "90d", "1y", "all"] as const).map((r) => (
+                  <button
+                    class={`timeline-range-btn${r === "30d" ? " active" : ""}`}
+                    data-range={r}
+                    onclick={`loadTimeline(${link.id}, '${r}')`}
+                  >
+                    {r === "1y" ? "1Y" : r.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div class="timeline-summary" id="timeline-summary">
+              <div class="timeline-stat">
+                <span class="timeline-stat-value" id="tl-24h">-</span>
+                <span class="timeline-stat-label">24h</span>
+              </div>
+              <div class="timeline-stat">
+                <span class="timeline-stat-value" id="tl-7d">-</span>
+                <span class="timeline-stat-label">7d</span>
+              </div>
+              <div class="timeline-stat">
+                <span class="timeline-stat-value" id="tl-30d">-</span>
+                <span class="timeline-stat-label">30d</span>
+              </div>
+              <div class="timeline-stat">
+                <span class="timeline-stat-value" id="tl-90d">-</span>
+                <span class="timeline-stat-label">90d</span>
+              </div>
+              <div class="timeline-stat">
+                <span class="timeline-stat-value" id="tl-1y">-</span>
+                <span class="timeline-stat-label">1y</span>
+              </div>
+            </div>
+            <div class="timeline-chart" id="timeline-chart">
               <div style="color:var(--color-text-muted);font-size:0.875rem;padding:2rem 0;text-align:center">
                 {t("linkDetail.noClickData")}
               </div>
-            )}
+            </div>
           </div>
 
           <div class="bento-card">

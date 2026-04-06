@@ -688,5 +688,130 @@ var slugLengthEl = document.getElementById('slug-length-input');
 if (slugLengthEl) slugLengthEl.addEventListener('input', updateComboHint);
 
 if (document.getElementById('version-status')) checkForUpdates();
+
+// ---- Timeline chart ----
+var _tlData = null;
+
+function loadTimeline(linkId, range) {
+  // Update active button
+  var btns = document.querySelectorAll('.timeline-range-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].className = 'timeline-range-btn' + (btns[i].getAttribute('data-range') === range ? ' active' : '');
+  }
+  api('/links/' + linkId + '/timeline?range=' + range)
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      _tlData = data;
+      // Update summary
+      document.getElementById('tl-24h').textContent = fmtNum(data.summary.last_24h);
+      document.getElementById('tl-7d').textContent = fmtNum(data.summary.last_7d);
+      document.getElementById('tl-30d').textContent = fmtNum(data.summary.last_30d);
+      document.getElementById('tl-90d').textContent = fmtNum(data.summary.last_90d);
+      document.getElementById('tl-1y').textContent = fmtNum(data.summary.last_1y);
+      renderTimeline(data);
+    });
+}
+
+function fmtNum(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return String(n);
+}
+
+function fmtLabel(label, range) {
+  if (range === '24h') {
+    // "YYYY-MM-DD HH" → "HH:00"
+    return label.slice(11) + ':00';
+  }
+  if (range === '7d' || range === '30d' || range === '90d') {
+    // "YYYY-MM-DD" → "MM/DD" or "DD Mon"
+    var parts = label.split('-');
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[parseInt(parts[1], 10) - 1] + ' ' + parseInt(parts[2], 10);
+  }
+  if (range === '1y') {
+    var parts = label.split('-');
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[parseInt(parts[1], 10) - 1] + ' ' + parseInt(parts[2], 10);
+  }
+  // "all": "YYYY-MM" → "Mon YY"
+  var parts = label.split('-');
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[parseInt(parts[1], 10) - 1] + ' ' + parts[0].slice(2);
+}
+
+function renderTimeline(data) {
+  var container = document.getElementById('timeline-chart');
+  if (!data.buckets || data.buckets.length === 0) {
+    container.innerHTML = '<div style="color:var(--color-text-muted);font-size:0.875rem;padding:2rem 0;text-align:center">No click data yet</div>';
+    return;
+  }
+
+  var maxVal = 0;
+  for (var i = 0; i < data.buckets.length; i++) {
+    if (data.buckets[i].count > maxVal) maxVal = data.buckets[i].count;
+  }
+  if (maxVal === 0) maxVal = 1;
+
+  // Compute y-axis gridlines (4 steps)
+  var step = niceStep(maxVal);
+  var gridMax = Math.ceil(maxVal / step) * step;
+  if (gridMax === 0) gridMax = step;
+
+  var html = '<div class="tl-y-axis">';
+  for (var g = gridMax; g >= 0; g -= step) {
+    html += '<span class="tl-y-label">' + fmtNum(g) + '</span>';
+  }
+  html += '</div>';
+
+  html += '<div class="tl-plot">';
+  // Grid lines
+  var gridSteps = gridMax / step;
+  for (var g = 0; g <= gridSteps; g++) {
+    var pct = (g / gridSteps * 100).toFixed(1);
+    html += '<div class="tl-grid-line" style="bottom:' + pct + '%"></div>';
+  }
+
+  // Determine which labels to show (avoid crowding)
+  var labelInterval = 1;
+  var n = data.buckets.length;
+  if (n > 60) labelInterval = Math.ceil(n / 12);
+  else if (n > 30) labelInterval = Math.ceil(n / 10);
+  else if (n > 14) labelInterval = Math.ceil(n / 7);
+
+  // Bars
+  html += '<div class="tl-bars">';
+  for (var i = 0; i < n; i++) {
+    var b = data.buckets[i];
+    var pct = (b.count / gridMax * 100).toFixed(1);
+    var label = fmtLabel(b.label, data.range);
+    var showLabel = (i % labelInterval === 0) || i === n - 1;
+    html += '<div class="tl-bar-group">';
+    html += '<div class="tl-bar-wrap"><div class="tl-bar" style="height:' + pct + '%" data-tooltip="' + esc(b.label) + ': ' + b.count + ' click' + (b.count !== 1 ? 's' : '') + '"></div></div>';
+    html += '<span class="tl-x-label' + (showLabel ? '' : ' tl-x-hidden') + '">' + esc(label) + '</span>';
+    html += '</div>';
+  }
+  html += '</div></div>';
+
+  container.innerHTML = html;
+}
+
+function niceStep(max) {
+  if (max <= 4) return 1;
+  var rough = max / 4;
+  var pow = Math.pow(10, Math.floor(Math.log10(rough)));
+  var norm = rough / pow;
+  if (norm <= 1) return pow;
+  if (norm <= 2) return 2 * pow;
+  if (norm <= 5) return 5 * pow;
+  return 10 * pow;
+}
+
+// Auto-load timeline on link detail page
+var tlRange = document.getElementById('timeline-range');
+if (tlRange) {
+  var linkId = parseInt(window.location.pathname.split('/').pop(), 10);
+  if (linkId) loadTimeline(linkId, '30d');
+}
 `;
 }
