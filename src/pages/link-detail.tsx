@@ -50,6 +50,19 @@ function deviceIcon(name: string): string {
   return "computer";
 }
 
+function linkModeIcon(name: string): string {
+  if (name === "qr") return "qr_code_2";
+  return "link";
+}
+
+function osIcon(name: string): string {
+  if (name === "ios" || name === "macos") return "apple";
+  if (name === "android") return "android";
+  if (name === "windows") return "desktop_windows";
+  if (name === "linux" || name === "chromeos") return "computer";
+  return "devices";
+}
+
 type Props = {
   link: LinkWithSlugs;
   analytics: ClickStats;
@@ -371,6 +384,25 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
           </div>
 
           <div class="bento-card">
+            <div class="bento-label">{t("linkDetail.referrerHosts")}</div>
+            {analytics.referrer_hosts.length > 0 ? (
+              analytics.referrer_hosts.map((r) => (
+                <StatBar
+                  name={r.name}
+                  count={r.count}
+                  max={analytics.referrer_hosts[0].count}
+                  color="mint"
+                  mono
+                />
+              ))
+            ) : (
+              <div style="color:var(--color-text-muted);font-size:0.875rem">
+                {t("linkDetail.noData")}
+              </div>
+            )}
+          </div>
+
+          <div class="bento-card">
             <div class="bento-label">{t("linkDetail.sources")}</div>
             {analytics.referrers.length > 0 ? (
               analytics.referrers.map((r) => (
@@ -379,6 +411,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
                   count={r.count}
                   max={analytics.referrers[0].count}
                   color="mint"
+                  mono
                 />
               ))
             ) : (
@@ -409,6 +442,25 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
           </div>
 
           <div class="bento-card">
+            <div class="bento-label">{t("linkDetail.linkModes")}</div>
+            {analytics.link_modes.length > 0 ? (
+              analytics.link_modes.map((m) => (
+                <StatBar
+                  name={m.name}
+                  count={m.count}
+                  max={analytics.link_modes[0].count}
+                  color="orange"
+                  icon={linkModeIcon(m.name)}
+                />
+              ))
+            ) : (
+              <div style="color:var(--color-text-muted);font-size:0.875rem">
+                {t("linkDetail.noData")}
+              </div>
+            )}
+          </div>
+
+          <div class="bento-card">
             <div class="bento-label">{t("linkDetail.devices")}</div>
             {analytics.devices.length > 0 ? (
               analytics.devices.map((d) => (
@@ -418,6 +470,25 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
                   max={analytics.devices[0].count}
                   color="orange"
                   icon={deviceIcon(d.name)}
+                />
+              ))
+            ) : (
+              <div style="color:var(--color-text-muted);font-size:0.875rem">
+                {t("linkDetail.noData")}
+              </div>
+            )}
+          </div>
+
+          <div class="bento-card">
+            <div class="bento-label">{t("linkDetail.os")}</div>
+            {analytics.os.length > 0 ? (
+              analytics.os.map((o) => (
+                <StatBar
+                  name={o.name}
+                  count={o.count}
+                  max={analytics.os[0].count}
+                  color="mint"
+                  icon={osIcon(o.name)}
                 />
               ))
             ) : (
