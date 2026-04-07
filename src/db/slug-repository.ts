@@ -3,7 +3,7 @@
 
 import { Slug } from "../types";
 
-const SLUG_SELECT = "*, (link_click_count + qr_click_count) AS click_count";
+const SLUG_SELECT = "s.*, (SELECT COUNT(*) FROM clicks c WHERE c.slug_id = s.id) AS click_count";
 
 export class SlugRepository {
   static async findByValue(
@@ -11,7 +11,7 @@ export class SlugRepository {
     slug: string,
   ): Promise<(Slug & { url: string; expires_at: number | null }) | null> {
     return db
-      .prepare(`SELECT s.${SLUG_SELECT}, l.url, l.expires_at FROM slugs s JOIN links l ON s.link_id = l.id WHERE s.slug = ?`)
+      .prepare(`SELECT ${SLUG_SELECT}, l.url, l.expires_at FROM slugs s JOIN links l ON s.link_id = l.id WHERE s.slug = ?`)
       .bind(slug)
       .first<Slug & { url: string; expires_at: number | null }>();
   }
@@ -45,7 +45,7 @@ export class SlugRepository {
     }
 
     return (await db
-      .prepare(`SELECT ${SLUG_SELECT} FROM slugs WHERE link_id = ? AND slug = ?`)
+      .prepare(`SELECT ${SLUG_SELECT} FROM slugs s WHERE link_id = ? AND slug = ?`)
       .bind(linkId, slug)
       .first<Slug>())!;
   }
@@ -57,7 +57,7 @@ export class SlugRepository {
 
   static async disable(db: D1Database, slugId: number): Promise<Slug | null> {
     const now = Math.floor(Date.now() / 1000);
-    const slug = await db.prepare(`SELECT ${SLUG_SELECT} FROM slugs WHERE id = ?`).bind(slugId).first<Slug>();
+    const slug = await db.prepare(`SELECT ${SLUG_SELECT} FROM slugs s WHERE id = ?`).bind(slugId).first<Slug>();
     if (!slug) return null;
 
     await db.prepare("UPDATE slugs SET disabled_at = ? WHERE id = ?").bind(now, slugId).run();
@@ -71,16 +71,16 @@ export class SlugRepository {
         .run();
     }
 
-    return db.prepare(`SELECT ${SLUG_SELECT} FROM slugs WHERE id = ?`).bind(slugId).first<Slug>();
+    return db.prepare(`SELECT ${SLUG_SELECT} FROM slugs s WHERE id = ?`).bind(slugId).first<Slug>();
   }
 
   static async enable(db: D1Database, slugId: number): Promise<Slug | null> {
     await db.prepare("UPDATE slugs SET disabled_at = NULL WHERE id = ?").bind(slugId).run();
-    return db.prepare(`SELECT ${SLUG_SELECT} FROM slugs WHERE id = ?`).bind(slugId).first<Slug>();
+    return db.prepare(`SELECT ${SLUG_SELECT} FROM slugs s WHERE id = ?`).bind(slugId).first<Slug>();
   }
 
   static async remove(db: D1Database, slugId: number): Promise<boolean> {
-    const slug = await db.prepare(`SELECT ${SLUG_SELECT} FROM slugs WHERE id = ?`).bind(slugId).first<Slug>();
+    const slug = await db.prepare(`SELECT ${SLUG_SELECT} FROM slugs s WHERE id = ?`).bind(slugId).first<Slug>();
     if (!slug) return false;
 
     // Cannot delete random slugs

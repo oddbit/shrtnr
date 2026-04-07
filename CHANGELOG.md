@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.22.0 (2026-04-07)
+
+### Click count refactor, dashboard top domains, and icon fixes
+
+**Click counts from aggregate queries**: `click_count` on slugs is now computed via a subquery against the `clicks` table rather than maintained as separate `link_click_count` and `qr_click_count` counter columns. This keeps counts consistent with the analytics data and removes the need to update counter columns on every click.
+
+**Dashboard top domains**: The "Top Sources" panel is renamed "Top Domains" and now groups by `referrer_host` instead of the full referrer URL, giving cleaner domain-level attribution.
+
+**iOS and macOS icons**: The OS breakdown icons for iOS and macOS now use valid Material Symbols glyphs (`phone_iphone` and `laptop_mac`) instead of the broken `apple` ligature.
+
 ## 0.21.0 (2026-04-06)
 
 ### Expanded analytics and interactive timeline chart

@@ -3,7 +3,7 @@
 
 import { Link, Slug, LinkWithSlugs } from "../types";
 
-const SLUG_SELECT = "*, (link_click_count + qr_click_count) AS click_count";
+const SLUG_SELECT = "s.*, (SELECT COUNT(*) FROM clicks c WHERE c.slug_id = s.id) AS click_count";
 
 function assembleLink(link: Link, slugs: Slug[]): LinkWithSlugs {
   return {
@@ -16,7 +16,7 @@ function assembleLink(link: Link, slugs: Slug[]): LinkWithSlugs {
 export class LinkRepository {
   static async list(db: D1Database): Promise<LinkWithSlugs[]> {
     const links = await db.prepare("SELECT * FROM links ORDER BY created_at DESC").all<Link>();
-    const slugs = await db.prepare(`SELECT ${SLUG_SELECT} FROM slugs ORDER BY is_custom ASC, created_at ASC`).all<Slug>();
+    const slugs = await db.prepare(`SELECT ${SLUG_SELECT} FROM slugs s ORDER BY is_custom ASC, created_at ASC`).all<Slug>();
 
     return (links.results ?? []).map((link) => {
       const linkSlugs = (slugs.results ?? []).filter((s) => s.link_id === link.id);
@@ -29,7 +29,7 @@ export class LinkRepository {
     if (!link) return null;
 
     const slugs = await db
-      .prepare(`SELECT ${SLUG_SELECT} FROM slugs WHERE link_id = ? ORDER BY is_custom ASC, created_at ASC`)
+      .prepare(`SELECT ${SLUG_SELECT} FROM slugs s WHERE link_id = ? ORDER BY is_custom ASC, created_at ASC`)
       .bind(id)
       .all<Slug>();
 

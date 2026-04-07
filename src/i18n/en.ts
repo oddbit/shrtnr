@@ -24,7 +24,7 @@ const en = {
   "dashboard.noData": "No data yet",
   "dashboard.recentLinks": "Recent Links",
   "dashboard.noLinks": "No links yet",
-  "dashboard.topSources": "Top Sources",
+  "dashboard.topSources": "Top Domains",
   "dashboard.mostClicked": "Most Clicked",
   "dashboard.clickToCopy": "Click to copy",
 

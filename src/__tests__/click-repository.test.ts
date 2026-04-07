@@ -7,41 +7,23 @@ beforeAll(applyMigrations);
 beforeEach(resetData);
 
 describe("ClickRepository.record", () => {
-  it("increments slug click_count", async () => {
+  it("click_count is aggregated from clicks table", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    expect(link.slugs[0].click_count).toBe(0);
+
     await ClickRepository.record(env.DB, link.slugs[0].id);
-    const updated = await LinkRepository.getById(env.DB, link.id);
-    expect(updated!.slugs[0].click_count).toBe(1);
-    expect(updated!.total_clicks).toBe(1);
+    const after1 = await LinkRepository.getById(env.DB, link.id);
+    expect(after1!.slugs[0].click_count).toBe(1);
+    expect(after1!.total_clicks).toBe(1);
   });
 
-  it("increments link_click_count for link mode clicks", async () => {
-    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, { linkMode: "link" });
-    const updated = await LinkRepository.getById(env.DB, link.id);
-    expect(updated!.slugs[0].link_click_count).toBe(1);
-    expect(updated!.slugs[0].qr_click_count).toBe(0);
-    expect(updated!.slugs[0].click_count).toBe(1);
-  });
-
-  it("increments qr_click_count for qr mode clicks", async () => {
-    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await ClickRepository.record(env.DB, link.slugs[0].id, { linkMode: "qr" });
-    const updated = await LinkRepository.getById(env.DB, link.id);
-    expect(updated!.slugs[0].link_click_count).toBe(0);
-    expect(updated!.slugs[0].qr_click_count).toBe(1);
-    expect(updated!.slugs[0].click_count).toBe(1);
-  });
-
-  it("click_count is the sum of link and qr clicks", async () => {
+  it("click_count counts all link modes together", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     const slugId = link.slugs[0].id;
     await ClickRepository.record(env.DB, slugId, { linkMode: "link" });
     await ClickRepository.record(env.DB, slugId, { linkMode: "link" });
     await ClickRepository.record(env.DB, slugId, { linkMode: "qr" });
     const updated = await LinkRepository.getById(env.DB, link.id);
-    expect(updated!.slugs[0].link_click_count).toBe(2);
-    expect(updated!.slugs[0].qr_click_count).toBe(1);
     expect(updated!.slugs[0].click_count).toBe(3);
   });
 

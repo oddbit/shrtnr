@@ -81,8 +81,7 @@ describe("LinkRepository.list", () => {
 
   it("includes total_clicks summed across slugs", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
-    await env.DB.prepare("INSERT INTO clicks (slug_id, clicked_at, channel) VALUES (?, ?, 'direct')").bind(link.slugs[0].id, Math.floor(Date.now() / 1000)).run();
-    await env.DB.prepare("UPDATE slugs SET link_click_count = link_click_count + 1 WHERE id = ?").bind(link.slugs[0].id).run();
+    await env.DB.prepare("INSERT INTO clicks (slug_id, clicked_at, link_mode) VALUES (?, ?, 'link')").bind(link.slugs[0].id, Math.floor(Date.now() / 1000)).run();
     const links = await LinkRepository.list(env.DB);
     expect(links[0].total_clicks).toBe(1);
   });

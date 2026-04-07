@@ -12,41 +12,34 @@ export class ClickRepository {
   ): Promise<void> {
     const now = Math.floor(Date.now() / 1000);
     const mode = data.linkMode ?? "link";
-    const counterCol = mode === "qr" ? "qr_click_count" : "link_click_count";
-    await Promise.all([
-      db
-        .prepare(
-          `INSERT INTO clicks (slug_id, clicked_at, referrer, referrer_host, country, region, city, device_type, os, browser, language, link_mode, channel, utm_source, utm_medium, utm_campaign, utm_term, utm_content, user_agent, is_bot)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .bind(
-          slugId,
-          now,
-          data.referrer ?? null,
-          data.referrerHost ?? null,
-          data.country ?? null,
-          data.region ?? null,
-          data.city ?? null,
-          data.deviceType ?? null,
-          data.os ?? null,
-          data.browser ?? null,
-          data.language ?? null,
-          mode,
-          data.channel ?? null,
-          data.utmSource ?? null,
-          data.utmMedium ?? null,
-          data.utmCampaign ?? null,
-          data.utmTerm ?? null,
-          data.utmContent ?? null,
-          data.userAgent ?? null,
-          data.isBot ?? 0,
-        )
-        .run(),
-      db
-        .prepare(`UPDATE slugs SET ${counterCol} = ${counterCol} + 1 WHERE id = ?`)
-        .bind(slugId)
-        .run(),
-    ]);
+    await db
+      .prepare(
+        `INSERT INTO clicks (slug_id, clicked_at, referrer, referrer_host, country, region, city, device_type, os, browser, language, link_mode, channel, utm_source, utm_medium, utm_campaign, utm_term, utm_content, user_agent, is_bot)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        slugId,
+        now,
+        data.referrer ?? null,
+        data.referrerHost ?? null,
+        data.country ?? null,
+        data.region ?? null,
+        data.city ?? null,
+        data.deviceType ?? null,
+        data.os ?? null,
+        data.browser ?? null,
+        data.language ?? null,
+        mode,
+        data.channel ?? null,
+        data.utmSource ?? null,
+        data.utmMedium ?? null,
+        data.utmCampaign ?? null,
+        data.utmTerm ?? null,
+        data.utmContent ?? null,
+        data.userAgent ?? null,
+        data.isBot ?? 0,
+      )
+      .run();
   }
 
   static async getStats(db: D1Database, linkId: number): Promise<ClickStats> {
@@ -193,7 +186,7 @@ export class ClickRepository {
       db.prepare("SELECT COUNT(*) as cnt FROM clicks").first<{ cnt: number }>(),
       LinkRepository.list(db),
       db.prepare("SELECT country as name, COUNT(*) as count FROM clicks WHERE country IS NOT NULL GROUP BY country ORDER BY count DESC LIMIT 5").all<{ name: string; count: number }>(),
-      db.prepare("SELECT referrer as name, COUNT(*) as count FROM clicks WHERE referrer IS NOT NULL GROUP BY referrer ORDER BY count DESC LIMIT 5").all<{ name: string; count: number }>(),
+      db.prepare("SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY count DESC LIMIT 5").all<{ name: string; count: number }>(),
     ]);
 
     const sorted = [...recentLinks].sort((a, b) => b.total_clicks - a.total_clicks);
