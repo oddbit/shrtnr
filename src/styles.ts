@@ -262,7 +262,7 @@ body { font-family: var(--font-family-body); background: var(--color-canvas); co
 
 /* Stat bars */
 .stat-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0; }
-.stat-name { font-size: 0.8rem; min-width: 100px; color: var(--color-text); }
+.stat-name { font-size: 0.8rem; width: 160px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text); }
 .stat-bar { flex: 1; height: 8px; background: var(--color-surface); border-radius: 4px; overflow: hidden; }
 .stat-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease-out; }
 .stat-fill.orange { background: linear-gradient(135deg, var(--color-accent), var(--color-accent-active)); }
