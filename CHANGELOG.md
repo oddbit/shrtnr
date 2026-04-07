@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.23.0 (2026-04-07)
+
+### Auto-label, analytics range filter, and link detail redesign
+
+**Auto-label from page title**: When a link is created without a label, the Worker fetches the destination page's `<title>` in the background (via `waitUntil`) and saves it as the label. The link detail page polls briefly after creation and updates the label display without a reload.
+
+**Analytics range filter**: The analytics endpoint accepts a `?range=` parameter (24h, 7d, 30d, 90d, 1y, all) and filters every breakdown query by that window. The link detail page re-renders all stat cards on each range change.
+
+**Per-slug click counts**: `ClickStats` now includes `slug_clicks`, so the link detail page shows a click bar for each slug driven by a single analytics response.
+
+**Link detail page redesign**: The range selector moves to the page header. Stat cards (countries, referrers, devices, OS, browsers, link modes) update on range change instead of being server-rendered. The inline label editor is promoted to the top of the hero section. The links list now shows the label above the slugs.
+
+**Referrer host normalization**: The `www.` prefix is stripped from referrer hosts on click recording, so `www.linkedin.com` and `linkedin.com` attribute to the same host.
+
+**Schema cleanup**: Removed the `link_click_count` and `qr_click_count` counter columns from the `slugs` table. Click counts derive from aggregate queries against the `clicks` table.
+
 ## 0.22.0 (2026-04-07)
 
 ### Click count refactor, dashboard top domains, and icon fixes
