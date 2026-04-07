@@ -62,7 +62,6 @@ const sv: Translations = {
   "linkDetail.qr": "QR",
   "linkDetail.or": "eller",
   "linkDetail.customSlug": "Anpassad slug",
-  "linkDetail.label": "Etikett",
   "linkDetail.createdBy": "Skapad av",
   "linkDetail.add": "Lägg till",
   "linkDetail.expiresAt": "Förfaller",
@@ -153,6 +152,14 @@ const sv: Translations = {
   "settings.sdkLink": "npm-paket: @oddbit/shrtnr",
   "settings.mcpDocsLink": "MCP-dokumentation",
   "settings.mcpSetupLink": "Installationsguide i README",
+
+  // Time ranges
+  "range.24h": "24T",
+  "range.7d": "7D",
+  "range.30d": "30D",
+  "range.90d": "90D",
+  "range.1y": "1Å",
+  "range.all": "ALLT",
 
   // 404
   "notFound.label": "Hittades inte",

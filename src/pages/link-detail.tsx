@@ -99,7 +99,18 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
           </span>
         </a>
         <div class="page-title">{t("linkDetail.title")}</div>
-        <div style="margin-left:auto;position:relative">
+        <div class="timeline-range-selector" id="timeline-range" data-link-id={link.id} style="margin-left:auto">
+          {(["24h", "7d", "30d", "90d", "1y", "all"] as const).map((r) => (
+            <button
+              class={`timeline-range-btn${r === "all" ? " active" : ""}`}
+              data-range={r}
+              onclick={`loadAnalytics(${link.id}, '${r}')`}
+            >
+              {t(`range.${r}` as const)}
+            </button>
+          ))}
+        </div>
+        <div style="position:relative">
           <button
             class="btn btn-ghost btn-sm"
             onclick="toggleDetailMenu()"
@@ -137,113 +148,112 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
         </div>
       </div>
 
-      <div class="detail-hero detail-hero-grid">
-        <div class="detail-hero-main">
-          {isExpired && (
-            <div style="display:inline-block;background:var(--color-danger);color:var(--color-danger-foreground);font-size:0.7rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:var(--radius-md);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em">
-              {t("linkDetail.disabled")}
-            </div>
-          )}
-          <div
-            class="detail-short-url"
-            style={isExpired ? "opacity:0.4" : undefined}
-          >
-            {displaySlug}
-          </div>
-          <div class="detail-dest">{link.url}</div>
-          <div style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center">
-            <button
-              class="btn btn-secondary btn-sm"
-              onclick={`copyUrl('${escHtml(displaySlug)}')`}
-            >
-              <span class="icon">content_copy</span> {t("linkDetail.copy")}
-            </button>
-            <button
-              class="btn btn-ghost btn-sm"
-              onclick={`showQRModal(${link.id}, '${escHtml(displaySlug)}')`}
-            >
-              <span class="icon">qr_code_2</span> {t("linkDetail.qr")}
-            </button>
-          </div>
-        </div>
-
-        <div class="detail-hero-side">
-          <div class="detail-stats">
-            <div class="detail-stat-value">{analytics.total_clicks}</div>
-            <div class="detail-stat-label">{t("linkDetail.totalClicks")}</div>
-          </div>
-          <div class="detail-info-grid">
-            <div class="detail-info-item full-width">
-              <label class="form-label">{t("linkDetail.label")}</label>
-              <div class="inline-edit" id="label-display" onclick={`beginEditLabel(${link.id})`}>
-                {link.label ? (
-                  <span class="inline-edit-value">{link.label}</span>
-                ) : (
-                  <span class="inline-edit-placeholder">{t("linkDetail.setLabel")}</span>
-                )}
-                <span class="icon inline-edit-icon">edit</span>
-              </div>
-              <div class="inline-edit-form" id="label-form" style="display:none">
-                <input
-                  class="form-input form-input-sm"
-                  id="detail-label"
-                  value={link.label || ""}
-                  placeholder={t("linkDetail.labelPlaceholder")}
-                  onkeydown={`if(event.key==='Enter')saveDetailLabel(${link.id});if(event.key==='Escape')cancelEditLabel();`}
-                />
-                <button class="inline-edit-btn confirm" onclick={`saveDetailLabel(${link.id})`}>
-                  <span class="icon">check</span>
-                </button>
-                <button class="inline-edit-btn cancel" onclick="cancelEditLabel()">
-                  <span class="icon">close</span>
-                </button>
-              </div>
-            </div>
-            <div class="detail-info-item">
-              <label class="form-label">{t("linkDetail.createdBy")}</label>
-              {link.created_via ? (
-                <div style="font-size:0.9rem;color:var(--color-text)">{link.created_via}</div>
+      <div class="detail-hero">
+        <div class="detail-hero-grid">
+          <div class="detail-hero-main">
+            <div class="detail-hero-label" id="label-display" onclick={`beginEditLabel(${link.id})`}>
+              {link.label ? (
+                <span class="inline-edit-value">{link.label}</span>
               ) : (
-                <div style="font-size:0.85rem;color:var(--color-text-muted)">&mdash;</div>
+                <span class="inline-edit-placeholder">{t("linkDetail.setLabel")}</span>
               )}
+              <span class="icon inline-edit-icon">edit</span>
             </div>
-            <div class="detail-info-item">
-              <label class="form-label">{t("linkDetail.expiresAt")}</label>
-              <div class="inline-edit" id="expiry-display" onclick={`beginEditExpiry(${link.id})`}>
-                {link.expires_at ? (
-                  <span class="inline-edit-value">
-                    {new Date(link.expires_at * 1000).toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric" })}
-                    {", "}
-                    {new Date(link.expires_at * 1000).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                ) : (
-                  <span class="inline-edit-placeholder">{t("linkDetail.noExpiry")}</span>
-                )}
-                <span class="icon inline-edit-icon">edit</span>
+            <div class="inline-edit-form" id="label-form" style="display:none">
+              <input
+                class="form-input form-input-sm"
+                id="detail-label"
+                value={link.label || ""}
+                placeholder={t("linkDetail.labelPlaceholder")}
+                onkeydown={`if(event.key==='Enter')saveDetailLabel(${link.id});if(event.key==='Escape')cancelEditLabel();`}
+              />
+              <button class="inline-edit-btn confirm" onclick={`saveDetailLabel(${link.id})`}>
+                <span class="icon">check</span>
+              </button>
+              <button class="inline-edit-btn cancel" onclick="cancelEditLabel()">
+                <span class="icon">close</span>
+              </button>
+            </div>
+            {isExpired && (
+              <div style="display:inline-block;background:var(--color-danger);color:var(--color-danger-foreground);font-size:0.7rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:var(--radius-md);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em">
+                {t("linkDetail.disabled")}
               </div>
-              <div class="inline-edit-form" id="expiry-form" style="display:none">
-                <input
-                  class="form-input form-input-sm"
-                  id="detail-expires"
-                  type="datetime-local"
-                  value={expVal}
-                  style="width:auto"
-                />
-                <button class="inline-edit-btn confirm" onclick={`saveDetailExpiry(${link.id})`}>
-                  <span class="icon">check</span>
-                </button>
-                {link.expires_at && (
-                  <button
-                    class="btn btn-ghost btn-sm"
-                    style="font-size:0.75rem"
-                    onclick={`clearDetailExpiry(${link.id})`}
-                  >
-                    {t("linkDetail.clear")}
-                  </button>
+            )}
+            <div
+              class="detail-short-url"
+              style={isExpired ? "opacity:0.4" : undefined}
+            >
+              {displaySlug}
+            </div>
+            <div class="detail-dest">{link.url}</div>
+            <div style="margin-top:0.75rem;display:flex;gap:0.5rem;align-items:center">
+              <button
+                class="btn btn-secondary btn-sm"
+                onclick={`copyUrl('${escHtml(displaySlug)}')`}
+              >
+                <span class="icon">content_copy</span> {t("linkDetail.copy")}
+              </button>
+              <button
+                class="btn btn-ghost btn-sm"
+                onclick={`showQRModal(${link.id}, '${escHtml(displaySlug)}')`}
+              >
+                <span class="icon">qr_code_2</span> {t("linkDetail.qr")}
+              </button>
+            </div>
+          </div>
+
+          <div class="detail-hero-side">
+            <div class="detail-stats">
+              <div class="detail-stat-value" id="hero-total-clicks">{analytics.total_clicks}</div>
+              <div class="detail-stat-label">{t("linkDetail.totalClicks")}</div>
+            </div>
+            <div class="detail-info-grid">
+              <div class="detail-info-item">
+                <label class="form-label">{t("linkDetail.createdBy")}</label>
+                {link.created_via ? (
+                  <div style="font-size:0.9rem;color:var(--color-text)">{link.created_via}</div>
+                ) : (
+                  <div style="font-size:0.85rem;color:var(--color-text-muted)">&mdash;</div>
                 )}
-                <button class="inline-edit-btn cancel" onclick="cancelEditExpiry()">
-                  <span class="icon">close</span>
-                </button>
+              </div>
+              <div class="detail-info-item">
+                <label class="form-label">{t("linkDetail.expiresAt")}</label>
+                <div class="inline-edit" id="expiry-display" onclick={`beginEditExpiry(${link.id})`}>
+                  {link.expires_at ? (
+                    <span class="inline-edit-value">
+                      {new Date(link.expires_at * 1000).toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric" })}
+                      {", "}
+                      {new Date(link.expires_at * 1000).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  ) : (
+                    <span class="inline-edit-placeholder">{t("linkDetail.noExpiry")}</span>
+                  )}
+                  <span class="icon inline-edit-icon">edit</span>
+                </div>
+                <div class="inline-edit-form" id="expiry-form" style="display:none">
+                  <input
+                    class="form-input form-input-sm"
+                    id="detail-expires"
+                    type="datetime-local"
+                    value={expVal}
+                    style="width:auto"
+                  />
+                  <button class="inline-edit-btn confirm" onclick={`saveDetailExpiry(${link.id})`}>
+                    <span class="icon">check</span>
+                  </button>
+                  {link.expires_at && (
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      style="font-size:0.75rem"
+                      onclick={`clearDetailExpiry(${link.id})`}
+                    >
+                      {t("linkDetail.clear")}
+                    </button>
+                  )}
+                  <button class="inline-edit-btn cancel" onclick="cancelEditExpiry()">
+                    <span class="icon">close</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -264,7 +274,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
             const pct = maxSlugClicks > 0 ? ((s.click_count / maxSlugClicks) * 100).toFixed(0) : "0";
 
             return (
-              <div class={`slugs-row${isDisabled ? " slugs-row-disabled" : ""}${isPrimary ? " slugs-row-primary" : ""}`}>
+              <div class={`slugs-row${isDisabled ? " slugs-row-disabled" : ""}${isPrimary ? " slugs-row-primary" : ""}`} data-slug-id={s.id}>
                 <div class="slugs-row-actions-left">
                   {!isDisabled && (
                     <>
@@ -302,12 +312,13 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
                   <div class="slugs-row-bar">
                     <div
                       class="slugs-row-fill orange"
+                      data-slug-fill={s.id}
                       style={`width:${pct}%`}
                     />
                   </div>
                 </div>
 
-                <div class="slugs-row-count">{s.click_count}</div>
+                <div class="slugs-row-count" data-slug-count={s.id}>{s.click_count}</div>
 
                 <div class="slugs-row-actions-right">
                   {canDelete && (
@@ -347,42 +358,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
       <div class="detail-analytics">
         <div class="detail-analytics-left">
           <div class="bento-card timeline-card">
-            <div class="timeline-header">
-              <div class="bento-label">{t("linkDetail.clicksOverTime")}</div>
-              <div class="timeline-range-selector" id="timeline-range">
-                {(["24h", "7d", "30d", "90d", "1y", "all"] as const).map((r) => (
-                  <button
-                    class={`timeline-range-btn${r === "30d" ? " active" : ""}`}
-                    data-range={r}
-                    onclick={`loadTimeline(${link.id}, '${r}')`}
-                  >
-                    {r === "1y" ? "1Y" : r.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div class="timeline-summary" id="timeline-summary">
-              <div class="timeline-stat">
-                <span class="timeline-stat-value" id="tl-24h">-</span>
-                <span class="timeline-stat-label">24h</span>
-              </div>
-              <div class="timeline-stat">
-                <span class="timeline-stat-value" id="tl-7d">-</span>
-                <span class="timeline-stat-label">7d</span>
-              </div>
-              <div class="timeline-stat">
-                <span class="timeline-stat-value" id="tl-30d">-</span>
-                <span class="timeline-stat-label">30d</span>
-              </div>
-              <div class="timeline-stat">
-                <span class="timeline-stat-value" id="tl-90d">-</span>
-                <span class="timeline-stat-label">90d</span>
-              </div>
-              <div class="timeline-stat">
-                <span class="timeline-stat-value" id="tl-1y">-</span>
-                <span class="timeline-stat-label">1y</span>
-              </div>
-            </div>
+            <div class="bento-label">{t("linkDetail.clicksOverTime")}</div>
             <div class="timeline-chart" id="timeline-chart">
               <div style="color:var(--color-text-muted);font-size:0.875rem;padding:2rem 0;text-align:center">
                 {t("linkDetail.noClickData")}
@@ -390,137 +366,151 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang }) => {
             </div>
           </div>
 
-          <div class="bento-card">
+          <div class="bento-card" id="card-referrer-hosts">
             <div class="bento-label">{t("linkDetail.referrerHosts")}</div>
-            {analytics.referrer_hosts.length > 0 ? (
-              analytics.referrer_hosts.map((r) => (
-                <StatBar
-                  name={r.name}
-                  count={r.count}
-                  max={analytics.referrer_hosts[0].count}
-                  color="mint"
-                  mono
-                />
-              ))
-            ) : (
-              <div style="color:var(--color-text-muted);font-size:0.875rem">
-                {t("linkDetail.noData")}
-              </div>
-            )}
+            <div class="stat-card-body">
+              {analytics.referrer_hosts.length > 0 ? (
+                analytics.referrer_hosts.map((r) => (
+                  <StatBar
+                    name={r.name}
+                    count={r.count}
+                    max={analytics.referrer_hosts[0].count}
+                    color="mint"
+                    mono
+                  />
+                ))
+              ) : (
+                <div style="color:var(--color-text-muted);font-size:0.875rem">
+                  {t("linkDetail.noData")}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div class="bento-card">
+          <div class="bento-card" id="card-referrers">
             <div class="bento-label">{t("linkDetail.sources")}</div>
-            {analytics.referrers.length > 0 ? (
-              analytics.referrers.map((r) => (
-                <StatBar
-                  name={r.name}
-                  count={r.count}
-                  max={analytics.referrers[0].count}
-                  color="mint"
-                  mono
-                />
-              ))
-            ) : (
-              <div style="color:var(--color-text-muted);font-size:0.875rem">
-                {t("linkDetail.noData")}
-              </div>
-            )}
+            <div class="stat-card-body">
+              {analytics.referrers.length > 0 ? (
+                analytics.referrers.map((r) => (
+                  <StatBar
+                    name={r.name}
+                    count={r.count}
+                    max={analytics.referrers[0].count}
+                    color="mint"
+                    mono
+                  />
+                ))
+              ) : (
+                <div style="color:var(--color-text-muted);font-size:0.875rem">
+                  {t("linkDetail.noData")}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         <div class="detail-analytics-right">
-          <div class="bento-card">
+          <div class="bento-card" id="card-countries">
             <div class="bento-label">{t("linkDetail.countries")}</div>
-            {analytics.countries.length > 0 ? (
-              analytics.countries.map((c) => (
-                <StatBar
-                  name={countryName(c.name, lang)}
-                  count={c.count}
-                  max={analytics.countries[0].count}
-                  color="orange"
-                />
-              ))
-            ) : (
-              <div style="color:var(--color-text-muted);font-size:0.875rem">
-                {t("linkDetail.noData")}
-              </div>
-            )}
+            <div class="stat-card-body">
+              {analytics.countries.length > 0 ? (
+                analytics.countries.map((c) => (
+                  <StatBar
+                    name={countryName(c.name, lang)}
+                    count={c.count}
+                    max={analytics.countries[0].count}
+                    color="orange"
+                  />
+                ))
+              ) : (
+                <div style="color:var(--color-text-muted);font-size:0.875rem">
+                  {t("linkDetail.noData")}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div class="bento-card">
+          <div class="bento-card" id="card-link-modes">
             <div class="bento-label">{t("linkDetail.linkModes")}</div>
-            {analytics.link_modes.length > 0 ? (
-              analytics.link_modes.map((m) => (
-                <StatBar
-                  name={m.name}
-                  count={m.count}
-                  max={analytics.link_modes[0].count}
-                  color="orange"
-                  icon={linkModeIcon(m.name)}
-                />
-              ))
-            ) : (
-              <div style="color:var(--color-text-muted);font-size:0.875rem">
-                {t("linkDetail.noData")}
-              </div>
-            )}
+            <div class="stat-card-body">
+              {analytics.link_modes.length > 0 ? (
+                analytics.link_modes.map((m) => (
+                  <StatBar
+                    name={m.name}
+                    count={m.count}
+                    max={analytics.link_modes[0].count}
+                    color="orange"
+                    icon={linkModeIcon(m.name)}
+                  />
+                ))
+              ) : (
+                <div style="color:var(--color-text-muted);font-size:0.875rem">
+                  {t("linkDetail.noData")}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div class="bento-card">
+          <div class="bento-card" id="card-devices">
             <div class="bento-label">{t("linkDetail.devices")}</div>
-            {analytics.devices.length > 0 ? (
-              analytics.devices.map((d) => (
-                <StatBar
-                  name={d.name}
-                  count={d.count}
-                  max={analytics.devices[0].count}
-                  color="orange"
-                  icon={deviceIcon(d.name)}
-                />
-              ))
-            ) : (
-              <div style="color:var(--color-text-muted);font-size:0.875rem">
-                {t("linkDetail.noData")}
-              </div>
-            )}
+            <div class="stat-card-body">
+              {analytics.devices.length > 0 ? (
+                analytics.devices.map((d) => (
+                  <StatBar
+                    name={d.name}
+                    count={d.count}
+                    max={analytics.devices[0].count}
+                    color="orange"
+                    icon={deviceIcon(d.name)}
+                  />
+                ))
+              ) : (
+                <div style="color:var(--color-text-muted);font-size:0.875rem">
+                  {t("linkDetail.noData")}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div class="bento-card">
+          <div class="bento-card" id="card-os">
             <div class="bento-label">{t("linkDetail.os")}</div>
-            {analytics.os.length > 0 ? (
-              analytics.os.map((o) => (
-                <StatBar
-                  name={o.name}
-                  count={o.count}
-                  max={analytics.os[0].count}
-                  color="mint"
-                  icon={osIcon(o.name)}
-                />
-              ))
-            ) : (
-              <div style="color:var(--color-text-muted);font-size:0.875rem">
-                {t("linkDetail.noData")}
-              </div>
-            )}
+            <div class="stat-card-body">
+              {analytics.os.length > 0 ? (
+                analytics.os.map((o) => (
+                  <StatBar
+                    name={o.name}
+                    count={o.count}
+                    max={analytics.os[0].count}
+                    color="mint"
+                    icon={osIcon(o.name)}
+                  />
+                ))
+              ) : (
+                <div style="color:var(--color-text-muted);font-size:0.875rem">
+                  {t("linkDetail.noData")}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div class="bento-card">
+          <div class="bento-card" id="card-browsers">
             <div class="bento-label">{t("linkDetail.browsers")}</div>
-            {analytics.browsers.length > 0 ? (
-              analytics.browsers.map((b) => (
-                <StatBar
-                  name={b.name}
-                  count={b.count}
-                  max={analytics.browsers[0].count}
-                  color="mint"
-                />
-              ))
-            ) : (
-              <div style="color:var(--color-text-muted);font-size:0.875rem">
-                {t("linkDetail.noData")}
-              </div>
-            )}
+            <div class="stat-card-body">
+              {analytics.browsers.length > 0 ? (
+                analytics.browsers.map((b) => (
+                  <StatBar
+                    name={b.name}
+                    count={b.count}
+                    max={analytics.browsers[0].count}
+                    color="mint"
+                  />
+                ))
+              ) : (
+                <div style="color:var(--color-text-muted);font-size:0.875rem">
+                  {t("linkDetail.noData")}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

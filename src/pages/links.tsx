@@ -183,6 +183,9 @@ export const LinksPage: FC<Props> = ({
                 class={`link-item${disabled ? " link-disabled" : ""}`}
               >
                 <div class="link-info">
+                  {link.label && (
+                    <div class="link-label">{link.label}</div>
+                  )}
                   <div class="link-slugs">
                     {orderedSlugs.map((s) => (
                       <span
@@ -203,9 +206,6 @@ export const LinksPage: FC<Props> = ({
                       </span>
                     )}
                   </div>
-                  {link.label && (
-                    <div class="link-label">{link.label}</div>
-                  )}
                   <div class="link-url">{link.url}</div>
                   <div class="link-date">{formatDate(link.created_at, lang)}</div>
                 </div>

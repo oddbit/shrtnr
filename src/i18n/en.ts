@@ -59,7 +59,6 @@ const en = {
   "linkDetail.qr": "QR",
   "linkDetail.or": "or",
   "linkDetail.customSlug": "Custom Slug",
-  "linkDetail.label": "Label",
   "linkDetail.createdBy": "Created By",
   "linkDetail.add": "Add",
   "linkDetail.expiresAt": "Expires At",
@@ -150,6 +149,14 @@ const en = {
   "settings.sdkLink": "npm package: @oddbit/shrtnr",
   "settings.mcpDocsLink": "MCP documentation",
   "settings.mcpSetupLink": "Setup guide in README",
+
+  // Time ranges
+  "range.24h": "24H",
+  "range.7d": "7D",
+  "range.30d": "30D",
+  "range.90d": "90D",
+  "range.1y": "1Y",
+  "range.all": "ALL",
 
   // 404
   "notFound.label": "Not found",

@@ -689,27 +689,104 @@ if (slugLengthEl) slugLengthEl.addEventListener('input', updateComboHint);
 
 if (document.getElementById('version-status')) checkForUpdates();
 
-// ---- Timeline chart ----
+// ---- Analytics + Timeline ----
 var _tlData = null;
 
-function loadTimeline(linkId, range) {
+function deviceIcon(name) {
+  if (name === 'mobile') return 'phone_android';
+  if (name === 'tablet') return 'tablet';
+  return 'computer';
+}
+function linkModeIcon(name) {
+  if (name === 'qr') return 'qr_code_2';
+  return 'link';
+}
+function osIcon(name) {
+  if (name === 'ios') return 'phone_iphone';
+  if (name === 'macos') return 'laptop_mac';
+  if (name === 'android') return 'android';
+  if (name === 'windows') return 'desktop_windows';
+  if (name === 'linux' || name === 'chromeos') return 'computer';
+  return 'devices';
+}
+
+function renderStatCard(containerId, items, color, opts) {
+  opts = opts || {};
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  var body = el.querySelector('.stat-card-body');
+  if (!body) return;
+  if (!items || items.length === 0) {
+    body.innerHTML = '<div style="color:var(--color-text-muted);font-size:0.875rem">' + esc(t('linkDetail.noData')) + '</div>';
+    return;
+  }
+  var maxVal = items[0].count;
+  var html = '';
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    var pct = maxVal > 0 ? ((item.count / maxVal) * 100).toFixed(0) : '0';
+    var name = opts.mapName ? opts.mapName(item.name) : item.name;
+    var iconStr = opts.iconFn ? '<span class="icon" style="font-size:16px;vertical-align:text-bottom">' + opts.iconFn(item.name) + '</span> ' : '';
+    html += '<div class="stat-row">';
+    html += '<span class="stat-name"' + (opts.mono ? ' style="font-family:var(--font-family-mono)"' : '') + '>' + iconStr + esc(name) + '</span>';
+    html += '<div class="stat-bar"><div class="stat-fill ' + color + '" style="width:' + pct + '%"></div></div>';
+    html += '<span class="stat-count">' + item.count + '</span>';
+    html += '</div>';
+  }
+  body.innerHTML = html;
+}
+
+function loadAnalytics(linkId, range) {
   // Update active button
   var btns = document.querySelectorAll('.timeline-range-btn');
   for (var i = 0; i < btns.length; i++) {
     btns[i].className = 'timeline-range-btn' + (btns[i].getAttribute('data-range') === range ? ' active' : '');
   }
-  api('/links/' + linkId + '/timeline?range=' + range)
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      _tlData = data;
-      // Update summary
-      document.getElementById('tl-24h').textContent = fmtNum(data.summary.last_24h);
-      document.getElementById('tl-7d').textContent = fmtNum(data.summary.last_7d);
-      document.getElementById('tl-30d').textContent = fmtNum(data.summary.last_30d);
-      document.getElementById('tl-90d').textContent = fmtNum(data.summary.last_90d);
-      document.getElementById('tl-1y').textContent = fmtNum(data.summary.last_1y);
-      renderTimeline(data);
-    });
+
+  // Fetch both timeline and analytics in parallel
+  var timelineReq = api('/links/' + linkId + '/timeline?range=' + range).then(function(r) { return r.json(); });
+  var analyticsReq = api('/links/' + linkId + '/analytics?range=' + range).then(function(r) { return r.json(); });
+
+  Promise.all([timelineReq, analyticsReq]).then(function(results) {
+    var tlData = results[0];
+    var stats = results[1];
+    _tlData = tlData;
+
+    // Update hero total clicks
+    var heroTotal = document.getElementById('hero-total-clicks');
+    if (heroTotal) heroTotal.textContent = fmtNum(stats.total_clicks);
+
+    // Update per-slug click counts and bars
+    var slugCounts = {};
+    var slugMax = 0;
+    var sc = stats.slug_clicks || [];
+    for (var si = 0; si < sc.length; si++) {
+      slugCounts[sc[si].slug_id] = sc[si].count;
+      if (sc[si].count > slugMax) slugMax = sc[si].count;
+    }
+    if (slugMax === 0) slugMax = 1;
+    var rows = document.querySelectorAll('.slugs-row[data-slug-id]');
+    for (var ri = 0; ri < rows.length; ri++) {
+      var sid = rows[ri].getAttribute('data-slug-id');
+      var cnt = slugCounts[sid] || 0;
+      var countEl = rows[ri].querySelector('[data-slug-count]');
+      if (countEl) countEl.textContent = String(cnt);
+      var fillEl = rows[ri].querySelector('[data-slug-fill]');
+      if (fillEl) fillEl.style.width = ((cnt / slugMax) * 100).toFixed(0) + '%';
+    }
+
+    // Update timeline chart
+    renderTimeline(tlData);
+
+    // Update all stat cards
+    renderStatCard('card-countries', stats.countries, 'orange', { mapName: countryName });
+    renderStatCard('card-referrer-hosts', stats.referrer_hosts, 'mint', { mono: true });
+    renderStatCard('card-referrers', stats.referrers, 'mint', { mono: true });
+    renderStatCard('card-link-modes', stats.link_modes, 'orange', { iconFn: linkModeIcon });
+    renderStatCard('card-devices', stats.devices, 'orange', { iconFn: deviceIcon });
+    renderStatCard('card-os', stats.os, 'mint', { iconFn: osIcon });
+    renderStatCard('card-browsers', stats.browsers, 'mint');
+  });
 }
 
 function fmtNum(n) {
@@ -807,11 +884,43 @@ function niceStep(max) {
   return 10 * pow;
 }
 
-// Auto-load timeline on link detail page
-var tlRange = document.getElementById('timeline-range');
-if (tlRange) {
-  var linkId = parseInt(window.location.pathname.split('/').pop(), 10);
-  if (linkId) loadTimeline(linkId, '30d');
+// Auto-load analytics on link detail page
+var analyticsRangeBar = document.getElementById('timeline-range');
+if (analyticsRangeBar) {
+  var linkId = parseInt(analyticsRangeBar.getAttribute('data-link-id'), 10);
+  if (linkId) loadAnalytics(linkId, 'all');
+}
+
+// Poll for auto-label if label is empty (background title fetch may be in flight)
+var labelDisplay = document.getElementById('label-display');
+if (labelDisplay && !labelDisplay.querySelector('.inline-edit-value')) {
+  var labelLinkId = analyticsRangeBar ? parseInt(analyticsRangeBar.getAttribute('data-link-id'), 10) : 0;
+  if (labelLinkId) {
+    var labelAttempts = 0;
+    var labelPoll = setInterval(function() {
+      labelAttempts++;
+      if (labelAttempts > 5) { clearInterval(labelPoll); return; }
+      api('/links/' + labelLinkId).then(function(res) {
+        if (!res.ok) return;
+        return res.json();
+      }).then(function(link) {
+        if (!link || !link.label) return;
+        clearInterval(labelPoll);
+        // Update the display inline without reloading
+        var display = document.getElementById('label-display');
+        var placeholder = display.querySelector('.inline-edit-placeholder');
+        if (placeholder) {
+          var span = document.createElement('span');
+          span.className = 'inline-edit-value';
+          span.textContent = link.label;
+          placeholder.replaceWith(span);
+        }
+        // Update the hidden input too
+        var inp = document.getElementById('detail-label');
+        if (inp) inp.value = link.label;
+      });
+    }, 2000);
+  }
 }
 `;
 }

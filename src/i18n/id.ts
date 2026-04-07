@@ -62,7 +62,6 @@ const id: Translations = {
   "linkDetail.qr": "QR",
   "linkDetail.or": "atau",
   "linkDetail.customSlug": "Slug Kustom",
-  "linkDetail.label": "Label",
   "linkDetail.createdBy": "Dibuat Oleh",
   "linkDetail.add": "Tambah",
   "linkDetail.expiresAt": "Kedaluwarsa",
@@ -153,6 +152,14 @@ const id: Translations = {
   "settings.sdkLink": "Paket npm: @oddbit/shrtnr",
   "settings.mcpDocsLink": "Dokumentasi MCP",
   "settings.mcpSetupLink": "Panduan pengaturan di README",
+
+  // Time ranges
+  "range.24h": "24J",
+  "range.7d": "7H",
+  "range.30d": "30H",
+  "range.90d": "90H",
+  "range.1y": "1T",
+  "range.all": "SEMUA",
 
   // 404
   "notFound.label": "Tidak ditemukan",
