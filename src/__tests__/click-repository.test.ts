@@ -207,6 +207,61 @@ describe("ClickRepository.getDashboardStats", () => {
   });
 });
 
+describe("ClickRepository.getStats with range filter", () => {
+  it("returns all clicks when range is undefined", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await ClickRepository.record(env.DB, link.slugs[0].id, { country: "US" });
+    await ClickRepository.record(env.DB, link.slugs[0].id, { country: "DE" });
+    const stats = await ClickRepository.getStats(env.DB, link.id);
+    expect(stats.total_clicks).toBe(2);
+  });
+
+  it("filters clicks by 7d range", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const slugId = link.slugs[0].id;
+    // Insert a recent click
+    await ClickRepository.record(env.DB, slugId, { country: "US" });
+    // Insert an old click (30 days ago) by directly writing to DB
+    const oldTs = Math.floor(Date.now() / 1000) - 30 * 86400;
+    await env.DB.prepare(
+      "INSERT INTO clicks (slug_id, clicked_at, country, link_mode) VALUES (?, ?, ?, ?)"
+    ).bind(slugId, oldTs, "DE", "link").run();
+
+    const allStats = await ClickRepository.getStats(env.DB, link.id);
+    expect(allStats.total_clicks).toBe(2);
+
+    const filteredStats = await ClickRepository.getStats(env.DB, link.id, "7d");
+    expect(filteredStats.total_clicks).toBe(1);
+    expect(filteredStats.countries).toEqual([{ name: "US", count: 1 }]);
+  });
+
+  it("filters all breakdown fields by range", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const slugId = link.slugs[0].id;
+    // Recent click
+    await ClickRepository.record(env.DB, slugId, {
+      country: "US",
+      referrerHost: "google.com",
+      os: "ios",
+      browser: "Safari",
+      deviceType: "mobile",
+    });
+    // Old click (60 days ago)
+    const oldTs = Math.floor(Date.now() / 1000) - 60 * 86400;
+    await env.DB.prepare(
+      "INSERT INTO clicks (slug_id, clicked_at, country, referrer_host, os, browser, device_type, link_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).bind(slugId, oldTs, "DE", "facebook.com", "android", "Chrome", "desktop", "link").run();
+
+    const stats = await ClickRepository.getStats(env.DB, link.id, "30d");
+    expect(stats.total_clicks).toBe(1);
+    expect(stats.countries).toEqual([{ name: "US", count: 1 }]);
+    expect(stats.referrer_hosts).toEqual([{ name: "google.com", count: 1 }]);
+    expect(stats.os).toEqual([{ name: "ios", count: 1 }]);
+    expect(stats.browsers).toEqual([{ name: "Safari", count: 1 }]);
+    expect(stats.devices).toEqual([{ name: "mobile", count: 1 }]);
+  });
+});
+
 describe("ClickRepository.getTimeline", () => {
   it("returns empty buckets for a link with no clicks", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });

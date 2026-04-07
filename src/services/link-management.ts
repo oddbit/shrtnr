@@ -209,10 +209,10 @@ export async function getLinkTimeline(env: Env, linkId: number, range: TimelineR
   return ok(await ClickRepository.getTimeline(env.DB, linkId, range));
 }
 
-export async function getLinkAnalytics(env: Env, linkId: number): Promise<ServiceResult<ClickStats>> {
+export async function getLinkAnalytics(env: Env, linkId: number, range?: TimelineRange): Promise<ServiceResult<ClickStats>> {
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
-  return ok(await ClickRepository.getStats(env.DB, linkId));
+  return ok(await ClickRepository.getStats(env.DB, linkId, range));
 }
 
 export async function getDashboardStats(env: Env): Promise<ServiceResult<DashboardStats>> {

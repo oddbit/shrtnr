@@ -80,6 +80,7 @@ export interface ClickStats {
   link_modes: { name: string; count: number }[];
   channels: { name: string; count: number }[];
   clicks_over_time: { date: string; count: number }[];
+  slug_clicks: { slug_id: number; count: number }[];
 }
 
 export type TimelineRange = "24h" | "7d" | "30d" | "90d" | "1y" | "all";

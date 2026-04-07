@@ -182,7 +182,7 @@ app.get("/_/admin/links/:id", async (c) => {
   const linkResult = await getLink(c.env, id);
   if (!linkResult.ok) return notFoundResponse();
   const analyticsResult = await getLinkAnalytics(c.env, id);
-  const analytics = analyticsResult.ok ? analyticsResult.data : { total_clicks: 0, countries: [], referrers: [], referrer_hosts: [], devices: [], os: [], browsers: [], link_modes: [], channels: [], clicks_over_time: [] };
+  const analytics = analyticsResult.ok ? analyticsResult.data : { total_clicks: 0, countries: [], referrers: [], referrer_hosts: [], devices: [], os: [], browsers: [], link_modes: [], channels: [], clicks_over_time: [], slug_clicks: [] };
   const userEmail = c.var.user?.email ?? null;
   return c.html(
     <Layout active="links" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
@@ -261,7 +261,7 @@ app.put("/_/admin/api/links/:id", (c) => {
 app.get("/_/admin/api/links/:id/analytics", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  return handleLinkAnalytics(c.env, id);
+  return handleLinkAnalytics(c.env, id, c.req.query("range"));
 });
 app.get("/_/admin/api/links/:id/timeline", (c) => {
   const id = parseInt(c.req.param("id"), 10);

@@ -15,8 +15,9 @@ export async function handleDashboardStats(env: Env): Promise<Response> {
   return fromServiceResult(await getDashboardStats(env));
 }
 
-export async function handleLinkAnalytics(env: Env, linkId: number): Promise<Response> {
-  return fromServiceResult(await getLinkAnalytics(env, linkId));
+export async function handleLinkAnalytics(env: Env, linkId: number, rangeParam?: string | null): Promise<Response> {
+  const range: TimelineRange | undefined = VALID_RANGES.has(rangeParam as TimelineRange) ? (rangeParam as TimelineRange) : undefined;
+  return fromServiceResult(await getLinkAnalytics(env, linkId, range));
 }
 
 export async function handleLinkTimeline(env: Env, linkId: number, rangeParam: string | null): Promise<Response> {
