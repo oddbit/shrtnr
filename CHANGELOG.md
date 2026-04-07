@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.1 (2026-04-07)
+
+Fixing bar charts length.
+
 ## 0.23.0 (2026-04-07)
 
 ### Auto-label, analytics range filter, and link detail redesign
