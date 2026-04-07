@@ -230,6 +230,21 @@ export async function searchLinks(env: Env, query: string): Promise<ServiceResul
   return ok(await LinkRepository.search(env.DB, query));
 }
 
+export async function autoLabelLink(
+  db: D1Database,
+  linkId: number,
+  url: string,
+  titleFetcher: (url: string) => Promise<string | null>,
+): Promise<void> {
+  const link = await LinkRepository.getById(db, linkId);
+  if (!link || link.label) return;
+
+  const title = await titleFetcher(url);
+  if (!title) return;
+
+  await LinkRepository.update(db, linkId, { label: title });
+}
+
 export async function recordClick(
   env: Env,
   slugId: number,

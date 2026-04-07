@@ -246,7 +246,7 @@ app.delete("/_/admin/api/keys/:id", (c) => {
 });
 
 // Links (admin path: no scope checks, full access)
-app.post("/_/admin/api/links", (c) => handleCreateLink(c.req.raw, c.env, "app", c.var.identity));
+app.post("/_/admin/api/links", (c) => handleCreateLink(c.req.raw, c.env, "app", c.var.identity, c.executionCtx));
 app.get("/_/admin/api/links", (c) => handleListLinks(c.env));
 app.get("/_/admin/api/links/:id", (c) => {
   const id = parseInt(c.req.param("id"), 10);
@@ -333,7 +333,7 @@ app.use("/_/api/*", async (c, next) => {
 app.post("/_/api/links", (c) => {
   if (!hasScope(c.var.auth, "create")) return forbiddenResponse();
   const via = c.req.header("X-Client") === "sdk" ? "sdk" : "api";
-  return handleCreateLink(c.req.raw, c.env, via);
+  return handleCreateLink(c.req.raw, c.env, via, undefined, c.executionCtx);
 });
 app.get("/_/api/links", (c) => {
   if (!hasScope(c.var.auth, "read")) return forbiddenResponse();

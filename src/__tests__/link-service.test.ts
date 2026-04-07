@@ -191,6 +191,60 @@ describe("link-management service", () => {
   });
 });
 
+describe("autoLabelLink", () => {
+  it("sets the label from page title when label is empty", async () => {
+    const created = await createLink(env as any, { url: "https://example.com" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    expect(created.data.label).toBeNull();
+
+    const { autoLabelLink } = await import("../services/link-management");
+    await autoLabelLink(env.DB, created.data.id, created.data.url, async () => "Example Domain");
+
+    const fetched = await getLink(env as any, created.data.id);
+    expect(fetched.ok).toBe(true);
+    if (fetched.ok) {
+      expect(fetched.data.label).toBe("Example Domain");
+    }
+  });
+
+  it("skips update when label is already set", async () => {
+    const created = await createLink(env as any, { url: "https://example.com", label: "My Label" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const { autoLabelLink } = await import("../services/link-management");
+    await autoLabelLink(env.DB, created.data.id, created.data.url, async () => "Example Domain");
+
+    const fetched = await getLink(env as any, created.data.id);
+    expect(fetched.ok).toBe(true);
+    if (fetched.ok) {
+      expect(fetched.data.label).toBe("My Label");
+    }
+  });
+
+  it("does nothing when title fetch returns null", async () => {
+    const created = await createLink(env as any, { url: "https://example.com" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const { autoLabelLink } = await import("../services/link-management");
+    await autoLabelLink(env.DB, created.data.id, created.data.url, async () => null);
+
+    const fetched = await getLink(env as any, created.data.id);
+    expect(fetched.ok).toBe(true);
+    if (fetched.ok) {
+      expect(fetched.data.label).toBeNull();
+    }
+  });
+
+  it("does nothing when link does not exist", async () => {
+    const { autoLabelLink } = await import("../services/link-management");
+    // Should not throw
+    await autoLabelLink(env.DB, 99999, "https://example.com", async () => "Title");
+  });
+});
+
 describe("searchLinks service", () => {
   it("returns links matching a label query", async () => {
     await createLink(env as any, { url: "https://oddbit.id", label: "Oddbit website" });

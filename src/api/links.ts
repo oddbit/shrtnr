@@ -3,6 +3,7 @@
 
 import { Env } from "../types";
 import {
+  autoLabelLink,
   createLink,
   disableLink,
   deleteLink,
@@ -11,6 +12,7 @@ import {
   listLinks,
   updateLink,
 } from "../services/link-management";
+import { fetchPageTitle } from "../title-fetch";
 import { json, fromServiceResult } from "./response";
 
 export async function handleListLinks(env: Env): Promise<Response> {
@@ -25,7 +27,7 @@ export async function handleGetLinkBySlug(env: Env, slug: string): Promise<Respo
   return fromServiceResult(await getLinkBySlug(env, slug.toLowerCase()));
 }
 
-export async function handleCreateLink(request: Request, env: Env, createdVia?: string, createdBy?: string): Promise<Response> {
+export async function handleCreateLink(request: Request, env: Env, createdVia?: string, createdBy?: string, ctx?: ExecutionContext): Promise<Response> {
   let body: {
     url?: string;
     label?: string;
@@ -40,7 +42,13 @@ export async function handleCreateLink(request: Request, env: Env, createdVia?: 
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  return fromServiceResult(await createLink(env, { ...body, created_via: createdVia, created_by: createdBy }));
+  const result = await createLink(env, { ...body, created_via: createdVia, created_by: createdBy });
+
+  if (result.ok && result.status === 201 && !body.label && ctx) {
+    ctx.waitUntil(autoLabelLink(env.DB, result.data.id, result.data.url, fetchPageTitle));
+  }
+
+  return fromServiceResult(result);
 }
 
 export async function handleUpdateLink(request: Request, env: Env, id: number): Promise<Response> {
