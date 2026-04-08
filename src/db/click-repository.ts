@@ -4,6 +4,12 @@
 import { ClickData, ClickStats, DashboardStats, TimelineBucket, TimelineData, TimelineRange } from "../types";
 import { LinkRepository } from "./link-repository";
 
+export type BreakdownDimension = "country" | "referrer_host" | "device_type" | "os" | "browser" | "link_mode" | "channel";
+
+const VALID_DIMENSIONS = new Set<BreakdownDimension>([
+  "country", "referrer_host", "device_type", "os", "browser", "link_mode", "channel",
+]);
+
 export class ClickRepository {
   static async record(
     db: D1Database,
@@ -210,6 +216,174 @@ export class ClickRepository {
       : fillBuckets(range, dataMap, ts, sinceTs);
 
     return { range, buckets, summary };
+  }
+
+  static async getTrendingLinks(
+    db: D1Database,
+    range: TimelineRange,
+    limit: number,
+  ): Promise<{ link_id: number; clicks: number; url: string; label: string | null }[]> {
+    let where = "1=1";
+    const binds: number[] = [];
+
+    if (range && range !== "all") {
+      const now = Math.floor(Date.now() / 1000);
+      const seconds: Record<string, number> = { "24h": 86400, "7d": 7 * 86400, "30d": 30 * 86400, "90d": 90 * 86400, "1y": 365 * 86400 };
+      where = "c.clicked_at >= ?";
+      binds.push(now - (seconds[range] ?? 0));
+    }
+
+    const rows = await db
+      .prepare(
+        `SELECT s.link_id, COUNT(*) as clicks, l.url, l.label
+         FROM clicks c
+         JOIN slugs s ON s.id = c.slug_id
+         JOIN links l ON l.id = s.link_id
+         WHERE ${where}
+         GROUP BY s.link_id
+         ORDER BY clicks DESC
+         LIMIT ?`,
+      )
+      .bind(...binds, limit)
+      .all<{ link_id: number; clicks: number; url: string; label: string | null }>();
+
+    return rows.results ?? [];
+  }
+
+  static async getGlobalBreakdown(
+    db: D1Database,
+    dimension: BreakdownDimension,
+    range: TimelineRange,
+    limit: number,
+  ): Promise<{ name: string; count: number }[]> {
+    if (!VALID_DIMENSIONS.has(dimension)) return [];
+
+    let where = `${dimension} IS NOT NULL`;
+    const binds: number[] = [];
+
+    if (range && range !== "all") {
+      const now = Math.floor(Date.now() / 1000);
+      const seconds: Record<string, number> = { "24h": 86400, "7d": 7 * 86400, "30d": 30 * 86400, "90d": 90 * 86400, "1y": 365 * 86400 };
+      where += " AND clicked_at >= ?";
+      binds.push(now - (seconds[range] ?? 0));
+    }
+
+    const rows = await db
+      .prepare(
+        `SELECT ${dimension} as name, COUNT(*) as count
+         FROM clicks
+         WHERE ${where}
+         GROUP BY ${dimension}
+         ORDER BY count DESC
+         LIMIT ?`,
+      )
+      .bind(...binds, limit)
+      .all<{ name: string; count: number }>();
+
+    return rows.results ?? [];
+  }
+
+  static async getTotalClicks(
+    db: D1Database,
+    range: TimelineRange,
+  ): Promise<number> {
+    let where = "1=1";
+    const binds: number[] = [];
+
+    if (range && range !== "all") {
+      const now = Math.floor(Date.now() / 1000);
+      const seconds: Record<string, number> = { "24h": 86400, "7d": 7 * 86400, "30d": 30 * 86400, "90d": 90 * 86400, "1y": 365 * 86400 };
+      where = "clicked_at >= ?";
+      binds.push(now - (seconds[range] ?? 0));
+    }
+
+    const row = await db
+      .prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where}`)
+      .bind(...binds)
+      .first<{ cnt: number }>();
+
+    return row?.cnt ?? 0;
+  }
+
+  static async getLinkBreakdown(
+    db: D1Database,
+    linkId: number,
+    dimension: BreakdownDimension,
+    range: TimelineRange,
+    limit: number,
+  ): Promise<{ name: string; count: number }[]> {
+    if (!VALID_DIMENSIONS.has(dimension)) return [];
+
+    const slugIds = await db
+      .prepare("SELECT id FROM slugs WHERE link_id = ?")
+      .bind(linkId)
+      .all<{ id: number }>();
+    const ids = (slugIds.results ?? []).map((r) => r.id);
+    if (ids.length === 0) return [];
+
+    const placeholders = ids.map(() => "?").join(",");
+    let where = `slug_id IN (${placeholders}) AND ${dimension} IS NOT NULL`;
+    const binds: (string | number)[] = [...ids];
+
+    if (range && range !== "all") {
+      const now = Math.floor(Date.now() / 1000);
+      const seconds: Record<string, number> = { "24h": 86400, "7d": 7 * 86400, "30d": 30 * 86400, "90d": 90 * 86400, "1y": 365 * 86400 };
+      where += " AND clicked_at >= ?";
+      binds.push(now - (seconds[range] ?? 0));
+    }
+
+    const rows = await db
+      .prepare(
+        `SELECT ${dimension} as name, COUNT(*) as count
+         FROM clicks
+         WHERE ${where}
+         GROUP BY ${dimension}
+         ORDER BY count DESC
+         LIMIT ?`,
+      )
+      .bind(...binds, limit)
+      .all<{ name: string; count: number }>();
+
+    return rows.results ?? [];
+  }
+
+  static async compareLinkStats(
+    db: D1Database,
+    linkId: number,
+    range: TimelineRange,
+  ): Promise<{ total_clicks: number; top_country: string | null; top_referrer: string | null }> {
+    const slugIds = await db
+      .prepare("SELECT id FROM slugs WHERE link_id = ?")
+      .bind(linkId)
+      .all<{ id: number }>();
+    const ids = (slugIds.results ?? []).map((r) => r.id);
+
+    if (ids.length === 0) {
+      return { total_clicks: 0, top_country: null, top_referrer: null };
+    }
+
+    const placeholders = ids.map(() => "?").join(",");
+    let where = `slug_id IN (${placeholders})`;
+    const binds: (string | number)[] = [...ids];
+
+    if (range && range !== "all") {
+      const now = Math.floor(Date.now() / 1000);
+      const seconds: Record<string, number> = { "24h": 86400, "7d": 7 * 86400, "30d": 30 * 86400, "90d": 90 * 86400, "1y": 365 * 86400 };
+      where += " AND clicked_at >= ?";
+      binds.push(now - (seconds[range] ?? 0));
+    }
+
+    const [totalRow, topCountry, topReferrer] = await Promise.all([
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where}`).bind(...binds).first<{ cnt: number }>(),
+      db.prepare(`SELECT country as name FROM clicks WHERE ${where} AND country IS NOT NULL GROUP BY country ORDER BY COUNT(*) DESC LIMIT 1`).bind(...binds).first<{ name: string }>(),
+      db.prepare(`SELECT referrer_host as name FROM clicks WHERE ${where} AND referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY COUNT(*) DESC LIMIT 1`).bind(...binds).first<{ name: string }>(),
+    ]);
+
+    return {
+      total_clicks: totalRow?.cnt ?? 0,
+      top_country: topCountry?.name ?? null,
+      top_referrer: topReferrer?.name ?? null,
+    };
   }
 
   static async getDashboardStats(db: D1Database): Promise<DashboardStats> {
