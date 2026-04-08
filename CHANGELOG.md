@@ -4,6 +4,9 @@
 
 - MCP endpoint moved from path-based (`/_/mcp`) to dedicated subdomain (`mcp.*`). CF Access MCP-type applications cannot be scoped to a path, so the Worker now detects requests on any `mcp.*` host and rewrites them to the internal `/_/mcp` handler. Paths reserved by Cloudflare (`/.well-known/*`, `/cdn-cgi/*`) are excluded from the rewrite.
 - Updated README: MCP setup instructions now cover the subdomain requirement, Custom Domain registration, "Block AI bots" warning, and `claude.com` redirect URI. All client connection URLs updated from path-based to subdomain-based.
+- Nine new MCP analytics tools: `get_trending_links`, `get_dashboard_stats`, `get_link_timeline`, `get_clicks_by_country`, `get_clicks_by_referrer`, `get_clicks_by_device`, `compare_links`, `get_link_breakdown`, and `get_total_clicks`. Each tool accepts a time range filter and configurable result limit.
+- New `delete_link` MCP tool. Only links with zero clicks can be deleted; links with clicks should be disabled instead.
+- Analytics service layer (`src/services/analytics.ts`) wraps the new repository queries with link existence checks and consistent error handling.
 
 ## 0.24.0 (2026-04-08)
 
