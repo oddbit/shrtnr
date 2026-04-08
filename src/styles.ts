@@ -105,51 +105,54 @@ export const themes = {
 
   light: {
     /* foundation */
-    "--brand-base": "#ffffff",
-    "--brand-surface": "#f6f8f7",
-    "--brand-surface-2": "#edf3f1",
-    "--brand-accent": "#ff7637",
-    "--brand-accent-soft": "#ff9061",
-    "--brand-positive": "#a7e3a1",
-    "--brand-info": "#a4e4ff",
-    "--brand-neutral": "#09322f",
-    "--brand-danger": "#c42b2b",
+    "--brand-base": "#fcfdfc",
+    "--brand-surface": "#f3f7f5",
+    "--brand-surface-2": "#e7efeb",
+    "--brand-accent": "#f9733d",
+    "--brand-accent-soft": "#ff9a6f",
+    "--brand-positive": "#8fd39a",
+    "--brand-info": "#8ed4f2",
+    "--brand-neutral": "#12322f",
+    "--brand-danger": "#bf3a32",
 
     /* semantic */
-    "--color-canvas": "#f9fcfb",
-    "--color-surface": "#ffffff",
-    "--color-surface-raised": "#f3f8f6",
-    "--color-surface-interactive": "#eaf3f0",
+    "--color-canvas": "#eef4f1",
+    "--color-surface": "#f8fbf9",
+    "--color-surface-raised": "#ffffff",
+    "--color-surface-interactive": "#e4eeea",
 
-    "--color-text": "#12312e",
-    "--color-text-muted": "#53706d",
-    "--color-text-subtle": "#7a9290",
+    "--color-text": "#173632",
+    "--color-text-muted": "#4d6864",
+    "--color-text-subtle": "#718783",
     "--color-text-inverse": "#ffffff",
 
-    "--color-border": "#d7e4e0",
-    "--color-border-strong": "#bfd3cd",
+    "--color-section-label": "#12322f",
+    "--color-text-accent": "#2f5a52",
 
-    "--color-accent": "#ff7637",
-    "--color-accent-hover": "#ff9061",
-    "--color-accent-active": "#e76328",
+    "--color-border": "#cddbd6",
+    "--color-border-strong": "#b3c6bf",
+
+    "--color-accent": "#f9733d",
+    "--color-accent-hover": "#ff8657",
+    "--color-accent-active": "#e36531",
     "--color-accent-foreground": "#ffffff",
 
-    "--color-success": "#a7e3a1",
-    "--color-success-foreground": "#12312e",
+    "--color-success": "#8fd39a",
+    "--color-success-foreground": "#173632",
 
-    "--color-danger": "#c42b2b",
+    "--color-danger": "#bf3a32",
     "--color-danger-foreground": "#ffffff",
 
-    "--color-info": "#a4e4ff",
-    "--color-info-foreground": "#12312e",
+    "--color-info": "#8ed4f2",
+    "--color-info-foreground": "#173632",
 
-    "--color-focus-ring": "#4fb9e8",
-    "--color-selection": "rgba(255, 118, 55, 0.16)",
+    "--color-focus-ring": "#59b8df",
+    "--color-selection": "rgba(249, 115, 61, 0.14)",
 
-    "--color-disabled-bg": "#eef3f2",
-    "--color-disabled-text": "#8aa09d",
+    "--color-disabled-bg": "#e8efec",
+    "--color-disabled-text": "#8a9d98",
 
-    "--shadow-color": "rgba(9, 50, 47, 0.08)",
+    "--shadow-color": "rgba(18, 50, 47, 0.10)"
   },
 } as const;
 
