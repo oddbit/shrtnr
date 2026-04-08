@@ -134,38 +134,28 @@ Shorten URLs, manage links, and read analytics from any TypeScript or JavaScript
 
 Every shrtnr deployment includes a built-in [MCP](https://modelcontextprotocol.io/) endpoint at `/_/mcp`. Claude, GitHub Copilot, Cursor, and any MCP-compatible client can connect to it over Streamable HTTP transport to create and manage short links.
 
-The MCP endpoint authenticates through OAuth via [Cloudflare Access for SaaS](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/saas-mcp/). API keys are not used for MCP.
+The MCP endpoint authenticates through [Cloudflare Access Managed OAuth](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/). CF Access acts as the OAuth Authorization Server: it handles client registration, token issuance, and validation at the edge. The Worker receives authenticated requests with identity headers and does not implement any OAuth endpoints itself.
 
 #### MCP setup
 
-**1. Create a SaaS OIDC application** in Cloudflare Zero Trust following the [Secure MCP servers with Access for SaaS](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/saas-mcp/) guide. Set the redirect URL to `https://your-domain.com/oauth/callback`. Copy these values from the application page:
+**1. Create a self-hosted Access application** for the MCP endpoint in Cloudflare Zero Trust:
 
-| SaaS app field | Worker secret |
-|---|---|
-| Client ID | `ACCESS_CLIENT_ID` |
-| Client secret | `ACCESS_CLIENT_SECRET` |
-| Token endpoint | `ACCESS_TOKEN_URL` |
-| Authorization endpoint | `ACCESS_AUTHORIZATION_URL` |
-| Key endpoint (JWKS) | `ACCESS_JWKS_URL` |
+1. Go to **Access > Applications > Add an application > Self-hosted**
+2. Set the domain to your worker domain (no path needed)
+3. Add an allow policy for your email domain
+4. Go to **Advanced settings**, expand **Managed OAuth (Beta)** and toggle it **on**
+5. Enable **Allow localhost clients** and **Allow loopback clients**
+6. Under **Allowed redirect URIs**, add one entry per integration:
+   - `https://claude.ai/api/mcp/auth_callback` — for Claude.ai and Claude Desktop
+   - `https://dash.cloudflare.com/*` — for the CF Access AI Controls portal to authenticate and sync tools
+   - Add equivalents for other platforms (ChatGPT, etc.) as needed. To find a client's exact callback URI: attempt to connect, let the flow fail, and read the `redirect_uri` from the error URL in the browser.
+7. CF Access changes can take 30–60 seconds to propagate after saving.
 
 **2. Set Worker secrets and deploy.**
 
 ```bash
-# Set all six secrets (wrangler prompts for each value)
-npx wrangler secret put ACCESS_CLIENT_ID
-npx wrangler secret put ACCESS_CLIENT_SECRET
-npx wrangler secret put ACCESS_TOKEN_URL
-npx wrangler secret put ACCESS_AUTHORIZATION_URL
-npx wrangler secret put ACCESS_JWKS_URL
-```
-
-```bash
-# Generate and set the cookie encryption key
-openssl rand -hex 32 | npx wrangler secret put COOKIE_ENCRYPTION_KEY
-```
-
-```bash
-# Deploy (KV namespace is created automatically on first deploy)
+npx wrangler secret put MCP_ACCESS_AUD    # AUD tag from the MCP Access application
+npx wrangler secret put ACCESS_JWKS_URL   # https://<your-team>.cloudflareaccess.com/cdn-cgi/access/certs
 yarn deploy
 ```
 
