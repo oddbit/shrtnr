@@ -103,14 +103,23 @@ Cloudflare Access handles login, sessions, and SSO at the edge before requests r
 
 Visit `https://yourdomain.com` and Cloudflare Access will prompt you to log in before reaching the admin dashboard. See [Cloudflare's IdP guides](https://developers.cloudflare.com/cloudflare-one/identity/idp-integration/) for setup instructions.
 
-#### Optional: Worker-level JWT validation
+#### Enable JWT verification in the worker
 
-By default the worker trusts whatever CF Access lets through (network-layer protection). For defense-in-depth, you can also have the worker cryptographically verify the CF Access JWT on every admin request.
+By default the worker trusts whatever Cloudflare Access lets through (network-layer protection). For defense-in-depth, enable cryptographic JWT verification so the worker validates every request independently:
 
 1. In Zero Trust, go to your application's **Overview** tab and copy the **Application Audience (AUD) Tag**.
-2. Add it as a variable named `ACCESS_AUD` in the Cloudflare dashboard under **Workers & Pages > your worker > Settings > Variables**, or via the deploy button config if your fork supports it.
+2. Set it as a worker secret:
 
-The worker detects the variable at runtime. When present, it validates the JWT signature and audience claim before serving any admin page. When absent, it falls back to trusting the Access cookie (normal behavior).
+```bash
+npx wrangler secret put ACCESS_AUD
+npx wrangler secret put ACCESS_JWKS_URL
+```
+
+`ACCESS_JWKS_URL` follows the pattern `https://<your-team-name>.cloudflareaccess.com/cdn-cgi/access/certs`.
+
+When `ACCESS_AUD` is set, the worker validates the JWT signature and audience claim on every admin and MCP request. When absent (local dev), it skips verification and falls back to dev mode.
+
+
 
 ## Integrations
 
