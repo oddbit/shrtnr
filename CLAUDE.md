@@ -1,19 +1,31 @@
 # CLAUDE.md
 
-## Coding 
+## Coding
 
 ### Releases
 
-When you are instructed to "update the version", "bump version" or "create a release" you should update the version in package.json to recommended version according to semver logic of what was changed. Then write into CHANGELOG.md a summary of what was changed.
+When instructed to "update the version", "bump version" or "create a release":
+
+1. Update the version in `package.json` following semver.
+2. Add a section to `CHANGELOG.md` summarizing what changed. Keep it concise: a short paragraph or a few bullet points. Not a commit-by-commit log.
+3. Commit the changes. But don't push to upstream.
 
 ### Testing
-- Always **make a test first** for a feature or change that is being requested. Define it by writing tests first and requesting details on its behavior from the developer. If the behavior is trivial, you can just write the tests. After that, implement the code that can pass the test.
-- Always make tests for specific behaviors that are being requested.
-- Always make tests for change requests. 
-- You are never allowed to change tests to accommodate code changes. You must **always** stop and notify and consult with the developer if a new feature is breaking an existing tests. You are only allowed to add new tests automatically based on requested functionality. You are not allowed to remove or modify tests when making code changes.
+
+- Always **write tests first** for a feature or change being requested. Define behavior by writing tests first and asking the developer for details. If the behavior is trivial, write the tests directly. Then implement code that passes them.
+- Always write tests for specific behaviors being requested.
+- Always write tests for change requests.
+- Never change tests to accommodate code changes. **Always** stop and notify the developer if a new feature breaks an existing test. You may only add new tests automatically based on requested functionality. You may not remove or modify tests when making code changes.
+
+### Database migrations
+
+- Migrations must preserve all existing data. D1 does not support `ALTER TABLE ... DROP CONSTRAINT` or `ADD CONSTRAINT`, so schema changes to CHECK constraints require recreating the table.
+- When recreating a table that other tables reference via foreign keys with `ON DELETE CASCADE`, you must first save and drop the dependent tables, then recreate and restore them after the rename. Dropping the referenced table triggers the cascade and silently deletes all rows in dependent tables.
+- Always verify that row counts in all affected tables remain unchanged after the migration.
 
 ## Repository
-- Never force push git
+
+- Never force push git.
 
 ## Writing Rules
 
@@ -29,4 +41,3 @@ These rules apply to all produced material: docs, comments, UI copy, and any tex
 ## Documentation
 
 - Do NOT hardcode dynamic content that can drift. Never enumerate plugins, skills, dependencies, components, or any other list that has a file or folder as its source of truth. Instead, refer to that source directly. For example: `package.json` rather than listing dependencies.
-- Do NOT hardcode dynamic content that can drift (module lists, dependency lists, component inventories). Reference the source files or directories instead.
