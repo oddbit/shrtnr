@@ -4,13 +4,14 @@
 import { GOOGLE_FONTS_HREF, standaloneCenteredStyles } from "../styles";
 
 export function landingResponse(): Response {
-  return new Response(LANDING_HTML, {
+  return new Response(landingHtml(), {
     status: 200,
     headers: { "Content-Type": "text/html;charset=UTF-8" },
   });
 }
 
-const LANDING_HTML = `<!DOCTYPE html>
+function landingHtml(): string {
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -88,3 +89,4 @@ const LANDING_HTML = `<!DOCTYPE html>
   </footer>
 </body>
 </html>`;
+}

@@ -33,4 +33,11 @@ describe("landingResponse", () => {
     expect(body).toContain('href="/_/admin/dashboard"');
     expect(body).toMatch(/login/i);
   });
+
+  it("renders the current copyright year", async () => {
+    const res = landingResponse();
+    const body = await res.text();
+    const currentYear = new Date().getFullYear().toString();
+    expect(body).toContain(`&copy; ${currentYear}`);
+  });
 });
