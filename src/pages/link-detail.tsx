@@ -232,11 +232,16 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, identity }
             <div class="detail-info-grid">
               <div class="detail-info-item">
                 <label class="form-label">{t("linkDetail.createdBy")}</label>
-                {link.created_via ? (
-                  <div style="font-size:0.9rem;color:var(--color-text)">{link.created_via}</div>
-                ) : (
-                  <div style="font-size:0.85rem;color:var(--color-text-muted)">&mdash;</div>
-                )}
+                <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap">
+                  {link.created_by && link.created_by !== "anonymous" ? (
+                    <span style="font-size:0.85rem;color:var(--color-text);font-family:var(--font-family-mono)">{link.created_by}</span>
+                  ) : (
+                    <span style="font-size:0.85rem;color:var(--color-text-muted)">&mdash;</span>
+                  )}
+                  {link.created_via && (
+                    <span class="slug-badge-auto">{link.created_via}</span>
+                  )}
+                </div>
               </div>
               <div class="detail-info-item">
                 <label class="form-label">{t("linkDetail.expiresAt")}</label>
