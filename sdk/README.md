@@ -142,7 +142,7 @@ const slug = await client.addCustomSlug(123, "campaign");
 Disable a custom slug without affecting the parent link or its other slugs.
 
 ```ts
-await client.disableSlug(123, 456);
+await client.disableSlug(123, "campaign");
 ```
 
 ### `enableSlug`
@@ -150,7 +150,7 @@ await client.disableSlug(123, 456);
 Re-enable a disabled custom slug.
 
 ```ts
-await client.enableSlug(123, 456);
+await client.enableSlug(123, "campaign");
 ```
 
 ### `removeSlug`
@@ -158,7 +158,7 @@ await client.enableSlug(123, 456);
 Permanently remove a custom slug. Only succeeds if the slug has zero clicks.
 
 ```ts
-await client.removeSlug(123, 456);
+await client.removeSlug(123, "campaign");
 ```
 
 ### `getLinkQR`

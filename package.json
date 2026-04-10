@@ -1,6 +1,6 @@
 {
   "name": "shrtnr",
-  "version": "0.26.1",
+  "version": "0.27.0",
   "description": "A free, open-source, self-hosted URL shortener built on Cloudflare Workers + D1",
   "license": "Apache-2.0",
   "engines": {

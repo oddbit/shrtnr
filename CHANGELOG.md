@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.27.0 (2026-04-10)
+
+### Slug text as primary key
+
+The numeric `id` column on the `slugs` table is removed. The slug string itself is now the primary key, since it is already unique and is the natural identifier used in all URLs and API calls.
+
+- `clicks.slug_id` (integer FK) replaced by `clicks.slug` (text FK). Migration 0004 preserves all existing click data by resolving each row's slug text before the schema change, then restoring from a backup table.
+- All slug-management API endpoints (disable, enable, remove, set-primary) now use the slug text in the URL path instead of a numeric id. Example: `POST /_/api/links/5/slugs/my-campaign/disable`.
+- SDK updated to 0.6.0: `disableSlug`, `enableSlug`, and `removeSlug` now accept a slug string instead of a numeric id.
+
 ## 0.26.1 (2026-04-10)
 
 - MCP `create_link` now passes the authenticated user's email as `created_by`, so links created through MCP are owned by the caller.

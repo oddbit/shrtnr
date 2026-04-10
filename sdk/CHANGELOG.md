@@ -2,6 +2,17 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 0.6.0
+
+### Breaking
+
+- `disableSlug(linkId, slug)`, `enableSlug(linkId, slug)`, and `removeSlug(linkId, slug)` now identify slugs by their text value instead of a numeric id. Update any call sites that passed a numeric `slugId`.
+- `Slug.id` field removed. The `slug` string is the identifier.
+
+### Other
+
+- `disableSlug`, `enableSlug`, and `removeSlug` URL-encode the slug text, so slugs with special characters are handled correctly.
+
 ## 0.5.0
 
 ### New methods
@@ -9,9 +20,9 @@ All notable changes to the SDK are documented in this file.
 - `enableLink(id)` — re-enable a previously disabled link.
 - `deleteLink(id)` — delete a zero-click link permanently.
 - `listLinksByOwner(owner)` — list all links created by a specific identity (email).
-- `disableSlug(linkId, slugId)` — disable a custom slug without touching the parent link.
-- `enableSlug(linkId, slugId)` — re-enable a disabled custom slug.
-- `removeSlug(linkId, slugId)` — permanently remove a zero-click custom slug.
+- `disableSlug(linkId, slug)` — disable a custom slug without touching the parent link.
+- `enableSlug(linkId, slug)` — re-enable a disabled custom slug.
+- `removeSlug(linkId, slug)` — permanently remove a zero-click custom slug.
 
 ### Type additions
 
