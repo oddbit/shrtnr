@@ -44,7 +44,7 @@ const StatBar: FC<{
         <span class="stat-count">{count}</span>
       </div>
       {subtitle && (
-        <div style="font-size:0.75rem;color:var(--color-text-muted);margin:-0.15rem 0 0.5rem 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-family-mono)">
+        <div style="font-size:0.75rem;color:var(--color-text-muted);margin:-0.15rem 0 0.5rem 0;word-break:break-all;font-family:var(--font-family-mono)">
           {subtitle}
         </div>
       )}
