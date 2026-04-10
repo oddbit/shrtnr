@@ -26,6 +26,7 @@ When instructed to "update the version", "bump version" or "create a release":
 ## Repository
 
 - Never force push git.
+- Do NOT include "Co-Authored-By" notes in commit messages (e.g., "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"). Commit messages should be clean and focused on the technical rationale.
 
 ## Writing Rules
 

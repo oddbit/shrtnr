@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.26.0 (2026-04-10)
+
+### Ownership-based access control
+
+Links now have an owner: the identity that created them (`created_by`). Only the owner can disable, enable, or delete a link and its slugs. Other users keep read access and can still add custom slugs to any link.
+
+- Admin routes enforce ownership using the Cloudflare Access identity. API routes use the API key owner's identity, so a key acts on behalf of its creator rather than as an anonymous actor. Links created via API now record `created_by` correctly.
+- New `POST /enable` endpoint (admin and public API) to re-enable a disabled link. Replaces the previous pattern of clearing `expires_at` via PUT.
+- New `enable_link` MCP tool with the same ownership check.
+- The "Created by" field in link detail now shows the owner's email alongside an `app` / `api` / `mcp` / `sdk` badge.
+- Sources stat bar subtitles now wrap instead of truncating with ellipsis, so full referrer URLs are visible.
+
 ## 0.25.0
 
 - MCP endpoint moved from path-based (`/_/mcp`) to dedicated subdomain (`mcp.*`). CF Access MCP-type applications cannot be scoped to a path, so the Worker now detects requests on any `mcp.*` host and rewrites them to the internal `/_/mcp` handler. Paths reserved by Cloudflare (`/.well-known/*`, `/cdn-cgi/*`) are excluded from the rewrite.
