@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.27.1 (2026-04-10)
+
+- Fixed escaping of slug strings in admin action modals on the link detail page.
+- Fixed analytics per-slug click chart to use the correct slug property from the stats response.
+
 ## 0.27.0 (2026-04-10)
 
 ### Slug text as primary key
