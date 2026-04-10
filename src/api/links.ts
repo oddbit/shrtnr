@@ -11,12 +11,14 @@ import {
   getLink,
   getLinkBySlug,
   listLinks,
+  listLinksByOwner,
   updateLink,
 } from "../services/link-management";
 import { fetchPageTitle } from "../title-fetch";
 import { json, fromServiceResult } from "./response";
 
-export async function handleListLinks(env: Env): Promise<Response> {
+export async function handleListLinks(env: Env, owner?: string): Promise<Response> {
+  if (owner) return fromServiceResult(await listLinksByOwner(env, owner));
   return fromServiceResult(await listLinks(env));
 }
 

@@ -28,6 +28,7 @@ import {
   getLinkTimeline,
   getDashboardStats,
   searchLinks,
+  listLinksByOwner,
 } from "../services/link-management";
 import {
   getTrendingLinks,
@@ -214,14 +215,28 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
 
     this.server.tool(
       "search_links",
-      "Search for short links by label or slug. Returns all links whose label or any slug contains the query string. Use this to find links by name, topic, or slug keyword — e.g. 'oddbit website', 'pricing', or 'newsletter'.",
+      "Search for short links by label, slug, URL, or creator email. Returns all links matching the query string.",
       {
-        query: z.string().describe("Search term to match against link labels and slugs"),
+        query: z.string().describe("Search term to match against link labels, slugs, URLs, and creator emails"),
       },
       async ({ query }) => {
         const result = await searchLinks(this.env, query);
         if (!result.ok) return fail(result.error);
         if (result.data.length === 0) return ok({ results: [], message: "No links found matching that query." });
+        return ok({ results: result.data, count: result.data.length });
+      },
+    );
+
+    this.server.tool(
+      "list_links_by_owner",
+      "List all short links created by a specific user. Use this to find all links belonging to a particular team member.",
+      {
+        owner: z.string().describe("Email address of the link owner"),
+      },
+      async ({ owner }) => {
+        const result = await listLinksByOwner(this.env, owner);
+        if (!result.ok) return fail(result.error);
+        if (result.data.length === 0) return ok({ results: [], message: `No links found for ${owner}.` });
         return ok({ results: result.data, count: result.data.length });
       },
     );

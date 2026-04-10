@@ -168,7 +168,7 @@ app.get("/_/admin/links", async (c) => {
   const { theme, slugLength, t, lang, translations } = await getPageData(c, identity);
   const searchQuery = c.req.query("search") || "";
   const linksResult = searchQuery
-    ? await searchLinks(c.env, searchQuery)
+    ? await searchLinks(c.env, searchQuery, { includeOwner: true })
     : await listLinks(c.env);
   const links = linksResult.ok ? linksResult.data : [];
   const sort = c.req.query("sort") || "recent";
@@ -353,7 +353,7 @@ app.post("/_/api/links", (c) => {
 });
 app.get("/_/api/links", (c) => {
   if (!hasScope(c.var.auth, "read")) return forbiddenResponse();
-  return handleListLinks(c.env);
+  return handleListLinks(c.env, c.req.query("owner") || undefined);
 });
 app.get("/_/api/links/:id", (c) => {
   const id = parseInt(c.req.param("id"), 10);

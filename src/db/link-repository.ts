@@ -132,22 +132,43 @@ export class LinkRepository {
     return true;
   }
 
-  static async search(db: D1Database, query: string): Promise<LinkWithSlugs[]> {
+  static async search(db: D1Database, query: string, opts?: { includeOwner?: boolean }): Promise<LinkWithSlugs[]> {
     if (!query.trim()) return [];
 
     const pattern = `%${query.trim().toLowerCase()}%`;
+
+    const where = opts?.includeOwner
+      ? "lower(l.label) LIKE ? OR lower(s.slug) LIKE ? OR lower(l.url) LIKE ? OR lower(l.created_by) LIKE ?"
+      : "lower(l.label) LIKE ? OR lower(s.slug) LIKE ? OR lower(l.url) LIKE ?";
+
+    const binds = opts?.includeOwner
+      ? [pattern, pattern, pattern, pattern]
+      : [pattern, pattern, pattern];
 
     const matched = await db
       .prepare(
         `SELECT DISTINCT l.id FROM links l
          LEFT JOIN slugs s ON s.link_id = l.id
-         WHERE lower(l.label) LIKE ? OR lower(s.slug) LIKE ? OR lower(l.url) LIKE ?
+         WHERE ${where}
          ORDER BY l.created_at DESC`,
       )
-      .bind(pattern, pattern, pattern)
+      .bind(...binds)
       .all<{ id: number }>();
 
     const ids = matched.results ?? [];
+    if (ids.length === 0) return [];
+
+    const results = await Promise.all(ids.map(({ id }) => LinkRepository.getById(db, id)));
+    return results.filter((l): l is LinkWithSlugs => l !== null);
+  }
+
+  static async findByOwner(db: D1Database, owner: string): Promise<LinkWithSlugs[]> {
+    const rows = await db
+      .prepare("SELECT id FROM links WHERE created_by = ? ORDER BY created_at DESC")
+      .bind(owner)
+      .all<{ id: number }>();
+
+    const ids = rows.results ?? [];
     if (ids.length === 0) return [];
 
     const results = await Promise.all(ids.map(({ id }) => LinkRepository.getById(db, id)));

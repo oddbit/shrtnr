@@ -15,6 +15,7 @@ export {
   getLinkTimeline,
   getDashboardStats,
   searchLinks,
+  listLinksByOwner,
   findSlugForRedirect,
   recordClick,
 } from "./link-management";

@@ -11,6 +11,8 @@ import {
   enableSlug,
   removeSlug,
   addCustomSlugToLink,
+  searchLinks,
+  listLinksByOwner,
 } from "../services/link-management";
 
 beforeAll(applyMigrations);
@@ -206,6 +208,67 @@ describe("Link disable via expires_at", () => {
     const refreshed = await LinkRepository.getById(env.DB, link.id);
     for (const slug of refreshed!.slugs) {
       expect(slug.disabled_at).toBeNull();
+    }
+  });
+});
+
+describe("UI search includes created_by", () => {
+  it("finds a link when searching by owner email with includeOwner", async () => {
+    await createOwnedLink(OWNER);
+    await createLink(env as any, { url: "https://other.com", created_by: OTHER });
+
+    const result = await searchLinks(env as any, OWNER, { includeOwner: true });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].created_by).toBe(OWNER);
+    }
+  });
+
+  it("finds links by partial owner email match", async () => {
+    await createOwnedLink(OWNER);
+
+    const result = await searchLinks(env as any, "owner@", { includeOwner: true });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(1);
+    }
+  });
+
+  it("does not match owner email without includeOwner flag", async () => {
+    await createOwnedLink(OWNER);
+
+    const result = await searchLinks(env as any, OWNER);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(0);
+    }
+  });
+});
+
+describe("List links by owner", () => {
+  it("returns only links owned by the specified identity", async () => {
+    await createOwnedLink(OWNER);
+    await createLink(env as any, { url: "https://second.com", created_by: OWNER, allow_duplicate: true });
+    await createLink(env as any, { url: "https://other.com", created_by: OTHER });
+
+    const result = await listLinksByOwner(env as any, OWNER);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(2);
+      for (const link of result.data) {
+        expect(link.created_by).toBe(OWNER);
+      }
+    }
+  });
+
+  it("returns empty array when owner has no links", async () => {
+    await createOwnedLink(OWNER);
+
+    const result = await listLinksByOwner(env as any, "nobody@example.com");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(0);
     }
   });
 });
