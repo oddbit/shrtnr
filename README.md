@@ -154,11 +154,16 @@ CF Access MCP-type applications cannot be scoped to a path — they must own a f
    - Add equivalents for other platforms (ChatGPT, etc.) as needed. To find a client's exact callback URI: attempt to connect, let the flow fail, and read the `redirect_uri` from the error URL in the browser.
 7. CF Access changes can take 30–60 seconds to propagate after saving.
 
-**Register the MCP subdomain with the Worker:**
+**Register custom domains with the Worker:**
+
+The Worker needs two custom domains: one for the app itself (short link redirects, admin dashboard) and one for the MCP endpoint. CF Access MCP applications require their own subdomain and cannot share a domain with a path, so the MCP domain uses a `mcp.` prefix: `mcp.<your-domain>`.
+
+Add both domains in the Cloudflare dashboard:
 
 1. Go to **Workers & Pages** > shrtnr > **Settings** > **Domains & Routes**
-2. Click **Add Custom Domain** and enter your MCP subdomain (e.g., `mcp.your-domain.com`)
-3. Cloudflare creates the DNS record automatically — no manual DNS configuration needed
+2. Click **Add Custom Domain** and enter your app domain (e.g., `your-domain.com`)
+3. Click **Add Custom Domain** again and enter the MCP subdomain (e.g., `mcp.your-domain.com`)
+4. Cloudflare creates the DNS records automatically for both: no manual DNS configuration needed
 
 **2. Set Worker secrets and deploy.**
 
@@ -274,6 +279,13 @@ yarn install
 yarn test
 yarn build
 ```
+
+## Related resources
+
+- [Model Context Protocol](https://modelcontextprotocol.io/): MCP specification
+- [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/): Zero-trust access control
+- [Cloudflare Access Managed OAuth](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/): MCP server protection with Access
+- [Cloudflare MCP Portals](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/mcp-portals/): AI Controls portal for managing MCP servers in Zero Trust
 
 ## Attribution
 
