@@ -3,3 +3,4 @@ dist/
 .wrangler/
 .dev.vars
 .DS_Store
+ignore/
