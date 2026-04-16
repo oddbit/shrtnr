@@ -20,6 +20,18 @@ function getJwks(jwksUrl: string): ReturnType<typeof createRemoteJWKSet> {
 }
 
 /**
+ * Extract the access token from the request, checking the Cf-Access-Jwt-Assertion
+ * header first, then falling back to the CF_Authorization cookie.
+ */
+function extractToken(request: Request): string | null {
+  const header = request.headers.get("Cf-Access-Jwt-Assertion");
+  if (header) return header;
+  const cookies = request.headers.get("Cookie") ?? "";
+  const match = cookies.match(/CF_Authorization=([^\s;]+)/);
+  return match ? match[1] : null;
+}
+
+/**
  * Parse the payload of an unverified JWT without validating the signature.
  * Returns the raw payload object or null if malformed.
  */
@@ -56,7 +68,7 @@ export async function extractIdentity(request: Request, env: Env, aud = env.ACCE
     return null;
   }
 
-  const token = request.headers.get("Cf-Access-Jwt-Assertion");
+  const token = extractToken(request);
 
   if (!aud) {
     // Dev/test mode: no cryptographic validation.
@@ -120,7 +132,7 @@ export async function verifyAccessJwt(
   env: Env,
   aud = env.ACCESS_AUD,
 ): Promise<AccessUser | null> {
-  const token = request.headers.get("Cf-Access-Jwt-Assertion");
+  const token = extractToken(request);
 
   // Dev/test mode: no audience configured, skip cryptographic validation.
   if (!aud) {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { verifyAccessJwt, extractIdentity, type AccessUser } from "../access";
+import { verifyAccessJwt, extractIdentity, isSignedIn, type AccessUser } from "../access";
 import type { Env } from "../types";
 
 function fakeEnv(overrides: Partial<Env> = {}): Env {
@@ -130,6 +130,49 @@ describe("verifyAccessJwt", () => {
       const user = await verifyAccessJwt(req, env);
       expect(user).toBeNull();
     });
+  });
+});
+
+describe("verifyAccessJwt – CF_Authorization cookie fallback", () => {
+  describe("when ACCESS_AUD is not configured (dev mode)", () => {
+    it("should return email from CF_Authorization cookie when no JWT header", async () => {
+      const env = fakeEnv();
+      const token = makeJwt({ email: "cookie@example.com" });
+      const req = makeRequest({ Cookie: `CF_Authorization=${token}` });
+
+      const user = await verifyAccessJwt(req, env);
+      expect(user).toEqual({ email: "cookie@example.com" });
+    });
+
+    it("should prefer JWT header over CF_Authorization cookie", async () => {
+      const env = fakeEnv();
+      const headerToken = makeJwt({ email: "header@example.com" });
+      const cookieToken = makeJwt({ email: "cookie@example.com" });
+      const req = makeRequest({
+        "Cf-Access-Jwt-Assertion": headerToken,
+        Cookie: `CF_Authorization=${cookieToken}`,
+      });
+
+      const user = await verifyAccessJwt(req, env);
+      expect(user).toEqual({ email: "header@example.com" });
+    });
+  });
+});
+
+describe("isSignedIn – CF_Authorization cookie", () => {
+  it("should return true when CF_Authorization cookie holds a valid JWT (dev mode)", async () => {
+    const env = fakeEnv();
+    const token = makeJwt({ email: "cookie@example.com" });
+    const req = makeRequest({ Cookie: `CF_Authorization=${token}` });
+
+    expect(await isSignedIn(req, env)).toBe(true);
+  });
+
+  it("should return false when CF_Authorization cookie holds a malformed JWT", async () => {
+    const env = fakeEnv();
+    const req = makeRequest({ Cookie: "CF_Authorization=garbage" });
+
+    expect(await isSignedIn(req, env)).toBe(false);
   });
 });
 
