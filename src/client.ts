@@ -734,6 +734,12 @@ function renderStatCard(containerId, items, color, opts) {
     html += '<div class="stat-bar"><div class="stat-fill ' + color + '" style="width:' + pct + '%"></div></div>';
     html += '<span class="stat-count">' + item.count + '</span>';
     html += '</div>';
+    if (opts.subtitleFn) {
+      var subtitle = opts.subtitleFn(item);
+      if (subtitle) {
+        html += '<div style="font-size:0.75rem;color:var(--color-text-muted);margin:-0.15rem 0 0.5rem 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-family-mono)">' + esc(subtitle) + '</div>';
+      }
+    }
   }
   body.innerHTML = html;
 }
@@ -783,7 +789,11 @@ function loadAnalytics(linkId, range) {
     // Update all stat cards
     renderStatCard('card-countries', stats.countries, 'orange', { mapName: countryName });
     renderStatCard('card-referrer-hosts', stats.referrer_hosts, 'mint', { mono: true });
-    renderStatCard('card-referrers', stats.referrers, 'mint', { mono: true });
+    renderStatCard('card-referrers', stats.referrers, 'mint', {
+      mono: true,
+      mapName: function(name) { try { return new URL(name).hostname; } catch(e) { return name; } },
+      subtitleFn: function(item) { return item.name; }
+    });
     renderStatCard('card-link-modes', stats.link_modes, 'orange', { iconFn: linkModeIcon });
     renderStatCard('card-devices', stats.devices, 'orange', { iconFn: deviceIcon });
     renderStatCard('card-os', stats.os, 'mint', { iconFn: osIcon });
