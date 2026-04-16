@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.27.2 (2026-04-16)
+
+- Fixed landing page not redirecting logged-in users to the dashboard. The `CF_Authorization` cookie is now used as a fallback when the `Cf-Access-Jwt-Assertion` header is absent (unprotected routes).
+- Links listing page now shows only the primary slug instead of all slugs.
+- Source URLs on the link detail page now display below the progress bar instead of inline, preventing truncation.
+
 ## 0.27.1 (2026-04-10)
 
 - Fixed escaping of slug strings in admin action modals on the link detail page.
