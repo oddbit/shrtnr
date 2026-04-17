@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.28.2 (2026-04-17)
+
+- Mobile layout fixes on the admin dashboard and link detail pages. The sticky top bar now correctly pins to the viewport, cards span full width when no neighbor fits beside them, the date range selector wraps below the "Link Details" title instead of clipping off-screen, and long source URLs and slug click counts no longer overflow their cards. Progress bars are hidden on mobile so the counts stay on-screen.
+
 ## 0.28.1 (2026-04-17)
 
 - Fixed stale styles after deploys. Admin, landing, 404, and MCP landing HTML responses now send `Cache-Control: private, no-cache, must-revalidate`, forcing browsers to revalidate the document (and its inline CSS/JS) on every request. JSON API responses are unaffected.

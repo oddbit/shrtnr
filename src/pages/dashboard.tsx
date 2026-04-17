@@ -69,11 +69,11 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang }) => {
       </div>
 
       <div class="bento" id="dashboard-bento">
-        <div class="bento-card">
+        <div class="bento-card bento-card-compact">
           <div class="bento-label">{t("dashboard.totalLinks")}</div>
           <div class="bento-value" id="dash-total-links">{d.total_links}</div>
         </div>
-        <div class="bento-card">
+        <div class="bento-card bento-card-compact">
           <div class="bento-label">{t("dashboard.totalClicks")}</div>
           <div class="bento-value" id="dash-total-clicks">{d.total_clicks}</div>
         </div>

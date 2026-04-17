@@ -117,7 +117,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, identity }
           </span>
         </a>
         <div class="page-title">{t("linkDetail.title")}</div>
-        <div class="timeline-range-selector" id="timeline-range" data-link-id={link.id} style="margin-left:auto">
+        <div class="timeline-range-selector" id="timeline-range" data-link-id={link.id}>
           {(["24h", "7d", "30d", "90d", "1y", "all"] as const).map((r) => (
             <button
               class={`timeline-range-btn${r === "all" ? " active" : ""}`}
