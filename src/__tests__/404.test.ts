@@ -11,4 +11,12 @@ describe("notFoundResponse", () => {
     const res = notFoundResponse();
     expect(res.headers.get("Content-Type")).toBe("text/html;charset=UTF-8");
   });
+
+  it("should set a no-cache Cache-Control header so inline styles refresh on each deploy", () => {
+    const res = notFoundResponse();
+    const cacheControl = res.headers.get("Cache-Control");
+    expect(cacheControl).toBeTruthy();
+    expect(cacheControl).toContain("no-cache");
+    expect(cacheControl).toContain("must-revalidate");
+  });
 });

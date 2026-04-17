@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.28.1 (2026-04-17)
+
+- Fixed stale styles after deploys. Admin, landing, 404, and MCP landing HTML responses now send `Cache-Control: private, no-cache, must-revalidate`, forcing browsers to revalidate the document (and its inline CSS/JS) on every request. JSON API responses are unaffected.
+
 ## 0.28.0 (2026-04-17)
 
 - KV write-through cache for slug redirects. Slug lookups now check Workers KV before hitting D1, reducing redirect latency for hot links.

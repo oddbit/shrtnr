@@ -15,6 +15,14 @@ describe("landingResponse", () => {
     expect(res.headers.get("Content-Type")).toBe("text/html;charset=UTF-8");
   });
 
+  it("sets a no-cache Cache-Control header so inline styles refresh on each deploy", () => {
+    const res = landingResponse();
+    const cacheControl = res.headers.get("Cache-Control");
+    expect(cacheControl).toBeTruthy();
+    expect(cacheControl).toContain("no-cache");
+    expect(cacheControl).toContain("must-revalidate");
+  });
+
   it("renders the logotype image", async () => {
     const res = landingResponse();
     const body = await res.text();

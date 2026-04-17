@@ -5,7 +5,10 @@ import { GOOGLE_FONTS_HREF, standaloneBaseStyles } from "../styles";
 
 export function mcpLandingResponse(): Response {
   return new Response(MCP_LANDING_HTML, {
-    headers: { "Content-Type": "text/html;charset=UTF-8" },
+    headers: {
+      "Content-Type": "text/html;charset=UTF-8",
+      "Cache-Control": "private, no-cache, must-revalidate",
+    },
   });
 }
 

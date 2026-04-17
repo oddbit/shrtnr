@@ -6,7 +6,12 @@ import { GOOGLE_FONTS_HREF, standaloneCenteredStyles } from "../styles";
 export function landingResponse(): Response {
   return new Response(landingHtml(), {
     status: 200,
-    headers: { "Content-Type": "text/html;charset=UTF-8" },
+    headers: {
+      "Content-Type": "text/html;charset=UTF-8",
+      // Inline CSS and JS ship inside the HTML body, so a cached document
+      // also pins the old styles. Force revalidation on every request.
+      "Cache-Control": "private, no-cache, must-revalidate",
+    },
   });
 }
 

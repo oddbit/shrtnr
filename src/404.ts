@@ -6,7 +6,10 @@ import { GOOGLE_FONTS_HREF, standaloneCenteredStyles } from "./styles";
 export function notFoundResponse(): Response {
   return new Response(NOT_FOUND_HTML, {
     status: 404,
-    headers: { "Content-Type": "text/html;charset=UTF-8" },
+    headers: {
+      "Content-Type": "text/html;charset=UTF-8",
+      "Cache-Control": "private, no-cache, must-revalidate",
+    },
   });
 }
 

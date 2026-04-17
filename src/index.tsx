@@ -111,6 +111,17 @@ app.use("/_/admin/*", async (c, next) => {
   await next();
 });
 
+// Admin HTML pages inline their CSS and JS, so a cached document pins the
+// old styles after a deploy. Force revalidation on every HTML response under
+// /_/admin/* (JSON API responses under /_/admin/api/* are left untouched).
+app.use("/_/admin/*", async (c, next) => {
+  await next();
+  const contentType = c.res.headers.get("Content-Type") || "";
+  if (contentType.includes("text/html")) {
+    c.res.headers.set("Cache-Control", "private, no-cache, must-revalidate");
+  }
+});
+
 // ---- Admin logout ----
 
 app.get("/_/admin/logout", (c) => {

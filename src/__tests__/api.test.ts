@@ -71,10 +71,24 @@ describe("Routing", () => {
     expect(res.headers.get("Content-Type")).toContain("text/html");
   });
 
+  it("GET /_/admin/dashboard should set a no-cache Cache-Control header", async () => {
+    const res = await SELF.fetch(authed("/_/admin/dashboard"));
+    const cacheControl = res.headers.get("Cache-Control");
+    expect(cacheControl).toContain("no-cache");
+    expect(cacheControl).toContain("must-revalidate");
+  });
+
   it("GET /_/admin/links should return admin HTML", async () => {
     const res = await SELF.fetch(authed("/_/admin/links"));
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
+  });
+
+  it("GET /_/admin/links should set a no-cache Cache-Control header", async () => {
+    const res = await SELF.fetch(authed("/_/admin/links"));
+    const cacheControl = res.headers.get("Cache-Control");
+    expect(cacheControl).toContain("no-cache");
+    expect(cacheControl).toContain("must-revalidate");
   });
 
   it("GET /_/admin/settings should return admin HTML", async () => {
@@ -83,10 +97,24 @@ describe("Routing", () => {
     expect(res.headers.get("Content-Type")).toContain("text/html");
   });
 
+  it("GET /_/admin/settings should set a no-cache Cache-Control header", async () => {
+    const res = await SELF.fetch(authed("/_/admin/settings"));
+    const cacheControl = res.headers.get("Cache-Control");
+    expect(cacheControl).toContain("no-cache");
+    expect(cacheControl).toContain("must-revalidate");
+  });
+
   it("GET /_/admin/keys should return admin HTML", async () => {
     const res = await SELF.fetch(authed("/_/admin/keys"));
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
+  });
+
+  it("GET /_/admin/keys should set a no-cache Cache-Control header", async () => {
+    const res = await SELF.fetch(authed("/_/admin/keys"));
+    const cacheControl = res.headers.get("Cache-Control");
+    expect(cacheControl).toContain("no-cache");
+    expect(cacheControl).toContain("must-revalidate");
   });
 
   it("GET /_/admin/dashboard without auth should render as anonymous", async () => {
