@@ -22,26 +22,8 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Resolve database ID
-        run: |
-          DB_NAME=$(node -e "const c=require('./wrangler.jsonc');console.log(c.d1_databases[0].database_name)" 2>/dev/null || node -e "
-            const fs=require('fs');
-            const src=fs.readFileSync('./wrangler.jsonc','utf8').replace(/\/\/[^\n]*/g,'');
-            console.log(JSON.parse(src).d1_databases[0].database_name)")
-          DB_ID=$(npx wrangler d1 list --json 2>/dev/null | node -e "
-            let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
-              const db=JSON.parse(d).find(x=>x.name==='$DB_NAME');
-              if(!db){process.exit(1)}console.log(db.uuid)
-            })")
-          node -e "
-            const fs=require('fs');
-            const src=fs.readFileSync('./wrangler.jsonc','utf8');
-            const stripped=src.replace(/\/\/[^\n]*/g,'');
-            const cfg=JSON.parse(stripped);
-            cfg.d1_databases[0].database_id='$DB_ID';
-            const out=src.replace(/\"database_name\": \"$DB_NAME\"/, '\"database_name\": \"$DB_NAME\",\n      \"database_id\": \"$DB_ID\"');
-            fs.writeFileSync('./wrangler.jsonc',out)"
-          echo "Resolved $DB_NAME → $DB_ID"
+      - name: Resolve Cloudflare bindings (D1 + KV)
+        run: bash scripts/resolve-bindings.sh
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

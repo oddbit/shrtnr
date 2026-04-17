@@ -14,10 +14,11 @@
       "enabled": true
     }
   },
+  // KV namespace ID is resolved at deploy time by scripts/resolve-bindings.sh
   "kv_namespaces": [
     {
       "binding": "SLUG_KV",
-      "id": "PLACEHOLDER_CREATE_VIA_WRANGLER"
+      "id": "SLUG_KV"
     }
   ],
   "d1_databases": [
