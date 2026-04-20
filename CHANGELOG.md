@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.29.0 (2026-04-20)
+
+- New per-user "default time range" setting on the settings page. When set, the dashboard and link detail pages open in the chosen range; the dashboard `?range=` query param still overrides it. Unset preserves the previous behavior.
+- Dashboard top countries, top sources, and most-clicked links now respect the selected time range. "Most clicked" ranks by clicks within the window and can show fewer than five entries (down to zero) when no clicks fell in range. Recent links stays lifetime-newest since "recent" is not a range-relative concept.
+- Dashboard gained a large clicks-over-time card with a gradient area chart, and the Total Clicks sparkline now fills with a soft gradient instead of a stroke-only polyline.
+- Links list page redesigned to match the new design: clicks column header includes the range window ("Clicks (30d)"), the delta pill sits next to the created date so dates align across rows, the short-URL cell is a pill chip with a colored dot, and pagination shows a "1–N of Total" summary with a dropdown page-size picker.
+- Native `<select>` chevron replaced with a filled triangle across all admin dropdowns for consistent styling.
+
 ## 0.28.2 (2026-04-17)
 
 - Mobile layout fixes on the admin dashboard and link detail pages. The sticky top bar now correctly pins to the viewport, cards span full width when no neighbor fits beside them, the date range selector wraps below the "Link Details" title instead of clipping off-screen, and long source URLs and slug click counts no longer overflow their cards. Progress bars are hidden on mobile so the counts stay on-screen.
