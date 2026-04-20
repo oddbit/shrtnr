@@ -969,13 +969,16 @@ if (labelDisplay && !labelDisplay.querySelector('.inline-edit-value')) {
 var POLL_INTERVAL = 15000;
 
 function getActiveRange() {
-  var btn = document.querySelector('.timeline-range-btn.active');
+  var btn = document.querySelector('.timeline-range-btn.active')
+    || document.querySelector('.range-picker a.active');
   return btn ? btn.getAttribute('data-range') : 'all';
 }
 
 // Dashboard polling
 function pollDashboard() {
-  api('/dashboard').then(function(res) {
+  var range = getActiveRange();
+  var path = '/dashboard' + (range ? '?range=' + encodeURIComponent(range) : '');
+  api(path).then(function(res) {
     if (!res.ok) return;
     return res.json();
   }).then(function(d) {
