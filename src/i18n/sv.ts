@@ -15,6 +15,11 @@ const sv: Translations = {
   "nav.logout": "Logga ut",
   "nav.signedInAs": "Inloggad som",
 
+  // Topbar (breadcrumb + user chip, rendered above every admin page)
+  "topbar.breadcrumb": "Brödsmulor",
+  "topbar.workspace": "shrtnr",
+  "topbar.currentUser": "Aktuell användare",
+
   // Dashboard
   "dashboard.title": "Översikt",
   "dashboard.subtitle": "Sammanfattning av dina kortlänkar",

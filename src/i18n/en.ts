@@ -13,6 +13,11 @@ const en = {
   "nav.logout": "Log out",
   "nav.signedInAs": "Signed in as",
 
+  // Topbar (breadcrumb + user chip, rendered above every admin page)
+  "topbar.breadcrumb": "Breadcrumb",
+  "topbar.workspace": "shrtnr",
+  "topbar.currentUser": "Current user",
+
   // Dashboard
   "dashboard.title": "Dashboard",
   "dashboard.subtitle": "Overview of your short links",

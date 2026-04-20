@@ -15,6 +15,11 @@ const id: Translations = {
   "nav.logout": "Keluar",
   "nav.signedInAs": "Masuk sebagai",
 
+  // Topbar (breadcrumb + user chip, rendered above every admin page)
+  "topbar.breadcrumb": "Remah roti",
+  "topbar.workspace": "shrtnr",
+  "topbar.currentUser": "Pengguna saat ini",
+
   // Dashboard
   "dashboard.title": "Dasbor",
   "dashboard.subtitle": "Ringkasan tautan pendek Anda",
