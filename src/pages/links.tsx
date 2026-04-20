@@ -4,6 +4,7 @@
 import type { FC } from "hono/jsx";
 import type { LinkWithSlugs } from "../types";
 import type { TranslateFn } from "../i18n";
+import { Delta } from "../components/delta";
 
 function escHtml(s: string): string {
   return s
@@ -22,12 +23,14 @@ function formatDate(ts: number, lang: string): string {
   });
 }
 
+export type LinksFilter = "active" | "disabled" | "all";
+
 type Props = {
   links: LinkWithSlugs[];
   sort: string;
   page: number;
   perPage: number;
-  showDisabled: boolean;
+  filter: LinksFilter;
   searchQuery?: string;
   t: TranslateFn;
   lang: string;
@@ -38,7 +41,7 @@ export const LinksPage: FC<Props> = ({
   sort,
   page,
   perPage,
-  showDisabled,
+  filter,
   searchQuery,
   t,
   lang,
@@ -46,9 +49,15 @@ export const LinksPage: FC<Props> = ({
   const now = Math.floor(Date.now() / 1000);
   const isLinkDisabled = (l: LinkWithSlugs) =>
     !!(l.expires_at && l.expires_at < now);
-  const filtered = showDisabled
-    ? links
-    : links.filter((l) => !isLinkDisabled(l));
+
+  const activeLinks = links.filter((l) => !isLinkDisabled(l));
+  const disabledLinks = links.filter((l) => isLinkDisabled(l));
+  const filtered =
+    filter === "disabled"
+      ? disabledLinks
+      : filter === "all"
+        ? links
+        : activeLinks;
 
   const sorted = [...filtered].sort((a, b) =>
     sort === "popular"
@@ -61,40 +70,33 @@ export const LinksPage: FC<Props> = ({
   const start = (currentPage - 1) * perPage;
   const pageLinks = sorted.slice(start, start + perPage);
 
-  function sortUrl(s: string): string {
+  function buildUrl(overrides: Record<string, string | undefined>): string {
     const params = new URLSearchParams();
-    params.set("sort", s);
-    params.set("per_page", String(perPage));
-    if (showDisabled) params.set("show_disabled", "1");
+    const next = {
+      sort,
+      page: String(currentPage),
+      per_page: String(perPage),
+      filter,
+      ...overrides,
+    };
+    for (const [k, v] of Object.entries(next)) {
+      if (v !== undefined && v !== "" && v !== null) params.set(k, String(v));
+    }
     return `/_/admin/links?${params}`;
   }
 
-  function pageUrl(p: number): string {
-    const params = new URLSearchParams();
-    params.set("sort", sort);
-    params.set("page", String(p));
-    params.set("per_page", String(perPage));
-    if (showDisabled) params.set("show_disabled", "1");
-    return `/_/admin/links?${params}`;
-  }
-
-  function perPageUrl(n: number): string {
-    const params = new URLSearchParams();
-    params.set("sort", sort);
-    params.set("per_page", String(n));
-    if (showDisabled) params.set("show_disabled", "1");
-    return `/_/admin/links?${params}`;
-  }
-
-  function disabledUrl(): string {
-    const params = new URLSearchParams();
-    params.set("sort", sort);
-    params.set("per_page", String(perPage));
-    if (!showDisabled) params.set("show_disabled", "1");
-    return `/_/admin/links?${params}`;
-  }
+  const sortUrl = (s: string) => buildUrl({ sort: s, page: "1" });
+  const pageUrl = (p: number) => buildUrl({ page: String(p) });
+  const perPageUrl = (n: number) => buildUrl({ per_page: String(n), page: "1" });
+  const filterUrl = (f: LinksFilter) => buildUrl({ filter: f, page: "1" });
 
   const countKey = filtered.length !== 1 ? "links.countPlural" : "links.count";
+
+  const filterChips: { key: LinksFilter; labelKey: "links.filterActive" | "links.filterDisabled" | "links.filterAll"; icon: string; count: number }[] = [
+    { key: "active", labelKey: "links.filterActive", icon: "link", count: activeLinks.length },
+    { key: "disabled", labelKey: "links.filterDisabled", icon: "block", count: disabledLinks.length },
+    { key: "all", labelKey: "links.filterAll", icon: "all_inclusive", count: links.length },
+  ];
 
   return (
     <>
@@ -127,8 +129,17 @@ export const LinksPage: FC<Props> = ({
 
       <div class="toolbar">
         <div class="toolbar-group">
-          <div class="toolbar-count">
-            {t(countKey as any, { count: filtered.length })}
+          <div class="filter-chips" role="group" aria-label={t("links.filter")}>
+            {filterChips.map((chip) => (
+              <a
+                class={`filter-chip${filter === chip.key ? " active" : ""}`}
+                href={filterUrl(chip.key)}
+              >
+                <span class="icon">{chip.icon}</span>
+                <span>{t(chip.labelKey)}</span>
+                <span class="count">{chip.count}</span>
+              </a>
+            ))}
           </div>
           <div class="toolbar-sort">
             <a
@@ -146,13 +157,9 @@ export const LinksPage: FC<Props> = ({
               {t("links.popular")}
             </a>
           </div>
-          <a
-            class={`sort-btn${showDisabled ? " active" : ""}`}
-            href={disabledUrl()}
-          >
-            <span class="icon icon-sm">block</span>{" "}
-            {t("links.showDisabled")}
-          </a>
+          <div class="toolbar-count">
+            {t(countKey as any, { count: filtered.length })}
+          </div>
         </div>
       </div>
 
@@ -167,49 +174,70 @@ export const LinksPage: FC<Props> = ({
         </div>
       ) : (
         <>
-          {pageLinks.map((link) => {
-            const mainSlug = link.slugs.find((s) => s.is_primary)
-              || link.slugs.find((s) => s.is_custom)
-              || link.slugs[0];
-            const disabled = isLinkDisabled(link);
-            return (
-              <a
-                href={`/_/admin/links/${link.id}`}
-                class={`link-item${disabled ? " link-disabled" : ""}`}
-              >
-                <div class="link-info">
-                  {link.label && (
-                    <div class="link-label">{link.label}</div>
-                  )}
-                  <div class="link-slugs">
-                    {mainSlug && (
-                      <span
-                        class={`slug-chip${(mainSlug.disabled_at || disabled) ? " slug-chip-disabled" : ""}`}
-                        onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(mainSlug.slug)}')`}
-                        title={t("links.clickToCopy")}
+          <div class="bento-card bento-card-flush">
+            <div class="links-table-scroll">
+              <table class="links-table">
+                <thead>
+                  <tr>
+                    <th>{t("links.colLink")}</th>
+                    <th>{t("links.colShort")}</th>
+                    <th class="num">{t("links.colClicks")}</th>
+                    <th>{t("links.colCreated")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageLinks.map((link) => {
+                    const mainSlug = link.slugs.find((s) => s.is_primary)
+                      || link.slugs.find((s) => s.is_custom)
+                      || link.slugs[0];
+                    const disabled = isLinkDisabled(link);
+                    const href = `/_/admin/links/${link.id}`;
+                    return (
+                      <tr
+                        class={disabled ? "disabled" : ""}
+                        onclick={`if(event.target.closest('.no-row-nav'))return;location.href='${href}'`}
                       >
-                        {mainSlug.slug} <span class="icon">content_copy</span>
-                      </span>
-                    )}
-                    {disabled && (
-                      <span class="disabled-badge">
-                        <span class="icon icon-xs">block</span>{" "}
-                        {t("links.disabled")}
-                      </span>
-                    )}
-                  </div>
-                  <div class="link-url">{link.url}</div>
-                  <div class="link-date">{formatDate(link.created_at, lang)}</div>
-                </div>
-                <div class="link-meta">
-                  <div class="link-clicks-cell">
-                    <div class="link-clicks">{link.total_clicks}</div>
-                    <div class="link-clicks-label">{t("links.clicks")}</div>
-                  </div>
-                </div>
-              </a>
-            );
-          })}
+                        <td data-label={t("links.colLink")}>
+                          <div class="col-link-label">
+                            {link.label || link.url}
+                            {disabled && (
+                              <span class="disabled-badge col-disabled-badge">
+                                <span class="icon icon-xs">block</span>{" "}
+                                {t("links.disabled")}
+                              </span>
+                            )}
+                          </div>
+                          {link.label && <div class="col-link-url">{link.url}</div>}
+                        </td>
+                        <td data-label={t("links.colShort")} class="col-short">
+                          {mainSlug && (
+                            <span
+                              class={`col-short-chip no-row-nav${(mainSlug.disabled_at || disabled) ? " slug-chip-disabled" : ""}`}
+                              onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(mainSlug.slug)}')`}
+                              title={t("links.clickToCopy")}
+                            >
+                              {mainSlug.slug} <span class="icon">content_copy</span>
+                            </span>
+                          )}
+                        </td>
+                        <td data-label={t("links.colClicks")} class="col-clicks">
+                          <span class="col-clicks-cell">
+                            <span>{link.total_clicks}</span>
+                            {typeof link.delta_pct === "number" && link.total_clicks > 0 && (
+                              <Delta pct={link.delta_pct} />
+                            )}
+                          </span>
+                        </td>
+                        <td data-label={t("links.colCreated")} class="col-date">
+                          {formatDate(link.created_at, lang)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
           {(totalPages > 1 || links.length > 25) && (
             <div class="pagination">
