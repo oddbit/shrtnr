@@ -628,18 +628,38 @@ export class ClickRepository {
     now?: number,
   ): Promise<DashboardStats> {
     const ts = now ?? Math.floor(Date.now() / 1000);
+    const since = range === "all" ? null : ts - RANGE_SECONDS[range];
 
-    const [clicks, linkPeriods, recentLinks, topCountries, topReferrers, spark] = await Promise.all([
+    const countryQuery = since !== null
+      ? db.prepare("SELECT country as name, COUNT(*) as count FROM clicks WHERE country IS NOT NULL AND clicked_at >= ? GROUP BY country ORDER BY count DESC LIMIT 5").bind(since)
+      : db.prepare("SELECT country as name, COUNT(*) as count FROM clicks WHERE country IS NOT NULL GROUP BY country ORDER BY count DESC LIMIT 5");
+
+    const referrerQuery = since !== null
+      ? db.prepare("SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE referrer_host IS NOT NULL AND clicked_at >= ? GROUP BY referrer_host ORDER BY count DESC LIMIT 5").bind(since)
+      : db.prepare("SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY count DESC LIMIT 5");
+
+    const topLinksQuery = since !== null
+      ? db.prepare("SELECT s.link_id as link_id, COUNT(*) as cnt FROM clicks c JOIN slugs s ON c.slug = s.slug WHERE c.clicked_at >= ? GROUP BY s.link_id ORDER BY cnt DESC LIMIT 5").bind(since)
+      : db.prepare("SELECT s.link_id as link_id, COUNT(*) as cnt FROM clicks c JOIN slugs s ON c.slug = s.slug GROUP BY s.link_id ORDER BY cnt DESC LIMIT 5");
+
+    const [clicks, linkPeriods, recentLinks, topCountries, topReferrers, topLinkRows, spark] = await Promise.all([
       this.getPeriodClicks(db, range, ts),
       this.getLinkCreationPeriods(db, range, ts),
       LinkRepository.list(db),
-      db.prepare("SELECT country as name, COUNT(*) as count FROM clicks WHERE country IS NOT NULL GROUP BY country ORDER BY count DESC LIMIT 5").all<{ name: string; count: number }>(),
-      db.prepare("SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY count DESC LIMIT 5").all<{ name: string; count: number }>(),
+      countryQuery.all<{ name: string; count: number }>(),
+      referrerQuery.all<{ name: string; count: number }>(),
+      topLinksQuery.all<{ link_id: number; cnt: number }>(),
       this.getSparkline(db, range, ts),
     ]);
 
     const withDeltas = await this.attachLinkDeltas(db, recentLinks, range, ts);
-    const sorted = [...withDeltas].sort((a, b) => b.total_clicks - a.total_clicks);
+    const linkById = new Map(withDeltas.map((l) => [l.id, l]));
+    const topLinks = (topLinkRows.results ?? [])
+      .map((r) => {
+        const base = linkById.get(r.link_id);
+        return base ? { ...base, total_clicks: r.cnt } : null;
+      })
+      .filter((l): l is LinkWithSlugs => l !== null);
 
     return {
       range,
@@ -651,7 +671,7 @@ export class ClickRepository {
       new_links_delta: computeDelta(linkPeriods.current, linkPeriods.previous),
       timeline: spark,
       recent_links: withDeltas.slice(0, 5),
-      top_links: sorted.slice(0, 5),
+      top_links: topLinks,
       top_countries: topCountries.results ?? [],
       top_referrers: topReferrers.results ?? [],
     };

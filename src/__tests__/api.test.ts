@@ -741,6 +741,62 @@ describe("Settings API", () => {
     expect(res.status).toBe(400);
   });
 
+  it("GET /_/admin/api/settings should return null default_range when unset", async () => {
+    const res = await SELF.fetch(authed("/_/admin/api/settings"));
+    const body = await res.json() as any;
+    expect(body.default_range).toBeNull();
+  });
+
+  it("PUT /_/admin/api/settings should update default_range", async () => {
+    const res = await SELF.fetch(
+      authed("/_/admin/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ default_range: "7d" }),
+      })
+    );
+    const body = await res.json() as any;
+    expect(body.default_range).toBe("7d");
+  });
+
+  it("PUT /_/admin/api/settings with invalid default_range should return 400", async () => {
+    const res = await SELF.fetch(
+      authed("/_/admin/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ default_range: "nope" }),
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("dashboard page uses default_range when no ?range= is given", async () => {
+    await SELF.fetch(
+      authed("/_/admin/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ default_range: "7d" }),
+      })
+    );
+    const res = await SELF.fetch(authed("/_/admin/dashboard"));
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toMatch(/class="active"\s+data-range="7d"/);
+  });
+
+  it("dashboard ?range= query param overrides default_range", async () => {
+    await SELF.fetch(
+      authed("/_/admin/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ default_range: "7d" }),
+      })
+    );
+    const res = await SELF.fetch(authed("/_/admin/dashboard?range=90d"));
+    const html = await res.text();
+    expect(html).toMatch(/class="active"\s+data-range="90d"/);
+  });
+
   it("new links should use updated default length", async () => {
     await SELF.fetch(
       authed("/_/admin/api/settings", {
@@ -800,11 +856,30 @@ describe("Analytics API", () => {
       })
     );
     expect(createRes.status).toBe(201);
+    const created = await createRes.json() as any;
+    const slug = created.slugs[0].slug;
+    // top_links is ranked by clicks within the range window, so the link
+    // must be clicked at least once to appear.
+    await SELF.fetch(unauthed(`/${slug}`));
     const res = await SELF.fetch(authed("/_/admin/api/dashboard"));
     const body = await res.json() as any;
     expect(Array.isArray(body.top_links)).toBe(true);
     expect(body.top_links.length).toBeGreaterThan(0);
     expect(body.top_links[0].url).toBe("https://target.example.com");
+  });
+
+  it("GET /_/admin/api/dashboard top_links is empty when no clicks exist in range", async () => {
+    await SELF.fetch(
+      authed("/_/admin/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://noclicks.example.com" }),
+      })
+    );
+    const res = await SELF.fetch(authed("/_/admin/api/dashboard"));
+    const body = await res.json() as any;
+    expect(Array.isArray(body.top_links)).toBe(true);
+    expect(body.top_links.length).toBe(0);
   });
 
   it("GET /_/admin/api/dashboard top_countries should return country codes", async () => {

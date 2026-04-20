@@ -133,3 +133,76 @@ describe("getDashboardStats with trends", () => {
     expect(stats.total_clicks_delta).toBe(100); // 10 vs 5 => +100%
   });
 });
+
+describe("getDashboardStats range-filtered breakdowns", () => {
+  it("filters top_countries by range window", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const slug = link.slugs[0].slug;
+    const now = Math.floor(Date.now() / 1000);
+
+    // Recent clicks within 7d
+    for (let i = 0; i < 3; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, country) VALUES (?, ?, ?)").bind(slug, now - i * 3600, "US").run();
+    }
+    // Older clicks outside 7d
+    for (let i = 0; i < 5; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, country) VALUES (?, ?, ?)").bind(slug, now - (30 + i) * 86400, "DE").run();
+    }
+
+    const stats7d = await ClickRepository.getDashboardStats(env.DB, "7d", now);
+    expect(stats7d.top_countries).toEqual([{ name: "US", count: 3 }]);
+
+    const statsAll = await ClickRepository.getDashboardStats(env.DB, "all", now);
+    expect(statsAll.top_countries).toEqual([
+      { name: "DE", count: 5 },
+      { name: "US", count: 3 },
+    ]);
+  });
+
+  it("filters top_referrers by range window", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const slug = link.slugs[0].slug;
+    const now = Math.floor(Date.now() / 1000);
+
+    for (let i = 0; i < 2; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, referrer_host) VALUES (?, ?, ?)").bind(slug, now - i * 3600, "twitter.com").run();
+    }
+    for (let i = 0; i < 4; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, referrer_host) VALUES (?, ?, ?)").bind(slug, now - (40 + i) * 86400, "old.example.com").run();
+    }
+
+    const stats30d = await ClickRepository.getDashboardStats(env.DB, "30d", now);
+    expect(stats30d.top_referrers).toEqual([{ name: "twitter.com", count: 2 }]);
+  });
+
+  it("ranks top_links by clicks within the range window", async () => {
+    const linkA = await LinkRepository.create(env.DB, { url: "https://a.example.com", slug: "aaa" });
+    const linkB = await LinkRepository.create(env.DB, { url: "https://b.example.com", slug: "bbb" });
+    const slugA = linkA.slugs[0].slug;
+    const slugB = linkB.slugs[0].slug;
+    const now = Math.floor(Date.now() / 1000);
+
+    // linkA: 2 recent + 100 very old
+    for (let i = 0; i < 2; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(slugA, now - i * 3600).run();
+    }
+    for (let i = 0; i < 100; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(slugA, now - (200 + i) * 86400).run();
+    }
+    // linkB: 10 recent
+    for (let i = 0; i < 10; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(slugB, now - i * 3600).run();
+    }
+
+    const stats7d = await ClickRepository.getDashboardStats(env.DB, "7d", now);
+    expect(stats7d.top_links).toHaveLength(2);
+    expect(stats7d.top_links[0].id).toBe(linkB.id);
+    expect(stats7d.top_links[0].total_clicks).toBe(10);
+    expect(stats7d.top_links[1].id).toBe(linkA.id);
+    expect(stats7d.top_links[1].total_clicks).toBe(2);
+
+    const statsAll = await ClickRepository.getDashboardStats(env.DB, "all", now);
+    expect(statsAll.top_links[0].id).toBe(linkA.id);
+    expect(statsAll.top_links[0].total_clicks).toBe(102);
+  });
+});
