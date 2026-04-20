@@ -13,12 +13,11 @@ export const RANGE_SECONDS: Record<Exclude<TimelineRange, "all">, number> = {
 
 /**
  * Percent change from previous to current, rounded to nearest integer.
- * - Both zero: 0
- * - Previous zero and current positive: 100
- * - Previous zero and current negative: -100
+ * Returns `undefined` when there is no baseline to compare against (previous is 0),
+ * which callers use to suppress the trend pill.
  */
-export function computeDelta(current: number, previous: number): number {
+export function computeDelta(current: number, previous: number): number | undefined {
+  if (previous === 0) return undefined;
   if (current === previous) return 0;
-  if (previous === 0) return current > 0 ? 100 : -100;
   return Math.round(((current - previous) / previous) * 100);
 }

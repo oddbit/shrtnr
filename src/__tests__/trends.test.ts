@@ -8,8 +8,9 @@ beforeAll(applyMigrations);
 beforeEach(resetData);
 
 describe("computeDelta", () => {
-  it("returns 0 when both values are zero", () => {
-    expect(computeDelta(0, 0)).toBe(0);
+  it("returns undefined when there is no baseline to compare against", () => {
+    expect(computeDelta(0, 0)).toBeUndefined();
+    expect(computeDelta(50, 0)).toBeUndefined();
   });
 
   it("returns positive percent when current is higher than previous", () => {
@@ -20,8 +21,8 @@ describe("computeDelta", () => {
     expect(computeDelta(80, 100)).toBe(-20);
   });
 
-  it("returns 100 when previous is zero and current is positive", () => {
-    expect(computeDelta(50, 0)).toBe(100);
+  it("returns 0 when current equals a non-zero previous", () => {
+    expect(computeDelta(100, 100)).toBe(0);
   });
 
   it("rounds to nearest integer", () => {
@@ -106,10 +107,20 @@ describe("ClickRepository.attachLinkDeltasBulk", () => {
     expect(outB.delta_pct).toBe(-50);
   });
 
-  it("returns 0 delta for a link with no clicks in either window", async () => {
+  it("leaves delta undefined for a link with no clicks in either window", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     const [out] = await ClickRepository.attachLinkDeltasBulk(env.DB, [link], "24h");
-    expect(out.delta_pct).toBe(0);
+    expect(out.delta_pct).toBeUndefined();
+  });
+
+  it("leaves delta undefined when previous window is zero but current has clicks", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const now = Math.floor(Date.now() / 1000);
+    for (let i = 0; i < 3; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(link.slugs[0].slug, now - i * 60).run();
+    }
+    const [out] = await ClickRepository.attachLinkDeltasBulk(env.DB, [link], "24h", now);
+    expect(out.delta_pct).toBeUndefined();
   });
 });
 

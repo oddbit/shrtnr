@@ -105,10 +105,10 @@ export interface DashboardStats {
   total_clicks: number;
   /** Clicks in the immediately previous equivalent period. */
   total_clicks_previous: number;
-  /** Percent change vs previous period. 0 when previous is 0 and current is 0. */
-  total_clicks_delta: number;
-  /** Percent change in new-link creation rate vs previous period. */
-  new_links_delta: number;
+  /** Percent change vs previous period. Undefined when the previous period is zero (no baseline). */
+  total_clicks_delta?: number;
+  /** Percent change in new-link creation rate vs previous period. Undefined when the previous period is zero. */
+  new_links_delta?: number;
   /** Timeline sparkline — counts per bucket within the current period. */
   timeline: number[];
   recent_links: LinkWithSlugs[];

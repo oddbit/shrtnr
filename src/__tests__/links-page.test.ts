@@ -65,9 +65,13 @@ describe("Links listing page", () => {
       url: "https://example.com",
       slug: "abc",
     });
-    // Seed a click so the link has total_clicks > 0 and a delta is computed
+    // Seed clicks in both the current and previous 30d windows so a delta is computed
+    const now = Math.floor(Date.now() / 1000);
     await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)")
-      .bind(link.slugs[0].slug, Math.floor(Date.now() / 1000) - 60)
+      .bind(link.slugs[0].slug, now - 60)
+      .run();
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)")
+      .bind(link.slugs[0].slug, now - 40 * 86400)
       .run();
 
     const res = await SELF.fetch(req("/_/admin/links"));
