@@ -5,6 +5,7 @@ import type { FC, PropsWithChildren } from "hono/jsx";
 import { raw } from "hono/html";
 import { adminStyles } from "../styles";
 import { adminClientScript } from "../client";
+import { Topbar } from "../components/topbar";
 import type { TranslateFn } from "../i18n";
 import type { Translations } from "../i18n/types";
 import pkg from "../../package.json";
@@ -121,6 +122,8 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
               <img src={brandLogotype} alt="shrtnr." />
             </div>
           </div>
+
+          <Topbar active={active} userEmail={userEmail} t={t} />
 
           {children}
         </div>
