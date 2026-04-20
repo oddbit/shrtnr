@@ -329,6 +329,9 @@ body { font-family: var(--font-family-body); background: var(--color-canvas); co
 .form-label { display: block; font-size: 0.75rem; color: var(--color-success); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
 .form-input { width: 100%; padding: 0.6rem 0.85rem; background: var(--color-surface); border: 2px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); font-family: var(--font-family-body); font-size: 0.875rem; }
 .form-input:focus { outline: none; border-color: var(--color-success); box-shadow: 0 0 0 3px var(--color-selection); }
+select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2rem; cursor: pointer; }
+.form-select { position: relative; }
+.form-select::after { content: ""; position: absolute; right: 0.85rem; top: 50%; width: 0; height: 0; margin-top: -2px; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--color-text); pointer-events: none; }
 .form-row { display: flex; gap: 1rem; }
 .form-row > * { flex: 1; }
 

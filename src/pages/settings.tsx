@@ -39,22 +39,24 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
           <div class="bento-card">
             <div class="form-group">
               <label class="form-label">{t("settings.language")}</label>
-              <select
-                class="form-input"
-                id="language-picker"
-                onchange="setLanguage(this.value)"
-              >
-                {SUPPORTED_LANGUAGES.map((code) => {
-                  const native = t(`lang.${code}` as any);
-                  const local = t(`langLocal.${code}` as any);
-                  const label = lang === code ? native : `${native} · ${local}`;
-                  return (
-                    <option value={code} selected={lang === code}>
-                      {label}
-                    </option>
-                  );
-                })}
-              </select>
+              <div class="form-select">
+                <select
+                  class="form-input"
+                  id="language-picker"
+                  onchange="setLanguage(this.value)"
+                >
+                  {SUPPORTED_LANGUAGES.map((code) => {
+                    const native = t(`lang.${code}` as any);
+                    const local = t(`langLocal.${code}` as any);
+                    const label = lang === code ? native : `${native} · ${local}`;
+                    return (
+                      <option value={code} selected={lang === code}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -90,20 +92,22 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
           <div class="bento-card">
             <div class="form-group">
               <label class="form-label">{t("settings.defaultRange")}</label>
-              <select
-                class="form-input"
-                id="default-range-picker"
-                onchange="setDefaultRange(this.value)"
-              >
-                <option value="" selected={defaultRange === null}>
-                  {t("settings.defaultRangeUnset")}
-                </option>
-                {RANGE_OPTIONS.map((r) => (
-                  <option value={r} selected={defaultRange === r}>
-                    {t(`range.long.${r}` as const)}
+              <div class="form-select">
+                <select
+                  class="form-input"
+                  id="default-range-picker"
+                  onchange="setDefaultRange(this.value)"
+                >
+                  <option value="" selected={defaultRange === null}>
+                    {t("settings.defaultRangeUnset")}
                   </option>
-                ))}
-              </select>
+                  {RANGE_OPTIONS.map((r) => (
+                    <option value={r} selected={defaultRange === r}>
+                      {t(`range.long.${r}` as const)}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div class="form-hint">{t("settings.defaultRangeHint")}</div>
             </div>
           </div>
