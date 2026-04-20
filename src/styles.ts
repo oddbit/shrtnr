@@ -481,6 +481,13 @@ body { font-family: var(--font-family-body); background: var(--color-canvas); co
 .kpi-spark { margin-top: auto; height: 32px; }
 .kpi-spark svg { width: 100%; height: 100%; display: block; }
 
+/* KPI row (4 cells for link-detail hero) */
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.kpi-row .bento-card { margin-bottom: 0; }
+@media (max-width: 1100px) {
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+}
+
 /* Range picker (time range selector) */
 .range-picker { display: inline-flex; gap: 2px; background: var(--color-surface-interactive); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 2px; }
 .range-picker a, .range-picker button { border: none; background: transparent; cursor: pointer; padding: 0.3rem 0.65rem; border-radius: calc(var(--radius-md) - 2px); color: var(--color-text-muted); font-family: var(--font-family-body); font-size: 0.72rem; font-weight: 600; text-decoration: none; letter-spacing: 0.02em; transition: color 0.15s, background 0.15s; }
