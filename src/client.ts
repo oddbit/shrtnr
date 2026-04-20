@@ -581,6 +581,14 @@ function downloadQrPng() {
 }
 
 // ---- Settings ----
+function setDefaultRange(range) {
+  var payload = range === '' ? { default_range: null } : { default_range: range };
+  api('/settings', { method: 'PUT', body: JSON.stringify(payload) }).then(function(res) {
+    if (res.ok) toast(t('client.settingsSaved'));
+    else toast(t('client.settingsError'), 'error');
+  });
+}
+
 function saveSettings() {
   var val = parseInt(document.getElementById('slug-length-input').value);
   if (val < 3) { toast(t('client.minSlugLength'), 'error'); return; }
@@ -921,7 +929,8 @@ function niceStep(max) {
 var analyticsRangeBar = document.getElementById('timeline-range');
 if (analyticsRangeBar) {
   var linkId = parseInt(analyticsRangeBar.getAttribute('data-link-id'), 10);
-  if (linkId) loadAnalytics(linkId, 'all');
+  var initialRange = analyticsRangeBar.getAttribute('data-initial-range') || 'all';
+  if (linkId) loadAnalytics(linkId, initialRange);
 }
 
 // Poll for auto-label if label is empty (background title fetch may be in flight)

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { FC } from "hono/jsx";
-import type { LinkWithSlugs, ClickStats } from "../types";
+import type { LinkWithSlugs, ClickStats, TimelineRange } from "../types";
 import type { TranslateFn } from "../i18n";
 import { countryName } from "../country";
 
@@ -88,9 +88,10 @@ type Props = {
   t: TranslateFn;
   lang: string;
   identity: string;
+  initialRange?: TimelineRange;
 };
 
-export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, identity }) => {
+export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, identity, initialRange = "all" }) => {
   const now = Math.floor(Date.now() / 1000);
   const isExpired = !!(link.expires_at && link.expires_at < now);
   const isOwner = identity === link.created_by;
@@ -117,10 +118,10 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, identity }
           <span class="icon icon-lg">arrow_back</span>
         </a>
         <div class="page-title">{t("linkDetail.title")}</div>
-        <div class="timeline-range-selector" id="timeline-range" data-link-id={link.id}>
+        <div class="timeline-range-selector" id="timeline-range" data-link-id={link.id} data-initial-range={initialRange}>
           {(["24h", "7d", "30d", "90d", "1y", "all"] as const).map((r) => (
             <button
-              class={`timeline-range-btn${r === "all" ? " active" : ""}`}
+              class={`timeline-range-btn${r === initialRange ? " active" : ""}`}
               data-range={r}
               onclick={`loadAnalytics(${link.id}, '${r}')`}
             >

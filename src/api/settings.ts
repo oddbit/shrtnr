@@ -13,7 +13,7 @@ export async function handleGetSettings(env: Env, identity: string): Promise<Res
 }
 
 export async function handleUpdateSettings(request: Request, env: Env, identity: string): Promise<Response> {
-  let body: { slug_default_length?: number; theme?: string; lang?: string };
+  let body: { slug_default_length?: number; theme?: string; lang?: string; default_range?: string | null };
 
   try {
     body = await request.json();
@@ -21,5 +21,5 @@ export async function handleUpdateSettings(request: Request, env: Env, identity:
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  return fromServiceResult(await updateAppSettings(env, identity, body));
+  return fromServiceResult(await updateAppSettings(env, identity, body as any));
 }

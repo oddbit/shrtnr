@@ -3,20 +3,24 @@
 
 import type { FC } from "hono/jsx";
 import type { TranslateFn } from "../i18n";
+import type { TimelineRange } from "../types";
 import { SUPPORTED_LANGUAGES } from "../i18n";
 import { RANDOM_CHARSET } from "../slugs";
 import { MIN_SLUG_LENGTH } from "../constants";
+
+const RANGE_OPTIONS: TimelineRange[] = ["24h", "7d", "30d", "90d", "1y", "all"];
 
 type Props = {
   theme: string;
   slugLength: number;
   lang: string;
+  defaultRange: TimelineRange | null;
   t: TranslateFn;
   mcpConfigured: boolean;
   userEmail?: string | null;
 };
 
-export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigured, userEmail }) => {
+export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange, t, mcpConfigured, userEmail }) => {
   const combos = Math.pow(RANDOM_CHARSET.length, Math.max(slugLength, MIN_SLUG_LENGTH));
   const comboHint =
     slugLength >= 3
@@ -80,6 +84,27 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, t, mcpConfigu
                   <span class="icon">light_mode</span> {t("settings.themeLight")}
                 </button>
               </div>
+            </div>
+          </div>
+
+          <div class="bento-card">
+            <div class="form-group">
+              <label class="form-label">{t("settings.defaultRange")}</label>
+              <select
+                class="form-input"
+                id="default-range-picker"
+                onchange="setDefaultRange(this.value)"
+              >
+                <option value="" selected={defaultRange === null}>
+                  {t("settings.defaultRangeUnset")}
+                </option>
+                {RANGE_OPTIONS.map((r) => (
+                  <option value={r} selected={defaultRange === r}>
+                    {t(`range.long.${r}` as const)}
+                  </option>
+                ))}
+              </select>
+              <div class="form-hint">{t("settings.defaultRangeHint")}</div>
             </div>
           </div>
 

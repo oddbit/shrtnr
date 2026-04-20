@@ -154,19 +154,20 @@ async function getPageData(c: { env: Env; req: { raw: Request } }, identity: str
   const theme = settings?.theme ?? getCookie(c.req.raw, "theme") ?? "oddbit";
   const lang = settings?.lang ?? getCookie(c.req.raw, "lang") ?? "en";
   const slugLength = settings?.slug_default_length ?? DEFAULT_SLUG_LENGTH;
+  const defaultRange = settings?.default_range ?? null;
   const t = createTranslateFn(lang);
   const translations = getTranslations(lang);
-  return { theme, slugLength, lang, t, translations };
+  return { theme, slugLength, lang, defaultRange, t, translations };
 }
 
 // ---- Admin pages ----
 
 app.get("/_/admin/dashboard", async (c) => {
   const identity = c.var.identity;
-  const { theme, t, lang, translations } = await getPageData(c, identity);
+  const { theme, t, lang, translations, defaultRange } = await getPageData(c, identity);
   const rangeParam = c.req.query("range");
   const validRanges = new Set(["24h", "7d", "30d", "90d", "1y", "all"]);
-  const range = (validRanges.has(rangeParam || "") ? rangeParam : "30d") as TimelineRange;
+  const range = (validRanges.has(rangeParam || "") ? rangeParam : (defaultRange ?? "30d")) as TimelineRange;
   const statsResult = await getDashboardStats(c.env, range);
   const stats = statsResult.ok
     ? statsResult.data
@@ -231,15 +232,16 @@ app.get("/_/admin/links/:id", async (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return notFoundResponse();
   const identity = c.var.identity;
-  const { theme, t, lang, translations } = await getPageData(c, identity);
+  const { theme, t, lang, translations, defaultRange } = await getPageData(c, identity);
   const linkResult = await getLink(c.env, id);
   if (!linkResult.ok) return notFoundResponse();
+  const initialRange: TimelineRange = defaultRange ?? "all";
   const analyticsResult = await getLinkAnalytics(c.env, id);
   const analytics = analyticsResult.ok ? analyticsResult.data : { total_clicks: 0, countries: [], referrers: [], referrer_hosts: [], devices: [], os: [], browsers: [], link_modes: [], channels: [], clicks_over_time: [], slug_clicks: [] };
   const userEmail = c.var.user?.email ?? null;
   return c.html(
     <Layout active="links" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
-      <LinkDetailPage link={linkResult.data} analytics={analytics} t={t} lang={lang} identity={identity} />
+      <LinkDetailPage link={linkResult.data} analytics={analytics} t={t} lang={lang} identity={identity} initialRange={initialRange} />
     </Layout>,
   );
 });
@@ -259,12 +261,12 @@ app.get("/_/admin/keys", async (c) => {
 
 app.get("/_/admin/settings", async (c) => {
   const identity = c.var.identity;
-  const { theme, slugLength, t, lang, translations } = await getPageData(c, identity);
+  const { theme, slugLength, t, lang, translations, defaultRange } = await getPageData(c, identity);
   const mcpConfigured = Boolean(c.env.MCP_ACCESS_AUD && c.env.ACCESS_JWKS_URL);
   const userEmail = c.var.user?.email ?? null;
   return c.html(
     <Layout active="settings" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
-      <SettingsPage theme={theme} slugLength={slugLength} lang={lang} t={t} mcpConfigured={mcpConfigured} userEmail={userEmail} />
+      <SettingsPage theme={theme} slugLength={slugLength} lang={lang} defaultRange={defaultRange} t={t} mcpConfigured={mcpConfigured} userEmail={userEmail} />
     </Layout>,
   );
 });

@@ -5,8 +5,14 @@ import { ApiKeyRepository, SettingRepository } from "../db";
 import type { ApiKeyRow } from "../db";
 import { DEFAULT_SLUG_LENGTH } from "../constants";
 import { validateSlugLength } from "../slugs";
-import { Env } from "../types";
+import { Env, TimelineRange } from "../types";
 import { ServiceResult, ok, fail } from "./result";
+
+const VALID_RANGES: TimelineRange[] = ["24h", "7d", "30d", "90d", "1y", "all"];
+
+function isValidRange(v: unknown): v is TimelineRange {
+  return typeof v === "string" && (VALID_RANGES as string[]).includes(v);
+}
 
 export type { ServiceResult };
 
@@ -71,27 +77,36 @@ export async function authenticateApiKey(env: Env, rawKey: string): Promise<ApiK
   return { ...row, last_used_at: Math.floor(Date.now() / 1000) };
 }
 
+export type AppSettings = {
+  slug_default_length: number;
+  theme: string | null;
+  lang: string | null;
+  default_range: TimelineRange | null;
+};
+
 export async function getAppSettings(
   env: Env,
   identity: string,
-): Promise<ServiceResult<{ slug_default_length: number; theme: string | null; lang: string | null }>> {
-  const [slugLength, theme, lang] = await Promise.all([
+): Promise<ServiceResult<AppSettings>> {
+  const [slugLength, theme, lang, defaultRange] = await Promise.all([
     SettingRepository.get(env.DB, identity, "slug_default_length"),
     SettingRepository.get(env.DB, identity, "theme"),
     SettingRepository.get(env.DB, identity, "lang"),
+    SettingRepository.get(env.DB, identity, "default_range"),
   ]);
   return ok({
     slug_default_length: parseInt(slugLength ?? String(DEFAULT_SLUG_LENGTH), 10),
     theme: theme ?? null,
     lang: lang ?? null,
+    default_range: isValidRange(defaultRange) ? defaultRange : null,
   });
 }
 
 export async function updateAppSettings(
   env: Env,
   identity: string,
-  body: { slug_default_length?: number; theme?: string; lang?: string },
-): Promise<ServiceResult<{ slug_default_length: number; theme: string | null; lang: string | null }>> {
+  body: { slug_default_length?: number; theme?: string; lang?: string; default_range?: TimelineRange | null | "" },
+): Promise<ServiceResult<AppSettings>> {
   if (body.slug_default_length !== undefined) {
     const err = validateSlugLength(body.slug_default_length);
     if (err) return fail(400, err);
@@ -102,6 +117,15 @@ export async function updateAppSettings(
   }
   if (body.lang !== undefined && typeof body.lang === "string") {
     await SettingRepository.set(env.DB, identity, "lang", body.lang);
+  }
+  if (body.default_range !== undefined) {
+    if (body.default_range === null || body.default_range === "") {
+      await SettingRepository.set(env.DB, identity, "default_range", "");
+    } else if (isValidRange(body.default_range)) {
+      await SettingRepository.set(env.DB, identity, "default_range", body.default_range);
+    } else {
+      return fail(400, `default_range must be one of: ${VALID_RANGES.join(", ")}`);
+    }
   }
 
   return getAppSettings(env, identity);

@@ -65,4 +65,40 @@ describe("admin-management service", () => {
       expect(settings.data.slug_default_length).toBe(3);
     }
   });
+
+  it("returns null default_range when not set", async () => {
+    const settings = await getAppSettings(env as any, TEST_IDENTITY);
+    expect(settings.ok).toBe(true);
+    if (settings.ok) {
+      expect(settings.data.default_range).toBeNull();
+    }
+  });
+
+  it("persists a valid default_range", async () => {
+    const updated = await updateAppSettings(env as any, TEST_IDENTITY, { default_range: "7d" });
+    expect(updated.ok).toBe(true);
+
+    const settings = await getAppSettings(env as any, TEST_IDENTITY);
+    expect(settings.ok).toBe(true);
+    if (settings.ok) {
+      expect(settings.data.default_range).toBe("7d");
+    }
+  });
+
+  it("rejects an invalid default_range", async () => {
+    const result = await updateAppSettings(env as any, TEST_IDENTITY, { default_range: "42x" as any });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(400);
+    }
+  });
+
+  it("accepts every valid range value", async () => {
+    for (const r of ["24h", "7d", "30d", "90d", "1y", "all"] as const) {
+      const updated = await updateAppSettings(env as any, TEST_IDENTITY, { default_range: r });
+      expect(updated.ok).toBe(true);
+      const settings = await getAppSettings(env as any, TEST_IDENTITY);
+      if (settings.ok) expect(settings.data.default_range).toBe(r);
+    }
+  });
 });

@@ -25,3 +25,20 @@ describe("Settings page MCP status", () => {
     expect(html).toContain("README");
   });
 });
+
+describe("Settings page default range control", () => {
+  it("renders the default-range picker with all options", async () => {
+    const res = await SELF.fetch(req("/_/admin/settings"));
+    const html = await res.text();
+    expect(html).toContain('id="default-range-picker"');
+    for (const v of ["24h", "7d", "30d", "90d", "1y", "all"]) {
+      expect(html).toContain(`value="${v}"`);
+    }
+  });
+
+  it("offers an 'unset' option that maps to empty value", async () => {
+    const res = await SELF.fetch(req("/_/admin/settings"));
+    const html = await res.text();
+    expect(html).toMatch(/<option value=""/);
+  });
+});
