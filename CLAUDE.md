@@ -7,11 +7,24 @@
 
 ### Releases
 
+Three separate release tracks, each driven by a version bump on `main`:
+
+| Target | Manifest | Tag prefix |
+|---|---|---|
+| Cloudflare Workers app | root `package.json` | `app-v*` |
+| TypeScript/npm SDK | `sdk/typescript/package.json` | `npm-v*` |
+| Dart/pub.dev SDK | `sdk/dart/pubspec.yaml` | `pub-v*` |
+
 When instructed to "update the version", "bump version" or "create a release":
 
-1. Update the version in `package.json` following semver.
-2. Add a section to `CHANGELOG.md` summarizing what changed. Keep it concise: a short paragraph or a few bullet points. Not a commit-by-commit log.
+1. Update the version in the correct manifest following semver. Confirm which track if ambiguous.
+2. Add a section to the corresponding `CHANGELOG.md` (root, `sdk/typescript/`, or `sdk/dart/`) summarizing what changed. Keep it concise: a short paragraph or a few bullet points. Not a commit-by-commit log.
 3. Commit the changes. But don't push to upstream.
+
+### SDKs
+
+- **SDK parity.** When a change is made to any SDK under `sdk/`, the same change must be evaluated and applied to every other SDK in that directory. Public-method additions or renames, new models, auth changes, error-type changes, and base-URL handling all count. If a change intentionally applies to only one SDK (for example a Dart-only helper with no TypeScript analogue), state that explicitly in the commit message. Default: all SDKs move together.
+- **README parity.** Each SDK's `README.md` stays in lockstep with the others. Install snippets, usage examples, auth docs, and the feature list exist in every SDK README, adjusted only for language and platform idioms (for example `await` vs `Future`, `import` vs `require`, `npm install` vs `dart pub add`). Removing or renaming a documented feature in one README requires the same edit in the others.
 
 ### Testing
 
