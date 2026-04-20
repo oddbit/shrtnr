@@ -84,6 +84,7 @@ const en = {
   "linkDetail.clicksOverTime": "Clicks Over Time",
   "linkDetail.noClickData": "No click data yet",
   "linkDetail.totalClicks": "total clicks",
+  "linkDetail.avgPerDay": "Avg / day",
   "linkDetail.countries": "Countries",
   "linkDetail.sources": "Sources",
   "linkDetail.referrerHosts": "Referrer Hosts",

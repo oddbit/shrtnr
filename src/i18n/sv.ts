@@ -87,6 +87,7 @@ const sv: Translations = {
   "linkDetail.clicksOverTime": "Klick över tid",
   "linkDetail.noClickData": "Ingen klickdata ännu",
   "linkDetail.totalClicks": "totalt antal klick",
+  "linkDetail.avgPerDay": "Snitt / dag",
   "linkDetail.countries": "Länder",
   "linkDetail.sources": "Källor",
   "linkDetail.referrerHosts": "Hänvisningsdomäner",

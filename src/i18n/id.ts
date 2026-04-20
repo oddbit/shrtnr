@@ -87,6 +87,7 @@ const id: Translations = {
   "linkDetail.clicksOverTime": "Klik Seiring Waktu",
   "linkDetail.noClickData": "Belum ada data klik",
   "linkDetail.totalClicks": "total klik",
+  "linkDetail.avgPerDay": "Rata-rata / hari",
   "linkDetail.countries": "Negara",
   "linkDetail.sources": "Sumber",
   "linkDetail.referrerHosts": "Domain Perujuk",
