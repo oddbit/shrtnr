@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.29.2 (2026-04-21)
+
+- Fixed the trend delta pill showing a misleading "+100%" (or similar) figure for links and dashboards whose selected range had no prior-period history to compare against. When there is no baseline, the delta pill is now suppressed rather than rendering a deceptive growth number against zero.
+
 ## 0.29.1 (2026-04-20)
 
 - Fixed the Total Links KPI card displaying the lifetime count regardless of the selected range. It now counts links created within the chosen window, matching the Total Clicks behavior.
