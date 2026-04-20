@@ -11,7 +11,7 @@ import type { Env } from "../types";
  * With Managed OAuth, CF Access handles the OAuth protocol and
  * the Worker reads identity from the forwarded request headers.
  */
-interface Props {
+interface Props extends Record<string, unknown> {
   email: string;
 }
 import { handleHealth } from "../api/health";
@@ -56,6 +56,12 @@ function fail(error: string): ToolResult {
 
 export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
   server = new McpServer({ name: "shrtnr", version: pkg.version });
+
+  private get identity(): string {
+    // OAuth populates props before any tool handler runs.
+    if (!this.props) throw new Error("MCP agent invoked without identity props");
+    return this.identity;
+  }
 
   async init() {
     this.server.tool(
@@ -104,7 +110,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         expires_at: z.number().int().optional().describe("Unix timestamp when the link expires"),
       },
       async ({ custom_slug, vanity_slug, ...opts }) => {
-        const result = await createLink(this.env, { ...opts, created_via: "mcp", created_by: this.props.email });
+        const result = await createLink(this.env, { ...opts, created_via: "mcp", created_by: this.identity });
         if (!result.ok) return fail(result.error);
 
         const requestedSlugs = custom_slug
@@ -153,7 +159,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         link_id: z.number().int().positive().describe("Numeric ID of the link to disable"),
       },
       async ({ link_id }) => {
-        const result = await disableLink(this.env, link_id, this.props.email);
+        const result = await disableLink(this.env, link_id, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -166,7 +172,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         link_id: z.number().int().positive().describe("Numeric ID of the link to enable"),
       },
       async ({ link_id }) => {
-        const result = await enableLink(this.env, link_id, this.props.email);
+        const result = await enableLink(this.env, link_id, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -416,7 +422,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         link_id: z.number().int().positive().describe("Numeric ID of the link to delete"),
       },
       async ({ link_id }) => {
-        const result = await deleteLink(this.env, link_id, this.props.email);
+        const result = await deleteLink(this.env, link_id, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },

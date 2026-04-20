@@ -6,8 +6,9 @@ import { env } from "cloudflare:test";
 import { SlugCache, type SlugCacheEntry } from "../kv";
 
 beforeEach(async () => {
-  const { keys } = await env.SLUG_KV.list();
-  await Promise.all(keys.map((k) => env.SLUG_KV.delete(k.name)));
+  const kv = env.SLUG_KV!;
+  const { keys } = await kv.list();
+  await Promise.all(keys.map((k) => kv.delete(k.name)));
 });
 
 describe("SlugCache", () => {
