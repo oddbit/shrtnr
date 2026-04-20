@@ -168,8 +168,8 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, identity }
       </div>
 
       <div class="detail-hero">
-        <div class="detail-hero-main">
-          <div class="detail-hero-label" id="label-display" onclick={`beginEditLabel(${link.id})`}>
+        <div class="left">
+          <div class="label" id="label-display" onclick={`beginEditLabel(${link.id})`}>
             {link.label ? (
               <span class="inline-edit-value">{link.label}</span>
             ) : (
@@ -195,101 +195,104 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, identity }
           {isExpired && (
             <div class="disabled-badge mb-sm">{t("linkDetail.disabled")}</div>
           )}
-          <div class={`detail-short-url${isExpired ? " dimmed" : ""}`}>
-            {displaySlug}
-          </div>
-          <div class="detail-dest">{link.url}</div>
-          <div class="detail-actions">
-            <button
-              class="btn btn-secondary btn-sm"
+          <div class="short-url-row">
+            <span
+              class={`short-url${isExpired ? " dimmed" : ""}`}
               onclick={`copyUrl('${escHtml(displaySlug)}')`}
             >
-              <span class="icon">content_copy</span> {t("linkDetail.copy")}
+              <span class="icon">link</span>{displaySlug}
+            </span>
+            <button
+              class="btn-icon"
+              onclick={`copyUrl('${escHtml(displaySlug)}')`}
+              title={t("linkDetail.copy")}
+            >
+              <span class="icon">content_copy</span>
             </button>
             <button
-              class="btn btn-ghost btn-sm"
+              class="btn-icon"
               onclick={`showQRModal(${link.id}, '${escHtml(displaySlug)}')`}
+              title={t("linkDetail.qr")}
             >
-              <span class="icon">qr_code_2</span> {t("linkDetail.qr")}
+              <span class="icon">qr_code_2</span>
             </button>
           </div>
-          <div class="detail-hero-meta">
-            <div class="detail-info-item">
-              <label class="form-label">{t("linkDetail.createdBy")}</label>
-              <div class="meta-row">
-                {link.created_by && link.created_by !== "anonymous" ? (
-                  <span class="meta-value mono">{link.created_by}</span>
-                ) : (
-                  <span class="meta-value muted">&mdash;</span>
-                )}
-                {link.created_via && (
-                  <span class="slug-badge-auto">{link.created_via}</span>
-                )}
-              </div>
-            </div>
-            <div class="detail-info-item">
-              <label class="form-label">{t("linkDetail.expiresAt")}</label>
-              <div class="inline-edit" id="expiry-display" onclick={`beginEditExpiry(${link.id})`}>
-                {link.expires_at ? (
-                  <span class="inline-edit-value">
-                    {new Date(link.expires_at * 1000).toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric" })}
-                    {", "}
-                    {new Date(link.expires_at * 1000).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                ) : (
-                  <span class="inline-edit-placeholder">{t("linkDetail.noExpiry")}</span>
-                )}
-                <span class="icon inline-edit-icon">edit</span>
-              </div>
-              <div class="inline-edit-form expiry-form" id="expiry-form" style="display:none">
-                <input
-                  class="form-input form-input-sm"
-                  id="detail-expires"
-                  type="datetime-local"
-                  value={expVal}
-                />
-                <button class="inline-edit-btn confirm" onclick={`saveDetailExpiry(${link.id})`}>
-                  <span class="icon">check</span>
+          <a class="dest" href={link.url} target="_blank" rel="noopener noreferrer">
+            <span class="icon">open_in_new</span>{link.url}
+          </a>
+          <div class="meta-row">
+            {link.created_by && link.created_by !== "anonymous" && (
+              <span class="m">
+                <span class="icon">person</span>
+                {t("linkDetail.createdBy")} <strong>{link.created_by}</strong>
+              </span>
+            )}
+            <span class="m">
+              <span class="icon">schedule</span>
+              {t("linkDetail.createdOn")}{" "}
+              <strong>
+                {new Date(link.created_at * 1000).toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric" })}
+              </strong>
+            </span>
+            <span class="m inline-edit" id="expiry-display" onclick={`beginEditExpiry(${link.id})`}>
+              <span class="icon">event_busy</span>
+              {link.expires_at ? (
+                <strong>
+                  {new Date(link.expires_at * 1000).toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric" })}
+                </strong>
+              ) : (
+                t("linkDetail.neverExpires")
+              )}
+              <span class="icon inline-edit-icon">edit</span>
+            </span>
+            <div class="inline-edit-form expiry-form" id="expiry-form" style="display:none">
+              <input
+                class="form-input form-input-sm"
+                id="detail-expires"
+                type="datetime-local"
+                value={expVal}
+              />
+              <button class="inline-edit-btn confirm" onclick={`saveDetailExpiry(${link.id})`}>
+                <span class="icon">check</span>
+              </button>
+              {link.expires_at && (
+                <button
+                  class="btn btn-ghost btn-sm"
+                  onclick={`clearDetailExpiry(${link.id})`}
+                >
+                  {t("linkDetail.clear")}
                 </button>
-                {link.expires_at && (
-                  <button
-                    class="btn btn-ghost btn-sm"
-                    onclick={`clearDetailExpiry(${link.id})`}
-                  >
-                    {t("linkDetail.clear")}
-                  </button>
-                )}
-                <button class="inline-edit-btn cancel" onclick="cancelEditExpiry()">
-                  <span class="icon">close</span>
-                </button>
-              </div>
+              )}
+              <button class="inline-edit-btn cancel" onclick="cancelEditExpiry()">
+                <span class="icon">close</span>
+              </button>
             </div>
+            {link.created_via && (
+              <span class="m">
+                <span class="icon">api</span>
+                {t("linkDetail.via")} <strong>{link.created_via}</strong>
+              </span>
+            )}
           </div>
         </div>
-      </div>
-
-      <div class="kpi-row">
-        <KpiCard
-          icon="mouse"
-          label={t("linkDetail.totalClicks")}
-          value={analytics.total_clicks}
-          valueId="hero-total-clicks"
-        />
-        <KpiCard
-          icon="calendar_month"
-          label={t("linkDetail.avgPerDay")}
-          value={avgPerDay(analytics.total_clicks, link.created_at, now)}
-        />
-        <KpiCard
-          icon="public"
-          label={t("linkDetail.countries")}
-          value={analytics.countries.length}
-        />
-        <KpiCard
-          icon="hub"
-          label={t("linkDetail.sources")}
-          value={analytics.referrer_hosts.length}
-        />
+        <div class="right">
+          <div class="hero-metric accent">
+            <div class="n" id="hero-total-clicks">{analytics.total_clicks}</div>
+            <div class="l">{t("linkDetail.totalClicks")}</div>
+          </div>
+          <div class="hero-metric">
+            <div class="n">{avgPerDay(analytics.total_clicks, link.created_at, now)}</div>
+            <div class="l">{t("linkDetail.avgPerDay")}</div>
+          </div>
+          <div class="hero-metric">
+            <div class="n">{analytics.countries.length}</div>
+            <div class="l">{t("linkDetail.countries")}</div>
+          </div>
+          <div class="hero-metric">
+            <div class="n">{analytics.referrer_hosts.length}</div>
+            <div class="l">{t("linkDetail.sources")}</div>
+          </div>
+        </div>
       </div>
 
       {/* Slugs management section */}
