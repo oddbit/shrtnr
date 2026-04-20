@@ -244,6 +244,9 @@ body { font-family: var(--font-family-body); background: var(--color-canvas); co
 [data-theme="light"] .nav-item.active { color: #1b5e20; }
 [data-theme="oddbit"] .sidebar-oddbit a, :root .sidebar-oddbit a { color: var(--color-success); }
 .sidebar-oddbit img { width: 80px; height: auto; }
+.sidebar-brand img { height: 2rem; }
+.sidebar-oddbit a img { height: 1.25rem; width: auto; }
+.mobile-brand img { height: 1.5rem; }
 .sidebar-oddbit .copyright { font-size: 0.65rem; color: var(--color-text-muted); margin-top: 0.25rem; opacity: 0.5; }
 /* Main */
 .main { margin-left: 240px; flex: 1; padding: 2rem 2.5rem; min-height: 100vh; }
