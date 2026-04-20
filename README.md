@@ -123,12 +123,14 @@ When `ACCESS_AUD` is set, the worker validates the JWT signature and audience cl
 
 ## Integrations
 
-### TypeScript SDK
+### SDKs
 
-Shorten URLs, manage links, and read analytics from any TypeScript or JavaScript app.
+Shorten URLs, manage links, and read analytics from your own code.
 
-- Package: [`@oddbit/shrtnr`](https://oddb.it/shrtnr-npm-readme)
-- Documentation: [sdk/README.md](sdk/README.md)
+- TypeScript/JavaScript: [`@oddbit/shrtnr`](https://oddb.it/shrtnr-npm-readme) — see [sdk/typescript/README.md](sdk/typescript/README.md).
+- Dart/Flutter: [`shrtnr`](https://oddb.it/shrtnr-pub-readme) — see [sdk/dart/README.md](sdk/dart/README.md).
+
+Both SDKs wrap the same public HTTP API and stay feature-aligned per the SDK parity rule in [CLAUDE.md](CLAUDE.md).
 
 ### MCP Server (AI Integration)
 

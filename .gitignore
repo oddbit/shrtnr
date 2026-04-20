@@ -4,3 +4,9 @@ dist/
 .dev.vars
 .DS_Store
 ignore/
+
+# Dart / Flutter SDK
+.dart_tool/
+.packages
+build/
+pubspec.lock
