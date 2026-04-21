@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.30.0 (2026-04-21)
+
+- Reshaped the dashboard KPI strip. The top row is now four cards (Total Links, Clicked Links, Total Clicks, Clicks/Day), each carrying a sparkline and a period-delta pill.
+- New "Clicked Links" KPI counts distinct links that received at least one click in the selected window, with its own sparkline and trend against the previous equivalent period.
+- Moved domain and country totals out of the KPI strip, since those cardinality metrics saturate over time. They now sit as small pills in the "Top Countries" and "Top Domains" panel headers, without misleading trend indicators.
+
 ## 0.29.2 (2026-04-21)
 
 - Fixed the trend delta pill showing a misleading "+100%" (or similar) figure for links and dashboards whose selected range had no prior-period history to compare against. When there is no baseline, the delta pill is now suppressed rather than rendering a deceptive growth number against zero.
