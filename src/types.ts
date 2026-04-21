@@ -109,6 +109,14 @@ export interface DashboardStats {
   total_clicks_delta?: number;
   /** Percent change in new-link creation rate vs previous period. Undefined when the previous period is zero. */
   new_links_delta?: number;
+  /** Average clicks per day within the current period, rounded. */
+  clicks_per_day: number;
+  /** Percent change in daily click rate vs previous period. Undefined when the previous period is zero. */
+  clicks_per_day_delta?: number;
+  /** Distinct destination domains among links created in the current period; lifetime when range is "all". */
+  num_domains: number;
+  /** Percent change in distinct-domain count vs previous period. Undefined when the previous period is zero. */
+  num_domains_delta?: number;
   /** Timeline sparkline — counts per bucket within the current period. */
   timeline: number[];
   recent_links: LinkWithSlugs[];

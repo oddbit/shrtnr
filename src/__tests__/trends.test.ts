@@ -240,3 +240,112 @@ describe("getDashboardStats range-filtered breakdowns", () => {
     expect(statsAll.total_links).toBe(5);
   });
 });
+
+describe("getDashboardStats clicks_per_day", () => {
+  it("averages clicks across the window length", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const slug = link.slugs[0].slug;
+    const now = Math.floor(Date.now() / 1000);
+
+    // 60 clicks inside the last 30d
+    for (let i = 0; i < 60; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(slug, now - i * 3600).run();
+    }
+
+    const stats = await ClickRepository.getDashboardStats(env.DB, "30d", now);
+    expect(stats.clicks_per_day).toBe(2); // 60 / 30
+  });
+
+  it("computes delta against the previous window's daily average", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const slug = link.slugs[0].slug;
+    const now = Math.floor(Date.now() / 1000);
+
+    // 90 clicks within the last 24h (well inside the 30d current window) => 3/day across 30d
+    for (let i = 0; i < 90; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(slug, now - i * 60).run();
+    }
+    // 30 clicks centered at 45d ago (well inside the previous 30d window) => 1/day across 30d
+    for (let i = 0; i < 30; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(slug, now - 45 * 86400 - i * 60).run();
+    }
+
+    const stats = await ClickRepository.getDashboardStats(env.DB, "30d", now);
+    expect(stats.clicks_per_day).toBe(3);
+    expect(stats.clicks_per_day_delta).toBe(200); // 3 vs 1 => +200%
+  });
+
+  it("suppresses delta when the previous window has no clicks", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const slug = link.slugs[0].slug;
+    const now = Math.floor(Date.now() / 1000);
+    for (let i = 0; i < 10; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(slug, now - i * 3600).run();
+    }
+    const stats = await ClickRepository.getDashboardStats(env.DB, "30d", now);
+    expect(stats.clicks_per_day_delta).toBeUndefined();
+  });
+
+  it("averages against total window span for range=all", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const slug = link.slugs[0].slug;
+    const now = Math.floor(Date.now() / 1000);
+
+    // 20 clicks spanning roughly 10 days
+    for (let i = 0; i < 20; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(slug, now - i * 12 * 3600).run();
+    }
+
+    const stats = await ClickRepository.getDashboardStats(env.DB, "all", now);
+    expect(stats.clicks_per_day).toBeGreaterThan(0);
+    expect(stats.clicks_per_day_delta).toBeUndefined();
+  });
+});
+
+describe("getDashboardStats num_domains", () => {
+  it("counts distinct destination hostnames among links in the current window", async () => {
+    const now = Math.floor(Date.now() / 1000);
+
+    // Recent (within 7d): 3 urls on 2 distinct hosts
+    await env.DB.prepare("INSERT INTO links (url, created_at) VALUES (?, ?)").bind("https://example.com/a", now - 100).run();
+    await env.DB.prepare("INSERT INTO links (url, created_at) VALUES (?, ?)").bind("https://example.com/b", now - 200).run();
+    await env.DB.prepare("INSERT INTO links (url, created_at) VALUES (?, ?)").bind("https://other.com/c", now - 300).run();
+    // Old (outside 7d): different host
+    await env.DB.prepare("INSERT INTO links (url, created_at) VALUES (?, ?)").bind("https://old.com/d", now - 30 * 86400).run();
+
+    const stats7d = await ClickRepository.getDashboardStats(env.DB, "7d", now);
+    expect(stats7d.num_domains).toBe(2);
+
+    const statsAll = await ClickRepository.getDashboardStats(env.DB, "all", now);
+    expect(statsAll.num_domains).toBe(3);
+  });
+
+  it("computes delta against the previous window's domain count", async () => {
+    const now = Math.floor(Date.now() / 1000);
+
+    // Current 7d: 2 distinct hosts
+    await env.DB.prepare("INSERT INTO links (url, created_at) VALUES (?, ?)").bind("https://a.com/x", now - 100).run();
+    await env.DB.prepare("INSERT INTO links (url, created_at) VALUES (?, ?)").bind("https://b.com/x", now - 200).run();
+    // Previous 7d: 1 distinct host
+    await env.DB.prepare("INSERT INTO links (url, created_at) VALUES (?, ?)").bind("https://c.com/x", now - 10 * 86400).run();
+
+    const stats = await ClickRepository.getDashboardStats(env.DB, "7d", now);
+    expect(stats.num_domains).toBe(2);
+    expect(stats.num_domains_delta).toBe(100);
+  });
+
+  it("suppresses delta when the previous window is empty", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    await env.DB.prepare("INSERT INTO links (url, created_at) VALUES (?, ?)").bind("https://a.com/x", now - 100).run();
+    const stats = await ClickRepository.getDashboardStats(env.DB, "7d", now);
+    expect(stats.num_domains).toBe(1);
+    expect(stats.num_domains_delta).toBeUndefined();
+  });
+
+  it("returns 0 with no delta for range=all when there are no links", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const stats = await ClickRepository.getDashboardStats(env.DB, "all", now);
+    expect(stats.num_domains).toBe(0);
+    expect(stats.num_domains_delta).toBeUndefined();
+  });
+});

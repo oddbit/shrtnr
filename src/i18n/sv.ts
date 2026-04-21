@@ -27,6 +27,8 @@ const sv: Translations = {
   "dashboard.shorten": "Förkorta",
   "dashboard.totalLinks": "Totalt antal länkar",
   "dashboard.totalClicks": "Totalt antal klick",
+  "dashboard.clicksPerDay": "Klick / dag",
+  "dashboard.numDomains": "Domäner",
   "dashboard.topCountries": "Toppländer",
   "dashboard.noData": "Ingen data ännu",
   "dashboard.recentLinks": "Senaste länkar",

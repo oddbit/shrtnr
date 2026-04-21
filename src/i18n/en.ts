@@ -25,6 +25,8 @@ const en = {
   "dashboard.shorten": "Shorten",
   "dashboard.totalLinks": "Total Links",
   "dashboard.totalClicks": "Total Clicks",
+  "dashboard.clicksPerDay": "Clicks / Day",
+  "dashboard.numDomains": "Domains",
   "dashboard.topCountries": "Top Countries",
   "dashboard.noData": "No data yet",
   "dashboard.recentLinks": "Recent Links",

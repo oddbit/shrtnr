@@ -256,6 +256,10 @@ body { font-family: var(--font-family-body); background: var(--color-canvas); co
 .page-title { font-family: var(--font-family-display); font-size: 2rem; font-weight: 700; }
 .page-subtitle { color: var(--color-text-muted); font-size: 0.875rem; margin-top: 0.25rem; }
 
+/* KPI strip — top-row metrics at four equal columns. */
+.kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.4rem; margin-bottom: 1.4rem; }
+.kpi-strip .bento-card { min-width: 0; }
+
 /* Bento grid */
 .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem; margin-bottom: 2rem; }
 .bento-card { background: var(--color-surface-raised); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; transition: background 0.2s; }
@@ -735,6 +739,7 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   .bento { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
   .bento-card { padding: 1rem 1.1rem; grid-column: 1 / -1; min-width: 0; }
   .bento-card.bento-card-compact { grid-column: span 1; }
+  .kpi-strip { grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
   .bento-value { font-size: 1.5rem; }
   .detail-analytics { grid-template-columns: 1fr; }
   .detail-analytics-left, .detail-analytics-right { min-width: 0; }

@@ -27,6 +27,8 @@ const id: Translations = {
   "dashboard.shorten": "Perpendek",
   "dashboard.totalLinks": "Total Tautan",
   "dashboard.totalClicks": "Total Klik",
+  "dashboard.clicksPerDay": "Klik / Hari",
+  "dashboard.numDomains": "Domain",
   "dashboard.topCountries": "Negara Teratas",
   "dashboard.noData": "Belum ada data",
   "dashboard.recentLinks": "Tautan Terbaru",

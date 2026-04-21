@@ -83,7 +83,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
         </button>
       </div>
 
-      <div class="bento" id="dashboard-bento">
+      <div class="kpi-strip" id="dashboard-kpi-strip">
         <KpiCard
           id="dash-kpi-links"
           icon="link"
@@ -102,9 +102,29 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
           deltaPct={d.total_clicks_delta}
           deltaId="dash-clicks-delta"
           sparkline={d.timeline}
-          span={2}
         />
+        <KpiCard
+          id="dash-kpi-clicks-per-day"
+          icon="speed"
+          label={t("dashboard.clicksPerDay")}
+          value={d.clicks_per_day}
+          valueId="dash-clicks-per-day"
+          deltaPct={d.clicks_per_day_delta}
+          deltaId="dash-clicks-per-day-delta"
+          sparkline={d.timeline}
+        />
+        <KpiCard
+          id="dash-kpi-domains"
+          icon="language"
+          label={t("dashboard.numDomains")}
+          value={d.num_domains}
+          valueId="dash-num-domains"
+          deltaPct={d.num_domains_delta}
+          deltaId="dash-num-domains-delta"
+        />
+      </div>
 
+      <div class="bento" id="dashboard-bento">
         <div class="bento-card span-2 timeline-card" id="dash-timeline">
           <div class="timeline-head">
             <div class="bento-label">{t("linkDetail.clicksOverTime")}</div>

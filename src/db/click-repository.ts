@@ -642,7 +642,7 @@ export class ClickRepository {
       ? db.prepare("SELECT s.link_id as link_id, COUNT(*) as cnt FROM clicks c JOIN slugs s ON c.slug = s.slug WHERE c.clicked_at >= ? GROUP BY s.link_id ORDER BY cnt DESC LIMIT 5").bind(since)
       : db.prepare("SELECT s.link_id as link_id, COUNT(*) as cnt FROM clicks c JOIN slugs s ON c.slug = s.slug GROUP BY s.link_id ORDER BY cnt DESC LIMIT 5");
 
-    const [clicks, linkPeriods, recentLinks, topCountries, topReferrers, topLinkRows, spark] = await Promise.all([
+    const [clicks, linkPeriods, recentLinks, topCountries, topReferrers, topLinkRows, spark, domainCounts] = await Promise.all([
       this.getPeriodClicks(db, range, ts),
       this.getLinkCreationPeriods(db, range, ts),
       LinkRepository.list(db),
@@ -650,6 +650,7 @@ export class ClickRepository {
       referrerQuery.all<{ name: string; count: number }>(),
       topLinksQuery.all<{ link_id: number; cnt: number }>(),
       this.getSparkline(db, range, ts),
+      this.getDomainPeriods(db, range, ts),
     ]);
 
     const withDeltas = await this.attachLinkDeltas(db, recentLinks, range, ts);
@@ -661,6 +662,12 @@ export class ClickRepository {
       })
       .filter((l): l is LinkWithSlugs => l !== null);
 
+    const daySpan = await this.getDaySpan(db, range, ts);
+    const clicksPerDay = daySpan > 0 ? Math.round(clicks.current / daySpan) : 0;
+    const clicksPerDayDelta = range === "all"
+      ? undefined
+      : computeDelta(clicks.current, clicks.previous);
+
     return {
       range,
       total_links: linkPeriods.current,
@@ -668,6 +675,10 @@ export class ClickRepository {
       total_clicks_previous: clicks.previous,
       total_clicks_delta: computeDelta(clicks.current, clicks.previous),
       new_links_delta: computeDelta(linkPeriods.current, linkPeriods.previous),
+      clicks_per_day: clicksPerDay,
+      clicks_per_day_delta: clicksPerDayDelta,
+      num_domains: domainCounts.current,
+      num_domains_delta: computeDelta(domainCounts.current, domainCounts.previous),
       timeline: spark,
       recent_links: withDeltas.slice(0, 5),
       top_links: topLinks,
@@ -675,6 +686,78 @@ export class ClickRepository {
       top_referrers: topReferrers.results ?? [],
     };
   }
+
+  /**
+   * Returns the number of days covered by the current window.
+   * Fixed for bounded ranges; for "all", spans from the earliest click to now
+   * (minimum 1 to avoid division by zero).
+   */
+  static async getDaySpan(
+    db: D1Database,
+    range: TimelineRange,
+    now?: number,
+  ): Promise<number> {
+    if (range !== "all") return RANGE_SECONDS[range] / 86400;
+    const ts = now ?? Math.floor(Date.now() / 1000);
+    const row = await db
+      .prepare("SELECT MIN(clicked_at) as first FROM clicks")
+      .first<{ first: number | null }>();
+    if (!row?.first) return 1;
+    const days = Math.max(1, Math.ceil((ts - row.first) / 86400));
+    return days;
+  }
+
+  /**
+   * Distinct destination-domain counts for links created in the current and
+   * previous windows. Domain extraction happens in JS since SQLite lacks a
+   * native URL parser.
+   */
+  static async getDomainPeriods(
+    db: D1Database,
+    range: TimelineRange,
+    now?: number,
+  ): Promise<{ current: number; previous: number }> {
+    const ts = now ?? Math.floor(Date.now() / 1000);
+
+    if (range === "all") {
+      const rows = await db
+        .prepare("SELECT url FROM links")
+        .all<{ url: string }>();
+      return { current: countDistinctHosts(rows.results ?? []), previous: 0 };
+    }
+
+    const span = RANGE_SECONDS[range];
+    const currStart = ts - span;
+    const prevStart = ts - 2 * span;
+
+    const [curRows, prevRows] = await Promise.all([
+      db
+        .prepare("SELECT url FROM links WHERE created_at >= ?")
+        .bind(currStart)
+        .all<{ url: string }>(),
+      db
+        .prepare("SELECT url FROM links WHERE created_at >= ? AND created_at < ?")
+        .bind(prevStart, currStart)
+        .all<{ url: string }>(),
+    ]);
+
+    return {
+      current: countDistinctHosts(curRows.results ?? []),
+      previous: countDistinctHosts(prevRows.results ?? []),
+    };
+  }
+}
+
+function countDistinctHosts(rows: { url: string }[]): number {
+  const hosts = new Set<string>();
+  for (const r of rows) {
+    try {
+      hosts.add(new URL(r.url).hostname);
+    } catch {
+      // Skip malformed URLs rather than fail the whole stats query.
+    }
+  }
+  return hosts.size;
 }
 
 function pad2(n: number): string {
