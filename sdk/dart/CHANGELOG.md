@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Add `example/shrtnr_example.dart` demonstrating the SDK end to end, so pub.dev recognizes the package has an example.
+- Reformat `LICENSE` using the canonical Apache 2.0 template so pub.dev's license detector identifies it as OSI-approved.
+
 ## 0.1.1
 
 - Updating documentation.
