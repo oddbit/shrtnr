@@ -29,6 +29,8 @@ const sv: Translations = {
   "dashboard.totalClicks": "Totalt antal klick",
   "dashboard.clicksPerDay": "Klick / dag",
   "dashboard.numDomains": "Domäner",
+  "dashboard.numCountries": "Länder",
+  "dashboard.clickedLinks": "Klickade länkar",
   "dashboard.topCountries": "Toppländer",
   "dashboard.noData": "Ingen data ännu",
   "dashboard.recentLinks": "Senaste länkar",

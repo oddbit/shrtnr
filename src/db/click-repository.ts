@@ -482,82 +482,68 @@ export class ClickRepository {
     now?: number,
   ): Promise<number[]> {
     const ts = now ?? Math.floor(Date.now() / 1000);
-
-    let bucketExpr: string;
-    let since: number | null;
-    let buckets: number;
-    let stepSec: number;
-
-    switch (range) {
-      case "24h":
-        bucketExpr = "strftime('%Y-%m-%d %H', clicked_at, 'unixepoch')";
-        since = ts - 86400;
-        buckets = 24;
-        stepSec = 3600;
-        break;
-      case "7d":
-        bucketExpr = "date(clicked_at, 'unixepoch')";
-        since = ts - 7 * 86400;
-        buckets = 7;
-        stepSec = 86400;
-        break;
-      case "30d":
-        bucketExpr = "date(clicked_at, 'unixepoch')";
-        since = ts - 30 * 86400;
-        buckets = 30;
-        stepSec = 86400;
-        break;
-      case "90d":
-        bucketExpr = "date(clicked_at, 'unixepoch')";
-        since = ts - 90 * 86400;
-        buckets = 90;
-        stepSec = 86400;
-        break;
-      case "1y":
-        bucketExpr = "strftime('%Y-%m', clicked_at, 'unixepoch')";
-        since = ts - 365 * 86400;
-        buckets = 12;
-        stepSec = 30 * 86400;
-        break;
-      case "all":
-      default:
-        bucketExpr = "strftime('%Y-%m', clicked_at, 'unixepoch')";
-        since = null;
-        buckets = 12;
-        stepSec = 30 * 86400;
-        break;
-    }
-
-    const where = since !== null ? "WHERE clicked_at >= ?" : "";
-    const binds = since !== null ? [since] : [];
+    const spec = getBucketSpec(range, ts);
+    const where = spec.since !== null ? "WHERE clicked_at >= ?" : "";
+    const binds = spec.since !== null ? [spec.since] : [];
 
     const rows = await db
       .prepare(
-        `SELECT ${bucketExpr} as label, COUNT(*) as count
+        `SELECT ${spec.bucketExpr("clicked_at")} as label, COUNT(*) as value
          FROM clicks ${where}
          GROUP BY label ORDER BY label ASC`,
       )
       .bind(...binds)
-      .all<{ label: string; count: number }>();
+      .all<{ label: string; value: number }>();
 
-    const map = new Map((rows.results ?? []).map((r) => [r.label, r.count]));
-
-    const out: number[] = [];
-    for (let i = buckets - 1; i >= 0; i--) {
-      const t = ts - i * stepSec;
-      const d = new Date(t * 1000);
-      let label: string;
-      if (range === "24h") {
-        label = `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}`;
-      } else if (range === "1y" || range === "all") {
-        label = `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}`;
-      } else {
-        label = `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
-      }
-      out.push(map.get(label) ?? 0);
-    }
-    return out;
+    return fillSparkline(rows.results ?? [], spec, range, ts);
   }
+
+  /** Links-created-per-bucket sparkline. */
+  static async getLinksCreatedSparkline(
+    db: D1Database,
+    range: TimelineRange,
+    now?: number,
+  ): Promise<number[]> {
+    const ts = now ?? Math.floor(Date.now() / 1000);
+    const spec = getBucketSpec(range, ts);
+    const where = spec.since !== null ? "WHERE created_at >= ?" : "";
+    const binds = spec.since !== null ? [spec.since] : [];
+
+    const rows = await db
+      .prepare(
+        `SELECT ${spec.bucketExpr("created_at")} as label, COUNT(*) as value
+         FROM links ${where}
+         GROUP BY label ORDER BY label ASC`,
+      )
+      .bind(...binds)
+      .all<{ label: string; value: number }>();
+
+    return fillSparkline(rows.results ?? [], spec, range, ts);
+  }
+
+  /** Distinct-clicked-links-per-bucket sparkline (counts unique link_id per bucket). */
+  static async getClickedLinksSparkline(
+    db: D1Database,
+    range: TimelineRange,
+    now?: number,
+  ): Promise<number[]> {
+    const ts = now ?? Math.floor(Date.now() / 1000);
+    const spec = getBucketSpec(range, ts);
+    const where = spec.since !== null ? "WHERE c.clicked_at >= ?" : "";
+    const binds = spec.since !== null ? [spec.since] : [];
+
+    const rows = await db
+      .prepare(
+        `SELECT ${spec.bucketExpr("c.clicked_at")} as label, COUNT(DISTINCT s.link_id) as value
+         FROM clicks c JOIN slugs s ON c.slug = s.slug ${where}
+         GROUP BY label ORDER BY label ASC`,
+      )
+      .bind(...binds)
+      .all<{ label: string; value: number }>();
+
+    return fillSparkline(rows.results ?? [], spec, range, ts);
+  }
+
 
   /**
    * Enriches links with delta_pct for the selected range.
@@ -642,7 +628,20 @@ export class ClickRepository {
       ? db.prepare("SELECT s.link_id as link_id, COUNT(*) as cnt FROM clicks c JOIN slugs s ON c.slug = s.slug WHERE c.clicked_at >= ? GROUP BY s.link_id ORDER BY cnt DESC LIMIT 5").bind(since)
       : db.prepare("SELECT s.link_id as link_id, COUNT(*) as cnt FROM clicks c JOIN slugs s ON c.slug = s.slug GROUP BY s.link_id ORDER BY cnt DESC LIMIT 5");
 
-    const [clicks, linkPeriods, recentLinks, topCountries, topReferrers, topLinkRows, spark, domainCounts] = await Promise.all([
+    const [
+      clicks,
+      linkPeriods,
+      recentLinks,
+      topCountries,
+      topReferrers,
+      topLinkRows,
+      spark,
+      sparkLinks,
+      sparkClickedLinks,
+      domainCount,
+      countryCount,
+      clickedLinkCounts,
+    ] = await Promise.all([
       this.getPeriodClicks(db, range, ts),
       this.getLinkCreationPeriods(db, range, ts),
       LinkRepository.list(db),
@@ -650,7 +649,11 @@ export class ClickRepository {
       referrerQuery.all<{ name: string; count: number }>(),
       topLinksQuery.all<{ link_id: number; cnt: number }>(),
       this.getSparkline(db, range, ts),
-      this.getDomainPeriods(db, range, ts),
+      this.getLinksCreatedSparkline(db, range, ts),
+      this.getClickedLinksSparkline(db, range, ts),
+      this.getDomainCount(db, range, ts),
+      this.getCountryCount(db, range, ts),
+      this.getClickedLinksPeriods(db, range, ts),
     ]);
 
     const withDeltas = await this.attachLinkDeltas(db, recentLinks, range, ts);
@@ -677,9 +680,13 @@ export class ClickRepository {
       new_links_delta: computeDelta(linkPeriods.current, linkPeriods.previous),
       clicks_per_day: clicksPerDay,
       clicks_per_day_delta: clicksPerDayDelta,
-      num_domains: domainCounts.current,
-      num_domains_delta: computeDelta(domainCounts.current, domainCounts.previous),
+      num_domains: domainCount,
+      num_countries: countryCount,
+      clicked_links: clickedLinkCounts.current,
+      clicked_links_delta: computeDelta(clickedLinkCounts.current, clickedLinkCounts.previous),
       timeline: spark,
+      timeline_links: sparkLinks,
+      timeline_clicked_links: sparkClickedLinks,
       recent_links: withDeltas.slice(0, 5),
       top_links: topLinks,
       top_countries: topCountries.results ?? [],
@@ -708,11 +715,35 @@ export class ClickRepository {
   }
 
   /**
-   * Distinct destination-domain counts for links created in the current and
-   * previous windows. Domain extraction happens in JS since SQLite lacks a
-   * native URL parser.
+   * Distinct destination-domain count for links created in the current window;
+   * lifetime when range is "all". Domain extraction happens in JS since SQLite
+   * lacks a native URL parser.
    */
-  static async getDomainPeriods(
+  static async getDomainCount(
+    db: D1Database,
+    range: TimelineRange,
+    now?: number,
+  ): Promise<number> {
+    const ts = now ?? Math.floor(Date.now() / 1000);
+
+    if (range === "all") {
+      const rows = await db.prepare("SELECT url FROM links").all<{ url: string }>();
+      return countDistinctHosts(rows.results ?? []);
+    }
+
+    const currStart = ts - RANGE_SECONDS[range];
+    const rows = await db
+      .prepare("SELECT url FROM links WHERE created_at >= ?")
+      .bind(currStart)
+      .all<{ url: string }>();
+    return countDistinctHosts(rows.results ?? []);
+  }
+
+  /**
+   * Distinct-link counts (links that received at least one click) for the
+   * current and previous windows.
+   */
+  static async getClickedLinksPeriods(
     db: D1Database,
     range: TimelineRange,
     now?: number,
@@ -720,31 +751,53 @@ export class ClickRepository {
     const ts = now ?? Math.floor(Date.now() / 1000);
 
     if (range === "all") {
-      const rows = await db
-        .prepare("SELECT url FROM links")
-        .all<{ url: string }>();
-      return { current: countDistinctHosts(rows.results ?? []), previous: 0 };
+      const row = await db
+        .prepare("SELECT COUNT(DISTINCT s.link_id) as cnt FROM clicks c JOIN slugs s ON c.slug = s.slug")
+        .first<{ cnt: number }>();
+      return { current: row?.cnt ?? 0, previous: 0 };
     }
 
     const span = RANGE_SECONDS[range];
     const currStart = ts - span;
     const prevStart = ts - 2 * span;
 
-    const [curRows, prevRows] = await Promise.all([
+    const [cur, prev] = await Promise.all([
       db
-        .prepare("SELECT url FROM links WHERE created_at >= ?")
+        .prepare("SELECT COUNT(DISTINCT s.link_id) as cnt FROM clicks c JOIN slugs s ON c.slug = s.slug WHERE c.clicked_at >= ?")
         .bind(currStart)
-        .all<{ url: string }>(),
+        .first<{ cnt: number }>(),
       db
-        .prepare("SELECT url FROM links WHERE created_at >= ? AND created_at < ?")
+        .prepare("SELECT COUNT(DISTINCT s.link_id) as cnt FROM clicks c JOIN slugs s ON c.slug = s.slug WHERE c.clicked_at >= ? AND c.clicked_at < ?")
         .bind(prevStart, currStart)
-        .all<{ url: string }>(),
+        .first<{ cnt: number }>(),
     ]);
+    return { current: cur?.cnt ?? 0, previous: prev?.cnt ?? 0 };
+  }
 
-    return {
-      current: countDistinctHosts(curRows.results ?? []),
-      previous: countDistinctHosts(prevRows.results ?? []),
-    };
+  /**
+   * Distinct click-origin country count for the current window; lifetime when
+   * range is "all". Null countries are ignored.
+   */
+  static async getCountryCount(
+    db: D1Database,
+    range: TimelineRange,
+    now?: number,
+  ): Promise<number> {
+    const ts = now ?? Math.floor(Date.now() / 1000);
+
+    if (range === "all") {
+      const row = await db
+        .prepare("SELECT COUNT(DISTINCT country) as cnt FROM clicks WHERE country IS NOT NULL")
+        .first<{ cnt: number }>();
+      return row?.cnt ?? 0;
+    }
+
+    const currStart = ts - RANGE_SECONDS[range];
+    const row = await db
+      .prepare("SELECT COUNT(DISTINCT country) as cnt FROM clicks WHERE country IS NOT NULL AND clicked_at >= ?")
+      .bind(currStart)
+      .first<{ cnt: number }>();
+    return row?.cnt ?? 0;
   }
 }
 
@@ -762,6 +815,91 @@ function countDistinctHosts(rows: { url: string }[]): number {
 
 function pad2(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
+}
+
+interface BucketSpec {
+  /** Builds the SQL grouping expression for a given timestamp column. */
+  bucketExpr: (column: string) => string;
+  /** Unix seconds floor; null means unbounded (range === "all"). */
+  since: number | null;
+  /** Number of buckets to emit in the output series. */
+  buckets: number;
+  /** Approximate bucket width; used to walk backwards when zero-filling. */
+  stepSec: number;
+}
+
+function getBucketSpec(range: TimelineRange, ts: number): BucketSpec {
+  switch (range) {
+    case "24h":
+      return {
+        bucketExpr: (c) => `strftime('%Y-%m-%d %H', ${c}, 'unixepoch')`,
+        since: ts - 86400,
+        buckets: 24,
+        stepSec: 3600,
+      };
+    case "7d":
+      return {
+        bucketExpr: (c) => `date(${c}, 'unixepoch')`,
+        since: ts - 7 * 86400,
+        buckets: 7,
+        stepSec: 86400,
+      };
+    case "30d":
+      return {
+        bucketExpr: (c) => `date(${c}, 'unixepoch')`,
+        since: ts - 30 * 86400,
+        buckets: 30,
+        stepSec: 86400,
+      };
+    case "90d":
+      return {
+        bucketExpr: (c) => `date(${c}, 'unixepoch')`,
+        since: ts - 90 * 86400,
+        buckets: 90,
+        stepSec: 86400,
+      };
+    case "1y":
+      return {
+        bucketExpr: (c) => `strftime('%Y-%m', ${c}, 'unixepoch')`,
+        since: ts - 365 * 86400,
+        buckets: 12,
+        stepSec: 30 * 86400,
+      };
+    case "all":
+    default:
+      return {
+        bucketExpr: (c) => `strftime('%Y-%m', ${c}, 'unixepoch')`,
+        since: null,
+        buckets: 12,
+        stepSec: 30 * 86400,
+      };
+  }
+}
+
+function sparkLabelAt(range: TimelineRange, t: number): string {
+  const d = new Date(t * 1000);
+  if (range === "24h") {
+    return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}`;
+  }
+  if (range === "1y" || range === "all") {
+    return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}`;
+  }
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+}
+
+function fillSparkline(
+  rows: { label: string; value: number }[],
+  spec: BucketSpec,
+  range: TimelineRange,
+  ts: number,
+): number[] {
+  const map = new Map(rows.map((r) => [r.label, r.value]));
+  const out: number[] = [];
+  for (let i = spec.buckets - 1; i >= 0; i--) {
+    const t = ts - i * spec.stepSec;
+    out.push(map.get(sparkLabelAt(range, t)) ?? 0);
+  }
+  return out;
 }
 
 function fillBuckets(

@@ -92,6 +92,17 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
           valueId="dash-total-links"
           deltaPct={d.new_links_delta}
           deltaId="dash-links-delta"
+          sparkline={d.timeline_links}
+        />
+        <KpiCard
+          id="dash-kpi-clicked-links"
+          icon="ads_click"
+          label={t("dashboard.clickedLinks")}
+          value={d.clicked_links}
+          valueId="dash-clicked-links"
+          deltaPct={d.clicked_links_delta}
+          deltaId="dash-clicked-links-delta"
+          sparkline={d.timeline_clicked_links}
         />
         <KpiCard
           id="dash-kpi-clicks"
@@ -113,15 +124,6 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
           deltaId="dash-clicks-per-day-delta"
           sparkline={d.timeline}
         />
-        <KpiCard
-          id="dash-kpi-domains"
-          icon="language"
-          label={t("dashboard.numDomains")}
-          value={d.num_domains}
-          valueId="dash-num-domains"
-          deltaPct={d.num_domains_delta}
-          deltaId="dash-num-domains-delta"
-        />
       </div>
 
       <div class="bento" id="dashboard-bento">
@@ -136,7 +138,10 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
         </div>
 
         <div class="bento-card" id="dash-top-countries">
-          <div class="bento-label">{t("dashboard.topCountries")}</div>
+          <div class="bento-head">
+            <div class="bento-label">{t("dashboard.topCountries")}</div>
+            <div class="bento-count">{d.num_countries.toLocaleString()}</div>
+          </div>
           {d.top_countries.length === 0 ? (
             <div class="muted-hint">{t("dashboard.noData")}</div>
           ) : (
@@ -180,7 +185,10 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
         </div>
 
         <div class="bento-card" id="dash-top-sources">
-          <div class="bento-label">{t("dashboard.topSources")}</div>
+          <div class="bento-head">
+            <div class="bento-label">{t("dashboard.topSources")}</div>
+            <div class="bento-count">{d.num_domains.toLocaleString()}</div>
+          </div>
           {d.top_referrers.length === 0 ? (
             <div class="muted-hint">{t("dashboard.noData")}</div>
           ) : (

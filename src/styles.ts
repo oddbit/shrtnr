@@ -267,6 +267,9 @@ body { font-family: var(--font-family-body); background: var(--color-canvas); co
 .bento-card.span-2 { grid-column: span 2; }
 .bento-card.span-3 { grid-column: span 3; }
 .bento-label { font-size: 0.75rem; color: var(--color-success); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+.bento-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin-bottom: 0.5rem; }
+.bento-head .bento-label { margin-bottom: 0; }
+.bento-count { font-family: var(--font-family-display); font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; color: var(--color-text); font-variant-numeric: tabular-nums; line-height: 1; }
 .bento-value { font-family: var(--font-family-display); font-size: 2rem; font-weight: 700; }
 .bento-value.small { font-size: 1rem; font-weight: 500; }
 

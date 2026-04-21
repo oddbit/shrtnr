@@ -115,10 +115,18 @@ export interface DashboardStats {
   clicks_per_day_delta?: number;
   /** Distinct destination domains among links created in the current period; lifetime when range is "all". */
   num_domains: number;
-  /** Percent change in distinct-domain count vs previous period. Undefined when the previous period is zero. */
-  num_domains_delta?: number;
-  /** Timeline sparkline — counts per bucket within the current period. */
+  /** Distinct click-origin countries in the current period; lifetime when range is "all". */
+  num_countries: number;
+  /** Distinct links that received at least one click in the current period; lifetime when range is "all". */
+  clicked_links: number;
+  /** Percent change in clicked-link count vs previous period. Undefined when the previous period is zero. */
+  clicked_links_delta?: number;
+  /** Clicks-per-bucket sparkline for the current period. */
   timeline: number[];
+  /** New-links-per-bucket sparkline for the current period. */
+  timeline_links: number[];
+  /** Clicked-links-per-bucket sparkline (distinct link count per bucket). */
+  timeline_clicked_links: number[];
   recent_links: LinkWithSlugs[];
   top_links: LinkWithSlugs[];
   top_countries: { name: string; count: number }[];

@@ -320,32 +320,93 @@ describe("getDashboardStats num_domains", () => {
     expect(statsAll.num_domains).toBe(3);
   });
 
-  it("computes delta against the previous window's domain count", async () => {
-    const now = Math.floor(Date.now() / 1000);
-
-    // Current 7d: 2 distinct hosts
-    await env.DB.prepare("INSERT INTO links (url, created_at) VALUES (?, ?)").bind("https://a.com/x", now - 100).run();
-    await env.DB.prepare("INSERT INTO links (url, created_at) VALUES (?, ?)").bind("https://b.com/x", now - 200).run();
-    // Previous 7d: 1 distinct host
-    await env.DB.prepare("INSERT INTO links (url, created_at) VALUES (?, ?)").bind("https://c.com/x", now - 10 * 86400).run();
-
-    const stats = await ClickRepository.getDashboardStats(env.DB, "7d", now);
-    expect(stats.num_domains).toBe(2);
-    expect(stats.num_domains_delta).toBe(100);
-  });
-
-  it("suppresses delta when the previous window is empty", async () => {
-    const now = Math.floor(Date.now() / 1000);
-    await env.DB.prepare("INSERT INTO links (url, created_at) VALUES (?, ?)").bind("https://a.com/x", now - 100).run();
-    const stats = await ClickRepository.getDashboardStats(env.DB, "7d", now);
-    expect(stats.num_domains).toBe(1);
-    expect(stats.num_domains_delta).toBeUndefined();
-  });
-
-  it("returns 0 with no delta for range=all when there are no links", async () => {
+  it("returns 0 for range=all when there are no links", async () => {
     const now = Math.floor(Date.now() / 1000);
     const stats = await ClickRepository.getDashboardStats(env.DB, "all", now);
     expect(stats.num_domains).toBe(0);
-    expect(stats.num_domains_delta).toBeUndefined();
+  });
+});
+
+describe("getDashboardStats num_countries", () => {
+  it("counts distinct click countries within the current window", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const slug = link.slugs[0].slug;
+    const now = Math.floor(Date.now() / 1000);
+
+    // Recent clicks (within 7d): 3 distinct countries (plus a duplicate)
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, country) VALUES (?, ?, ?)").bind(slug, now - 100, "US").run();
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, country) VALUES (?, ?, ?)").bind(slug, now - 200, "US").run();
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, country) VALUES (?, ?, ?)").bind(slug, now - 300, "SE").run();
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, country) VALUES (?, ?, ?)").bind(slug, now - 400, "ID").run();
+    // Null country should not count.
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(slug, now - 500).run();
+    // Older click outside the 7d window.
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, country) VALUES (?, ?, ?)").bind(slug, now - 30 * 86400, "DE").run();
+
+    const stats7d = await ClickRepository.getDashboardStats(env.DB, "7d", now);
+    expect(stats7d.num_countries).toBe(3);
+
+    const statsAll = await ClickRepository.getDashboardStats(env.DB, "all", now);
+    expect(statsAll.num_countries).toBe(4);
+  });
+});
+
+describe("getDashboardStats clicked_links", () => {
+  it("counts distinct links that received clicks in the current window", async () => {
+    const linkA = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "aaa" });
+    const linkB = await LinkRepository.create(env.DB, { url: "https://b.com", slug: "bbb" });
+    const linkC = await LinkRepository.create(env.DB, { url: "https://c.com", slug: "ccc" });
+    const now = Math.floor(Date.now() / 1000);
+
+    // A is clicked twice, B is clicked once, C has no clicks.
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(linkA.slugs[0].slug, now - 100).run();
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(linkA.slugs[0].slug, now - 200).run();
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(linkB.slugs[0].slug, now - 300).run();
+    void linkC;
+
+    const stats = await ClickRepository.getDashboardStats(env.DB, "7d", now);
+    expect(stats.clicked_links).toBe(2);
+  });
+
+  it("scopes the count to the current window", async () => {
+    const linkA = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "aaa" });
+    const linkB = await LinkRepository.create(env.DB, { url: "https://b.com", slug: "bbb" });
+    const now = Math.floor(Date.now() / 1000);
+
+    // A clicked inside 7d; B clicked 30d ago (outside 7d).
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(linkA.slugs[0].slug, now - 100).run();
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(linkB.slugs[0].slug, now - 30 * 86400).run();
+
+    const stats7d = await ClickRepository.getDashboardStats(env.DB, "7d", now);
+    expect(stats7d.clicked_links).toBe(1);
+
+    const statsAll = await ClickRepository.getDashboardStats(env.DB, "all", now);
+    expect(statsAll.clicked_links).toBe(2);
+  });
+
+  it("computes delta against the previous window's distinct-link count", async () => {
+    const linkA = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "aaa" });
+    const linkB = await LinkRepository.create(env.DB, { url: "https://b.com", slug: "bbb" });
+    const linkC = await LinkRepository.create(env.DB, { url: "https://c.com", slug: "ccc" });
+    const now = Math.floor(Date.now() / 1000);
+
+    // Current 7d: 2 distinct links clicked (A, B)
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(linkA.slugs[0].slug, now - 100).run();
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(linkB.slugs[0].slug, now - 200).run();
+    // Previous 7d: 1 distinct link (C)
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(linkC.slugs[0].slug, now - 10 * 86400).run();
+
+    const stats = await ClickRepository.getDashboardStats(env.DB, "7d", now);
+    expect(stats.clicked_links).toBe(2);
+    expect(stats.clicked_links_delta).toBe(100);
+  });
+
+  it("suppresses delta when the previous window has no clicked links", async () => {
+    const linkA = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "aaa" });
+    const now = Math.floor(Date.now() / 1000);
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(linkA.slugs[0].slug, now - 100).run();
+    const stats = await ClickRepository.getDashboardStats(env.DB, "7d", now);
+    expect(stats.clicked_links).toBe(1);
+    expect(stats.clicked_links_delta).toBeUndefined();
   });
 });

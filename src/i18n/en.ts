@@ -27,6 +27,8 @@ const en = {
   "dashboard.totalClicks": "Total Clicks",
   "dashboard.clicksPerDay": "Clicks / Day",
   "dashboard.numDomains": "Domains",
+  "dashboard.numCountries": "Countries",
+  "dashboard.clickedLinks": "Clicked Links",
   "dashboard.topCountries": "Top Countries",
   "dashboard.noData": "No data yet",
   "dashboard.recentLinks": "Recent Links",
