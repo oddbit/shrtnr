@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.30.1 (2026-04-21)
+
+- Fixed stack overflow on every MCP write call (`create_link`, `disable_link`, `enable_link`, `delete_link`). The `identity` getter was returning `this.identity` and recursing indefinitely; it now returns the authenticated email from the Cloudflare Access props.
+- Clarified the `create_link` MCP tool contract: the description now states that an existing destination URL returns the existing link with `duplicate: true` instead of failing, so callers no longer need to pre-check availability with `search_links`. The service-level duplicate flag is now propagated into the MCP response payload.
+
 ## 0.30.0 (2026-04-21)
 
 - Reshaped the dashboard KPI strip. The top row is now four cards (Total Links, Clicked Links, Total Clicks, Clicks/Day), each carrying a sparkline and a period-delta pill.
