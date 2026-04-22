@@ -50,7 +50,7 @@ jobs:
       - uses: actions/setup-node@v6
         if: steps.version.outputs.exists == 'false'
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org
 
       - name: Upgrade npm for trusted publishing
