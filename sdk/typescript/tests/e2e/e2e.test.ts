@@ -8,7 +8,7 @@
 // If either is missing the suite is skipped — these tests are not part
 // of the in-process unit run.
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { ShrtnrClient } from "../../src";
 
 const BASE_URL = process.env.SHRTNR_TEST_URL;
@@ -17,9 +17,13 @@ const API_KEY = process.env.SHRTNR_TEST_API_KEY;
 const describeE2E = BASE_URL && API_KEY ? describe : describe.skip;
 
 describeE2E("TS SDK e2e — live wrangler dev", () => {
-  const client = new ShrtnrClient({
-    baseUrl: BASE_URL as string,
-    auth: { apiKey: API_KEY as string },
+  let client: ShrtnrClient;
+
+  beforeAll(() => {
+    client = new ShrtnrClient({
+      baseUrl: BASE_URL as string,
+      auth: { apiKey: API_KEY as string },
+    });
   });
 
   it("health() reaches the live /_/health", async () => {

@@ -1,0 +1,101 @@
+name: CI
+
+# Runs the full test + lint matrix for the Worker and every SDK. Kept
+# separate from sdk-e2e.yml so the unit + typecheck jobs stay fast and
+# the heavier cross-SDK e2e suite lives on its own.
+#
+# Each job here is independent, so branch protection can require any
+# subset as a blocking check for PRs into main.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  worker:
+    name: Worker (yarn test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Typecheck
+        run: yarn tsc --noEmit
+      - name: Run vitest suite
+        run: yarn test --run
+
+  sdk-typescript:
+    name: SDK — TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Install dependencies
+        working-directory: sdk/typescript
+        run: yarn install --frozen-lockfile
+      - name: Test
+        working-directory: sdk/typescript
+        run: yarn test
+      - name: Build
+        working-directory: sdk/typescript
+        run: yarn build
+
+  sdk-python:
+    name: SDK — Python
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.12']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dev dependencies
+        working-directory: sdk/python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[dev]'
+      - name: Lint (ruff)
+        working-directory: sdk/python
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Typecheck (mypy --strict)
+        working-directory: sdk/python
+        run: mypy --strict src/shrtnr
+      - name: Test (pytest)
+        working-directory: sdk/python
+        run: pytest
+
+  sdk-dart:
+    name: SDK — Dart
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dart-lang/setup-dart@v1
+      - name: Install dependencies
+        working-directory: sdk/dart
+        run: dart pub get
+      - name: Analyze
+        working-directory: sdk/dart
+        run: dart analyze --fatal-infos
+      - name: Test
+        working-directory: sdk/dart
+        run: dart test
