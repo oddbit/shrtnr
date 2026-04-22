@@ -239,6 +239,9 @@ const sv: Translations = {
   "settings.sdkTitle": "TypeScript SDK",
   "settings.sdkDesc":
     "Hantera länkar från din egen kod. Skapa, uppdatera, inaktivera och läs klickanalys programmatiskt.",
+  "settings.sdkDartTitle": "Dart SDK",
+  "settings.sdkDartDesc":
+    "Hantera länkar från Dart- och Flutter-appar. Skapa, uppdatera, inaktivera och läs klickanalys programmatiskt.",
   "settings.mcpTitle": "MCP Server",
   "settings.mcpDesc":
     "Ge AI-assistenter åtkomst till dina länkar. Fungerar med Claude Desktop och GitHub Copilot i VS Code.",
@@ -247,6 +250,7 @@ const sv: Translations = {
   "settings.mcpNotConfigured":
     "Inte konfigurerad. Ange de nödvändiga hemligheterna för att aktivera OAuth för MCP-ändpunkten.",
   "settings.sdkLink": "npm-paket: @oddbit/shrtnr",
+  "settings.sdkDartLink": "pub.dev-paket: shrtnr",
   "settings.mcpDocsLink": "MCP-dokumentation",
   "settings.mcpSetupLink": "Installationsguide i README",
 

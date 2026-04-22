@@ -180,6 +180,22 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
             </div>
           </a>
           <a
+            href="https://oddb.it/shrtnr-pub-app"
+            target="_blank"
+            rel="noopener"
+            class="bento-card integration-card"
+          >
+            <div class="integration-card-head">
+              <span class="icon">terminal</span>
+              <span class="integration-card-title">{t("settings.sdkDartTitle")}</span>
+            </div>
+            <div class="integration-card-desc">{t("settings.sdkDartDesc")}</div>
+            <div class="integration-card-link">
+              <span class="icon">open_in_new</span>
+              {t("settings.sdkDartLink")}
+            </div>
+          </a>
+          <a
             href="https://oddb.it/mcp-documentation-app"
             target="_blank"
             rel="noopener"

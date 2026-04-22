@@ -239,6 +239,9 @@ const id: Translations = {
   "settings.sdkTitle": "TypeScript SDK",
   "settings.sdkDesc":
     "Kelola tautan dari kode Anda sendiri. Buat, perbarui, nonaktifkan, dan baca analitik klik secara programatik.",
+  "settings.sdkDartTitle": "Dart SDK",
+  "settings.sdkDartDesc":
+    "Kelola tautan dari aplikasi Dart dan Flutter. Buat, perbarui, nonaktifkan, dan baca analitik klik secara programatik.",
   "settings.mcpTitle": "MCP Server",
   "settings.mcpDesc":
     "Berikan asisten AI akses ke tautan Anda. Bekerja dengan Claude Desktop dan GitHub Copilot di VS Code.",
@@ -247,6 +250,7 @@ const id: Translations = {
   "settings.mcpNotConfigured":
     "Belum dikonfigurasi. Atur rahasia yang diperlukan untuk mengaktifkan OAuth pada endpoint MCP.",
   "settings.sdkLink": "Paket npm: @oddbit/shrtnr",
+  "settings.sdkDartLink": "Paket pub.dev: shrtnr",
   "settings.mcpDocsLink": "Dokumentasi MCP",
   "settings.mcpSetupLink": "Panduan pengaturan di README",
 
