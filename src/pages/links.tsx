@@ -6,6 +6,7 @@ import type { LinkWithSlugs } from "../types";
 import type { TranslateFn } from "../i18n";
 import { Delta } from "../components/delta";
 import { escHtml } from "../escape";
+import { fmtNumber } from "../i18n/format";
 
 function formatDate(ts: number, lang: string): string {
   const d = new Date(ts * 1000);
@@ -221,7 +222,7 @@ export const LinksPage: FC<Props> = ({
                         </td>
                         <td data-label={t("links.colClicksRange", { range: "30d" })} class="col-clicks">
                           <span class="col-clicks-cell">
-                            <span class="col-clicks-value">{link.total_clicks.toLocaleString()}</span>
+                            <span class="col-clicks-value">{fmtNumber(link.total_clicks, lang)}</span>
                           </span>
                         </td>
                         <td data-label={t("links.colCreated")} class="col-date">

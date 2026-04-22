@@ -98,10 +98,15 @@ function setLanguage(lang) {
 }
 
 // ---- Country names ----
-var countryNames = new Intl.DisplayNames([T['_lang'] || 'en'], { type: 'region' });
+var UI_LANG = T['_lang'] || 'en';
+var countryNames = new Intl.DisplayNames([UI_LANG], { type: 'region' });
 function countryName(code) {
   try { return countryNames.of(code) || code; } catch(e) { return code; }
 }
+
+// ---- Number formatting ----
+var numberFormatter = new Intl.NumberFormat(UI_LANG);
+function fmtCount(n) { return numberFormatter.format(n); }
 
 // ---- Date formatting ----
 function formatDate(ts) {
@@ -604,7 +609,7 @@ function updateComboHint() {
   var len = parseInt(document.getElementById('slug-length-input').value) || MIN_SLUG_LEN;
   var combos = Math.pow(CHARSET_SIZE, Math.max(len, MIN_SLUG_LEN));
   el.textContent = len >= MIN_SLUG_LEN
-    ? t('client.combos', {count: combos.toLocaleString()})
+    ? t('client.combos', {count: fmtCount(combos)})
     : t('client.minLength');
 }
 
@@ -740,7 +745,7 @@ function renderStatCard(containerId, items, color, opts) {
     var iconStr = opts.iconFn ? '<span class="icon">' + opts.iconFn(item.name) + '</span>' : '';
     html += '<div class="stat-row">';
     html += '<div class="name' + (opts.mono ? ' mono' : '') + '">' + flagStr + iconStr + '<span class="label">' + esc(name) + '</span></div>';
-    html += '<div class="right"><span class="count">' + item.count.toLocaleString() + '</span><span class="pct">' + pct + '%</span></div>';
+    html += '<div class="right"><span class="count">' + fmtCount(item.count) + '</span><span class="pct">' + pct + '%</span></div>';
     html += '<div class="bar"><div class="fill ' + color + '" style="width:' + pct + '%"></div></div>';
     html += '</div>';
     if (opts.subtitleFn) {
@@ -1008,10 +1013,10 @@ function pollDashboard() {
     var el;
 
     el = document.getElementById('dash-total-links');
-    if (el) el.textContent = String(d.total_links);
+    if (el) el.textContent = fmtCount(d.total_links);
 
     el = document.getElementById('dash-total-clicks');
-    if (el) el.textContent = String(d.total_clicks);
+    if (el) el.textContent = fmtCount(d.total_clicks);
 
     // Top countries
     var countriesCard = document.getElementById('dash-top-countries');
@@ -1036,7 +1041,7 @@ function pollDashboard() {
         var row = document.createElement('div');
         row.className = 'stat-row';
         row.innerHTML = '<div class="name"><span class="flag">' + esc(cc.name) + '</span><span class="label">' + esc(countryName(cc.name)) + '</span></div>' +
-          '<div class="right"><span class="count">' + cc.count.toLocaleString() + '</span><span class="pct">' + cpct + '%</span></div>' +
+          '<div class="right"><span class="count">' + fmtCount(cc.count) + '</span><span class="pct">' + cpct + '%</span></div>' +
           '<div class="bar"><div class="fill orange" style="width:' + cpct + '%"></div></div>';
         countriesCard.appendChild(row);
       }
@@ -1066,7 +1071,7 @@ function pollDashboard() {
           var row = document.createElement('div');
           row.className = 'stat-row';
           row.innerHTML = '<div class="name"><span class="label">' + esc(ref.name) + '</span></div>' +
-            '<div class="right"><span class="count">' + ref.count.toLocaleString() + '</span><span class="pct">' + rpct + '%</span></div>' +
+            '<div class="right"><span class="count">' + fmtCount(ref.count) + '</span><span class="pct">' + rpct + '%</span></div>' +
             '<div class="bar"><div class="fill mint" style="width:' + rpct + '%"></div></div>';
           sourcesCard.appendChild(row);
         }
@@ -1100,7 +1105,7 @@ function pollDashboard() {
           a.style.cssText = 'display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;cursor:pointer;overflow:hidden;min-width:0;text-decoration:none;color:inherit';
           a.innerHTML = '<span class="slug-chip" onclick="event.preventDefault();event.stopPropagation();copyUrl(\\'' + esc(slug) + '\\')" title="' + esc(t('dashboard.clickToCopy')) + '">' + esc(slug) + ' <span class="icon" style="font-size:14px">content_copy</span></span>' +
             '<span style="flex:1;min-width:0;font-size:0.8rem;color:var(--color-text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(link.url) + '</span>' +
-            '<span style="font-family:var(--font-family-display);font-weight:700;color:var(--color-accent);flex-shrink:0">' + link.total_clicks + '</span>';
+            '<span style="font-family:var(--font-family-display);font-weight:700;color:var(--color-accent);flex-shrink:0">' + fmtCount(link.total_clicks) + '</span>';
           recentCard.appendChild(a);
         }
       }
@@ -1137,7 +1142,7 @@ function pollDashboard() {
           a.className = 'top-link-row';
           a.innerHTML = '<div class="stat-row">' +
             '<div class="name mono"><span class="label">' + esc(tSlug) + '</span></div>' +
-            '<div class="right"><span class="count">' + tLink.total_clicks.toLocaleString() + '</span><span class="pct">' + tPct + '%</span></div>' +
+            '<div class="right"><span class="count">' + fmtCount(tLink.total_clicks) + '</span><span class="pct">' + tPct + '%</span></div>' +
             '<div class="bar"><div class="fill orange" style="width:' + tPct + '%"></div></div>' +
             '</div>' +
             '<div class="top-link-row-url">' + esc(tLink.url) + '</div>';

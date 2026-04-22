@@ -5,6 +5,7 @@ import type { FC } from "hono/jsx";
 import type { TranslateFn } from "../i18n";
 import type { TimelineRange } from "../types";
 import { SUPPORTED_LANGUAGES } from "../i18n";
+import { fmtNumber } from "../i18n/format";
 import { RANDOM_CHARSET } from "../slugs";
 import { MIN_SLUG_LENGTH } from "../constants";
 
@@ -24,7 +25,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
   const combos = Math.pow(RANDOM_CHARSET.length, Math.max(slugLength, MIN_SLUG_LENGTH));
   const comboHint =
     slugLength >= 3
-      ? t("settings.combos", { count: combos.toLocaleString() })
+      ? t("settings.combos", { count: fmtNumber(combos, lang) })
       : t("settings.minLength");
 
   return (

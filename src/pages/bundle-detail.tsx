@@ -9,6 +9,7 @@ import { BigChart } from "../components/big-chart";
 import { RangePicker } from "../components/range-picker";
 import { escHtml } from "../escape";
 import { formatAvgPerDay } from "../services/trends";
+import { fmtNumber } from "../i18n/format";
 
 function deviceIcon(name: string): string {
   if (name === "mobile") return "phone_android";
@@ -34,10 +35,11 @@ const StatBar: FC<{
   count: number;
   max: number;
   color: string;
+  lang: string;
   icon?: string;
   flag?: string;
   mono?: boolean;
-}> = ({ name, count, max, color, icon, flag, mono }) => {
+}> = ({ name, count, max, color, lang, icon, flag, mono }) => {
   const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   return (
     <div class="stat-row">
@@ -47,7 +49,7 @@ const StatBar: FC<{
         <span class="label">{name}</span>
       </div>
       <div class="right">
-        <span class="count">{count.toLocaleString()}</span>
+        <span class="count">{fmtNumber(count, lang)}</span>
         <span class="pct">{pct}%</span>
       </div>
       <div class="bar"><div class={`fill ${color}`} style={`width:${pct}%`} /></div>
@@ -179,7 +181,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
         </div>
         <div class="right">
           <div class="hero-metric accent">
-            <div class="n">{stats.total_clicks.toLocaleString()}</div>
+            <div class="n">{fmtNumber(stats.total_clicks, lang)}</div>
             <div class="l">{t("linkDetail.totalClicks")}</div>
           </div>
           <div class="hero-metric">
@@ -219,7 +221,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
                       {row.primary_slug}
                     </span>
                     <div class="bundle-link-count">
-                      <span class="count">{row.click_count.toLocaleString()}</span>
+                      <span class="count">{fmtNumber(row.click_count, lang)}</span>
                       <span class="pct">{row.pct_of_bundle}%</span>
                     </div>
                     {isOwner && (
@@ -262,7 +264,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
               <div class="timeline-head-main">
                 <div class="bento-label">{t("linkDetail.clicksOverTime")}</div>
                 <div class="timeline-total-row">
-                  <span class="timeline-total">{stats.total_clicks}</span>
+                  <span class="timeline-total">{fmtNumber(stats.total_clicks, lang)}</span>
                   <span class="timeline-total-label">{t("linkDetail.clicksInRange")}</span>
                 </div>
               </div>
@@ -287,6 +289,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
                     count={c.count}
                     max={countryTotal || 1}
                     color="orange"
+                    lang={lang}
                   />
                 ))
               ) : (
@@ -306,6 +309,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
                     max={refTotal || 1}
                     color="mint"
                     mono
+                    lang={lang}
                   />
                 ))
               ) : (
@@ -327,6 +331,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
                     max={modeTotal || 1}
                     color="orange"
                     icon={linkModeIcon(m.name)}
+                    lang={lang}
                   />
                 ))
               ) : (
@@ -346,6 +351,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
                     max={devTotal || 1}
                     color="orange"
                     icon={deviceIcon(d.name)}
+                    lang={lang}
                   />
                 ))
               ) : (
@@ -365,6 +371,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
                     max={osTotal || 1}
                     color="mint"
                     icon={osIcon(o.name)}
+                    lang={lang}
                   />
                 ))
               ) : (
@@ -383,6 +390,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
                     count={br.count}
                     max={brTotal || 1}
                     color="mint"
+                    lang={lang}
                   />
                 ))
               ) : (

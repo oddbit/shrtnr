@@ -7,17 +7,19 @@ import type { TranslateFn } from "../i18n";
 import { countryName } from "../country";
 import { escHtml } from "../escape";
 import { formatAvgPerDay } from "../services/trends";
+import { fmtNumber } from "../i18n/format";
 
 const StatBar: FC<{
   name: string;
   count: number;
   max: number;
   color: string;
+  lang: string;
   icon?: string;
   flag?: string;
   mono?: boolean;
   subtitle?: string;
-}> = ({ name, count, max, color, icon, flag, mono, subtitle }) => {
+}> = ({ name, count, max, color, lang, icon, flag, mono, subtitle }) => {
   const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   return (
     <div>
@@ -28,7 +30,7 @@ const StatBar: FC<{
           <span class="label">{name}</span>
         </div>
         <div class="right">
-          <span class="count">{count.toLocaleString()}</span>
+          <span class="count">{fmtNumber(count, lang)}</span>
           <span class="pct">{pct}%</span>
         </div>
         <div class="bar"><div class={`fill ${color}`} style={`width:${pct}%`} /></div>
@@ -284,7 +286,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
         </div>
         <div class="right">
           <div class="hero-metric accent">
-            <div class="n" id="hero-total-clicks">{analytics.total_clicks}</div>
+            <div class="n" id="hero-total-clicks">{fmtNumber(analytics.total_clicks, lang)}</div>
             <div class="l">{t("linkDetail.totalClicks")}</div>
           </div>
           <div class="hero-metric">
@@ -407,7 +409,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
               <div class="timeline-head-main">
                 <div class="bento-label">{t("linkDetail.clicksOverTime")}</div>
                 <div class="timeline-total-row">
-                  <span class="timeline-total" id="timeline-total">{analytics.total_clicks}</span>
+                  <span class="timeline-total" id="timeline-total">{fmtNumber(analytics.total_clicks, lang)}</span>
                   <span class="timeline-total-label">{t("linkDetail.clicksInRange")}</span>
                 </div>
               </div>
@@ -428,6 +430,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                     count={c.count}
                     max={analytics.countries.reduce((s, i) => s + i.count, 0)}
                     color="orange"
+                    lang={lang}
                   />
                 ))
               ) : (
@@ -447,6 +450,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                     max={analytics.referrer_hosts.reduce((s, i) => s + i.count, 0)}
                     color="mint"
                     mono
+                    lang={lang}
                   />
                 ))
               ) : (
@@ -468,6 +472,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                     max={analytics.link_modes.reduce((s, i) => s + i.count, 0)}
                     color="orange"
                     icon={linkModeIcon(m.name)}
+                    lang={lang}
                   />
                 ))
               ) : (
@@ -487,6 +492,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                     max={analytics.devices.reduce((s, i) => s + i.count, 0)}
                     color="orange"
                     icon={deviceIcon(d.name)}
+                    lang={lang}
                   />
                 ))
               ) : (
@@ -506,6 +512,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                     max={analytics.os.reduce((s, i) => s + i.count, 0)}
                     color="mint"
                     icon={osIcon(o.name)}
+                    lang={lang}
                   />
                 ))
               ) : (
@@ -524,6 +531,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                     count={b.count}
                     max={analytics.browsers.reduce((s, i) => s + i.count, 0)}
                     color="mint"
+                    lang={lang}
                   />
                 ))
               ) : (

@@ -9,15 +9,17 @@ import { KpiCard } from "../components/kpi-card";
 import { RangePicker } from "../components/range-picker";
 import { BigChart } from "../components/big-chart";
 import { escHtml } from "../escape";
+import { fmtNumber } from "../i18n/format";
 
 const StatBar: FC<{
   name: string;
   count: number;
   max: number;
   color: string;
+  lang: string;
   flag?: string;
   mono?: boolean;
-}> = ({ name, count, max, color, flag, mono }) => {
+}> = ({ name, count, max, color, lang, flag, mono }) => {
   const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   return (
     <div class="stat-row">
@@ -26,7 +28,7 @@ const StatBar: FC<{
         <span class="label">{name}</span>
       </div>
       <div class="right">
-        <span class="count">{count.toLocaleString()}</span>
+        <span class="count">{fmtNumber(count, lang)}</span>
         <span class="pct">{pct}%</span>
       </div>
       <div class="bar"><div class={`fill ${color}`} style={`width:${pct}%`} /></div>
@@ -81,7 +83,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
           id="dash-kpi-links"
           icon="link"
           label={t("dashboard.totalLinks")}
-          value={d.total_links}
+          value={fmtNumber(d.total_links, lang)}
           valueId="dash-total-links"
           deltaPct={d.new_links_delta}
           deltaId="dash-links-delta"
@@ -91,7 +93,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
           id="dash-kpi-clicked-links"
           icon="ads_click"
           label={t("dashboard.clickedLinks")}
-          value={d.clicked_links}
+          value={fmtNumber(d.clicked_links, lang)}
           valueId="dash-clicked-links"
           deltaPct={d.clicked_links_delta}
           deltaId="dash-clicked-links-delta"
@@ -101,7 +103,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
           id="dash-kpi-clicks"
           icon="mouse"
           label={t("dashboard.totalClicks")}
-          value={d.total_clicks}
+          value={fmtNumber(d.total_clicks, lang)}
           valueId="dash-total-clicks"
           deltaPct={d.total_clicks_delta}
           deltaId="dash-clicks-delta"
@@ -111,7 +113,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
           id="dash-kpi-clicks-per-day"
           icon="speed"
           label={t("dashboard.clicksPerDay")}
-          value={d.clicks_per_day}
+          value={fmtNumber(d.clicks_per_day, lang)}
           valueId="dash-clicks-per-day"
           deltaPct={d.clicks_per_day_delta}
           deltaId="dash-clicks-per-day-delta"
@@ -133,7 +135,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
         <div class="bento-card" id="dash-top-countries">
           <div class="bento-head">
             <div class="bento-label">{t("dashboard.topCountries")}</div>
-            <div class="bento-count">{d.num_countries.toLocaleString()}</div>
+            <div class="bento-count">{fmtNumber(d.num_countries, lang)}</div>
           </div>
           {d.top_countries.length === 0 ? (
             <div class="muted-hint">{t("dashboard.noData")}</div>
@@ -145,6 +147,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
                 count={c.count}
                 max={topCountryMax}
                 color="orange"
+                lang={lang}
               />
             ))
           )}
@@ -165,7 +168,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
                       <span class="label">{slug}</span>
                     </div>
                     <div class="right">
-                      <span class="count">{link.total_clicks.toLocaleString()}</span>
+                      <span class="count">{fmtNumber(link.total_clicks, lang)}</span>
                       <span class="pct">{pct}%</span>
                     </div>
                     <div class="bar"><div class="fill orange" style={`width:${pct}%`} /></div>
@@ -190,6 +193,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
                 count={r.count}
                 max={topRefMax}
                 color="mint"
+                lang={lang}
               />
             ))
           )}
