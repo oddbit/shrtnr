@@ -1,0 +1,57 @@
+name: SDK e2e
+
+# Runs the cross-SDK e2e harness against a local wrangler dev
+# emulator. Every SDK hits real routes with a real bearer token seeded
+# directly into miniflare D1. If any SDK method points at a URL that no
+# longer exists on the server, or the response shape drifts, the
+# corresponding SDK suite fails.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: sdk-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: dart-lang/setup-dart@v1
+
+      - name: Install root dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Install TypeScript SDK dependencies
+        working-directory: sdk/typescript
+        run: yarn install --frozen-lockfile
+
+      - name: Install Python SDK dev dependencies
+        working-directory: sdk/python
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e '.[dev]'
+
+      - name: Install Dart SDK dependencies
+        working-directory: sdk/dart
+        run: dart pub get
+
+      - name: Run cross-SDK e2e harness
+        run: scripts/test-sdks-e2e.sh
