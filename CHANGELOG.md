@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.31.2 (2026-04-22)
+
+- Fixed the "avg/day" stat on link detail and bundle detail computing against lifetime data instead of the selected range window, which made the average look artificially low on short ranges.
+- Thousands separators on admin pages now follow the UI language (e.g. `1,234` in English, `1 234` in Swedish, `1.234` in Indonesian) instead of the browser locale.
+- Trimmed the bundles list card: the trend delta moves into the card header, the separate "vs. prev" column and the top-links preview are gone, and the intro explainer card is dropped since the detail page already covers it.
+
 ## 0.31.1 (2026-04-22)
 
 - Bundle detail "Add a link to this bundle" picker now hides links that are already in the bundle, so the choices shown are only the ones you can actually add. When every link is already attached, the picker shows an empty-state hint instead of a blank list.
