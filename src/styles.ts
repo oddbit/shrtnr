@@ -806,22 +806,6 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 .accent-blue   { --bundle-accent: #4a90e2; --bundle-accent-tint: rgba(74,144,226,0.16); }
 .accent-purple { --bundle-accent: #9b6bd6; --bundle-accent-tint: rgba(155,107,214,0.16); }
 
-/* Intro card on the bundles list page. */
-.bundles-intro {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-  margin-bottom: 1.25rem;
-}
-.bundles-intro-icon {
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  padding: 0.6rem;
-  color: var(--color-accent);
-}
-.bundles-intro-title { font-weight: 600; margin-bottom: 0.25rem; }
-.bundles-intro-body { color: var(--color-text-subtle); font-size: 0.9rem; line-height: 1.5; }
-
 /* Filter chips row on the bundles list page. */
 .bundle-filter-row {
   display: flex;
@@ -905,6 +889,8 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+.bundle-card-delta { margin-left: auto; display: inline-flex; }
+.bundle-archived-badge + .bundle-card-delta { margin-left: 0.5rem; }
 
 .bundle-card-desc {
   color: var(--color-text-subtle);
@@ -914,7 +900,7 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 
 .bundle-card-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.5rem;
   padding: 0.5rem 0;
 }
@@ -926,13 +912,6 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   color: var(--color-text);
 }
 .bundle-card-stat-value.muted { color: var(--color-text-subtle); }
-.bundle-card-stat-placeholder {
-  color: var(--color-text-subtle);
-  font-size: 0.85rem;
-  font-weight: 500;
-  line-height: 1.35rem;
-  align-self: start;
-}
 .bundle-card-stat-label {
   font-size: 0.7rem;
   color: var(--color-text-subtle);
@@ -941,27 +920,7 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 }
 
 .bundle-card-spark { height: 34px; }
-
-.bundle-card-toplinks {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  border-top: 1px dashed var(--color-border);
-  padding-top: 0.6rem;
-}
-.bundle-card-toplink {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-family: var(--font-family-mono);
-  font-size: 0.85rem;
-}
-.bundle-card-toplink-count { color: var(--color-text-subtle); }
-.bundle-card-toplink-more {
-  font-size: 0.75rem;
-  color: var(--color-text-subtle);
-  font-style: italic;
-}
+.bundle-card-spark svg { width: 100%; height: 100%; display: block; }
 
 /* "+ New bundle" tile at the end of the grid. */
 .bundle-card-new {

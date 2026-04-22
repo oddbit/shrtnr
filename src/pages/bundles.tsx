@@ -6,6 +6,7 @@ import type { BundleWithSummary } from "../types";
 import type { TranslateFn } from "../i18n";
 import { Sparkline } from "../components/sparkline";
 import { Delta } from "../components/delta";
+import { fmtNumber } from "../i18n/format";
 
 type Props = {
   bundles: BundleWithSummary[];
@@ -14,7 +15,7 @@ type Props = {
   filter: "active" | "archived" | "all";
 };
 
-export const BundlesPage: FC<Props> = ({ bundles, t, filter }) => {
+export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter }) => {
   const filterLinks = [
     { id: "active", label: t("bundles.filterActive") },
     { id: "archived", label: t("bundles.filterArchived") },
@@ -27,16 +28,6 @@ export const BundlesPage: FC<Props> = ({ bundles, t, filter }) => {
         <div>
           <div class="page-title">{t("bundles.title")}</div>
           <div class="page-subtitle">{t("bundles.subtitle")}</div>
-        </div>
-      </div>
-
-      <div class="bento-card bundles-intro" id="bundles-intro">
-        <div class="bundles-intro-icon">
-          <span class="icon icon-lg">lightbulb</span>
-        </div>
-        <div>
-          <div class="bundles-intro-title">{t("bundles.introTitle")}</div>
-          <div class="bundles-intro-body">{t("bundles.introBody")}</div>
         </div>
       </div>
 
@@ -73,20 +64,17 @@ export const BundlesPage: FC<Props> = ({ bundles, t, filter }) => {
                 </span>
                 <div class="bundle-card-title">{b.name}</div>
                 {b.archived_at && <span class="bundle-archived-badge">{t("bundles.archived")}</span>}
+                {b.delta_pct !== undefined && (
+                  <span class="bundle-card-delta">
+                    <Delta pct={b.delta_pct} />
+                  </span>
+                )}
               </div>
               {b.description && <div class="bundle-card-desc">{b.description}</div>}
               <div class="bundle-card-stats">
                 <div class="bundle-card-stat">
-                  <div class="bundle-card-stat-value">{b.total_clicks.toLocaleString()}</div>
+                  <div class="bundle-card-stat-value">{fmtNumber(b.total_clicks, lang)}</div>
                   <div class="bundle-card-stat-label">{t("bundles.totalClicks")}</div>
-                </div>
-                <div class="bundle-card-stat">
-                  {b.delta_pct !== undefined ? (
-                    <Delta pct={b.delta_pct} />
-                  ) : (
-                    <div class="bundle-card-stat-placeholder">{t("bundles.noBaseline")}</div>
-                  )}
-                  <div class="bundle-card-stat-label">{t("bundles.vsPrev")}</div>
                 </div>
                 <div class="bundle-card-stat">
                   <div class="bundle-card-stat-value">{b.link_count}</div>
@@ -96,21 +84,6 @@ export const BundlesPage: FC<Props> = ({ bundles, t, filter }) => {
               {b.sparkline.length > 0 && (
                 <div class="bundle-card-spark">
                   <Sparkline values={b.sparkline} />
-                </div>
-              )}
-              {b.top_links.length > 0 && (
-                <div class="bundle-card-toplinks">
-                  {b.top_links.map((tl) => (
-                    <div class="bundle-card-toplink">
-                      <span class="slug-chip">{tl.slug}</span>
-                      <span class="bundle-card-toplink-count">{tl.click_count.toLocaleString()}</span>
-                    </div>
-                  ))}
-                  {b.link_count > b.top_links.length && (
-                    <div class="bundle-card-toplink-more">
-                      {t("bundles.plusMore", { count: b.link_count - b.top_links.length })}
-                    </div>
-                  )}
                 </div>
               )}
             </a>
