@@ -17,7 +17,6 @@ const en = {
   // Topbar (breadcrumb + user chip, rendered above every admin page)
   "topbar.breadcrumb": "Breadcrumb",
   "topbar.workspace": "shrtnr",
-  "topbar.currentUser": "Current user",
 
   // Dashboard
   "dashboard.title": "Dashboard",

@@ -213,9 +213,8 @@ app.get("/_/admin/dashboard", async (c) => {
         top_countries: [],
         top_referrers: [],
       };
-  const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="dashboard" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
+    <Layout active="dashboard" theme={theme} t={t} lang={lang} translations={translations}>
       <DashboardPage stats={stats} t={t} lang={lang} range={range} />
     </Layout>,
   );
@@ -239,9 +238,8 @@ app.get("/_/admin/links", async (c) => {
     : legacyShowDisabled
       ? "all"
       : "active";
-  const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="links" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
+    <Layout active="links" theme={theme} t={t} lang={lang} translations={translations}>
       <LinksPage
         links={links}
         sort={sort}
@@ -270,9 +268,8 @@ app.get("/_/admin/links/:id", async (c) => {
   ]);
   const analytics = analyticsResult.ok ? analyticsResult.data : { total_clicks: 0, countries: [], referrers: [], referrer_hosts: [], devices: [], os: [], browsers: [], link_modes: [], channels: [], clicks_over_time: [], slug_clicks: [] };
   const bundles = bundlesResult.ok ? bundlesResult.data : [];
-  const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="links" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
+    <Layout active="links" theme={theme} t={t} lang={lang} translations={translations}>
       <LinkDetailPage link={linkResult.data} analytics={analytics} bundles={bundles} t={t} lang={lang} identity={identity} initialRange={initialRange} />
     </Layout>,
   );
@@ -288,9 +285,8 @@ app.get("/_/admin/bundles", async (c) => {
     archivedOnly: filter === "archived",
   });
   const bundles = listResult.ok ? listResult.data : [];
-  const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="bundles" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
+    <Layout active="bundles" theme={theme} t={t} lang={lang} translations={translations}>
       <BundlesPage bundles={bundles} t={t} lang={lang} filter={filter} />
     </Layout>,
   );
@@ -306,9 +302,8 @@ app.get("/_/admin/bundles/:id", async (c) => {
   const range = (validRanges.has(rangeParam || "") ? rangeParam : (defaultRange ?? "30d")) as TimelineRange;
   const statsResult = await getBundleAnalytics(c.env, id, range, identity);
   if (!statsResult.ok) return notFoundResponse();
-  const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="bundles" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
+    <Layout active="bundles" theme={theme} t={t} lang={lang} translations={translations}>
       <BundleDetailPage stats={statsResult.data} identity={identity} t={t} lang={lang} range={range} />
     </Layout>,
   );
@@ -319,9 +314,8 @@ app.get("/_/admin/keys", async (c) => {
   const { theme, t, lang, translations } = await getPageData(c, identity);
   const keysResult = await listAllApiKeys(c.env, identity);
   const keys = keysResult.ok ? keysResult.data : [];
-  const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="keys" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
+    <Layout active="keys" theme={theme} t={t} lang={lang} translations={translations}>
       <KeysPage keys={keys as any} t={t} lang={lang} />
     </Layout>,
   );
@@ -333,7 +327,7 @@ app.get("/_/admin/settings", async (c) => {
   const mcpConfigured = Boolean(c.env.MCP_ACCESS_AUD && c.env.ACCESS_JWKS_URL);
   const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="settings" theme={theme} t={t} lang={lang} translations={translations} userEmail={userEmail}>
+    <Layout active="settings" theme={theme} t={t} lang={lang} translations={translations}>
       <SettingsPage theme={theme} slugLength={slugLength} lang={lang} defaultRange={defaultRange} t={t} mcpConfigured={mcpConfigured} userEmail={userEmail} />
     </Layout>,
   );

@@ -19,7 +19,6 @@ const sv: Translations = {
   // Topbar (breadcrumb + user chip, rendered above every admin page)
   "topbar.breadcrumb": "Brödsmulor",
   "topbar.workspace": "shrtnr",
-  "topbar.currentUser": "Aktuell användare",
 
   // Dashboard
   "dashboard.title": "Översikt",

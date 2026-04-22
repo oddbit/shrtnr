@@ -19,7 +19,6 @@ const id: Translations = {
   // Topbar (breadcrumb + user chip, rendered above every admin page)
   "topbar.breadcrumb": "Remah roti",
   "topbar.workspace": "shrtnr",
-  "topbar.currentUser": "Pengguna saat ini",
 
   // Dashboard
   "dashboard.title": "Dasbor",

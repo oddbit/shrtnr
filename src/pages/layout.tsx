@@ -16,7 +16,6 @@ type LayoutProps = {
   lang?: string;
   t: TranslateFn;
   translations: Translations;
-  userEmail?: string | null;
 };
 
 export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
@@ -25,7 +24,6 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
   lang,
   t,
   translations,
-  userEmail,
   children,
 }) => {
   const year = new Date().getFullYear();
