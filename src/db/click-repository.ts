@@ -1195,7 +1195,8 @@ export class ClickRepository {
       .prepare(
         `SELECT bl.bundle_id as bundle_id, COUNT(*) as cnt
          FROM clicks c
-         JOIN bundle_links bl ON bl.link_id = (SELECT link_id FROM slugs WHERE slug = c.slug)
+         JOIN slugs s ON s.slug = c.slug
+         JOIN bundle_links bl ON bl.link_id = s.link_id
          WHERE bl.bundle_id IN (${phBundles})
          GROUP BY bl.bundle_id`,
       )
@@ -1211,7 +1212,8 @@ export class ClickRepository {
         .prepare(
           `SELECT bl.bundle_id as bundle_id, COUNT(*) as cnt
            FROM clicks c
-           JOIN bundle_links bl ON bl.link_id = (SELECT link_id FROM slugs WHERE slug = c.slug)
+           JOIN slugs s ON s.slug = c.slug
+           JOIN bundle_links bl ON bl.link_id = s.link_id
            WHERE c.clicked_at >= ? AND bl.bundle_id IN (${phBundles})
            GROUP BY bl.bundle_id`,
         )
@@ -1221,7 +1223,8 @@ export class ClickRepository {
         .prepare(
           `SELECT bl.bundle_id as bundle_id, COUNT(*) as cnt
            FROM clicks c
-           JOIN bundle_links bl ON bl.link_id = (SELECT link_id FROM slugs WHERE slug = c.slug)
+           JOIN slugs s ON s.slug = c.slug
+           JOIN bundle_links bl ON bl.link_id = s.link_id
            WHERE c.clicked_at >= ? AND c.clicked_at < ? AND bl.bundle_id IN (${phBundles})
            GROUP BY bl.bundle_id`,
         )
@@ -1239,7 +1242,8 @@ export class ClickRepository {
       .prepare(
         `SELECT bl.bundle_id as bundle_id, ${sparkSpec.bucketExpr("c.clicked_at")} as label, COUNT(*) as value
          FROM clicks c
-         JOIN bundle_links bl ON bl.link_id = (SELECT link_id FROM slugs WHERE slug = c.slug)
+         JOIN slugs s ON s.slug = c.slug
+         JOIN bundle_links bl ON bl.link_id = s.link_id
          WHERE c.clicked_at >= ? AND bl.bundle_id IN (${phBundles})
          GROUP BY bl.bundle_id, label
          ORDER BY label ASC`,
