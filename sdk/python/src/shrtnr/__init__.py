@@ -7,6 +7,9 @@ Exposes a synchronous :class:`Shrtnr` and asynchronous :class:`AsyncShrtnr`
 client with identical method surfaces. See README.md for usage.
 """
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
+
 from .async_client import AsyncShrtnr
 from .client import Shrtnr
 from .errors import ShrtnrError
@@ -36,7 +39,13 @@ from .models import (
     UpdateLinkOptions,
 )
 
-__version__ = "0.1.0"
+# Derive __version__ from installed package metadata so pyproject.toml is
+# the single source of truth. Falls back when running from a source tree
+# that has not been installed (e.g. scratch checkouts).
+try:
+    __version__ = _pkg_version("shrtnr")
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"
 
 __all__ = [
     "AsyncShrtnr",
