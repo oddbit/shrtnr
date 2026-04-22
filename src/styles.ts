@@ -791,8 +791,7 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   .pagination { flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
   .bundle-grid { grid-template-columns: 1fr; }
   .detail-analytics { grid-template-columns: 1fr; }
-  .bundle-link-row { grid-template-columns: auto 1fr; grid-template-rows: auto auto; gap: 0.5rem; }
-  .bundle-link-row .bundle-link-bar { display: none; }
+  .bundle-link-head { gap: 0.5rem; }
   .bundle-hero-headline { font-size: 1.5rem; }
 }
 
@@ -1061,31 +1060,26 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   gap: 0.25rem;
 }
 .bundle-link-row {
-  display: grid;
-  grid-template-columns: auto minmax(160px, 1.2fr) minmax(120px, 1.4fr) auto auto;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.5rem 0.5rem;
+  display: block;
+  padding: 0.5rem 0.5rem 0.4rem;
   border-radius: var(--radius-sm);
   transition: background 0.15s;
+  text-decoration: none;
+  color: inherit;
 }
 .bundle-link-row:hover { background: var(--color-surface); }
-
-.bundle-link-meta { min-width: 0; }
-.bundle-link-label {
-  font-weight: 500;
-  color: var(--color-text);
-  text-decoration: none;
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.bundle-link-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.3rem;
 }
-.bundle-link-label .muted { color: var(--color-text-subtle); font-style: italic; font-weight: 400; }
+.bundle-link-head .slug-chip { margin-right: auto; }
 .bundle-link-url {
   color: var(--color-text-subtle);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-family: var(--font-family-mono);
+  margin-top: 0.25rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

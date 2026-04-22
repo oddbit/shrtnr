@@ -222,43 +222,40 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
             {stats.per_link.map((row) => {
               const pct = maxLinkClicks > 0 ? Math.round((row.click_count / maxLinkClicks) * 100) : 0;
               return (
-                <div class="bundle-link-row">
-                  <span class={`slug-chip accent-${b.accent}`}>
-                    <span class="icon">fiber_manual_record</span>
-                    {row.primary_slug}
-                  </span>
-                  <div class="bundle-link-meta">
-                    <a href={`/_/admin/links/${row.link_id}`} class="bundle-link-label">
-                      {row.label || <span class="muted">({t("linkDetail.setLabel")})</span>}
-                    </a>
-                    <div class="bundle-link-url">{row.url}</div>
+                <a href={`/_/admin/links/${row.link_id}`} class="bundle-link-row">
+                  <div class="bundle-link-head">
+                    <span class={`slug-chip accent-${b.accent}`}>
+                      <span class="icon">fiber_manual_record</span>
+                      {row.primary_slug}
+                    </span>
+                    <div class="bundle-link-count">
+                      <span class="count">{row.click_count.toLocaleString()}</span>
+                      {row.delta_pct !== undefined && <Delta pct={row.delta_pct} />}
+                    </div>
+                    <div class="bundle-link-actions">
+                      <button
+                        class="btn-icon"
+                        onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(row.primary_slug)}')`}
+                        title={t("linkDetail.copy")}
+                      >
+                        <span class="icon">content_copy</span>
+                      </button>
+                      {isOwner && (
+                        <button
+                          class="btn-icon btn-icon-danger"
+                          onclick={`event.preventDefault();event.stopPropagation();removeLinkFromBundle(${b.id}, ${row.link_id})`}
+                          title={t("bundles.removeFromBundle")}
+                        >
+                          <span class="icon">close</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div class="bundle-link-bar">
                     <div class="bundle-link-bar-fill" style={`width:${pct}%`} />
                   </div>
-                  <div class="bundle-link-count">
-                    <span class="count">{row.click_count.toLocaleString()}</span>
-                    {row.delta_pct !== undefined && <Delta pct={row.delta_pct} />}
-                  </div>
-                  <div class="bundle-link-actions">
-                    <button
-                      class="btn-icon"
-                      onclick={`event.preventDefault();copyUrl('${escHtml(row.primary_slug)}')`}
-                      title={t("linkDetail.copy")}
-                    >
-                      <span class="icon">content_copy</span>
-                    </button>
-                    {isOwner && (
-                      <button
-                        class="btn-icon btn-icon-danger"
-                        onclick={`removeLinkFromBundle(${b.id}, ${row.link_id})`}
-                        title={t("bundles.removeFromBundle")}
-                      >
-                        <span class="icon">close</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
+                  <div class="bundle-link-url">{row.url}</div>
+                </a>
               );
             })}
           </div>
