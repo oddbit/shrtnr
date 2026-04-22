@@ -70,6 +70,24 @@ describe("ClickRepository.getBundleStats", () => {
     expect(id?.count).toBe(1);
   });
 
+  it("counts countries_reached beyond the top-10 countries list cap", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "aaa", createdBy: "a@b" });
+    const bundle = await BundleRepository.create(env.DB, { name: "OSS", createdBy: "a@b" });
+    await BundleRepository.addLink(env.DB, bundle.id, link.id);
+
+    // 12 distinct countries, one click each. The countries list is capped at
+    // LIMIT 10, but countries_reached must reflect the full distinct count.
+    const now = Math.floor(Date.now() / 1000);
+    const codes = ["US", "ID", "SE", "DE", "FR", "GB", "JP", "SG", "BR", "IN", "CA", "AU"];
+    for (let i = 0; i < codes.length; i++) {
+      await recordClick(link.slugs[0].slug, now - (i + 1), { country: codes[i] });
+    }
+
+    const stats = (await ClickRepository.getBundleStats(env.DB, bundle.id, "30d"))!;
+    expect(stats.countries).toHaveLength(10);
+    expect(stats.countries_reached).toBe(12);
+  });
+
   it("sorts per_link by click count descending and computes pct_of_bundle", async () => {
     const link1 = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "aaa", createdBy: "a@b" });
     const link2 = await LinkRepository.create(env.DB, { url: "https://b.com", slug: "bbb", createdBy: "a@b" });

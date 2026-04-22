@@ -876,6 +876,7 @@ export class ClickRepository {
     const [
       totalRow,
       countries,
+      countriesReachedRow,
       referrerHosts,
       devices,
       osList,
@@ -887,6 +888,7 @@ export class ClickRepository {
     ] = await Promise.all([
       db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where}`).bind(...binds).first<{ cnt: number }>(),
       db.prepare(`SELECT country as name, COUNT(*) as count FROM clicks WHERE ${where} AND country IS NOT NULL GROUP BY country ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT COUNT(DISTINCT country) as cnt FROM clicks WHERE ${where} AND country IS NOT NULL`).bind(...binds).first<{ cnt: number }>(),
       db.prepare(`SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT device_type as name, COUNT(*) as count FROM clicks WHERE ${where} AND device_type IS NOT NULL GROUP BY device_type ORDER BY count DESC`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT os as name, COUNT(*) as count FROM clicks WHERE ${where} AND os IS NOT NULL GROUP BY os ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
@@ -965,7 +967,7 @@ export class ClickRepository {
       top_performer: top
         ? { slug: top.primary_slug, label: top.label, click_count: top.click_count, pct_of_bundle: top.pct_of_bundle }
         : undefined,
-      countries_reached: countriesList.length,
+      countries_reached: countriesReachedRow?.cnt ?? 0,
       top_country: topCountry,
       timeline,
       countries: countriesList,
