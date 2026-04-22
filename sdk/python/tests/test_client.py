@@ -192,7 +192,9 @@ def test_list_links_by_owner_encodes_owner(client: Shrtnr) -> None:
 @respx.mock
 def test_add_custom_slug(client: Shrtnr) -> None:
     route = respx.post(f"{BASE_URL}/_/api/links/1/slugs").mock(
-        return_value=httpx.Response(201, json=make_slug_dict(link_id=1, slug="custom", is_custom=1)),
+        return_value=httpx.Response(
+            201, json=make_slug_dict(link_id=1, slug="custom", is_custom=1)
+        ),
     )
     client.add_custom_slug(1, "custom")
     body = json.loads(route.calls[0].request.content)
@@ -206,7 +208,8 @@ def test_add_custom_slug(client: Shrtnr) -> None:
 def test_disable_slug(client: Shrtnr) -> None:
     route = respx.post(f"{BASE_URL}/_/api/links/1/slugs/abc/disable").mock(
         return_value=httpx.Response(
-            200, json=make_slug_dict(link_id=1, slug="abc", is_custom=1, disabled_at=1),
+            200,
+            json=make_slug_dict(link_id=1, slug="abc", is_custom=1, disabled_at=1),
         ),
     )
     client.disable_slug(1, "abc")

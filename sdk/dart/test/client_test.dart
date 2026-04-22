@@ -358,7 +358,7 @@ void main() {
     test('POSTs /_/api/bundles with body', () async {
       final m = _mock(status: 201, body: _bundleDict(name: 'B', accent: 'blue'));
       await m.client.createBundle(
-        const CreateBundleOptions(name: 'B', accent: 'blue'),
+        const CreateBundleOptions(name: 'B', accent: BundleAccent.blue),
       );
       expect(m.capture.request!.url.toString(), '$_base/_/api/bundles');
       expect(m.capture.request!.method, 'POST');
