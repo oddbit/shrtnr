@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- Document every bundle method in the README with a short description and usage snippet.
+- Extend `example/shrtnr_example.dart` to create a bundle, attach the example link, read bundle analytics, and clean up.
+
 ## 0.2.0
 
 ### New feature: Bundles
