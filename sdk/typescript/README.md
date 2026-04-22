@@ -187,6 +187,112 @@ Check service health and version.
 const health = await client.health();
 ```
 
+### `createBundle`
+
+Create a bundle to group related links. Returns the new `Bundle`.
+
+```ts
+const bundle = await client.createBundle({
+  name: "Spring campaign",
+  description: "Email, social, and paid drops",
+  icon: "sparkles",
+  accent: "purple",
+});
+```
+
+### `listBundles`
+
+List bundles with summary stats: lifetime click total, 30-day sparkline, and top links. Archived bundles are hidden by default.
+
+```ts
+const bundles = await client.listBundles();
+const withArchived = await client.listBundles({ archived: true });
+```
+
+### `getBundle`
+
+Fetch a single bundle's metadata by ID.
+
+```ts
+const bundle = await client.getBundle(42);
+```
+
+### `updateBundle`
+
+Rename a bundle or change its description, icon, or accent.
+
+```ts
+const updated = await client.updateBundle(42, {
+  name: "Spring 2026 campaign",
+  accent: "green",
+});
+```
+
+### `deleteBundle`
+
+Permanently delete a bundle. Member links are preserved, only the grouping is discarded.
+
+```ts
+await client.deleteBundle(42);
+```
+
+### `archiveBundle`
+
+Archive a bundle so it drops out of the default `listBundles` response. Member links keep working.
+
+```ts
+await client.archiveBundle(42);
+```
+
+### `unarchiveBundle`
+
+Restore a previously archived bundle.
+
+```ts
+await client.unarchiveBundle(42);
+```
+
+### `getBundleAnalytics`
+
+Read combined analytics across every link in the bundle: timeline, per-link breakdown, countries, devices, browsers. Pass a `TimelineRange` to set the window (default `"30d"`).
+
+```ts
+const stats = await client.getBundleAnalytics(42, "7d");
+console.log(stats.total_clicks, stats.per_link);
+```
+
+### `listBundleLinks`
+
+List every link currently in a bundle.
+
+```ts
+const links = await client.listBundleLinks(42);
+```
+
+### `addLinkToBundle`
+
+Attach a link to a bundle. Idempotent: re-adding an existing member is a no-op.
+
+```ts
+await client.addLinkToBundle(42, 123);
+```
+
+### `removeLinkFromBundle`
+
+Detach a link from a bundle. The link itself stays, only the membership is removed.
+
+```ts
+await client.removeLinkFromBundle(42, 123);
+```
+
+### `listBundlesForLink`
+
+List every bundle a given link belongs to.
+
+```ts
+const bundles = await client.listBundlesForLink(123);
+```
+
 ## Error Handling
 
 Non-2xx responses throw `ShrtnrError` with the status code, message, and raw response body.

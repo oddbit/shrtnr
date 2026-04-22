@@ -51,6 +51,31 @@ Future<void> main() async {
   final analytics = await client.getLinkAnalytics(link.id);
   print('Total clicks so far: ${analytics.totalClicks}');
 
+  final bundle = await client.createBundle(
+    const CreateBundleOptions(
+      name: 'Dart SDK demo bundle',
+      description: 'Grouping the example link for combined analytics.',
+      accent: BundleAccent.purple,
+    ),
+  );
+  print('Created bundle ${bundle.id} (${bundle.name})');
+
+  await client.addLinkToBundle(bundle.id, link.id);
+  print('Attached link ${link.id} to bundle ${bundle.id}');
+
+  final bundleStats = await client.getBundleAnalytics(bundle.id);
+  print(
+    'Bundle has ${bundleStats.linkCount} link(s) and '
+    '${bundleStats.totalClicks} combined click(s) in the last 30 days',
+  );
+
+  try {
+    await client.deleteBundle(bundle.id);
+    print('Cleaned up bundle ${bundle.id}');
+  } on ShrtnrException catch (e) {
+    print('Could not delete bundle (status ${e.statusCode}): ${e.message}');
+  }
+
   try {
     await client.deleteLink(link.id);
     print('Cleaned up link ${link.id}');

@@ -205,6 +205,118 @@ final health = await client.health();
 print(health.version);
 ```
 
+### `createBundle`
+
+Create a bundle to group related links. Returns the new `Bundle`.
+
+```dart
+final bundle = await client.createBundle(
+  const CreateBundleOptions(
+    name: 'Spring campaign',
+    description: 'Email, social, and paid drops',
+    icon: 'sparkles',
+    accent: BundleAccent.purple,
+  ),
+);
+```
+
+### `listBundles`
+
+List bundles with summary stats: lifetime click total, 30-day sparkline, and top links. Archived bundles are hidden by default.
+
+```dart
+final bundles = await client.listBundles();
+final withArchived = await client.listBundles(archived: true);
+```
+
+### `getBundle`
+
+Fetch a single bundle's metadata by ID.
+
+```dart
+final bundle = await client.getBundle(42);
+```
+
+### `updateBundle`
+
+Rename a bundle or change its description, icon, or accent. Pass `clearDescription: true` or `clearIcon: true` to explicitly null a field on the server.
+
+```dart
+final updated = await client.updateBundle(
+  42,
+  const UpdateBundleOptions(
+    name: 'Spring 2026 campaign',
+    accent: BundleAccent.green,
+  ),
+);
+```
+
+### `deleteBundle`
+
+Permanently delete a bundle. Member links are preserved, only the grouping is discarded.
+
+```dart
+await client.deleteBundle(42);
+```
+
+### `archiveBundle`
+
+Archive a bundle so it drops out of the default `listBundles` response. Member links keep working.
+
+```dart
+await client.archiveBundle(42);
+```
+
+### `unarchiveBundle`
+
+Restore a previously archived bundle.
+
+```dart
+await client.unarchiveBundle(42);
+```
+
+### `getBundleAnalytics`
+
+Read combined analytics across every link in the bundle: per-link breakdown, countries, devices, browsers. Pass `range` to set the window (default `'30d'`).
+
+```dart
+final stats = await client.getBundleAnalytics(42, range: '7d');
+print(stats.totalClicks);
+print(stats.perLink);
+```
+
+### `listBundleLinks`
+
+List every link currently in a bundle.
+
+```dart
+final links = await client.listBundleLinks(42);
+```
+
+### `addLinkToBundle`
+
+Attach a link to a bundle. Idempotent: re-adding an existing member is a no-op.
+
+```dart
+await client.addLinkToBundle(42, 123);
+```
+
+### `removeLinkFromBundle`
+
+Detach a link from a bundle. The link itself stays, only the membership is removed.
+
+```dart
+await client.removeLinkFromBundle(42, 123);
+```
+
+### `listBundlesForLink`
+
+List every bundle a given link belongs to.
+
+```dart
+final bundles = await client.listBundlesForLink(123);
+```
+
 ## Error Handling
 
 Non-2xx responses throw `ShrtnrException` with the status code, message, and raw response body.

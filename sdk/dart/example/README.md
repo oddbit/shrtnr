@@ -1,6 +1,6 @@
 # shrtnr Dart SDK example
 
-A runnable walkthrough that exercises the public surface of the SDK: service health, creating a short link, adding a custom slug, reading analytics, and cleaning up.
+A runnable walkthrough that exercises the public surface of the SDK: service health, creating a short link, adding a custom slug, reading link analytics, creating a bundle, attaching the link, reading bundle analytics, and cleaning up.
 
 ## Run
 
