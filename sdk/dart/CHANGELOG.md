@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- `disableSlug`, `enableSlug`, and `removeSlug` now work against bearer-token API keys. Previously these methods called URLs that only existed under `/_/admin/api/*`, so every call returned 404. The server now exposes the matching routes under `/_/api/*` with ownership enforcement (the API key owner acts-as the identity that minted it). No SDK code change was needed.
+
 ## 0.2.1
 
 - Document every bundle method in the README with a short description and usage snippet.

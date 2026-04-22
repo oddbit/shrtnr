@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.31.3 (2026-04-23)
+
+- Slug disable, enable, and remove operations now available on the public `/_/api/*` bearer-token API. Ownership is enforced the same way as existing link mutations: the API key owner can act on slugs of links they own, and is blocked with 403 on anyone else's. The SDKs (TypeScript, Dart, Python) already pointed at these routes, so they start working the moment this change ships.
+
 ## 0.31.2 (2026-04-22)
 
 - Fixed the "avg/day" stat on link detail and bundle detail computing against lifetime data instead of the selected range window, which made the average look artificially low on short ranges.
