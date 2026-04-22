@@ -117,16 +117,34 @@ awk -v version="$NEW_VERSION" '
 ' "$CHANGELOG" >"$TMP_CHANGELOG"
 mv "$TMP_CHANGELOG" "$CHANGELOG"
 
-# Refresh lockfile if the SDK has one.
+# Refresh the lockfile if the SDK has one. Fail loudly if the install
+# step errors — a stale lockfile that ships in a release is worse than a
+# blocked bump, and the developer needs to know why their tooling broke.
 case "$SDK" in
   npm)
-    if command -v yarn >/dev/null 2>&1 && [ -f sdk/typescript/yarn.lock ]; then
-      (cd sdk/typescript && yarn install --silent >/dev/null 2>&1 || true)
+    if [ -f sdk/typescript/yarn.lock ]; then
+      if ! command -v yarn >/dev/null 2>&1; then
+        echo "warning: yarn not on PATH; skipping lockfile refresh for npm" >&2
+      else
+        echo "refreshing sdk/typescript/yarn.lock..."
+        (cd sdk/typescript && yarn install --silent) || {
+          echo "yarn install failed; fix the lockfile before committing" >&2
+          exit 1
+        }
+      fi
     fi
     ;;
   pub)
-    if command -v dart >/dev/null 2>&1 && [ -f sdk/dart/pubspec.lock ]; then
-      (cd sdk/dart && dart pub get >/dev/null 2>&1 || true)
+    if [ -f sdk/dart/pubspec.lock ]; then
+      if ! command -v dart >/dev/null 2>&1; then
+        echo "warning: dart not on PATH; skipping lockfile refresh for pub" >&2
+      else
+        echo "refreshing sdk/dart/pubspec.lock..."
+        (cd sdk/dart && dart pub get) || {
+          echo "dart pub get failed; fix the lockfile before committing" >&2
+          exit 1
+        }
+      fi
     fi
     ;;
   python)
