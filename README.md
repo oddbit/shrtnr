@@ -9,7 +9,7 @@
 
 Most URL shorteners either lock you into a SaaS with per-click pricing or require you to run a VPS. shrtnr runs on Cloudflare Workers + D1, both free tier. You own your data, your domain, and your short links.
 
-It takes one click to deploy. You get a full admin UI, click analytics, a TypeScript SDK, and an MCP server for AI assistants: all from a single Cloudflare Worker.
+It takes one click to deploy. You get a full admin UI, click analytics, SDKs for TypeScript, Python, and Dart, and an MCP server for AI assistants: all from a single Cloudflare Worker.
 
 Read more on our [website](https://oddbit.id).
 
@@ -23,7 +23,7 @@ Read more on our [website](https://oddbit.id).
 - **Admin dashboard** for link management, analytics charts, and QR code generation
 - **Multi-language admin UI** with English, Indonesian, and Swedish built in
 - **API key authentication** with scoped Bearer tokens for programmatic access
-- **TypeScript SDK** ([`@oddbit/shrtnr`](https://oddb.it/shrtnr-npm-readme)) for Node.js and browser apps
+- **SDKs** for TypeScript ([`@oddbit/shrtnr`](https://oddb.it/shrtnr-npm-readme)), Python ([`shrtnr`](https://oddb.it/shrtnr-pypi-readme)), and Dart/Flutter ([`shrtnr`](https://oddb.it/shrtnr-pub-readme))
 - **Built-in MCP server** at `/_/mcp` with OAuth via Cloudflare Access, so Claude, Copilot, and other AI assistants can shorten URLs
 - **One-click deploy** with automatic database provisioning and migrations
 
@@ -129,9 +129,10 @@ When `ACCESS_AUD` is set, the worker validates the JWT signature and audience cl
 Shorten URLs, manage links, and read analytics from your own code.
 
 - TypeScript/JavaScript: [`@oddbit/shrtnr`](https://oddb.it/shrtnr-npm-readme) — see [sdk/typescript/README.md](sdk/typescript/README.md).
+- Python: [`shrtnr`](https://oddb.it/shrtnr-pypi-readme) — see [sdk/python/README.md](sdk/python/README.md). Sync and async clients on httpx.
 - Dart/Flutter: [`shrtnr`](https://oddb.it/shrtnr-pub-readme) — see [sdk/dart/README.md](sdk/dart/README.md).
 
-Both SDKs wrap the same public HTTP API and stay feature-aligned per the SDK parity rule in [CLAUDE.md](CLAUDE.md).
+All three SDKs wrap the same public HTTP API and stay feature-aligned per the SDK parity rule in [CLAUDE.md](CLAUDE.md). Releases are automated via OIDC trusted publishing; details in [docs/release-automation.md](docs/release-automation.md).
 
 ### MCP Server (AI Integration)
 
