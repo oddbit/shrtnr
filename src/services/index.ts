@@ -29,4 +29,19 @@ export {
   updateAppSettings,
 } from "./admin-management";
 
+export {
+  createBundle,
+  listBundles,
+  getBundle,
+  updateBundle,
+  archiveBundle,
+  unarchiveBundle,
+  deleteBundle,
+  addLinkToBundle,
+  removeLinkFromBundle,
+  getBundleAnalytics,
+  listBundleLinks,
+  listBundlesForLink,
+} from "./bundle-management";
+
 export type { ServiceResult } from "./result";

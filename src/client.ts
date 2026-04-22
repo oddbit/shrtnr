@@ -1143,5 +1143,340 @@ if (analyticsRangeBar) {
     setInterval(function() { pollLinkDetail(pollLinkId); }, POLL_INTERVAL);
   }
 }
+
+// ============================================================
+// Bundles
+// ============================================================
+
+var BUNDLE_ACCENTS = ['orange','red','green','blue','purple'];
+
+// Curated icon set for bundles. Material Symbol names grouped by semantic
+// category so the grid reads top-to-bottom as: containers, campaigns,
+// people, tech, creative, analytics, commerce.
+var BUNDLE_ICONS = [
+  'inventory_2','folder','folder_open','archive','bookmarks','collections_bookmark','category',
+  'campaign','flag','rocket_launch','celebration','local_fire_department','bolt','auto_awesome',
+  'handshake','groups','business_center','work','corporate_fare','diversity_3','school',
+  'code','terminal','data_object','api','integration_instructions','cloud','memory',
+  'palette','brush','design_services','photo_camera','movie','mic','edit',
+  'analytics','trending_up','insights','bar_chart','dashboard','monitoring','query_stats',
+  'shopping_cart','store','sell','paid','savings','redeem','credit_card',
+];
+
+function renderIconPicker(selected) {
+  var chosen = selected || 'inventory_2';
+  // If the pre-selected icon is not in our curated set (e.g. from an older
+  // bundle that had a typed icon), prepend it so it stays selectable.
+  var list = BUNDLE_ICONS.slice();
+  if (list.indexOf(chosen) === -1) list.unshift(chosen);
+  var html = '<div class="bundle-icon-picker" id="bundle-icon-picker">';
+  list.forEach(function(name) {
+    var cls = 'bundle-icon-option' + (name === chosen ? ' selected' : '');
+    html += '<button type="button" class="' + cls + '" data-icon="' + esc(name) + '" onclick="selectBundleIcon(\\'' + name + '\\')" aria-label="' + esc(name) + '"><span class="icon">' + esc(name) + '</span></button>';
+  });
+  html += '</div>';
+  html += '<input type="hidden" id="bundle-icon" value="' + esc(chosen) + '">';
+  return html;
+}
+
+function selectBundleIcon(name) {
+  var picker = document.getElementById('bundle-icon-picker');
+  if (!picker) return;
+  var buttons = picker.querySelectorAll('.bundle-icon-option');
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].classList.toggle('selected', buttons[i].getAttribute('data-icon') === name);
+  }
+  var input = document.getElementById('bundle-icon');
+  if (input) input.value = name;
+}
+
+function renderAccentPicker(selected, inputId) {
+  var html = '<div class="accent-picker" id="accent-picker">';
+  BUNDLE_ACCENTS.forEach(function(a) {
+    var cls = 'accent-swatch accent-' + a + (a === selected ? ' selected' : '');
+    html += '<button type="button" class="' + cls + '" data-accent="' + a + '" onclick="selectAccent(\\'' + a + '\\')" title="' + esc(t('bundles.accent.' + a)) + '"></button>';
+  });
+  html += '<input type="hidden" id="' + inputId + '" value="' + esc(selected) + '">';
+  html += '</div>';
+  return html;
+}
+
+function selectAccent(a) {
+  var picker = document.getElementById('accent-picker');
+  if (!picker) return;
+  var swatches = picker.querySelectorAll('.accent-swatch');
+  for (var i = 0; i < swatches.length; i++) {
+    swatches[i].classList.toggle('selected', swatches[i].getAttribute('data-accent') === a);
+  }
+  var input = document.getElementById('bundle-accent');
+  if (input) input.value = a;
+}
+
+function showCreateBundleModal() {
+  var html = '<div class="modal-title">' + esc(t('bundles.newBundle')) + '</div>';
+  html += '<div class="form-group"><label class="form-label">' + esc(t('bundles.formName')) + ' *</label>';
+  html += '<input class="form-input" id="bundle-name" placeholder="' + esc(t('bundles.formNameHint')) + '"></div>';
+  html += '<div class="form-group"><label class="form-label">' + esc(t('bundles.formDescription')) + '</label>';
+  html += '<input class="form-input" id="bundle-description" placeholder="' + esc(t('bundles.formDescriptionHint')) + '"></div>';
+  html += '<div class="form-group"><label class="form-label">' + esc(t('bundles.formIcon')) + '</label>';
+  html += renderIconPicker('inventory_2') + '</div>';
+  html += '<div class="form-group"><label class="form-label">' + esc(t('bundles.formAccent')) + '</label>';
+  html += renderAccentPicker('orange', 'bundle-accent') + '</div>';
+  html += '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('bundles.cancel')) + '</button>';
+  html += '<button class="btn btn-primary" onclick="doCreateBundle()">' + esc(t('bundles.create')) + '</button></div>';
+  openModal(html);
+  setTimeout(function() { var el = document.getElementById('bundle-name'); if (el) el.focus(); }, 100);
+}
+
+function doCreateBundle(onCreatedCallback) {
+  var name = document.getElementById('bundle-name').value.trim();
+  if (!name) { toast(t('client.urlRequired'), 'error'); return; }
+  var body = {
+    name: name,
+    description: document.getElementById('bundle-description').value.trim() || null,
+    icon: document.getElementById('bundle-icon').value.trim() || null,
+    accent: document.getElementById('bundle-accent').value || 'orange',
+  };
+  api('/bundles', { method: 'POST', body: JSON.stringify(body) }).then(function(res) {
+    if (res.ok) {
+      res.json().then(function(bundle) {
+        closeModal();
+        toast(t('client.bundles.created'));
+        if (typeof onCreatedCallback === 'function') {
+          onCreatedCallback(bundle);
+        } else {
+          window.location.reload();
+        }
+      });
+    } else {
+      res.json().then(function(data) { toast(data.error || t('client.bundles.createError'), 'error'); });
+    }
+  });
+}
+
+function showEditBundleModal(bundleId) {
+  var menu = document.getElementById('detail-menu');
+  if (menu) menu.style.display = 'none';
+  api('/bundles/' + bundleId).then(function(res) {
+    if (!res.ok) { toast(t('client.bundles.saveError'), 'error'); return; }
+    res.json().then(function(b) {
+      var html = '<div class="modal-title">' + esc(t('bundles.editBundle')) + '</div>';
+      html += '<div class="form-group"><label class="form-label">' + esc(t('bundles.formName')) + ' *</label>';
+      html += '<input class="form-input" id="bundle-name" value="' + esc(b.name || '') + '"></div>';
+      html += '<div class="form-group"><label class="form-label">' + esc(t('bundles.formDescription')) + '</label>';
+      html += '<input class="form-input" id="bundle-description" value="' + esc(b.description || '') + '"></div>';
+      html += '<div class="form-group"><label class="form-label">' + esc(t('bundles.formIcon')) + '</label>';
+      html += renderIconPicker(b.icon || 'inventory_2') + '</div>';
+      html += '<div class="form-group"><label class="form-label">' + esc(t('bundles.formAccent')) + '</label>';
+      html += renderAccentPicker(b.accent || 'orange', 'bundle-accent') + '</div>';
+      html += '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('bundles.cancel')) + '</button>';
+      html += '<button class="btn btn-primary" onclick="doUpdateBundle(' + bundleId + ')">' + esc(t('bundles.save')) + '</button></div>';
+      openModal(html);
+    });
+  });
+}
+
+function doUpdateBundle(bundleId) {
+  var name = document.getElementById('bundle-name').value.trim();
+  if (!name) { toast(t('client.urlRequired'), 'error'); return; }
+  var body = {
+    name: name,
+    description: document.getElementById('bundle-description').value.trim() || null,
+    icon: document.getElementById('bundle-icon').value.trim() || null,
+    accent: document.getElementById('bundle-accent').value || 'orange',
+  };
+  api('/bundles/' + bundleId, { method: 'PUT', body: JSON.stringify(body) }).then(function(res) {
+    if (res.ok) { closeModal(); toast(t('client.bundles.updated')); window.location.reload(); }
+    else res.json().then(function(data) { toast(data.error || t('client.bundles.saveError'), 'error'); });
+  });
+}
+
+function archiveBundle(bundleId, name) {
+  var menu = document.getElementById('detail-menu');
+  if (menu) menu.style.display = 'none';
+  if (!confirm(t('client.bundles.confirmArchive', { name: name }))) return;
+  api('/bundles/' + bundleId + '/archive', { method: 'POST' }).then(function(res) {
+    if (res.ok) { toast(t('client.bundles.archived')); window.location.href = '/_/admin/bundles'; }
+    else toast(t('client.bundles.saveError'), 'error');
+  });
+}
+
+function unarchiveBundle(bundleId) {
+  var menu = document.getElementById('detail-menu');
+  if (menu) menu.style.display = 'none';
+  api('/bundles/' + bundleId + '/unarchive', { method: 'POST' }).then(function(res) {
+    if (res.ok) { toast(t('client.bundles.unarchived')); window.location.reload(); }
+    else toast(t('client.bundles.saveError'), 'error');
+  });
+}
+
+function deleteBundleAction(bundleId, name) {
+  var menu = document.getElementById('detail-menu');
+  if (menu) menu.style.display = 'none';
+  if (!confirm(t('client.bundles.confirmDelete', { name: name }))) return;
+  api('/bundles/' + bundleId, { method: 'DELETE' }).then(function(res) {
+    if (res.ok) { toast(t('client.bundles.deleted')); window.location.href = '/_/admin/bundles'; }
+    else toast(t('client.bundles.deleteError'), 'error');
+  });
+}
+
+function removeLinkFromBundle(bundleId, linkId) {
+  if (!confirm(t('bundles.removeFromBundle') + '?')) return;
+  api('/bundles/' + bundleId + '/links/' + linkId, { method: 'DELETE' }).then(function(res) {
+    if (res.ok) { toast(t('client.bundles.updated')); window.location.reload(); }
+    else toast(t('client.bundles.saveError'), 'error');
+  });
+}
+
+function showAddToBundleModal(linkId) {
+  var menu = document.getElementById('detail-menu');
+  if (menu) menu.style.display = 'none';
+  Promise.all([
+    api('/bundles?archived=false'),
+    api('/links/' + linkId + '/bundles'),
+  ]).then(function(responses) {
+    return Promise.all(responses.map(function(r) { return r.json(); }));
+  }).then(function(data) {
+    var allBundles = data[0] || [];
+    var memberOf = data[1] || [];
+    var memberIds = {};
+    memberOf.forEach(function(b) { memberIds[b.id] = true; });
+
+    var html = '<div class="modal-title">' + esc(t('linkDetail.addToBundle')) + '</div>';
+    if (allBundles.length === 0) {
+      html += '<div class="add-to-bundle-empty">' + esc(t('client.bundles.noBundles')) + '</div>';
+    } else {
+      html += '<div class="add-to-bundle-list">';
+      allBundles.forEach(function(b) {
+        var selectedCls = memberIds[b.id] ? ' selected' : '';
+        html += '<button type="button" class="add-to-bundle-row accent-' + esc(b.accent || 'orange') + selectedCls + '" data-bundle-id="' + b.id + '" onclick="toggleAddToBundleRow(this)">';
+        html += '<span class="icon">' + esc(b.icon || 'inventory_2') + '</span>';
+        html += '<div><div class="add-to-bundle-row-name">' + esc(b.name) + '</div>';
+        if (b.description) html += '<div class="add-to-bundle-row-desc">' + esc(b.description) + '</div>';
+        html += '</div></button>';
+      });
+      html += '</div>';
+    }
+    html += '<div class="add-to-bundle-create"><button type="button" class="btn btn-ghost" onclick="showCreateBundleForLink(' + linkId + ')">+ ' + esc(t('client.bundles.createNew')) + '</button></div>';
+    html += '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('bundles.cancel')) + '</button>';
+    html += '<button class="btn btn-primary" onclick="saveAddToBundle(' + linkId + ')">' + esc(t('bundles.save')) + '</button></div>';
+    openModal(html);
+
+    // Stash the original memberships so save can compute the diff.
+    window.__bundleOriginalMembership = memberIds;
+  });
+}
+
+function showCreateBundleForLink(linkId) {
+  // Swap in the create form; on success, attach the link to the new bundle.
+  showCreateBundleModal();
+  var actions = document.querySelector('.modal-actions');
+  if (!actions) return;
+  var primary = actions.querySelector('.btn-primary');
+  if (primary) {
+    primary.setAttribute('onclick', 'doCreateBundleAndAddLink(' + linkId + ')');
+  }
+}
+
+function doCreateBundleAndAddLink(linkId) {
+  doCreateBundle(function(bundle) {
+    api('/bundles/' + bundle.id + '/links', {
+      method: 'POST',
+      body: JSON.stringify({ link_id: linkId }),
+    }).then(function(res) {
+      if (res.ok) {
+        toast(t('client.bundles.updated'));
+        window.location.reload();
+      } else {
+        toast(t('client.bundles.saveError'), 'error');
+      }
+    });
+  });
+}
+
+function toggleAddToBundleRow(el) {
+  el.classList.toggle('selected');
+}
+
+function saveAddToBundle(linkId) {
+  var original = window.__bundleOriginalMembership || {};
+  var rows = document.querySelectorAll('.add-to-bundle-list .add-to-bundle-row');
+  var desired = {};
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].classList.contains('selected')) desired[rows[i].getAttribute('data-bundle-id')] = true;
+  }
+  var toAdd = [];
+  var toRemove = [];
+  for (var id in desired) if (!original[id]) toAdd.push(id);
+  for (var id2 in original) if (!desired[id2]) toRemove.push(id2);
+
+  var ops = [];
+  toAdd.forEach(function(bid) {
+    ops.push(api('/bundles/' + bid + '/links', {
+      method: 'POST',
+      body: JSON.stringify({ link_id: linkId }),
+    }));
+  });
+  toRemove.forEach(function(bid) {
+    ops.push(api('/bundles/' + bid + '/links/' + linkId, { method: 'DELETE' }));
+  });
+
+  Promise.all(ops).then(function(results) {
+    var failed = results.some(function(r) { return !r.ok; });
+    if (failed) {
+      toast(t('client.bundles.saveError'), 'error');
+    } else {
+      closeModal();
+      toast(t('client.bundles.updated'));
+      window.location.reload();
+    }
+  });
+}
+
+function showAddLinkToBundlePicker(bundleId) {
+  api('/links').then(function(res) {
+    if (!res.ok) { toast(t('client.createLinkError'), 'error'); return; }
+    res.json().then(function(links) {
+      var html = '<div class="modal-title">' + esc(t('bundles.addLinkToBundle')) + '</div>';
+      html += '<div class="form-group"><input class="form-input" id="bundle-link-search" placeholder="' + esc(t('links.search')) + '" oninput="filterBundleLinkPicker()"></div>';
+      html += '<div class="add-to-bundle-list" id="bundle-link-picker-list">';
+      links.forEach(function(link) {
+        var slug = '';
+        if (link.slugs && link.slugs.length > 0) {
+          var primary = link.slugs.find(function(s) { return s.is_primary; }) || link.slugs[0];
+          slug = primary.slug;
+        }
+        var label = link.label || link.url;
+        html += '<div class="add-to-bundle-row" data-search="' + esc((link.label || '') + ' ' + link.url + ' ' + slug).toLowerCase() + '" onclick="doAddLinkToBundle(' + bundleId + ',' + link.id + ')">';
+        html += '<span class="slug-chip">' + esc(slug) + '</span>';
+        html += '<div><div class="add-to-bundle-row-name">' + esc(label) + '</div>';
+        html += '<div class="add-to-bundle-row-desc">' + esc(link.url) + '</div></div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      html += '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('bundles.cancel')) + '</button></div>';
+      openModal(html);
+    });
+  });
+}
+
+function filterBundleLinkPicker() {
+  var q = (document.getElementById('bundle-link-search').value || '').toLowerCase();
+  var rows = document.querySelectorAll('#bundle-link-picker-list .add-to-bundle-row');
+  for (var i = 0; i < rows.length; i++) {
+    var hay = rows[i].getAttribute('data-search') || '';
+    rows[i].style.display = hay.indexOf(q) >= 0 ? '' : 'none';
+  }
+}
+
+function doAddLinkToBundle(bundleId, linkId) {
+  api('/bundles/' + bundleId + '/links', {
+    method: 'POST',
+    body: JSON.stringify({ link_id: linkId }),
+  }).then(function(res) {
+    if (res.ok) { closeModal(); toast(t('client.bundles.updated')); window.location.reload(); }
+    else res.json().then(function(data) { toast(data.error || t('client.bundles.saveError'), 'error'); });
+  });
+}
 `;
 }

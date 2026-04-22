@@ -1,8 +1,9 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-import { ClickData, ClickStats, DashboardStats, LinkWithSlugs, TimelineBucket, TimelineData, TimelineRange } from "../types";
+import { BundleStats, BundleStatsPerLink, ClickData, ClickStats, DashboardStats, LinkWithSlugs, TimelineBucket, TimelineData, TimelineRange } from "../types";
 import { LinkRepository } from "./link-repository";
+import { BundleRepository } from "./bundle-repository";
 import { RANGE_SECONDS, computeDelta } from "../services/trends";
 
 export type BreakdownDimension = "country" | "referrer_host" | "device_type" | "os" | "browser" | "link_mode" | "channel";
@@ -799,6 +800,491 @@ export class ClickRepository {
       .bind(currStart)
       .first<{ cnt: number }>();
     return row?.cnt ?? 0;
+  }
+
+  /**
+   * Combined analytics across every link in a bundle. Mirrors getStats for a
+   * single link: total clicks, per-dimension breakdowns, timeline, and a
+   * per-link contribution table sorted by clicks desc.
+   */
+  static async getBundleStats(
+    db: D1Database,
+    bundleId: number,
+    range: TimelineRange,
+    now?: number,
+  ): Promise<BundleStats | null> {
+    const bundle = await BundleRepository.getById(db, bundleId);
+    if (!bundle) return null;
+
+    const ts = now ?? Math.floor(Date.now() / 1000);
+
+    // Resolve member slugs and link metadata in one query.
+    const memberRows = await db
+      .prepare(
+        `SELECT s.slug as slug, s.link_id as link_id, s.is_primary as is_primary,
+                l.label as label, l.url as url
+         FROM bundle_links bl
+         JOIN slugs s ON s.link_id = bl.link_id
+         JOIN links l ON l.id = bl.link_id
+         WHERE bl.bundle_id = ?`,
+      )
+      .bind(bundleId)
+      .all<{ slug: string; link_id: number; is_primary: number; label: string | null; url: string }>();
+
+    const members = memberRows.results ?? [];
+    const slugs = members.map((r) => r.slug);
+    const linkMeta = new Map<number, { label: string | null; url: string; primary_slug: string }>();
+    for (const m of members) {
+      const existing = linkMeta.get(m.link_id);
+      if (!existing || m.is_primary) {
+        linkMeta.set(m.link_id, {
+          label: m.label,
+          url: m.url,
+          primary_slug: m.is_primary || !existing ? m.slug : existing.primary_slug,
+        });
+      }
+    }
+    const linkCount = linkMeta.size;
+
+    const empty: BundleStats = {
+      bundle,
+      link_count: linkCount,
+      total_clicks: 0,
+      clicked_links: 0,
+      countries_reached: 0,
+      timeline: { range, buckets: [], summary: { last_24h: 0, last_7d: 0, last_30d: 0, last_90d: 0, last_1y: 0 } },
+      countries: [],
+      devices: [],
+      os: [],
+      browsers: [],
+      referrers: [],
+      link_modes: [],
+      per_link: [],
+    };
+
+    if (slugs.length === 0) return empty;
+
+    const placeholders = slugs.map(() => "?").join(",");
+    let where = `slug IN (${placeholders})`;
+    const binds: (string | number)[] = [...slugs];
+    if (range !== "all") {
+      const sinceTs = ts - RANGE_SECONDS[range];
+      where += " AND clicked_at >= ?";
+      binds.push(sinceTs);
+    }
+
+    const [
+      totalRow,
+      countries,
+      referrerHosts,
+      devices,
+      osList,
+      browsers,
+      linkModes,
+      perLinkRows,
+      timeline,
+      period,
+    ] = await Promise.all([
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where}`).bind(...binds).first<{ cnt: number }>(),
+      db.prepare(`SELECT country as name, COUNT(*) as count FROM clicks WHERE ${where} AND country IS NOT NULL GROUP BY country ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT device_type as name, COUNT(*) as count FROM clicks WHERE ${where} AND device_type IS NOT NULL GROUP BY device_type ORDER BY count DESC`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT os as name, COUNT(*) as count FROM clicks WHERE ${where} AND os IS NOT NULL GROUP BY os ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT browser as name, COUNT(*) as count FROM clicks WHERE ${where} AND browser IS NOT NULL GROUP BY browser ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT link_mode as name, COUNT(*) as count FROM clicks WHERE ${where} GROUP BY link_mode ORDER BY count DESC`).bind(...binds).all<{ name: string; count: number }>(),
+      (() => {
+        let perLinkWhere = `c.slug IN (${placeholders})`;
+        if (range !== "all") perLinkWhere += " AND c.clicked_at >= ?";
+        return db.prepare(
+          `SELECT s.link_id as link_id, COUNT(*) as cnt
+           FROM clicks c JOIN slugs s ON s.slug = c.slug
+           WHERE ${perLinkWhere}
+           GROUP BY s.link_id
+           ORDER BY cnt DESC`,
+        ).bind(...binds).all<{ link_id: number; cnt: number }>();
+      })(),
+      this.getBundleTimeline(db, slugs, range, ts),
+      this.getBundlePeriodClicks(db, slugs, range, ts),
+    ]);
+
+    const totalClicks = totalRow?.cnt ?? 0;
+    const deltaPct = range === "all" ? undefined : computeDelta(period.current, period.previous);
+
+    // Attach per-link deltas in two more grouped queries (scoped to bundle slugs).
+    const perLinkDeltas = range === "all"
+      ? new Map<number, number | undefined>()
+      : await this.getBundlePerLinkDeltas(db, slugs, range, ts);
+
+    const perLink: BundleStatsPerLink[] = [];
+    for (const row of perLinkRows.results ?? []) {
+      const meta = linkMeta.get(row.link_id);
+      if (!meta) continue;
+      const entry: BundleStatsPerLink = {
+        link_id: row.link_id,
+        label: meta.label,
+        primary_slug: meta.primary_slug,
+        url: meta.url,
+        click_count: row.cnt,
+        pct_of_bundle: totalClicks > 0 ? Math.round((row.cnt / totalClicks) * 100) : 0,
+      };
+      const delta = perLinkDeltas.get(row.link_id);
+      if (delta !== undefined) entry.delta_pct = delta;
+      perLink.push(entry);
+    }
+
+    // Include zero-click member links at the end so the UI can show them too.
+    const seen = new Set(perLink.map((p) => p.link_id));
+    for (const [link_id, meta] of linkMeta) {
+      if (!seen.has(link_id)) {
+        perLink.push({
+          link_id,
+          label: meta.label,
+          primary_slug: meta.primary_slug,
+          url: meta.url,
+          click_count: 0,
+          pct_of_bundle: 0,
+          delta_pct: perLinkDeltas.get(link_id),
+        });
+      }
+    }
+
+    const countriesList = countries.results ?? [];
+    const countriesTotal = countriesList.reduce((s, c) => s + c.count, 0);
+    const topCountry = countriesList[0]
+      ? { name: countriesList[0].name, pct: countriesTotal > 0 ? Math.round((countriesList[0].count / countriesTotal) * 100) : 0 }
+      : undefined;
+
+    const top = perLink[0] && perLink[0].click_count > 0 ? perLink[0] : undefined;
+
+    return {
+      bundle,
+      link_count: linkCount,
+      total_clicks: totalClicks,
+      delta_pct: deltaPct,
+      clicked_links: perLink.filter((p) => p.click_count > 0).length,
+      top_performer: top
+        ? { slug: top.primary_slug, label: top.label, click_count: top.click_count, pct_of_bundle: top.pct_of_bundle }
+        : undefined,
+      countries_reached: countriesList.length,
+      top_country: topCountry,
+      timeline,
+      countries: countriesList,
+      devices: devices.results ?? [],
+      os: osList.results ?? [],
+      browsers: browsers.results ?? [],
+      referrers: referrerHosts.results ?? [],
+      link_modes: linkModes.results ?? [],
+      per_link: perLink,
+    };
+  }
+
+  /** Timeline (range-bucketed) scoped to an explicit slug list. */
+  private static async getBundleTimeline(
+    db: D1Database,
+    slugs: string[],
+    range: TimelineRange,
+    ts: number,
+  ): Promise<TimelineData> {
+    const empty: TimelineData = {
+      range,
+      buckets: [],
+      summary: { last_24h: 0, last_7d: 0, last_30d: 0, last_90d: 0, last_1y: 0 },
+    };
+    if (slugs.length === 0) return empty;
+
+    const placeholders = slugs.map(() => "?").join(",");
+    const where = `slug IN (${placeholders})`;
+
+    const t24h = ts - 86400;
+    const t7d = ts - 7 * 86400;
+    const t30d = ts - 30 * 86400;
+    const t90d = ts - 90 * 86400;
+    const t1y = ts - 365 * 86400;
+    const [last24h, last7d, last30d, last90d, last1y] = await Promise.all([
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t24h).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t7d).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t30d).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t90d).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t1y).first<{ cnt: number }>(),
+    ]);
+
+    const summary = {
+      last_24h: last24h?.cnt ?? 0,
+      last_7d: last7d?.cnt ?? 0,
+      last_30d: last30d?.cnt ?? 0,
+      last_90d: last90d?.cnt ?? 0,
+      last_1y: last1y?.cnt ?? 0,
+    };
+
+    let bucketExpr: string;
+    let sinceTs: number | null;
+    let allKind: "daily" | "weekly" | "monthly" = "monthly";
+    let allEarliest = ts;
+
+    switch (range) {
+      case "24h":
+        bucketExpr = "strftime('%Y-%m-%d %H', clicked_at, 'unixepoch')";
+        sinceTs = ts - 86400;
+        break;
+      case "7d":
+        bucketExpr = "date(clicked_at, 'unixepoch')";
+        sinceTs = ts - 7 * 86400;
+        break;
+      case "30d":
+        bucketExpr = "date(clicked_at, 'unixepoch')";
+        sinceTs = ts - 30 * 86400;
+        break;
+      case "90d":
+        bucketExpr = "date(clicked_at, 'unixepoch')";
+        sinceTs = ts - 90 * 86400;
+        break;
+      case "1y":
+        bucketExpr = "date(clicked_at, 'unixepoch', 'weekday 0', '-6 days')";
+        sinceTs = ts - 365 * 86400;
+        break;
+      case "all": {
+        const earliestRow = await db
+          .prepare(`SELECT MIN(clicked_at) as t FROM clicks WHERE ${where}`)
+          .bind(...slugs)
+          .first<{ t: number | null }>();
+        allEarliest = earliestRow?.t ?? ts;
+        const spanDays = Math.max(1, Math.floor((ts - allEarliest) / 86400));
+        if (spanDays <= 90) {
+          bucketExpr = "date(clicked_at, 'unixepoch')";
+          allKind = "daily";
+        } else if (spanDays <= 730) {
+          bucketExpr = "date(clicked_at, 'unixepoch', 'weekday 0', '-6 days')";
+          allKind = "weekly";
+        } else {
+          bucketExpr = "strftime('%Y-%m', clicked_at, 'unixepoch')";
+          allKind = "monthly";
+        }
+        sinceTs = null;
+        break;
+      }
+    }
+
+    const timeFilter = sinceTs !== null ? " AND clicked_at >= ?" : "";
+    const binds = sinceTs !== null ? [...slugs, sinceTs] : [...slugs];
+
+    const rows = await db
+      .prepare(
+        `SELECT ${bucketExpr} as label, COUNT(*) as count
+         FROM clicks WHERE ${where}${timeFilter}
+         GROUP BY label ORDER BY label ASC`,
+      )
+      .bind(...binds)
+      .all<{ label: string; count: number }>();
+
+    const dataMap = new Map((rows.results ?? []).map((r) => [r.label, r.count]));
+    const buckets: TimelineBucket[] = range === "all"
+      ? fillBucketsAll(dataMap, ts, allEarliest, allKind)
+      : fillBuckets(range, dataMap, ts, sinceTs);
+
+    return { range, buckets, summary };
+  }
+
+  /** Current vs previous period click counts scoped to an explicit slug list. */
+  private static async getBundlePeriodClicks(
+    db: D1Database,
+    slugs: string[],
+    range: TimelineRange,
+    ts: number,
+  ): Promise<{ current: number; previous: number }> {
+    if (slugs.length === 0) return { current: 0, previous: 0 };
+    const placeholders = slugs.map(() => "?").join(",");
+    const where = `slug IN (${placeholders})`;
+
+    if (range === "all") {
+      const row = await db
+        .prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where}`)
+        .bind(...slugs)
+        .first<{ cnt: number }>();
+      return { current: row?.cnt ?? 0, previous: 0 };
+    }
+
+    const span = RANGE_SECONDS[range];
+    const currStart = ts - span;
+    const prevStart = ts - 2 * span;
+
+    const [cur, prev] = await Promise.all([
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, currStart).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ? AND clicked_at < ?`).bind(...slugs, prevStart, currStart).first<{ cnt: number }>(),
+    ]);
+    return { current: cur?.cnt ?? 0, previous: prev?.cnt ?? 0 };
+  }
+
+  private static async getBundlePerLinkDeltas(
+    db: D1Database,
+    slugs: string[],
+    range: TimelineRange,
+    ts: number,
+  ): Promise<Map<number, number | undefined>> {
+    const out = new Map<number, number | undefined>();
+    if (slugs.length === 0 || range === "all") return out;
+
+    const placeholders = slugs.map(() => "?").join(",");
+    const span = RANGE_SECONDS[range];
+    const currStart = ts - span;
+    const prevStart = ts - 2 * span;
+
+    const [curRows, prevRows] = await Promise.all([
+      db
+        .prepare(
+          `SELECT s.link_id as link_id, COUNT(*) as cnt
+           FROM clicks c JOIN slugs s ON s.slug = c.slug
+           WHERE c.slug IN (${placeholders}) AND c.clicked_at >= ?
+           GROUP BY s.link_id`,
+        )
+        .bind(...slugs, currStart)
+        .all<{ link_id: number; cnt: number }>(),
+      db
+        .prepare(
+          `SELECT s.link_id as link_id, COUNT(*) as cnt
+           FROM clicks c JOIN slugs s ON s.slug = c.slug
+           WHERE c.slug IN (${placeholders}) AND c.clicked_at >= ? AND c.clicked_at < ?
+           GROUP BY s.link_id`,
+        )
+        .bind(...slugs, prevStart, currStart)
+        .all<{ link_id: number; cnt: number }>(),
+    ]);
+
+    const curMap = new Map((curRows.results ?? []).map((r) => [r.link_id, r.cnt]));
+    const prevMap = new Map((prevRows.results ?? []).map((r) => [r.link_id, r.cnt]));
+    const ids = new Set<number>([...curMap.keys(), ...prevMap.keys()]);
+    for (const id of ids) {
+      out.set(id, computeDelta(curMap.get(id) ?? 0, prevMap.get(id) ?? 0));
+    }
+    return out;
+  }
+
+  /**
+   * Bulk summary for the bundles listing: totals, delta, sparkline, top 3 links
+   * per bundle. Uses grouped queries to avoid N+1 against D1.
+   */
+  /**
+   * Summary stats for the bundles listing page. Always reports:
+   *  - total_clicks: lifetime sum across every bundle link (no time filter).
+   *  - delta_pct: trend of last 30 days vs the preceding 30 days, to give
+   *    users a fixed trend reading regardless of a range picker.
+   *  - sparkline: 30 daily buckets covering the last 30 days.
+   *  - top_links: top 3 member links by lifetime click count.
+   */
+  static async getBundleSummariesBulk(
+    db: D1Database,
+    bundleIds: number[],
+    now?: number,
+  ): Promise<Map<number, { total_clicks: number; delta_pct?: number; sparkline: number[]; top_links: { slug: string; click_count: number }[] }>> {
+    const out = new Map<number, { total_clicks: number; delta_pct?: number; sparkline: number[]; top_links: { slug: string; click_count: number }[] }>();
+    for (const id of bundleIds) {
+      out.set(id, { total_clicks: 0, sparkline: [], top_links: [] });
+    }
+    if (bundleIds.length === 0) return out;
+
+    const ts = now ?? Math.floor(Date.now() / 1000);
+    const phBundles = bundleIds.map(() => "?").join(",");
+    const span30d = 30 * 86400;
+    const currStart = ts - span30d;
+    const prevStart = ts - 2 * span30d;
+    const sparkSpec = getBucketSpec("30d", ts);
+
+    // Lifetime totals per bundle.
+    const totalRows = await db
+      .prepare(
+        `SELECT bl.bundle_id as bundle_id, COUNT(*) as cnt
+         FROM clicks c
+         JOIN bundle_links bl ON bl.link_id = (SELECT link_id FROM slugs WHERE slug = c.slug)
+         WHERE bl.bundle_id IN (${phBundles})
+         GROUP BY bl.bundle_id`,
+      )
+      .bind(...bundleIds)
+      .all<{ bundle_id: number; cnt: number }>();
+    for (const r of totalRows.results ?? []) {
+      out.get(r.bundle_id)!.total_clicks = r.cnt;
+    }
+
+    // 30d / previous 30d for fixed trend reading.
+    const [curRows, prevRows] = await Promise.all([
+      db
+        .prepare(
+          `SELECT bl.bundle_id as bundle_id, COUNT(*) as cnt
+           FROM clicks c
+           JOIN bundle_links bl ON bl.link_id = (SELECT link_id FROM slugs WHERE slug = c.slug)
+           WHERE c.clicked_at >= ? AND bl.bundle_id IN (${phBundles})
+           GROUP BY bl.bundle_id`,
+        )
+        .bind(currStart, ...bundleIds)
+        .all<{ bundle_id: number; cnt: number }>(),
+      db
+        .prepare(
+          `SELECT bl.bundle_id as bundle_id, COUNT(*) as cnt
+           FROM clicks c
+           JOIN bundle_links bl ON bl.link_id = (SELECT link_id FROM slugs WHERE slug = c.slug)
+           WHERE c.clicked_at >= ? AND c.clicked_at < ? AND bl.bundle_id IN (${phBundles})
+           GROUP BY bl.bundle_id`,
+        )
+        .bind(prevStart, currStart, ...bundleIds)
+        .all<{ bundle_id: number; cnt: number }>(),
+    ]);
+    const curMap = new Map((curRows.results ?? []).map((r) => [r.bundle_id, r.cnt]));
+    const prevMap = new Map((prevRows.results ?? []).map((r) => [r.bundle_id, r.cnt]));
+    for (const [bundleId, entry] of out) {
+      entry.delta_pct = computeDelta(curMap.get(bundleId) ?? 0, prevMap.get(bundleId) ?? 0);
+    }
+
+    // 30 daily sparkline buckets per bundle.
+    const sparkRows = await db
+      .prepare(
+        `SELECT bl.bundle_id as bundle_id, ${sparkSpec.bucketExpr("c.clicked_at")} as label, COUNT(*) as value
+         FROM clicks c
+         JOIN bundle_links bl ON bl.link_id = (SELECT link_id FROM slugs WHERE slug = c.slug)
+         WHERE c.clicked_at >= ? AND bl.bundle_id IN (${phBundles})
+         GROUP BY bl.bundle_id, label
+         ORDER BY label ASC`,
+      )
+      .bind(sparkSpec.since!, ...bundleIds)
+      .all<{ bundle_id: number; label: string; value: number }>();
+    const sparkByBundle = new Map<number, { label: string; value: number }[]>();
+    for (const r of sparkRows.results ?? []) {
+      const arr = sparkByBundle.get(r.bundle_id) ?? [];
+      arr.push({ label: r.label, value: r.value });
+      sparkByBundle.set(r.bundle_id, arr);
+    }
+    for (const [bundleId, entry] of out) {
+      entry.sparkline = fillSparkline(sparkByBundle.get(bundleId) ?? [], sparkSpec, "30d", ts);
+    }
+
+    // Top 3 links per bundle by lifetime clicks.
+    const topRows = await db
+      .prepare(
+        `WITH per_link AS (
+           SELECT bl.bundle_id as bundle_id, s.link_id as link_id, COUNT(*) as cnt
+           FROM clicks c
+           JOIN slugs s ON s.slug = c.slug
+           JOIN bundle_links bl ON bl.link_id = s.link_id
+           WHERE bl.bundle_id IN (${phBundles})
+           GROUP BY bl.bundle_id, s.link_id
+         ),
+         ranked AS (
+           SELECT bundle_id, link_id, cnt,
+                  ROW_NUMBER() OVER (PARTITION BY bundle_id ORDER BY cnt DESC) as rn
+           FROM per_link
+         )
+         SELECT r.bundle_id as bundle_id, r.cnt as cnt,
+                (SELECT slug FROM slugs WHERE link_id = r.link_id AND is_primary = 1 LIMIT 1) as primary_slug
+         FROM ranked r
+         WHERE r.rn <= 3
+         ORDER BY r.bundle_id, r.cnt DESC`,
+      )
+      .bind(...bundleIds)
+      .all<{ bundle_id: number; cnt: number; primary_slug: string | null }>();
+    for (const r of topRows.results ?? []) {
+      const entry = out.get(r.bundle_id);
+      if (!entry) continue;
+      entry.top_links.push({ slug: r.primary_slug ?? "", click_count: r.cnt });
+    }
+
+    return out;
   }
 }
 

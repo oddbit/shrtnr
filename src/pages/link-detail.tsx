@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { FC } from "hono/jsx";
-import type { LinkWithSlugs, ClickStats, TimelineRange } from "../types";
+import type { Bundle, LinkWithSlugs, ClickStats, TimelineRange } from "../types";
 import type { TranslateFn } from "../i18n";
 import { countryName } from "../country";
 
@@ -85,13 +85,14 @@ function osIcon(name: string): string {
 type Props = {
   link: LinkWithSlugs;
   analytics: ClickStats;
+  bundles?: Bundle[];
   t: TranslateFn;
   lang: string;
   identity: string;
   initialRange?: TimelineRange;
 };
 
-export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, identity, initialRange = "all" }) => {
+export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, lang, identity, initialRange = "all" }) => {
   const now = Math.floor(Date.now() / 1000);
   const isExpired = !!(link.expires_at && link.expires_at < now);
   const isOwner = identity === link.created_by;
@@ -141,6 +142,9 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, identity, 
             <button class="detail-menu-item" onclick={`showAddSlugModal(${link.id})`}>
               <span class="icon">add_link</span> {t("linkDetail.addCustomSlug")}
             </button>
+            <button class="detail-menu-item" onclick={`showAddToBundleModal(${link.id})`}>
+              <span class="icon">inventory_2</span> {t("linkDetail.addToBundle")}
+            </button>
             {hasMultipleSlugs && (
               <button class="detail-menu-item" onclick={`showChangePrimaryModal(${link.id})`}>
                 <span class="icon">star</span> {t("linkDetail.changePrimary")}
@@ -170,6 +174,21 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, identity, 
           </div>
         </div>
       </div>
+
+      {bundles.length > 0 && (
+        <div class="bundle-chips-row">
+          {bundles.map((b) => (
+            <a
+              href={`/_/admin/bundles/${b.id}`}
+              class={`bundle-chip accent-${b.accent}`}
+              title={b.description || b.name}
+            >
+              <span class="icon">{b.icon ?? "inventory_2"}</span>
+              <span>{b.name}</span>
+            </a>
+          ))}
+        </div>
+      )}
 
       <div class="detail-hero">
         <div class="left">

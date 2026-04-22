@@ -31,6 +31,20 @@ import {
   listLinksByOwner,
 } from "../services/link-management";
 import {
+  addLinkToBundle,
+  archiveBundle,
+  createBundle,
+  deleteBundle,
+  getBundle,
+  getBundleAnalytics,
+  listBundleLinks,
+  listBundles,
+  listBundlesForLink,
+  removeLinkFromBundle,
+  unarchiveBundle,
+  updateBundle,
+} from "../services/bundle-management";
+import {
   getTrendingLinks,
   getGlobalBreakdown,
   getTotalClicks,
@@ -422,6 +436,183 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       },
       async ({ link_id }) => {
         const result = await deleteLink(this.env, link_id, this.identity);
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    // ===================================================================
+    // Bundles: collections of links with combined engagement stats.
+    // ===================================================================
+
+    this.server.tool(
+      "list_bundles",
+      "List all bundles owned by the caller. Bundles group related links so you can see combined click stats across them. Totals are lifetime; the delta is a fixed 30d-vs-prev-30d trend.",
+      {
+        archived: z.boolean().optional().describe("When true, include archived bundles. When omitted, hides archived."),
+      },
+      async ({ archived }) => {
+        const result = await listBundles(this.env, this.identity, {
+          includeArchived: archived === true,
+        });
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.tool(
+      "get_bundle",
+      "Get a bundle's metadata by numeric ID. Use get_bundle_analytics for stats.",
+      {
+        bundle_id: z.number().int().positive().describe("Numeric ID of the bundle"),
+      },
+      async ({ bundle_id }) => {
+        const result = await getBundle(this.env, bundle_id, this.identity);
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.tool(
+      "create_bundle",
+      "Create a new bundle. Bundles are owned by the caller. Use add_link_to_bundle to populate them.",
+      {
+        name: z.string().min(1).max(120).describe("Display name"),
+        description: z.string().nullable().optional().describe("Optional short description"),
+        icon: z.string().nullable().optional().describe("Material Symbol icon name, e.g. inventory_2"),
+        accent: z.enum(["orange", "red", "green", "blue", "purple"]).optional().describe("Accent color"),
+      },
+      async ({ name, description, icon, accent }) => {
+        const result = await createBundle(
+          this.env,
+          { name, description, icon, accent },
+          this.identity,
+          "mcp",
+        );
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.tool(
+      "update_bundle",
+      "Update a bundle's metadata. Only fields provided are changed. Only the owner can update.",
+      {
+        bundle_id: z.number().int().positive().describe("Numeric ID of the bundle"),
+        name: z.string().min(1).max(120).optional(),
+        description: z.string().nullable().optional(),
+        icon: z.string().nullable().optional(),
+        accent: z.enum(["orange", "red", "green", "blue", "purple"]).optional(),
+      },
+      async ({ bundle_id, ...patch }) => {
+        const result = await updateBundle(this.env, bundle_id, patch, this.identity);
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.tool(
+      "archive_bundle",
+      "Archive a bundle. It stays in the database but is hidden from the default list. Only the owner can archive.",
+      {
+        bundle_id: z.number().int().positive(),
+      },
+      async ({ bundle_id }) => {
+        const result = await archiveBundle(this.env, bundle_id, this.identity);
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.tool(
+      "unarchive_bundle",
+      "Restore a previously archived bundle so it appears in the default list again. Only the owner can unarchive.",
+      {
+        bundle_id: z.number().int().positive(),
+      },
+      async ({ bundle_id }) => {
+        const result = await unarchiveBundle(this.env, bundle_id, this.identity);
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.tool(
+      "delete_bundle",
+      "Permanently delete a bundle. Member links are not deleted, only their membership in this bundle. Only the owner can delete.",
+      {
+        bundle_id: z.number().int().positive(),
+      },
+      async ({ bundle_id }) => {
+        const result = await deleteBundle(this.env, bundle_id, this.identity);
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.tool(
+      "add_link_to_bundle",
+      "Add a link to a bundle. Idempotent: adding the same link twice is a no-op. Only the bundle owner can add.",
+      {
+        bundle_id: z.number().int().positive(),
+        link_id: z.number().int().positive(),
+      },
+      async ({ bundle_id, link_id }) => {
+        const result = await addLinkToBundle(this.env, bundle_id, link_id, this.identity);
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.tool(
+      "remove_link_from_bundle",
+      "Remove a link from a bundle. The link itself is not deleted. Only the bundle owner can remove.",
+      {
+        bundle_id: z.number().int().positive(),
+        link_id: z.number().int().positive(),
+      },
+      async ({ bundle_id, link_id }) => {
+        const result = await removeLinkFromBundle(this.env, bundle_id, link_id, this.identity);
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.tool(
+      "list_bundle_links",
+      "List every link in a given bundle, with slugs and total click counts.",
+      {
+        bundle_id: z.number().int().positive(),
+      },
+      async ({ bundle_id }) => {
+        const result = await listBundleLinks(this.env, bundle_id, this.identity);
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.tool(
+      "list_bundles_for_link",
+      "Return every bundle a given link belongs to. Useful for showing bundle memberships.",
+      {
+        link_id: z.number().int().positive(),
+      },
+      async ({ link_id }) => {
+        const result = await listBundlesForLink(this.env, link_id, this.identity);
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.tool(
+      "get_bundle_analytics",
+      "Combined analytics across every link in a bundle: total clicks, per-dimension breakdowns, timeline, and per-link contributions.",
+      {
+        bundle_id: z.number().int().positive(),
+        range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("30d").describe("Time range filter"),
+      },
+      async ({ bundle_id, range }) => {
+        const result = await getBundleAnalytics(this.env, bundle_id, range as TimelineRange, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },

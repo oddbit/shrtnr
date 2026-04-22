@@ -6,21 +6,20 @@ import type { TranslateFn, TranslationKey } from "../i18n";
 
 type TopbarProps = {
   active: string;
-  userEmail?: string | null;
   t: TranslateFn;
 };
 
 const CRUMB_KEYS: Record<string, TranslationKey> = {
   dashboard: "nav.dashboard",
   links: "nav.links",
+  bundles: "nav.bundles",
   keys: "nav.apiKeys",
   settings: "nav.settings",
 };
 
-export const Topbar: FC<TopbarProps> = ({ active, userEmail, t }) => {
+export const Topbar: FC<TopbarProps> = ({ active, t }) => {
   const crumbKey = CRUMB_KEYS[active];
   const crumbLabel = crumbKey ? t(crumbKey) : "";
-  const avatarLetter = userEmail ? userEmail.trim().charAt(0).toUpperCase() : "?";
 
   return (
     <div class="topbar">
@@ -33,12 +32,6 @@ export const Topbar: FC<TopbarProps> = ({ active, userEmail, t }) => {
           </>
         )}
       </nav>
-      {userEmail && (
-        <div class="user-chip" aria-label={t("topbar.currentUser")}>
-          <span class="avatar" aria-hidden="true">{avatarLetter}</span>
-          <span class="email">{userEmail}</span>
-        </div>
-      )}
     </div>
   );
 };

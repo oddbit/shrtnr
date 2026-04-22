@@ -789,5 +789,492 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   .settings-layout { flex-direction: column !important; }
   .settings-layout > div:last-child { max-width: 100% !important; }
   .pagination { flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+  .bundle-grid { grid-template-columns: 1fr; }
+  .detail-analytics { grid-template-columns: 1fr; }
+  .bundle-link-row { grid-template-columns: auto 1fr; grid-template-rows: auto auto; gap: 0.5rem; }
+  .bundle-link-row .bundle-link-bar { display: none; }
+  .bundle-hero-headline { font-size: 1.5rem; }
+}
+
+/* ============================================================
+ * Bundles
+ * ============================================================ */
+
+/* Accent palette — each class maps --bundle-accent to a brand-safe hue. */
+.accent-orange { --bundle-accent: #f97d3b; --bundle-accent-tint: rgba(249,125,59,0.16); }
+.accent-red    { --bundle-accent: #e04b5f; --bundle-accent-tint: rgba(224,75,95,0.16); }
+.accent-green  { --bundle-accent: #3eb489; --bundle-accent-tint: rgba(62,180,137,0.16); }
+.accent-blue   { --bundle-accent: #4a90e2; --bundle-accent-tint: rgba(74,144,226,0.16); }
+.accent-purple { --bundle-accent: #9b6bd6; --bundle-accent-tint: rgba(155,107,214,0.16); }
+
+/* Intro card on the bundles list page. */
+.bundles-intro {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+.bundles-intro-icon {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 0.6rem;
+  color: var(--color-accent);
+}
+.bundles-intro-title { font-weight: 600; margin-bottom: 0.25rem; }
+.bundles-intro-body { color: var(--color-text-subtle); font-size: 0.9rem; line-height: 1.5; }
+
+/* Filter chips row on the bundles list page. */
+.bundle-filter-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.bundle-filter-chip {
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-lg, 999px);
+  background: var(--color-surface);
+  color: var(--color-text-subtle);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid var(--color-border);
+}
+.bundle-filter-chip.active {
+  background: var(--color-accent);
+  color: var(--color-on-accent, #0b1815);
+  border-color: var(--color-accent);
+}
+
+/* Bundle card grid on the list page. */
+.bundle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.bundle-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem 1.5rem;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--color-text);
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.bundle-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--bundle-accent, var(--color-accent));
+}
+.bundle-card:hover { border-color: var(--bundle-accent, var(--color-accent)); transform: translateY(-1px); }
+
+.bundle-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.bundle-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-sm);
+  background: var(--bundle-accent-tint, rgba(255,255,255,0.08));
+  color: var(--bundle-accent, var(--color-accent));
+}
+.bundle-card-title {
+  font-family: var(--font-family-display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--color-text);
+}
+.bundle-archived-badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bundle-card-desc {
+  color: var(--color-text-subtle);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.bundle-card-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+.bundle-card-stat { display: flex; flex-direction: column; gap: 0.15rem; }
+.bundle-card-stat-value {
+  font-family: var(--font-family-display);
+  font-weight: 700;
+  font-size: 1.35rem;
+  color: var(--color-text);
+}
+.bundle-card-stat-value.muted { color: var(--color-text-subtle); }
+.bundle-card-stat-label {
+  font-size: 0.7rem;
+  color: var(--color-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bundle-card-spark { height: 34px; }
+
+.bundle-card-toplinks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border-top: 1px dashed var(--color-border);
+  padding-top: 0.6rem;
+}
+.bundle-card-toplink {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-family-mono);
+  font-size: 0.85rem;
+}
+.bundle-card-toplink-count { color: var(--color-text-subtle); }
+.bundle-card-toplink-more {
+  font-size: 0.75rem;
+  color: var(--color-text-subtle);
+  font-style: italic;
+}
+
+/* "+ New bundle" tile at the end of the grid. */
+.bundle-card-new {
+  background: transparent;
+  border: 2px dashed var(--color-border);
+  color: var(--color-text-subtle);
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  cursor: pointer;
+  font-family: var(--font-family-body);
+}
+.bundle-card-new::before { display: none; }
+.bundle-card-new:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.bundle-card-new-title { font-weight: 600; margin-top: 0.5rem; }
+.bundle-card-new-body { font-size: 0.85rem; max-width: 22ch; }
+
+/* Empty state on the bundles list page. */
+.bundle-empty {
+  text-align: center;
+  padding: 3rem 1.5rem;
+}
+.bundle-empty-title { font-weight: 600; font-size: 1.1rem; margin: 0.75rem 0 0.25rem; }
+.bundle-empty-body { color: var(--color-text-subtle); margin-bottom: 1rem; }
+
+/* Bundle header row on the detail page. */
+.bundle-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+.bundle-header-title .page-title { margin: 0; }
+
+/* Bundle hero headline — mirrors .detail-hero .label on link-detail so both
+ * pages share the same primary-title font, size, and placement. */
+.bundle-hero-headline {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text);
+  line-height: 1.2;
+  min-width: 0;
+}
+.bundle-hero-name {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.bundle-hero-description {
+  color: var(--color-text-subtle);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* Range picker in the detail header should hug the right edge, matching the
+ * behavior of the link detail's .timeline-range-selector. */
+.detail-header .range-picker { margin-left: auto; }
+
+/* Combined pill shown on each breakdown card in the bundle detail page. */
+.bundle-combined-pill {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.5rem;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Links-in-bundle table on the bundle detail page. */
+.bundle-links-card { margin-bottom: 1.25rem; }
+.bundle-links-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.bundle-links-card-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-subtle);
+}
+
+.bundle-links-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.bundle-link-row {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 1.2fr) minmax(120px, 1.4fr) auto auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+.bundle-link-row:hover { background: var(--color-surface); }
+
+.bundle-link-meta { min-width: 0; }
+.bundle-link-label {
+  font-weight: 500;
+  color: var(--color-text);
+  text-decoration: none;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bundle-link-label .muted { color: var(--color-text-subtle); font-style: italic; font-weight: 400; }
+.bundle-link-url {
+  color: var(--color-text-subtle);
+  font-size: 0.8rem;
+  font-family: var(--font-family-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bundle-link-bar {
+  height: 4px;
+  background: var(--color-surface);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.bundle-link-bar-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 2px;
+}
+
+.bundle-link-count {
+  font-family: var(--font-family-display);
+  font-weight: 600;
+  text-align: right;
+  min-width: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+}
+.bundle-link-count .count { font-size: 0.95rem; }
+
+.bundle-link-actions { display: flex; gap: 0.25rem; }
+
+.bundle-add-link-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.75rem;
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-subtle);
+  font-family: var(--font-family-body);
+  font-size: 0.875rem;
+  cursor: pointer;
+  margin-top: 0.75rem;
+}
+.bundle-add-link-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Bundle chips shown on the link detail page when a link belongs to bundles. */
+.bundle-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+.bundle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: var(--radius-lg, 999px);
+  background: var(--bundle-accent-tint, var(--color-surface));
+  color: var(--color-text);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid var(--bundle-accent, var(--color-border));
+}
+.bundle-chip:hover { background: var(--bundle-accent); color: var(--color-on-accent, #0b1815); }
+.bundle-chip .icon { font-size: 16px; }
+
+/* Tip card at bottom-right of bundle detail page. */
+.bundle-tip {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.bundle-tip-icon { color: var(--color-accent); }
+.bundle-tip-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+.bundle-tip-body { font-size: 0.875rem; color: var(--color-text-subtle); line-height: 1.5; }
+
+/* Add-to-bundle modal. */
+.add-to-bundle-list {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
+}
+.add-to-bundle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-family-body);
+  text-align: left;
+  width: 100%;
+  transition: background 0.12s, border-color 0.12s;
+}
+.add-to-bundle-row:hover { background: var(--color-surface); }
+.add-to-bundle-row.selected {
+  background: var(--bundle-accent-tint, var(--color-surface));
+  border-color: var(--bundle-accent, var(--color-accent));
+}
+.add-to-bundle-row .icon {
+  color: var(--bundle-accent, var(--color-text-subtle));
+  font-size: 20px;
+}
+.add-to-bundle-row-name { font-weight: 500; }
+.add-to-bundle-row-desc { font-size: 0.8rem; color: var(--color-text-subtle); }
+.add-to-bundle-create {
+  margin-top: 0.5rem;
+  border-top: 1px dashed var(--color-border);
+  padding-top: 0.75rem;
+}
+.add-to-bundle-empty {
+  padding: 1rem 0.5rem;
+  color: var(--color-text-subtle);
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+/* Accent color picker in the bundle create/edit form. */
+.accent-picker {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.accent-swatch {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  background: var(--bundle-accent);
+  transition: transform 0.15s;
+}
+.accent-swatch:hover { transform: scale(1.08); }
+.accent-swatch.selected { border-color: var(--color-text); }
+
+/* Icon picker — emoji-picker style grid for choosing a bundle icon. */
+.bundle-icon-picker {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.3rem;
+  padding: 0.6rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  max-height: 280px;
+  overflow-y: auto;
+}
+.bundle-icon-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text-subtle);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.bundle-icon-option:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+.bundle-icon-option.selected {
+  background: var(--color-accent);
+  color: var(--color-on-accent, #0b1815);
+  border-color: var(--color-accent);
+}
+.bundle-icon-option .icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+@media (max-width: 540px) {
+  .bundle-icon-picker { grid-template-columns: repeat(6, 1fr); }
 }
 `;

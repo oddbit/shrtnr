@@ -9,6 +9,7 @@ CREATE TABLE bundles (
   icon        TEXT,
   accent      TEXT NOT NULL DEFAULT 'orange' CHECK (accent IN ('orange','red','green','blue','purple')),
   archived_at INTEGER,
+  created_via TEXT DEFAULT 'app',
   created_by  TEXT NOT NULL,
   created_at  INTEGER NOT NULL,
   updated_at  INTEGER NOT NULL
