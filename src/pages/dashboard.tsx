@@ -186,8 +186,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
 
         <div class="bento-card" id="dash-top-sources">
           <div class="bento-head">
-            <div class="bento-label">{t("dashboard.topSources")}</div>
-            <div class="bento-count">{d.num_domains.toLocaleString()}</div>
+            <div class="bento-label">{t("dashboard.topReferrers")}</div>
           </div>
           {d.top_referrers.length === 0 ? (
             <div class="muted-hint">{t("dashboard.noData")}</div>

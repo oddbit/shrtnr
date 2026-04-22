@@ -294,7 +294,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, identity, 
           </div>
           <div class="hero-metric">
             <div class="n">{analytics.referrer_hosts.length}</div>
-            <div class="l">{t("linkDetail.sources")}</div>
+            <div class="l">{t("linkDetail.referrers")}</div>
           </div>
         </div>
       </div>
@@ -431,8 +431,8 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, identity, 
             </div>
           </div>
 
-          <div class="bento-card" id="card-referrer-hosts">
-            <div class="bento-label">{t("linkDetail.referrerHosts")}</div>
+          <div class="bento-card" id="card-referrers">
+            <div class="bento-label">{t("linkDetail.referrers")}</div>
             <div class="stat-card-body">
               {analytics.referrer_hosts.length > 0 ? (
                 analytics.referrer_hosts.map((r) => (
@@ -442,26 +442,6 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, t, lang, identity, 
                     max={analytics.referrer_hosts.reduce((s, i) => s + i.count, 0)}
                     color="mint"
                     mono
-                  />
-                ))
-              ) : (
-                <div class="muted-hint">{t("linkDetail.noData")}</div>
-              )}
-            </div>
-          </div>
-
-          <div class="bento-card" id="card-referrers">
-            <div class="bento-label">{t("linkDetail.sources")}</div>
-            <div class="stat-card-body">
-              {analytics.referrers.length > 0 ? (
-                analytics.referrers.map((r) => (
-                  <StatBar
-                    name={referrerHost(r.name)}
-                    count={r.count}
-                    max={analytics.referrers.reduce((s, i) => s + i.count, 0)}
-                    color="mint"
-                    mono
-                    subtitle={r.name}
                   />
                 ))
               ) : (
