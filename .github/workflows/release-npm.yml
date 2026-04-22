@@ -55,7 +55,7 @@ jobs:
 
       - name: Upgrade npm for trusted publishing
         if: steps.version.outputs.exists == 'false'
-        run: npm install -g npm@latest
+        run: npm install -g --force npm@latest
 
       - name: Install dependencies
         if: steps.version.outputs.exists == 'false'
