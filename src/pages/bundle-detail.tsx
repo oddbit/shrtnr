@@ -255,7 +255,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
         {isOwner && (
           <button
             class="bundle-add-link-btn"
-            onclick={`showAddLinkToBundlePicker(${b.id})`}
+            onclick={`showAddLinkToBundlePicker(${b.id},[${stats.per_link.map((r) => r.link_id).join(",")}])`}
             type="button"
           >
             <span class="icon">add</span> {t("bundles.addLinkToBundle")}

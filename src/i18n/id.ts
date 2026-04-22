@@ -165,6 +165,7 @@ const id: Translations = {
   "bundles.linksInThisBundle": "Tautan dalam bundel ini",
   "bundles.sortedByClicks": "diurutkan berdasarkan klik",
   "bundles.addLinkToBundle": "Tambahkan tautan ke bundel ini",
+  "bundles.allLinksAdded": "Semua tautan sudah ada di bundel ini.",
   "bundles.removeFromBundle": "Hapus dari bundel",
   "bundles.noLinks": "Bundel ini belum memiliki tautan.",
   "bundles.countries": "Negara",

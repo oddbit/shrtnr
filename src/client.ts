@@ -1430,26 +1430,35 @@ function saveAddToBundle(linkId) {
   });
 }
 
-function showAddLinkToBundlePicker(bundleId) {
+function showAddLinkToBundlePicker(bundleId, excludeIds) {
+  var exclude = {};
+  if (excludeIds && excludeIds.length) {
+    for (var i = 0; i < excludeIds.length; i++) exclude[excludeIds[i]] = true;
+  }
   api('/links').then(function(res) {
     if (!res.ok) { toast(t('client.createLinkError'), 'error'); return; }
     res.json().then(function(links) {
+      var available = links.filter(function(link) { return !exclude[link.id]; });
       var html = '<div class="modal-title">' + esc(t('bundles.addLinkToBundle')) + '</div>';
       html += '<div class="form-group"><input class="form-input" id="bundle-link-search" placeholder="' + esc(t('links.search')) + '" oninput="filterBundleLinkPicker()"></div>';
       html += '<div class="add-to-bundle-list" id="bundle-link-picker-list">';
-      links.forEach(function(link) {
-        var slug = '';
-        if (link.slugs && link.slugs.length > 0) {
-          var primary = link.slugs.find(function(s) { return s.is_primary; }) || link.slugs[0];
-          slug = primary.slug;
-        }
-        var label = link.label || link.url;
-        html += '<div class="add-to-bundle-row" data-search="' + esc((link.label || '') + ' ' + link.url + ' ' + slug).toLowerCase() + '" onclick="doAddLinkToBundle(' + bundleId + ',' + link.id + ')">';
-        html += '<span class="slug-chip">' + esc(slug) + '</span>';
-        html += '<div><div class="add-to-bundle-row-name">' + esc(label) + '</div>';
-        html += '<div class="add-to-bundle-row-desc">' + esc(link.url) + '</div></div>';
-        html += '</div>';
-      });
+      if (available.length === 0) {
+        html += '<div class="muted-hint">' + esc(t('bundles.allLinksAdded')) + '</div>';
+      } else {
+        available.forEach(function(link) {
+          var slug = '';
+          if (link.slugs && link.slugs.length > 0) {
+            var primary = link.slugs.find(function(s) { return s.is_primary; }) || link.slugs[0];
+            slug = primary.slug;
+          }
+          var label = link.label || link.url;
+          html += '<div class="add-to-bundle-row" data-search="' + esc((link.label || '') + ' ' + link.url + ' ' + slug).toLowerCase() + '" onclick="doAddLinkToBundle(' + bundleId + ',' + link.id + ')">';
+          html += '<span class="slug-chip">' + esc(slug) + '</span>';
+          html += '<div><div class="add-to-bundle-row-name">' + esc(label) + '</div>';
+          html += '<div class="add-to-bundle-row-desc">' + esc(link.url) + '</div></div>';
+          html += '</div>';
+        });
+      }
       html += '</div>';
       html += '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('bundles.cancel')) + '</button></div>';
       openModal(html);

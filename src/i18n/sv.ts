@@ -165,6 +165,7 @@ const sv: Translations = {
   "bundles.linksInThisBundle": "Länkar i denna bunt",
   "bundles.sortedByClicks": "sorterade efter klick",
   "bundles.addLinkToBundle": "Lägg till en länk i denna bunt",
+  "bundles.allLinksAdded": "Alla länkar finns redan i denna bunt.",
   "bundles.removeFromBundle": "Ta bort från bunt",
   "bundles.noLinks": "Denna bunt har inga länkar ännu.",
   "bundles.countries": "Länder",

@@ -162,6 +162,7 @@ const en = {
   "bundles.linksInThisBundle": "Links in this bundle",
   "bundles.sortedByClicks": "sorted by clicks",
   "bundles.addLinkToBundle": "Add a link to this bundle",
+  "bundles.allLinksAdded": "Every link is already in this bundle.",
   "bundles.removeFromBundle": "Remove from bundle",
   "bundles.noLinks": "This bundle has no links yet.",
   "bundles.countries": "Countries",
