@@ -52,7 +52,16 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
   const d = stats;
   const topCountryMax = d.top_countries.reduce((s, i) => s + i.count, 0) || 1;
   const topRefMax = d.top_referrers.reduce((s, i) => s + i.count, 0) || 1;
+  const topSourceMax = d.top_sources.reduce((s, i) => s + i.count, 0) || 1;
   const topLinkMax = d.top_links.reduce((s, i) => s + i.total_clicks, 0) || 1;
+
+  function hostOf(url: string): string {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return url;
+    }
+  }
 
   return (
     <>
@@ -180,9 +189,12 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
           )}
         </div>
 
-        <div class="bento-card" id="dash-top-sources">
+        <div class="bento-card" id="dash-top-domains">
           <div class="bento-head">
-            <div class="bento-label">{t("dashboard.topReferrers")}</div>
+            <div class="bento-label">{t("dashboard.topDomains")}</div>
+            {d.num_referrers > 0 && (
+              <div class="bento-count">{fmtNumber(d.num_referrers, lang)}</div>
+            )}
           </div>
           {d.top_referrers.length === 0 ? (
             <div class="muted-hint">{t("dashboard.noData")}</div>
@@ -193,6 +205,29 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
                 count={r.count}
                 max={topRefMax}
                 color="mint"
+                lang={lang}
+              />
+            ))
+          )}
+        </div>
+
+        <div class="bento-card" id="dash-top-source-urls">
+          <div class="bento-head">
+            <div class="bento-label">{t("dashboard.topSources")}</div>
+            {d.num_sources > 0 && (
+              <div class="bento-count">{fmtNumber(d.num_sources, lang)}</div>
+            )}
+          </div>
+          {d.top_sources.length === 0 ? (
+            <div class="muted-hint">{t("dashboard.noData")}</div>
+          ) : (
+            d.top_sources.map((r) => (
+              <StatBar
+                name={hostOf(r.name)}
+                count={r.count}
+                max={topSourceMax}
+                color="mint"
+                mono
                 lang={lang}
               />
             ))

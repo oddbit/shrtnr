@@ -212,6 +212,9 @@ app.get("/_/admin/dashboard", async (c) => {
         top_links: [],
         top_countries: [],
         top_referrers: [],
+        top_sources: [],
+        num_referrers: 0,
+        num_sources: 0,
       };
   return c.html(
     <Layout active="dashboard" theme={theme} t={t} lang={lang} translations={translations}>
@@ -266,7 +269,12 @@ app.get("/_/admin/links/:id", async (c) => {
     getLinkAnalytics(c.env, id),
     listBundlesForLink(c.env, id, identity),
   ]);
-  const analytics = analyticsResult.ok ? analyticsResult.data : { total_clicks: 0, countries: [], referrers: [], referrer_hosts: [], devices: [], os: [], browsers: [], link_modes: [], channels: [], clicks_over_time: [], slug_clicks: [] };
+  const analytics = analyticsResult.ok ? analyticsResult.data : {
+    total_clicks: 0,
+    countries: [], referrers: [], referrer_hosts: [], devices: [], os: [], browsers: [],
+    link_modes: [], channels: [], clicks_over_time: [], slug_clicks: [],
+    num_countries: 0, num_referrers: 0, num_referrer_hosts: 0, num_os: 0, num_browsers: 0,
+  };
   const bundles = bundlesResult.ok ? bundlesResult.data : [];
   return c.html(
     <Layout active="links" theme={theme} t={t} lang={lang} translations={translations}>

@@ -809,8 +809,8 @@ function loadAnalytics(linkId, range) {
 
     // Update all stat cards
     renderStatCard('card-countries', stats.countries, 'orange', { mapName: countryName, flagFromName: true });
-    renderStatCard('card-referrer-hosts', stats.referrer_hosts, 'mint', { mono: true });
-    renderStatCard('card-referrers', stats.referrers, 'mint', {
+    renderStatCard('card-domains', stats.referrer_hosts, 'mint', { mono: true });
+    renderStatCard('card-sources', stats.referrers, 'mint', {
       mono: true,
       mapName: function(name) { try { return new URL(name).hostname; } catch(e) { return name; } },
       subtitleFn: function(item) { return item.name; }
@@ -819,7 +819,21 @@ function loadAnalytics(linkId, range) {
     renderStatCard('card-devices', stats.devices, 'orange', { iconFn: deviceIcon });
     renderStatCard('card-os', stats.os, 'mint', { iconFn: osIcon });
     renderStatCard('card-browsers', stats.browsers, 'mint');
+
+    // Update count pills and hero metrics
+    updateCount('count-countries', stats.num_countries);
+    updateCount('count-domains', stats.num_referrer_hosts);
+    updateCount('count-sources', stats.num_referrers);
+    updateCount('count-os', stats.num_os);
+    updateCount('count-browsers', stats.num_browsers);
+    updateCount('hero-num-countries', stats.num_countries);
+    updateCount('hero-num-domains', stats.num_referrer_hosts);
   });
+}
+
+function updateCount(id, value) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = fmtNum(value);
 }
 
 function fmtNum(n) {

@@ -77,8 +77,17 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
   const devTotal = stats.devices.reduce((s, c) => s + c.count, 0);
   const osTotal = stats.os.reduce((s, c) => s + c.count, 0);
   const brTotal = stats.browsers.reduce((s, c) => s + c.count, 0);
-  const refTotal = stats.referrers.reduce((s, c) => s + c.count, 0);
+  const srcTotal = stats.referrers.reduce((s, c) => s + c.count, 0);
+  const hostTotal = stats.referrer_hosts.reduce((s, c) => s + c.count, 0);
   const modeTotal = stats.link_modes.reduce((s, c) => s + c.count, 0);
+
+  function referrerHost(url: string): string {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return url;
+    }
+  }
 
   const maxLinkClicks = Math.max(1, stats.total_clicks);
 
@@ -189,12 +198,12 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
             <div class="l">{t("linkDetail.avgPerDay")}</div>
           </div>
           <div class="hero-metric">
-            <div class="n">{stats.countries.length}</div>
+            <div class="n">{stats.num_countries}</div>
             <div class="l">{t("linkDetail.countries")}</div>
           </div>
           <div class="hero-metric">
-            <div class="n">{stats.referrers.length}</div>
-            <div class="l">{t("linkDetail.referrers")}</div>
+            <div class="n">{stats.num_referrer_hosts}</div>
+            <div class="l">{t("linkDetail.domains")}</div>
           </div>
         </div>
       </div>
@@ -279,7 +288,12 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
           </div>
 
           <div class="bento-card">
-            <div class="bento-label">{t("linkDetail.countries")}</div>
+            <div class="bento-head">
+              <div class="bento-label">{t("linkDetail.countries")}</div>
+              {stats.num_countries > 0 && (
+                <div class="bento-count">{fmtNumber(stats.num_countries, lang)}</div>
+              )}
+            </div>
             <div class="stat-card-body">
               {stats.countries.length > 0 ? (
                 stats.countries.map((c) => (
@@ -299,14 +313,44 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
           </div>
 
           <div class="bento-card">
-            <div class="bento-label">{t("linkDetail.referrers")}</div>
+            <div class="bento-head">
+              <div class="bento-label">{t("linkDetail.domains")}</div>
+              {stats.num_referrer_hosts > 0 && (
+                <div class="bento-count">{fmtNumber(stats.num_referrer_hosts, lang)}</div>
+              )}
+            </div>
+            <div class="stat-card-body">
+              {stats.referrer_hosts.length > 0 ? (
+                stats.referrer_hosts.map((r) => (
+                  <StatBar
+                    name={r.name}
+                    count={r.count}
+                    max={hostTotal || 1}
+                    color="mint"
+                    mono
+                    lang={lang}
+                  />
+                ))
+              ) : (
+                <div class="muted-hint">{t("linkDetail.noData")}</div>
+              )}
+            </div>
+          </div>
+
+          <div class="bento-card">
+            <div class="bento-head">
+              <div class="bento-label">{t("linkDetail.sources")}</div>
+              {stats.num_referrers > 0 && (
+                <div class="bento-count">{fmtNumber(stats.num_referrers, lang)}</div>
+              )}
+            </div>
             <div class="stat-card-body">
               {stats.referrers.length > 0 ? (
                 stats.referrers.map((r) => (
                   <StatBar
-                    name={r.name}
+                    name={referrerHost(r.name)}
                     count={r.count}
-                    max={refTotal || 1}
+                    max={srcTotal || 1}
                     color="mint"
                     mono
                     lang={lang}
@@ -361,7 +405,12 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
           </div>
 
           <div class="bento-card">
-            <div class="bento-label">{t("linkDetail.os")}</div>
+            <div class="bento-head">
+              <div class="bento-label">{t("linkDetail.os")}</div>
+              {stats.num_os > 0 && (
+                <div class="bento-count">{fmtNumber(stats.num_os, lang)}</div>
+              )}
+            </div>
             <div class="stat-card-body">
               {stats.os.length > 0 ? (
                 stats.os.map((o) => (
@@ -381,7 +430,12 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
           </div>
 
           <div class="bento-card">
-            <div class="bento-label">{t("linkDetail.browsers")}</div>
+            <div class="bento-head">
+              <div class="bento-label">{t("linkDetail.browsers")}</div>
+              {stats.num_browsers > 0 && (
+                <div class="bento-count">{fmtNumber(stats.num_browsers, lang)}</div>
+              )}
+            </div>
             <div class="stat-card-body">
               {stats.browsers.length > 0 ? (
                 stats.browsers.map((br) => (
