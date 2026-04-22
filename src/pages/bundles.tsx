@@ -84,7 +84,7 @@ export const BundlesPage: FC<Props> = ({ bundles, t, filter }) => {
                   {b.delta_pct !== undefined ? (
                     <Delta pct={b.delta_pct} />
                   ) : (
-                    <div class="bundle-card-stat-value muted">{t("bundles.noBaseline")}</div>
+                    <div class="bundle-card-stat-placeholder">{t("bundles.noBaseline")}</div>
                   )}
                   <div class="bundle-card-stat-label">{t("bundles.vsPrev")}</div>
                 </div>

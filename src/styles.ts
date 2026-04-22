@@ -927,6 +927,13 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   color: var(--color-text);
 }
 .bundle-card-stat-value.muted { color: var(--color-text-subtle); }
+.bundle-card-stat-placeholder {
+  color: var(--color-text-subtle);
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.35rem;
+  align-self: start;
+}
 .bundle-card-stat-label {
   font-size: 0.7rem;
   color: var(--color-text-subtle);
