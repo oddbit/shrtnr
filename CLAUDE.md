@@ -20,6 +20,11 @@ When instructed to "update the version", "bump version" or "create a release":
 1. Update the version in the correct manifest following semver. Confirm which track if ambiguous.
 2. Add a section to the corresponding `CHANGELOG.md` (root, `sdk/typescript/`, or `sdk/dart/`) summarizing what changed. Keep it concise: a short paragraph or a few bullet points. Not a commit-by-commit log.
 3. Commit the changes. But don't push to upstream.
+4. **Dart/pub.dev track only:** also create the matching tag on the release commit, but do not push it:
+   ```
+   git tag pub-v<version>
+   ```
+   pub.dev publishing is triggered by the tag push, not the `main` push. The developer pushes `main` and the tag together; `release-pub.yml` fires on the tag and publishes. The app and npm tracks tag from CI after publishing, so no manual tag is needed for those.
 
 ### SDKs
 
