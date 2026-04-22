@@ -15,6 +15,11 @@ export interface Env {
 
   // Durable Object binding for MCP agent
   MCP_OBJECT: DurableObjectNamespace;
+
+  // Optional secret used to derive the daily visitor-fingerprint salt.
+  // When unset, a deterministic per-day fallback is used. Set via
+  // `wrangler secret put FP_SALT` in production for unpredictability.
+  FP_SALT?: string;
 }
 
 export interface Link {
@@ -63,6 +68,8 @@ export interface ClickData {
   utmContent?: string | null;
   userAgent?: string | null;
   isBot?: number;
+  /** Silent daily-rotated visitor fingerprint; not exposed in any UI. */
+  visitorFp?: string | null;
 }
 
 export interface ClickStats {

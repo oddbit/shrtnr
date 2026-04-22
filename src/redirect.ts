@@ -7,6 +7,7 @@ import { SlugRepository } from "./db";
 import { parseDeviceType, parseBrowser, parseOS } from "./ua";
 import { notFoundResponse } from "./404";
 import { ClickData, Env } from "./types";
+import { computeVisitorFingerprint } from "./fingerprint";
 
 function parseReferrerHost(referrer: string | null): string | null {
   if (!referrer) return null;
@@ -55,9 +56,14 @@ export async function handleRedirect(
   const referrer = request.headers.get("Referer") || null;
   const country = (request as unknown as { cf?: { country?: string } }).cf?.country ?? request.headers.get("cf-ipcountry") ?? null;
   const ua = request.headers.get("User-Agent") || "";
+  const clientIp = request.headers.get("CF-Connecting-IP") || request.headers.get("X-Forwarded-For") || null;
 
   const url = new URL(request.url);
   const utmMedium = url.searchParams.get("utm_medium")?.toLowerCase() ?? null;
+
+  // Best-effort silent visitor fingerprint. Hashed IP + UA + daily salt.
+  // Stored for future unique-visitor analytics; never exposed raw anywhere.
+  const visitorFp = await computeVisitorFingerprint(clientIp, ua, env.FP_SALT).catch(() => null);
 
   const data: ClickData = {
     referrer,
@@ -73,6 +79,7 @@ export async function handleRedirect(
     utmTerm: url.searchParams.get("utm_term")?.toLowerCase() ?? null,
     utmContent: url.searchParams.get("utm_content")?.toLowerCase() ?? null,
     userAgent: ua || null,
+    visitorFp,
   };
 
   ctx.waitUntil(recordClick(env, normalizedSlug, data));
