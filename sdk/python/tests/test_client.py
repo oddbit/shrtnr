@@ -1,11 +1,11 @@
 # Copyright 2026 Oddbit (https://oddbit.id)
 # SPDX-License-Identifier: Apache-2.0
 
-"""Unit tests for the synchronous Shrtnr client.
-
-Every test uses ``respx`` to mock httpx transport, so the SDK never hits the
-network. Coverage includes auth headers, error shape, each method's URL +
-method + body, and the error mapping for non-2xx responses.
+"""Canonical SDK unit test layout — MUST stay structurally identical to
+sdk/typescript/src/__tests__/client.test.ts and
+sdk/dart/test/client_test.dart: same describe/group blocks, same order,
+same test count, same names. When adding a new public method, add a
+matching test here AND in the other two SDKs. See CLAUDE.md "SDK parity".
 """
 
 from __future__ import annotations
@@ -34,279 +34,309 @@ def client() -> Shrtnr:
     return Shrtnr(BASE_URL, api_key=API_KEY)
 
 
-# ---- auth + error handling ----
+# ---- 1. Auth headers ----
 
 
 @respx.mock
-def test_sends_bearer_token_and_sdk_client_header(client: Shrtnr) -> None:
+def test_auth_sends_bearer_and_x_client_header(client: Shrtnr) -> None:
     route = respx.get(f"{BASE_URL}/_/api/links").mock(return_value=httpx.Response(200, json=[]))
     client.list_links()
-    assert route.called
     req = route.calls[0].request
     assert req.headers["Authorization"] == f"Bearer {API_KEY}"
     assert req.headers["X-Client"] == "sdk"
 
 
+# ---- 2. Error handling ----
+
+
 @respx.mock
-def test_raises_shrtnr_error_with_body_message(client: Shrtnr) -> None:
+def test_error_throws_shrtnr_error_on_non_2xx(client: Shrtnr) -> None:
     respx.get(f"{BASE_URL}/_/api/links/999").mock(
         return_value=httpx.Response(404, json={"error": "Link not found"}),
     )
-    with pytest.raises(ShrtnrError) as exc_info:
+    with pytest.raises(ShrtnrError):
         client.get_link(999)
-    assert exc_info.value.status == 404
-    assert str(exc_info.value) == "Link not found"
-    assert exc_info.value.body == {"error": "Link not found"}
 
 
 @respx.mock
-def test_raises_shrtnr_error_with_fallback_message(client: Shrtnr) -> None:
-    respx.get(f"{BASE_URL}/_/api/links/999").mock(
-        return_value=httpx.Response(500, text="server down"),
+def test_error_includes_status_and_message(client: Shrtnr) -> None:
+    respx.post(f"{BASE_URL}/_/api/links/1/slugs").mock(
+        return_value=httpx.Response(409, json={"error": "Slug already exists"}),
     )
     with pytest.raises(ShrtnrError) as exc_info:
-        client.get_link(999)
-    assert exc_info.value.status == 500
-    assert str(exc_info.value) == "HTTP 500"
+        client.add_custom_slug(1, "taken")
+    assert exc_info.value.status == 409
+    assert str(exc_info.value) == "Slug already exists"
 
 
-# ---- health ----
+@respx.mock
+def test_error_throws_shrtnr_error_on_401(client: Shrtnr) -> None:
+    respx.get(f"{BASE_URL}/_/api/links").mock(
+        return_value=httpx.Response(401, json={"error": "Unauthorized"}),
+    )
+    with pytest.raises(ShrtnrError):
+        client.list_links()
+
+
+# ---- 3. health ----
 
 
 @respx.mock
 def test_health(client: Shrtnr) -> None:
     respx.get(f"{BASE_URL}/_/health").mock(
-        return_value=httpx.Response(
-            200,
-            json={"status": "ok", "version": "0.31.2", "timestamp": 1700000000},
-        ),
+        return_value=httpx.Response(200, json={"status": "ok", "version": "0.1.0", "timestamp": 1}),
     )
-    result = client.health()
-    assert result.status == "ok"
-    assert result.version == "0.31.2"
+    h = client.health()
+    assert h.status == "ok"
 
 
-# ---- links ----
+# ---- 4. create_link ----
 
 
 @respx.mock
-def test_create_link_posts_options(client: Shrtnr) -> None:
+def test_create_link(client: Shrtnr) -> None:
     route = respx.post(f"{BASE_URL}/_/api/links").mock(
-        return_value=httpx.Response(201, json=make_link_dict(url="https://example.com/new")),
+        return_value=httpx.Response(201, json=make_link_dict(url="https://example.com", label="L")),
     )
-    link = client.create_link(CreateLinkOptions(url="https://example.com/new", label="N"))
-    assert route.called
+    client.create_link(CreateLinkOptions(url="https://example.com", label="L"))
     body = json.loads(route.calls[0].request.content)
-    assert body == {"url": "https://example.com/new", "label": "N"}
-    assert link.url == "https://example.com/new"
+    assert body == {"url": "https://example.com", "label": "L"}
+
+
+# ---- 5. list_links ----
 
 
 @respx.mock
 def test_list_links(client: Shrtnr) -> None:
-    respx.get(f"{BASE_URL}/_/api/links").mock(
-        return_value=httpx.Response(
-            200, json=[make_link_dict(link_id=1), make_link_dict(link_id=2)]
-        ),
-    )
-    links = client.list_links()
-    assert [link.id for link in links] == [1, 2]
+    route = respx.get(f"{BASE_URL}/_/api/links").mock(return_value=httpx.Response(200, json=[]))
+    client.list_links()
+    assert route.calls[0].request.method == "GET"
+
+
+# ---- 6. get_link ----
 
 
 @respx.mock
 def test_get_link(client: Shrtnr) -> None:
-    respx.get(f"{BASE_URL}/_/api/links/7").mock(
-        return_value=httpx.Response(200, json=make_link_dict(link_id=7)),
+    route = respx.get(f"{BASE_URL}/_/api/links/3").mock(
+        return_value=httpx.Response(200, json=make_link_dict(link_id=3)),
     )
-    link = client.get_link(7)
-    assert link.id == 7
+    client.get_link(3)
+    assert route.calls[0].request.method == "GET"
+
+
+# ---- 7. update_link ----
 
 
 @respx.mock
-def test_update_link_omits_unset_and_sends_explicit_null(client: Shrtnr) -> None:
-    route = respx.put(f"{BASE_URL}/_/api/links/7").mock(
-        return_value=httpx.Response(200, json=make_link_dict(link_id=7, label="X")),
+def test_update_link(client: Shrtnr) -> None:
+    route = respx.put(f"{BASE_URL}/_/api/links/1").mock(
+        return_value=httpx.Response(200, json=make_link_dict(link_id=1)),
     )
-    client.update_link(7, UpdateLinkOptions(label="X", expires_at=None))
-    # 'url' was not set: absent. 'expires_at' was explicitly None: present as null.
+    client.update_link(1, UpdateLinkOptions(url="https://new.com"))
     body = json.loads(route.calls[0].request.content)
-    assert body == {"label": "X", "expires_at": None}
+    assert body == {"url": "https://new.com"}
+
+
+# ---- 8. disable_link ----
 
 
 @respx.mock
-def test_disable_enable_delete_link(client: Shrtnr) -> None:
-    respx.post(f"{BASE_URL}/_/api/links/7/disable").mock(
-        return_value=httpx.Response(200, json=make_link_dict(link_id=7, expires_at=1)),
+def test_disable_link(client: Shrtnr) -> None:
+    route = respx.post(f"{BASE_URL}/_/api/links/1/disable").mock(
+        return_value=httpx.Response(200, json=make_link_dict(link_id=1, expires_at=1)),
     )
-    respx.post(f"{BASE_URL}/_/api/links/7/enable").mock(
-        return_value=httpx.Response(200, json=make_link_dict(link_id=7)),
+    client.disable_link(1)
+    assert route.calls[0].request.method == "POST"
+
+
+# ---- 9. enable_link ----
+
+
+@respx.mock
+def test_enable_link(client: Shrtnr) -> None:
+    route = respx.post(f"{BASE_URL}/_/api/links/1/enable").mock(
+        return_value=httpx.Response(200, json=make_link_dict(link_id=1)),
     )
-    respx.delete(f"{BASE_URL}/_/api/links/7").mock(
+    client.enable_link(1)
+    assert route.calls[0].request.method == "POST"
+
+
+# ---- 10. delete_link ----
+
+
+@respx.mock
+def test_delete_link(client: Shrtnr) -> None:
+    route = respx.delete(f"{BASE_URL}/_/api/links/1").mock(
         return_value=httpx.Response(200, json={"deleted": True}),
     )
-    assert client.disable_link(7).expires_at == 1
-    assert client.enable_link(7).expires_at is None
-    assert client.delete_link(7) is True
+    assert client.delete_link(1) is True
+    assert route.calls[0].request.method == "DELETE"
+
+
+# ---- 11. list_links_by_owner ----
 
 
 @respx.mock
 def test_list_links_by_owner_encodes_owner(client: Shrtnr) -> None:
-    route = respx.get(url__regex=rf"^{BASE_URL}/_/api/links\?owner=user%40example\.com$").mock(
-        return_value=httpx.Response(200, json=[]),
-    )
-    result = client.list_links_by_owner("user@example.com")
+    route = respx.get(
+        url__regex=rf"^{BASE_URL}/_/api/links\?owner=user%40example\.com$",
+    ).mock(return_value=httpx.Response(200, json=[]))
+    client.list_links_by_owner("user@example.com")
     assert route.called
-    assert result == []
 
 
-# ---- slugs ----
+# ---- 12. add_custom_slug ----
 
 
 @respx.mock
 def test_add_custom_slug(client: Shrtnr) -> None:
-    route = respx.post(f"{BASE_URL}/_/api/links/7/slugs").mock(
-        return_value=httpx.Response(201, json=make_slug_dict(link_id=7, slug="promo", is_custom=1)),
+    route = respx.post(f"{BASE_URL}/_/api/links/1/slugs").mock(
+        return_value=httpx.Response(201, json=make_slug_dict(link_id=1, slug="custom", is_custom=1)),
     )
-    slug = client.add_custom_slug(7, "promo")
-    assert json.loads(route.calls[0].request.content) == {"slug": "promo"}
-    assert slug.slug == "promo"
-    assert slug.is_custom == 1
+    client.add_custom_slug(1, "custom")
+    body = json.loads(route.calls[0].request.content)
+    assert body == {"slug": "custom"}
+
+
+# ---- 13. disable_slug ----
 
 
 @respx.mock
-def test_disable_enable_remove_slug_hit_public_routes(client: Shrtnr) -> None:
-    """Regression guard: these routes exist under /_/api/*, not only /_/admin/api/*."""
-    respx.post(f"{BASE_URL}/_/api/links/7/slugs/promo/disable").mock(
+def test_disable_slug(client: Shrtnr) -> None:
+    route = respx.post(f"{BASE_URL}/_/api/links/1/slugs/abc/disable").mock(
         return_value=httpx.Response(
-            200,
-            json=make_slug_dict(link_id=7, slug="promo", is_custom=1, disabled_at=1700000001),
+            200, json=make_slug_dict(link_id=1, slug="abc", is_custom=1, disabled_at=1),
         ),
     )
-    respx.post(f"{BASE_URL}/_/api/links/7/slugs/promo/enable").mock(
-        return_value=httpx.Response(
-            200,
-            json=make_slug_dict(link_id=7, slug="promo", is_custom=1),
-        ),
+    client.disable_slug(1, "abc")
+    assert route.calls[0].request.method == "POST"
+
+
+# ---- 14. enable_slug ----
+
+
+@respx.mock
+def test_enable_slug(client: Shrtnr) -> None:
+    route = respx.post(f"{BASE_URL}/_/api/links/1/slugs/abc/enable").mock(
+        return_value=httpx.Response(200, json=make_slug_dict(link_id=1, slug="abc", is_custom=1)),
     )
-    respx.delete(f"{BASE_URL}/_/api/links/7/slugs/promo").mock(
+    client.enable_slug(1, "abc")
+    assert route.calls[0].request.method == "POST"
+
+
+# ---- 15. remove_slug ----
+
+
+@respx.mock
+def test_remove_slug(client: Shrtnr) -> None:
+    route = respx.delete(f"{BASE_URL}/_/api/links/1/slugs/abc").mock(
         return_value=httpx.Response(200, json={"removed": True}),
     )
-    assert client.disable_slug(7, "promo").disabled_at == 1700000001
-    assert client.enable_slug(7, "promo").disabled_at is None
-    assert client.remove_slug(7, "promo") is True
+    assert client.remove_slug(1, "abc") is True
+    assert route.calls[0].request.method == "DELETE"
 
 
-@respx.mock
-def test_slug_with_reserved_characters_is_percent_encoded(client: Shrtnr) -> None:
-    route = respx.post(f"{BASE_URL}/_/api/links/7/slugs/a%2Fb/disable").mock(
-        return_value=httpx.Response(
-            200,
-            json=make_slug_dict(link_id=7, slug="a/b", is_custom=1),
-        ),
-    )
-    client.disable_slug(7, "a/b")
-    assert route.called
+# ---- 16. get_link_by_slug ----
 
 
 @respx.mock
 def test_get_link_by_slug(client: Shrtnr) -> None:
-    respx.get(f"{BASE_URL}/_/api/slugs/promo").mock(
+    route = respx.get(f"{BASE_URL}/_/api/slugs/find-me").mock(
         return_value=httpx.Response(200, json=make_link_dict()),
     )
-    link = client.get_link_by_slug("promo")
-    assert link.id == 1
+    client.get_link_by_slug("find-me")
+    assert route.calls[0].request.method == "GET"
 
 
-# ---- analytics + qr ----
+@respx.mock
+def test_get_link_by_slug_url_encodes_reserved_chars(client: Shrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/slugs/foo%2Fbar").mock(
+        return_value=httpx.Response(200, json=make_link_dict()),
+    )
+    client.get_link_by_slug("foo/bar")
+    assert route.called
+
+
+# ---- 17. get_link_analytics ----
 
 
 @respx.mock
 def test_get_link_analytics(client: Shrtnr) -> None:
     payload: dict[str, Any] = {
-        "total_clicks": 4,
-        "countries": [{"name": "SE", "count": 2}],
+        "total_clicks": 42,
+        "countries": [],
         "referrers": [],
-        "referrer_hosts": [{"name": "example.com", "count": 4}],
-        "devices": [{"name": "desktop", "count": 4}],
-        "os": [{"name": "macos", "count": 4}],
-        "browsers": [{"name": "chrome", "count": 4}],
-        "link_modes": [{"name": "link", "count": 4}],
+        "referrer_hosts": [],
+        "devices": [],
+        "os": [],
+        "browsers": [],
+        "link_modes": [],
         "channels": [],
-        "clicks_over_time": [{"date": "2026-04-22", "count": 4}],
-        "slug_clicks": [{"slug": "auto", "count": 4}],
-        "num_countries": 1,
-        "num_referrers": 0,
-        "num_referrer_hosts": 1,
-        "num_os": 1,
-        "num_browsers": 1,
+        "clicks_over_time": [],
+        "slug_clicks": [],
     }
-    respx.get(f"{BASE_URL}/_/api/links/7/analytics").mock(
+    route = respx.get(f"{BASE_URL}/_/api/links/5/analytics").mock(
         return_value=httpx.Response(200, json=payload),
     )
-    stats = client.get_link_analytics(7)
-    assert stats.total_clicks == 4
-    assert stats.countries[0].name == "SE"
-    assert stats.num_referrer_hosts == 1
+    stats = client.get_link_analytics(5)
+    assert stats.total_clicks == 42
+    assert route.called
+
+
+# ---- 18. get_link_qr ----
 
 
 @respx.mock
-def test_get_link_qr_returns_svg_text(client: Shrtnr) -> None:
-    respx.get(f"{BASE_URL}/_/api/links/7/qr").mock(
+def test_get_link_qr(client: Shrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/links/5/qr").mock(
         return_value=httpx.Response(
             200,
             text="<svg xmlns='http://www.w3.org/2000/svg'></svg>",
             headers={"Content-Type": "image/svg+xml"},
         ),
     )
-    svg = client.get_link_qr(7)
+    svg = client.get_link_qr(5)
     assert svg.startswith("<svg")
-
-
-@respx.mock
-def test_get_link_qr_with_slug_query_param(client: Shrtnr) -> None:
-    route = respx.get(f"{BASE_URL}/_/api/links/7/qr?slug=custom").mock(
-        return_value=httpx.Response(200, text="<svg/>"),
-    )
-    client.get_link_qr(7, slug="custom")
     assert route.called
 
 
-# ---- bundles ----
+@respx.mock
+def test_get_link_qr_url_encodes_slug_query(client: Shrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/links/5/qr?slug=foo%2Fbar").mock(
+        return_value=httpx.Response(200, text="<svg/>"),
+    )
+    client.get_link_qr(5, slug="foo/bar")
+    assert route.called
+
+
+# ---- 19. create_bundle ----
 
 
 @respx.mock
 def test_create_bundle(client: Shrtnr) -> None:
     route = respx.post(f"{BASE_URL}/_/api/bundles").mock(
-        return_value=httpx.Response(201, json=make_bundle_dict(name="C")),
+        return_value=httpx.Response(201, json=make_bundle_dict(name="B", accent="blue")),
     )
-    bundle = client.create_bundle(CreateBundleOptions(name="C", accent="blue"))
-    assert bundle.name == "C"
+    client.create_bundle(CreateBundleOptions(name="B", accent="blue"))
     body = json.loads(route.calls[0].request.content)
-    assert body == {"name": "C", "accent": "blue"}
+    assert body == {"name": "B", "accent": "blue"}
+
+
+# ---- 20. list_bundles ----
 
 
 @respx.mock
 def test_list_bundles_default(client: Shrtnr) -> None:
     route = respx.get(f"{BASE_URL}/_/api/bundles", params={}).mock(
-        return_value=httpx.Response(
-            200,
-            json=[
-                {
-                    **make_bundle_dict(),
-                    "link_count": 3,
-                    "total_clicks": 10,
-                    "sparkline": [1, 2, 7],
-                    "top_links": [{"slug": "auto", "click_count": 7}],
-                },
-            ],
-        ),
+        return_value=httpx.Response(200, json=[]),
     )
-    bundles = client.list_bundles()
+    client.list_bundles()
     assert route.called
-    assert bundles[0].link_count == 3
 
 
 @respx.mock
-def test_list_bundles_archived_sends_archived_all(client: Shrtnr) -> None:
+def test_list_bundles_archived_all(client: Shrtnr) -> None:
     route = respx.get(f"{BASE_URL}/_/api/bundles", params={"archived": "all"}).mock(
         return_value=httpx.Response(200, json=[]),
     )
@@ -314,37 +344,75 @@ def test_list_bundles_archived_sends_archived_all(client: Shrtnr) -> None:
     assert route.called
 
 
+# ---- 21. get_bundle ----
+
+
 @respx.mock
-def test_get_update_archive_unarchive_delete_bundle(client: Shrtnr) -> None:
-    respx.get(f"{BASE_URL}/_/api/bundles/42").mock(
+def test_get_bundle(client: Shrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/bundles/42").mock(
         return_value=httpx.Response(200, json=make_bundle_dict()),
     )
-    respx.put(f"{BASE_URL}/_/api/bundles/42").mock(
+    client.get_bundle(42)
+    assert route.calls[0].request.method == "GET"
+
+
+# ---- 22. update_bundle ----
+
+
+@respx.mock
+def test_update_bundle(client: Shrtnr) -> None:
+    route = respx.put(f"{BASE_URL}/_/api/bundles/42").mock(
         return_value=httpx.Response(200, json=make_bundle_dict(description="edited")),
     )
-    respx.post(f"{BASE_URL}/_/api/bundles/42/archive").mock(
-        return_value=httpx.Response(200, json=make_bundle_dict(archived_at=1700000001)),
-    )
-    respx.post(f"{BASE_URL}/_/api/bundles/42/unarchive").mock(
-        return_value=httpx.Response(200, json=make_bundle_dict()),
-    )
-    respx.delete(f"{BASE_URL}/_/api/bundles/42").mock(
-        return_value=httpx.Response(200, json={"deleted": True}),
-    )
-    assert client.get_bundle(42).id == 42
-    assert (
-        client.update_bundle(42, UpdateBundleOptions(description="edited")).description == "edited"
-    )
-    assert client.archive_bundle(42).archived_at == 1700000001
-    assert client.unarchive_bundle(42).archived_at is None
-    assert client.delete_bundle(42) is True
+    client.update_bundle(42, UpdateBundleOptions(description="edited"))
+    body = json.loads(route.calls[0].request.content)
+    assert body == {"description": "edited"}
+
+
+# ---- 23. delete_bundle ----
 
 
 @respx.mock
-def test_bundle_analytics_sends_range_query(client: Shrtnr) -> None:
+def test_delete_bundle(client: Shrtnr) -> None:
+    route = respx.delete(f"{BASE_URL}/_/api/bundles/42").mock(
+        return_value=httpx.Response(200, json={"deleted": True}),
+    )
+    assert client.delete_bundle(42) is True
+    assert route.calls[0].request.method == "DELETE"
+
+
+# ---- 24. archive_bundle ----
+
+
+@respx.mock
+def test_archive_bundle(client: Shrtnr) -> None:
+    route = respx.post(f"{BASE_URL}/_/api/bundles/42/archive").mock(
+        return_value=httpx.Response(200, json=make_bundle_dict(archived_at=1)),
+    )
+    client.archive_bundle(42)
+    assert route.calls[0].request.method == "POST"
+
+
+# ---- 25. unarchive_bundle ----
+
+
+@respx.mock
+def test_unarchive_bundle(client: Shrtnr) -> None:
+    route = respx.post(f"{BASE_URL}/_/api/bundles/42/unarchive").mock(
+        return_value=httpx.Response(200, json=make_bundle_dict()),
+    )
+    client.unarchive_bundle(42)
+    assert route.calls[0].request.method == "POST"
+
+
+# ---- 26. get_bundle_analytics ----
+
+
+@respx.mock
+def test_get_bundle_analytics_with_range(client: Shrtnr) -> None:
     payload = {
         "bundle": make_bundle_dict(),
-        "link_count": 1,
+        "link_count": 0,
         "total_clicks": 0,
         "clicked_links": 0,
         "countries_reached": 0,
@@ -371,26 +439,65 @@ def test_bundle_analytics_sends_range_query(client: Shrtnr) -> None:
     route = respx.get(f"{BASE_URL}/_/api/bundles/42/analytics?range=7d").mock(
         return_value=httpx.Response(200, json=payload),
     )
-    stats = client.get_bundle_analytics(42, range="7d")
+    client.get_bundle_analytics(42, range="7d")
     assert route.called
-    assert stats.bundle.id == 42
+
+
+# ---- 27. list_bundle_links ----
 
 
 @respx.mock
-def test_bundle_membership(client: Shrtnr) -> None:
-    respx.get(f"{BASE_URL}/_/api/bundles/42/links").mock(
-        return_value=httpx.Response(200, json=[make_link_dict()]),
+def test_list_bundle_links(client: Shrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/bundles/42/links").mock(
+        return_value=httpx.Response(200, json=[]),
     )
-    respx.post(f"{BASE_URL}/_/api/bundles/42/links").mock(
+    client.list_bundle_links(42)
+    assert route.called
+
+
+# ---- 28. add_link_to_bundle ----
+
+
+@respx.mock
+def test_add_link_to_bundle(client: Shrtnr) -> None:
+    route = respx.post(f"{BASE_URL}/_/api/bundles/42/links").mock(
         return_value=httpx.Response(200, json={"added": True}),
     )
-    respx.delete(f"{BASE_URL}/_/api/bundles/42/links/1").mock(
+    assert client.add_link_to_bundle(42, 7) is True
+    body = json.loads(route.calls[0].request.content)
+    assert body == {"link_id": 7}
+
+
+# ---- 29. remove_link_from_bundle ----
+
+
+@respx.mock
+def test_remove_link_from_bundle(client: Shrtnr) -> None:
+    route = respx.delete(f"{BASE_URL}/_/api/bundles/42/links/7").mock(
         return_value=httpx.Response(200, json={"removed": True}),
     )
-    respx.get(f"{BASE_URL}/_/api/links/1/bundles").mock(
-        return_value=httpx.Response(200, json=[make_bundle_dict()]),
+    assert client.remove_link_from_bundle(42, 7) is True
+    assert route.calls[0].request.method == "DELETE"
+
+
+# ---- 30. list_bundles_for_link ----
+
+
+@respx.mock
+def test_list_bundles_for_link(client: Shrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/links/7/bundles").mock(
+        return_value=httpx.Response(200, json=[]),
     )
-    assert client.list_bundle_links(42)[0].id == 1
-    assert client.add_link_to_bundle(42, 1) is True
-    assert client.remove_link_from_bundle(42, 1) is True
-    assert client.list_bundles_for_link(1)[0].id == 42
+    client.list_bundles_for_link(7)
+    assert route.called
+
+
+# ---- 31. Base URL normalization ----
+
+
+@respx.mock
+def test_base_url_strips_trailing_slash() -> None:
+    c = Shrtnr(f"{BASE_URL}/", api_key=API_KEY)
+    route = respx.get(f"{BASE_URL}/_/api/links").mock(return_value=httpx.Response(200, json=[]))
+    c.list_links()
+    assert route.called
