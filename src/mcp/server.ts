@@ -447,13 +447,14 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
 
     this.server.tool(
       "list_bundles",
-      "List all bundles owned by the caller. Bundles group related links so you can see combined click stats across them. Totals are lifetime; the delta is a fixed 30d-vs-prev-30d trend.",
+      "List bundles owned by the caller. Bundles group related links so you can see combined click stats across them. Totals are lifetime; the delta is a fixed 30d-vs-prev-30d trend. Use `filter` to control which archival state is returned.",
       {
-        archived: z.boolean().optional().describe("When true, include archived bundles. When omitted, hides archived."),
+        filter: z.enum(["active", "archived", "all"]).default("active").describe("active = hide archived (default); archived = only archived; all = both"),
       },
-      async ({ archived }) => {
+      async ({ filter }) => {
         const result = await listBundles(this.env, this.identity, {
-          includeArchived: archived === true,
+          archivedOnly: filter === "archived",
+          includeArchived: filter === "all",
         });
         if (!result.ok) return fail(result.error);
         return ok(result.data);
