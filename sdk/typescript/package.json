@@ -1,6 +1,6 @@
 {
   "name": "@oddbit/shrtnr",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "SDK for the shrtnr URL shortener API",
   "homepage": "https://oddb.it/shrtnr-website-npm",
   "license": "Apache-2.0",

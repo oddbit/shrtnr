@@ -2,6 +2,10 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 0.7.1
+
+- Document every bundle method in the README with a short description and usage snippet. The methods shipped in 0.7.0 but were only mentioned in the feature list, so consumers had to read the source to discover them.
+
 ## 0.7.0
 
 ### New feature: Bundles
