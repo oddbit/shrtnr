@@ -90,6 +90,10 @@ warn_unreachable = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# Default `pytest` runs unit tests only. E2e tests need a live shrtnr server
+# and are opt-in via `pytest -m e2e` — the scripts/test-sdks-e2e.sh harness
+# spins up wrangler dev, mints an API key, and runs them for real.
+addopts = "-m 'not e2e'"
 markers = [
   "e2e: end-to-end tests that hit a real wrangler dev server (set SHRTNR_TEST_URL + SHRTNR_TEST_API_KEY)",
 ]
