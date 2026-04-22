@@ -325,7 +325,22 @@ class CreateLinkOptions {
 }
 
 /// Accent color for a bundle card. Matches the server's `accent` enum.
-enum BundleAccent { orange, red, green, blue, purple }
+enum BundleAccent {
+  /// Orange accent. Default when the server value is absent or unrecognized.
+  orange,
+
+  /// Red accent.
+  red,
+
+  /// Green accent.
+  green,
+
+  /// Blue accent.
+  blue,
+
+  /// Purple accent.
+  purple,
+}
 
 BundleAccent _accentFromString(String? raw) {
   switch (raw) {
