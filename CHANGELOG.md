@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.31.4 (2026-04-23)
+
+- Settings → Integrations sidebar now shows a single "SDKs" card listing TypeScript, Python, and Dart side by side, each linking to its registry page. Python joins the list; the earlier layout of one full card per language did not scale past two and repeated the same description each time. MCP Server stays its own card.
+- Split the shared `release-sdk.yml` reusable workflow into three per-registry workflows (`release-sdk-npm.yml`, `release-sdk-pub.yml`, `release-sdk-python.yml`) so each track owns its own trigger, lint, test, build, and publish steps. Publishing behavior is unchanged; the per-registry files are easier to reason about when one track needs a tweak.
+
 ## 0.31.3 (2026-04-23)
 
 - Slug disable, enable, and remove operations now available on the public `/_/api/*` bearer-token API. Ownership is enforced the same way as existing link mutations: the API key owner can act on slugs of links they own, and is blocked with 403 on anyone else's. The SDKs (TypeScript, Dart, Python) already pointed at these routes, so they start working the moment this change ships.
