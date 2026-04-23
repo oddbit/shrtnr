@@ -228,7 +228,7 @@ describe("MCP tool behavior (service layer)", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const result = await disableLink(env as never, created.data.id);
+    const result = await disableLink(env as never, created.data.id, created.data.created_by);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.expires_at).toBeDefined();
