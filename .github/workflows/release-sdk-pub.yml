@@ -1,10 +1,10 @@
 name: Release pub.dev SDK
 
-# Tag-triggered caller over release-sdk.yml. Unlike npm and PyPI, pub.dev
-# cannot run in main-push mode because its trusted-publishing config
-# requires the OIDC token to carry the tag's ref. The developer bumps
-# the version and changelog locally, creates the tag, and pushes main +
-# tag together. This workflow fires on the tag push and publishes.
+# Tag-triggered workflow. Unlike npm and PyPI, pub.dev cannot run in
+# main-push mode because its trusted-publishing config requires the OIDC
+# token to carry the tag's ref. The developer bumps the version and
+# changelog locally, creates the tag, and pushes main + tag together.
+# This workflow fires on the tag push and publishes.
 
 on:
   push:
@@ -15,13 +15,59 @@ permissions:
   contents: write
   id-token: write
 
+concurrency:
+  group: release-sdk-pub-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
-    uses: ./.github/workflows/release-sdk.yml
-    with:
-      sdk_path: sdk/dart
-      manifest_file: sdk/dart/pubspec.yaml
-      tag_prefix: pub-v
-      registry: pub.dev
-      changelog_file: sdk/dart/CHANGELOG.md
-      mode: tag-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#pub-v}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "$TAG" ]; then
+            echo "tag $TAG does not match expected pub-v<version> pattern" >&2
+            exit 1
+          fi
+          MANIFEST_VERSION=$(bash scripts/read-version.sh sdk/dart/pubspec.yaml)
+          if [ "$MANIFEST_VERSION" != "$VERSION" ]; then
+            echo "tag version $VERSION does not match manifest version $MANIFEST_VERSION" >&2
+            exit 1
+          fi
+          echo "current=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Extract changelog for version
+        run: |
+          bash scripts/extract-changelog.sh \
+            "${{ steps.version.outputs.current }}" \
+            sdk/dart/CHANGELOG.md \
+            /tmp/release-notes.md
+
+      - uses: dart-lang/setup-dart@v1
+
+      - name: dart pub get + analyze + test
+        working-directory: sdk/dart
+        run: |
+          dart pub get
+          dart analyze --fatal-infos
+          dart test
+
+      - name: Publish to pub.dev
+        working-directory: sdk/dart
+        run: dart pub publish --force
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --notes-file /tmp/release-notes.md

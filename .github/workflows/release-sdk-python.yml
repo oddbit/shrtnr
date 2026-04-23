@@ -1,20 +1,18 @@
 name: Release Python SDK
 
-# Thin caller over release-sdk.yml. Triggered on any push to main that
-# touches sdk/python/** (or this workflow / the reusable one / helper
-# scripts), but the reusable workflow only publishes when the version
-# string in sdk/python/pyproject.toml actually changed in the push
-# range — a changelog-only or test-only edit runs the workflow and
-# exits cleanly without publishing. Uses PyPI trusted publishing
-# (OIDC, no token). The PyPI project needs a one-time configuration
-# pointing at this workflow — see docs/release-automation.md.
+# Triggered on any push to main that touches sdk/python/**. The workflow
+# only publishes when the version string in sdk/python/pyproject.toml
+# actually changed in the push range — a changelog-only or test-only
+# edit runs the workflow and exits cleanly without publishing. Uses
+# PyPI trusted publishing (OIDC, no token). The PyPI project needs a
+# one-time configuration pointing at this workflow — see
+# docs/release-automation.md.
 
 on:
   push:
     branches: [main]
     paths:
       - 'sdk/python/**'
-      - '.github/workflows/release-sdk.yml'
       - '.github/workflows/release-sdk-python.yml'
       - 'scripts/extract-changelog.sh'
       - 'scripts/read-version.sh'
@@ -24,13 +22,94 @@ permissions:
   contents: write
   id-token: write
 
+concurrency:
+  group: release-sdk-python-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
-    uses: ./.github/workflows/release-sdk.yml
-    with:
-      sdk_path: sdk/python
-      manifest_file: sdk/python/pyproject.toml
-      tag_prefix: py-v
-      registry: pypi
-      changelog_file: sdk/python/CHANGELOG.md
-      mode: main-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: version
+        run: |
+          CURRENT=$(bash scripts/read-version.sh sdk/python/pyproject.toml)
+          TAG="py-v$CURRENT"
+          # Decide whether to publish. Two idempotency layers, in order:
+          #   1. Manifest-change-in-push: skip when the triggering push did
+          #      not touch the SDK manifest. Range-based so multi-commit
+          #      pushes work (HEAD~1 is wrong when the version bump is the
+          #      first of several commits in the push).
+          #   2. Tag-exists: skip when the target tag already exists on
+          #      origin. Catches reruns of a successful release.
+          # Manual workflow_dispatch runs have no push range; fall through
+          # to the tag check so the tag acts as the only gate.
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+          MANIFEST_CHANGED="unknown"
+          if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            if git diff --name-only "$BEFORE" "$AFTER" -- sdk/python/pyproject.toml | grep -Fxq sdk/python/pyproject.toml; then
+              MANIFEST_CHANGED="true"
+            else
+              MANIFEST_CHANGED="false"
+            fi
+          fi
+          if [ "$MANIFEST_CHANGED" = "false" ]; then
+            echo "manifest sdk/python/pyproject.toml not touched in push $BEFORE..$AFTER; skipping" >&2
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          elif git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "tag $TAG already exists on origin; skipping" >&2
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Extract changelog for version
+        if: steps.version.outputs.should_run == 'true'
+        run: |
+          bash scripts/extract-changelog.sh \
+            "${{ steps.version.outputs.current }}" \
+            sdk/python/CHANGELOG.md \
+            /tmp/release-notes.md
+
+      - uses: actions/setup-python@v5
+        if: steps.version.outputs.should_run == 'true'
+        with:
+          python-version: '3.12'
+
+      - name: pip install + test + build
+        if: steps.version.outputs.should_run == 'true'
+        working-directory: sdk/python
+        run: |
+          python -m pip install --upgrade pip build
+          pip install -e '.[dev]'
+          pytest
+          python -m build
+
+      - name: Publish to PyPI
+        if: steps.version.outputs.should_run == 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: sdk/python/dist
+
+      - name: Create and push tag
+        if: steps.version.outputs.should_run == 'true'
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub release
+        if: steps.version.outputs.should_run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --notes-file /tmp/release-notes.md

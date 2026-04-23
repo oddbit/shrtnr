@@ -1,17 +1,17 @@
 # SDK release automation
 
-Every SDK release track is driven by a version bump on `main`. The workflows are thin per-SDK callers on top of a reusable `.github/workflows/release-sdk.yml` that owns all the shared logic: version detection, tag-existence idempotency, changelog extraction, OIDC trusted publishing, tag creation, and GitHub release creation.
+Every SDK release track is driven by a version bump on `main`. Each track has its own self-contained workflow under `.github/workflows/`: version detection, tag-existence idempotency, changelog extraction, OIDC trusted publishing, tag creation, and GitHub release creation all live in one file per track. The tracks are intentionally not sharing a reusable workflow — the OIDC claims used by npm provenance, PyPI trusted publishing, and pub.dev publishing all diverge when a reusable is in play, and the shared logic is small enough that duplication costs less than the indirection.
 
 ## Current tracks
 
-| SDK | Caller workflow | Manifest | Tag prefix | Mode |
+| SDK | Workflow | Manifest | Tag prefix | Mode |
 |---|---|---|---|---|
 | npm (`@oddbit/shrtnr`) | `release-sdk-npm.yml` | `sdk/typescript/package.json` | `npm-v` | main-push |
 | Python (`shrtnr`) | `release-sdk-python.yml` | `sdk/python/pyproject.toml` | `py-v` | main-push |
 | pub.dev (`shrtnr`) | `release-sdk-pub.yml` | `sdk/dart/pubspec.yaml` | `pub-v` | tag-push |
-| App (Cloudflare Workers) | `release.yml` | root `package.json` | `app-v` | main-push (standalone) |
+| App (Cloudflare Workers) | `release.yml` | root `package.json` | `app-v` | main-push |
 
-The app track runs its own workflow because its shape differs — no build, no registry publish, just tag + GitHub release.
+Shared bash lives in `scripts/read-version.sh` and `scripts/extract-changelog.sh`, called from each workflow.
 
 ## How it works
 
@@ -93,6 +93,5 @@ If a fourth SDK lands (say Rust, Go):
 1. Add it under `sdk/<language>/` following the existing layout conventions.
 2. Extend `scripts/read-version.sh` with a case for the new manifest format if it's not already JSON / YAML / TOML.
 3. Extend `scripts/bump-sdk-version.sh` with a new `<sdk>` identifier.
-4. Add a new caller workflow `release-sdk-<name>.yml` that delegates to `release-sdk.yml` with the right inputs.
-5. Extend the reusable workflow's registry-specific publish path if the new registry isn't npm / PyPI / pub.dev.
-6. Document the one-time trusted-publisher setup here.
+4. Add a new workflow `release-sdk-<name>.yml`. Copy the closest existing track (main-push from npm/Python, tag-push from pub.dev) and swap the manifest path, tag prefix, and publish steps.
+5. Document the one-time trusted-publisher setup here.

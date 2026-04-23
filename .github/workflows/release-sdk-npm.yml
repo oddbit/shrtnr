@@ -1,19 +1,17 @@
 name: Release npm SDK
 
-# Thin caller over release-sdk.yml. Triggered on any push to main that
-# touches sdk/typescript/** (or this workflow / the reusable one /
-# helper scripts), but the reusable workflow only publishes when the
-# version string in sdk/typescript/package.json actually changed in the
-# push range — a changelog-only edit runs the workflow and exits
-# cleanly without publishing. The tag-exists check is a second
-# idempotency layer that makes reruns of a successful release a no-op.
+# Triggered on any push to main that touches sdk/typescript/**. The
+# workflow only publishes when the version string in
+# sdk/typescript/package.json actually changed in the push range — a
+# changelog-only edit runs the workflow and exits cleanly without
+# publishing. The tag-exists check is a second idempotency layer that
+# makes reruns of a successful release a no-op.
 
 on:
   push:
     branches: [main]
     paths:
       - 'sdk/typescript/**'
-      - '.github/workflows/release-sdk.yml'
       - '.github/workflows/release-sdk-npm.yml'
       - 'scripts/extract-changelog.sh'
       - 'scripts/read-version.sh'
@@ -23,13 +21,97 @@ permissions:
   contents: write
   id-token: write
 
+concurrency:
+  group: release-sdk-npm-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
-    uses: ./.github/workflows/release-sdk.yml
-    with:
-      sdk_path: sdk/typescript
-      manifest_file: sdk/typescript/package.json
-      tag_prefix: npm-v
-      registry: npm
-      changelog_file: sdk/typescript/CHANGELOG.md
-      mode: main-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: version
+        run: |
+          CURRENT=$(bash scripts/read-version.sh sdk/typescript/package.json)
+          TAG="npm-v$CURRENT"
+          # Decide whether to publish. Two idempotency layers, in order:
+          #   1. Manifest-change-in-push: skip when the triggering push did
+          #      not touch the SDK manifest. Range-based so multi-commit
+          #      pushes work (HEAD~1 is wrong when the version bump is the
+          #      first of several commits in the push).
+          #   2. Tag-exists: skip when the target tag already exists on
+          #      origin. Catches reruns of a successful release.
+          # Manual workflow_dispatch runs have no push range; fall through
+          # to the tag check so the tag acts as the only gate.
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+          MANIFEST_CHANGED="unknown"
+          if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            if git diff --name-only "$BEFORE" "$AFTER" -- sdk/typescript/package.json | grep -Fxq sdk/typescript/package.json; then
+              MANIFEST_CHANGED="true"
+            else
+              MANIFEST_CHANGED="false"
+            fi
+          fi
+          if [ "$MANIFEST_CHANGED" = "false" ]; then
+            echo "manifest sdk/typescript/package.json not touched in push $BEFORE..$AFTER; skipping" >&2
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          elif git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "tag $TAG already exists on origin; skipping" >&2
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Extract changelog for version
+        if: steps.version.outputs.should_run == 'true'
+        run: |
+          bash scripts/extract-changelog.sh \
+            "${{ steps.version.outputs.current }}" \
+            sdk/typescript/CHANGELOG.md \
+            /tmp/release-notes.md
+
+      - uses: actions/setup-node@v6
+        if: steps.version.outputs.should_run == 'true'
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Upgrade npm for trusted publishing
+        if: steps.version.outputs.should_run == 'true'
+        run: npm install -g --force npm@latest
+
+      - name: Install + build + test
+        if: steps.version.outputs.should_run == 'true'
+        working-directory: sdk/typescript
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+          yarn test
+
+      - name: npm publish
+        if: steps.version.outputs.should_run == 'true'
+        working-directory: sdk/typescript
+        run: npm publish --access public
+
+      - name: Create and push tag
+        if: steps.version.outputs.should_run == 'true'
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub release
+        if: steps.version.outputs.should_run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --notes-file /tmp/release-notes.md
