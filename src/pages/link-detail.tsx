@@ -18,35 +18,23 @@ const StatBar: FC<{
   icon?: string;
   flag?: string;
   mono?: boolean;
-  subtitle?: string;
-}> = ({ name, count, max, color, lang, icon, flag, mono, subtitle }) => {
+}> = ({ name, count, max, color, lang, icon, flag, mono }) => {
   const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   return (
-    <div>
-      <div class="stat-row">
-        <div class={`name${mono ? " mono" : ""}`}>
-          {flag && <span class="flag">{flag}</span>}
-          {icon && <span class="icon">{icon}</span>}
-          <span class="label">{name}</span>
-        </div>
-        <div class="right">
-          <span class="count">{fmtNumber(count, lang)}</span>
-          <span class="pct">{pct}%</span>
-        </div>
-        <div class="bar"><div class={`fill ${color}`} style={`width:${pct}%`} /></div>
+    <div class="stat-row">
+      <div class={`name${mono ? " mono" : ""}`}>
+        {flag && <span class="flag">{flag}</span>}
+        {icon && <span class="icon">{icon}</span>}
+        <span class="label">{name}</span>
       </div>
-      {subtitle && <div class="stat-row-subtitle">{subtitle}</div>}
+      <div class="right">
+        <span class="count">{fmtNumber(count, lang)}</span>
+        <span class="pct">{pct}%</span>
+      </div>
+      <div class="bar"><div class={`fill ${color}`} style={`width:${pct}%`} /></div>
     </div>
   );
 };
-
-function referrerHost(url: string): string {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return url;
-  }
-}
 
 function deviceIcon(name: string): string {
   if (name === "mobile") return "phone_android";
@@ -480,8 +468,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
               {analytics.referrers.length > 0 ? (
                 analytics.referrers.map((r) => (
                   <StatBar
-                    name={referrerHost(r.name)}
-                    subtitle={r.name}
+                    name={r.name}
                     count={r.count}
                     max={analytics.referrers.reduce((s, i) => s + i.count, 0)}
                     color="mint"

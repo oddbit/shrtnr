@@ -748,12 +748,6 @@ function renderStatCard(containerId, items, color, opts) {
     html += '<div class="right"><span class="count">' + fmtCount(item.count) + '</span><span class="pct">' + pct + '%</span></div>';
     html += '<div class="bar"><div class="fill ' + color + '" style="width:' + pct + '%"></div></div>';
     html += '</div>';
-    if (opts.subtitleFn) {
-      var subtitle = opts.subtitleFn(item);
-      if (subtitle) {
-        html += '<div class="stat-row-subtitle">' + esc(subtitle) + '</div>';
-      }
-    }
   }
   body.innerHTML = html;
 }
@@ -810,11 +804,7 @@ function loadAnalytics(linkId, range) {
     // Update all stat cards
     renderStatCard('card-countries', stats.countries, 'orange', { mapName: countryName, flagFromName: true });
     renderStatCard('card-domains', stats.referrer_hosts, 'mint', { mono: true });
-    renderStatCard('card-sources', stats.referrers, 'mint', {
-      mono: true,
-      mapName: function(name) { try { return new URL(name).hostname; } catch(e) { return name; } },
-      subtitleFn: function(item) { return item.name; }
-    });
+    renderStatCard('card-sources', stats.referrers, 'mint', { mono: true });
     renderStatCard('card-link-modes', stats.link_modes, 'orange', { iconFn: linkModeIcon });
     renderStatCard('card-devices', stats.devices, 'orange', { iconFn: deviceIcon });
     renderStatCard('card-os', stats.os, 'mint', { iconFn: osIcon });

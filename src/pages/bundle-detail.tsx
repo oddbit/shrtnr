@@ -81,14 +81,6 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
   const hostTotal = stats.referrer_hosts.reduce((s, c) => s + c.count, 0);
   const modeTotal = stats.link_modes.reduce((s, c) => s + c.count, 0);
 
-  function referrerHost(url: string): string {
-    try {
-      return new URL(url).hostname;
-    } catch {
-      return url;
-    }
-  }
-
   const maxLinkClicks = Math.max(1, stats.total_clicks);
 
   return (
@@ -348,7 +340,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
               {stats.referrers.length > 0 ? (
                 stats.referrers.map((r) => (
                   <StatBar
-                    name={referrerHost(r.name)}
+                    name={r.name}
                     count={r.count}
                     max={srcTotal || 1}
                     color="mint"

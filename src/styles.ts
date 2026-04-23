@@ -580,9 +580,6 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 /* Empty hint centered inside a card */
 .empty-card-hint { color: var(--color-text-muted); font-size: 0.875rem; padding: 2rem 0; text-align: center; }
 
-/* Stat-row subtitle (used by link-detail referrers) */
-.stat-row-subtitle { font-size: 0.75rem; color: var(--color-text-muted); margin: -0.15rem 0 0.5rem 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-family-mono); }
-
 /* Detail actions row */
 .detail-actions { margin-top: 0.75rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
 
