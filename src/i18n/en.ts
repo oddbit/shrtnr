@@ -236,12 +236,15 @@ const en = {
   "settings.checkingUpdates": "Checking for updates...",
   "settings.installApp": "Install App",
   "settings.integrations": "Integrations",
-  "settings.sdkTitle": "TypeScript SDK",
-  "settings.sdkDesc":
+  "settings.sdksTitle": "SDKs",
+  "settings.sdksDesc":
     "Manage links from your own code. Create, update, disable, and read click analytics programmatically.",
-  "settings.sdkDartTitle": "Dart SDK",
-  "settings.sdkDartDesc":
-    "Manage links from Dart and Flutter apps. Create, update, disable, and read click analytics programmatically.",
+  "settings.sdkTsLang": "TypeScript",
+  "settings.sdkTsPkg": "npm: @oddbit/shrtnr",
+  "settings.sdkPythonLang": "Python",
+  "settings.sdkPythonPkg": "PyPI: shrtnr",
+  "settings.sdkDartLang": "Dart",
+  "settings.sdkDartPkg": "pub.dev: shrtnr",
   "settings.mcpTitle": "MCP Server",
   "settings.mcpDesc":
     "Give AI assistants access to your links. Works with Claude Desktop and GitHub Copilot in VS Code.",
@@ -249,8 +252,6 @@ const en = {
   "settings.mcpConfigured": "Configured",
   "settings.mcpNotConfigured":
     "Not configured. Set the required secrets to enable OAuth for the MCP endpoint.",
-  "settings.sdkLink": "npm package: @oddbit/shrtnr",
-  "settings.sdkDartLink": "pub.dev package: shrtnr",
   "settings.mcpDocsLink": "MCP documentation",
   "settings.mcpSetupLink": "Setup guide in README",
 

@@ -696,6 +696,12 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 .integration-card-desc { font-size: 0.813rem; color: var(--color-text-muted); line-height: 1.45; }
 .integration-card-link { font-size: 0.7rem; color: var(--color-success); margin-top: 0.6rem; display: inline-flex; align-items: center; gap: 0.25rem; }
 .integration-card-link .icon { font-size: 14px; }
+.integration-sdk-list { list-style: none; padding: 0; margin: 0.75rem 0 0 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.integration-sdk-link { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.6rem; border-radius: 6px; text-decoration: none; color: inherit; }
+.integration-sdk-link:hover { background: var(--color-surface-interactive); }
+.integration-sdk-lang { font-size: 0.813rem; font-weight: 600; min-width: 5.5rem; }
+.integration-sdk-pkg { flex: 1; font-size: 0.75rem; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.integration-sdk-link .icon { font-size: 14px; color: var(--color-success); }
 
 /* Top-link row: label+slug stat bar with url caption under it */
 .top-link-row { display: block; text-decoration: none; color: inherit; overflow: hidden; }

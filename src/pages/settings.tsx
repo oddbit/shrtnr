@@ -163,38 +163,51 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
 
         <div class="settings-side">
           <div class="settings-side-label">{t("settings.integrations")}</div>
-          <a
-            href="https://oddb.it/shrtnr-npm-app"
-            target="_blank"
-            rel="noopener"
-            class="bento-card integration-card"
-          >
+          <div class="bento-card integration-card">
             <div class="integration-card-head">
               <span class="icon">terminal</span>
-              <span class="integration-card-title">{t("settings.sdkTitle")}</span>
+              <span class="integration-card-title">{t("settings.sdksTitle")}</span>
             </div>
-            <div class="integration-card-desc">{t("settings.sdkDesc")}</div>
-            <div class="integration-card-link">
-              <span class="icon">open_in_new</span>
-              {t("settings.sdkLink")}
-            </div>
-          </a>
-          <a
-            href="https://oddb.it/shrtnr-pub-app"
-            target="_blank"
-            rel="noopener"
-            class="bento-card integration-card"
-          >
-            <div class="integration-card-head">
-              <span class="icon">terminal</span>
-              <span class="integration-card-title">{t("settings.sdkDartTitle")}</span>
-            </div>
-            <div class="integration-card-desc">{t("settings.sdkDartDesc")}</div>
-            <div class="integration-card-link">
-              <span class="icon">open_in_new</span>
-              {t("settings.sdkDartLink")}
-            </div>
-          </a>
+            <div class="integration-card-desc">{t("settings.sdksDesc")}</div>
+            <ul class="integration-sdk-list">
+              <li>
+                <a
+                  href="https://oddb.it/shrtnr-npm-app"
+                  target="_blank"
+                  rel="noopener"
+                  class="integration-sdk-link"
+                >
+                  <span class="integration-sdk-lang">{t("settings.sdkTsLang")}</span>
+                  <span class="integration-sdk-pkg">{t("settings.sdkTsPkg")}</span>
+                  <span class="icon">open_in_new</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://oddb.it/shrtnr-pypi-app"
+                  target="_blank"
+                  rel="noopener"
+                  class="integration-sdk-link"
+                >
+                  <span class="integration-sdk-lang">{t("settings.sdkPythonLang")}</span>
+                  <span class="integration-sdk-pkg">{t("settings.sdkPythonPkg")}</span>
+                  <span class="icon">open_in_new</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://oddb.it/shrtnr-pub-app"
+                  target="_blank"
+                  rel="noopener"
+                  class="integration-sdk-link"
+                >
+                  <span class="integration-sdk-lang">{t("settings.sdkDartLang")}</span>
+                  <span class="integration-sdk-pkg">{t("settings.sdkDartPkg")}</span>
+                  <span class="icon">open_in_new</span>
+                </a>
+              </li>
+            </ul>
+          </div>
           <a
             href="https://oddb.it/mcp-documentation-app"
             target="_blank"

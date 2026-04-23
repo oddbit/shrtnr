@@ -239,12 +239,15 @@ const id: Translations = {
   "settings.checkingUpdates": "Memeriksa pembaruan...",
   "settings.installApp": "Instal Aplikasi",
   "settings.integrations": "Integrasi",
-  "settings.sdkTitle": "TypeScript SDK",
-  "settings.sdkDesc":
+  "settings.sdksTitle": "SDK",
+  "settings.sdksDesc":
     "Kelola tautan dari kode Anda sendiri. Buat, perbarui, nonaktifkan, dan baca analitik klik secara programatik.",
-  "settings.sdkDartTitle": "Dart SDK",
-  "settings.sdkDartDesc":
-    "Kelola tautan dari aplikasi Dart dan Flutter. Buat, perbarui, nonaktifkan, dan baca analitik klik secara programatik.",
+  "settings.sdkTsLang": "TypeScript",
+  "settings.sdkTsPkg": "npm: @oddbit/shrtnr",
+  "settings.sdkPythonLang": "Python",
+  "settings.sdkPythonPkg": "PyPI: shrtnr",
+  "settings.sdkDartLang": "Dart",
+  "settings.sdkDartPkg": "pub.dev: shrtnr",
   "settings.mcpTitle": "MCP Server",
   "settings.mcpDesc":
     "Berikan asisten AI akses ke tautan Anda. Bekerja dengan Claude Desktop dan GitHub Copilot di VS Code.",
@@ -252,8 +255,6 @@ const id: Translations = {
   "settings.mcpConfigured": "Terkonfigurasi",
   "settings.mcpNotConfigured":
     "Belum dikonfigurasi. Atur rahasia yang diperlukan untuk mengaktifkan OAuth pada endpoint MCP.",
-  "settings.sdkLink": "Paket npm: @oddbit/shrtnr",
-  "settings.sdkDartLink": "Paket pub.dev: shrtnr",
   "settings.mcpDocsLink": "Dokumentasi MCP",
   "settings.mcpSetupLink": "Panduan pengaturan di README",
 
