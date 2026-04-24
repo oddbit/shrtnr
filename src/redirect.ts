@@ -23,6 +23,23 @@ function parseReferrerHost(referrer: string | null): string | null {
   }
 }
 
+// A bare-origin self-referrer is a Referer whose URL is exactly
+// `scheme://<own host>/` with no path beyond `/`, no query, no fragment.
+// These are noise: browsers send them when the referring page was the
+// root landing page, but content-less landing pages make those clicks
+// uninformative (often bot-forged). Meaningful same-host referrers like
+// `/_/admin/settings` are kept so internal link-click tracking survives.
+function isBareOriginSelfReferrer(rawReferrer: string | null, requestHost: string): boolean {
+  if (!rawReferrer) return false;
+  try {
+    const u = new URL(rawReferrer);
+    if (normalizeHost(u.hostname) !== requestHost) return false;
+    return u.pathname === "/" && u.search === "" && u.hash === "";
+  } catch {
+    return false;
+  }
+}
+
 export async function handleRedirect(
   slug: string,
   request: Request,
@@ -65,13 +82,14 @@ export async function handleRedirect(
   const url = new URL(request.url);
   const utmMedium = url.searchParams.get("utm_medium")?.toLowerCase() ?? null;
 
-  // Drop self-referrers: the referring page is on the same host the visitor
-  // hit, so it is noise in the Sources/Domains breakdown. Uses the live
-  // request host so any deployment works without hardcoding a domain.
-  const referrerHost = parseReferrerHost(rawReferrer);
+  // Drop bare-origin self-referrers only. Same-host referrers with a
+  // meaningful path (e.g. `/_/admin/settings`) remain so internal link
+  // clicks stay visible in Sources. Per-request host keeps every
+  // deployment working without hardcoding a domain.
   const requestHost = normalizeHost(url.hostname);
-  const selfReferrer = referrerHost !== null && referrerHost === requestHost;
+  const selfReferrer = isBareOriginSelfReferrer(rawReferrer, requestHost);
   const referrer = selfReferrer ? null : rawReferrer;
+  const referrerHost = selfReferrer ? null : parseReferrerHost(rawReferrer);
 
   // Best-effort silent visitor fingerprint. Hashed IP + UA + daily salt.
   // Stored for future unique-visitor analytics; never exposed raw anywhere.
@@ -79,7 +97,7 @@ export async function handleRedirect(
 
   const data: ClickData = {
     referrer,
-    referrerHost: selfReferrer ? null : referrerHost,
+    referrerHost,
     country,
     deviceType: ua ? parseDeviceType(ua) : null,
     os: ua ? parseOS(ua) : null,

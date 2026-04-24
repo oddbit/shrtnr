@@ -514,12 +514,29 @@ describe("self-referrer stripping", () => {
     expect(row!.referrer_host).toBeNull();
   });
 
-  it("drops referrer when Referer includes a path on the same host", async () => {
+  it("preserves same-host referrer when the path is meaningful (e.g. admin pages)", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "self2" });
     await SELF.fetch(
       new Request("https://shrtnr.test/self2", {
         redirect: "manual",
-        headers: { Referer: "https://shrtnr.test/some/internal/page" },
+        headers: { Referer: "https://shrtnr.test/_/admin/settings" },
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await env.DB
+      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ referrer: string | null; referrer_host: string | null }>();
+    expect(row!.referrer).toBe("https://shrtnr.test/_/admin/settings");
+    expect(row!.referrer_host).toBe("shrtnr.test");
+  });
+
+  it("drops referrer when same-host root is visited without a trailing slash", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "self2b" });
+    await SELF.fetch(
+      new Request("https://shrtnr.test/self2b", {
+        redirect: "manual",
+        headers: { Referer: "https://shrtnr.test" },
       }),
     );
     await new Promise((r) => setTimeout(r, 100));
@@ -529,6 +546,23 @@ describe("self-referrer stripping", () => {
       .first<{ referrer: string | null; referrer_host: string | null }>();
     expect(row!.referrer).toBeNull();
     expect(row!.referrer_host).toBeNull();
+  });
+
+  it("preserves same-host root referrer if it carries query string or fragment", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "self2c" });
+    await SELF.fetch(
+      new Request("https://shrtnr.test/self2c", {
+        redirect: "manual",
+        headers: { Referer: "https://shrtnr.test/?utm_source=newsletter" },
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await env.DB
+      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ referrer: string | null; referrer_host: string | null }>();
+    expect(row!.referrer).toBe("https://shrtnr.test/?utm_source=newsletter");
+    expect(row!.referrer_host).toBe("shrtnr.test");
   });
 
   it("treats www. prefix as the same host", async () => {
