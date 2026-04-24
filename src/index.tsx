@@ -26,6 +26,7 @@ import { unauthorizedResponse } from "./auth";
 import {
   authenticateApiKey,
   getAppSettings,
+  resolveClickFilters,
   getDashboardStats,
   getLinkAnalytics,
   listLinks,
@@ -176,9 +177,11 @@ async function getPageData(c: { env: Env; req: { raw: Request } }, identity: str
   const lang = settings?.lang ?? getCookie(c.req.raw, "lang") ?? "en";
   const slugLength = settings?.slug_default_length ?? DEFAULT_SLUG_LENGTH;
   const defaultRange = settings?.default_range ?? null;
+  const filterBots = settings?.filter_bots ?? true;
+  const filterSelfReferrers = settings?.filter_self_referrers ?? true;
   const t = createTranslateFn(lang);
   const translations = getTranslations(lang);
-  return { theme, slugLength, lang, defaultRange, t, translations };
+  return { theme, slugLength, lang, defaultRange, filterBots, filterSelfReferrers, t, translations };
 }
 
 // ---- Admin pages ----
@@ -189,7 +192,7 @@ app.get("/_/admin/dashboard", async (c) => {
   const rangeParam = c.req.query("range");
   const validRanges = new Set(["24h", "7d", "30d", "90d", "1y", "all"]);
   const range = (validRanges.has(rangeParam || "") ? rangeParam : (defaultRange ?? "30d")) as TimelineRange;
-  const statsResult = await getDashboardStats(c.env, range);
+  const statsResult = await getDashboardStats(c.env, range, identity);
   const stats = statsResult.ok
     ? statsResult.data
     : {
@@ -225,9 +228,10 @@ app.get("/_/admin/links", async (c) => {
   const identity = c.var.identity;
   const { theme, slugLength, t, lang, translations } = await getPageData(c, identity);
   const searchQuery = c.req.query("search") || "";
+  const filters = await resolveClickFilters(c.env, identity);
   const linksResult = searchQuery
-    ? await searchLinks(c.env, searchQuery, { includeOwner: true, withDeltaRange: "30d" })
-    : await listLinks(c.env, { withDeltaRange: "30d" });
+    ? await searchLinks(c.env, searchQuery, { includeOwner: true, withDeltaRange: "30d", filters })
+    : await listLinks(c.env, { withDeltaRange: "30d", filters });
   const links = linksResult.ok ? linksResult.data : [];
   const sort = c.req.query("sort") || "recent";
   const page = parseInt(c.req.query("page") || "1", 10) || 1;
@@ -264,7 +268,7 @@ app.get("/_/admin/links/:id", async (c) => {
   if (!linkResult.ok) return notFoundResponse();
   const initialRange: TimelineRange = defaultRange ?? "all";
   const [analyticsResult, bundlesResult] = await Promise.all([
-    getLinkAnalytics(c.env, id),
+    getLinkAnalytics(c.env, id, undefined, identity),
     listBundlesForLink(c.env, id, identity),
   ]);
   const analytics = analyticsResult.ok ? analyticsResult.data : {
@@ -329,12 +333,12 @@ app.get("/_/admin/keys", async (c) => {
 
 app.get("/_/admin/settings", async (c) => {
   const identity = c.var.identity;
-  const { theme, slugLength, t, lang, translations, defaultRange } = await getPageData(c, identity);
+  const { theme, slugLength, t, lang, translations, defaultRange, filterBots, filterSelfReferrers } = await getPageData(c, identity);
   const mcpConfigured = Boolean(c.env.MCP_ACCESS_AUD && c.env.ACCESS_JWKS_URL);
   const userEmail = c.var.user?.email ?? null;
   return c.html(
     <Layout active="settings" theme={theme} t={t} lang={lang} translations={translations}>
-      <SettingsPage theme={theme} slugLength={slugLength} lang={lang} defaultRange={defaultRange} t={t} mcpConfigured={mcpConfigured} userEmail={userEmail} />
+      <SettingsPage theme={theme} slugLength={slugLength} lang={lang} defaultRange={defaultRange} filterBots={filterBots} filterSelfReferrers={filterSelfReferrers} t={t} mcpConfigured={mcpConfigured} userEmail={userEmail} />
     </Layout>,
   );
 });
@@ -377,12 +381,12 @@ app.put("/_/admin/api/links/:id", (c) => {
 app.get("/_/admin/api/links/:id/analytics", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  return handleLinkAnalytics(c.env, id, c.req.query("range"));
+  return handleLinkAnalytics(c.env, c.var.identity, id, c.req.query("range"));
 });
 app.get("/_/admin/api/links/:id/timeline", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  return handleLinkTimeline(c.env, id, c.req.query("range"));
+  return handleLinkTimeline(c.env, c.var.identity, id, c.req.query("range"));
 });
 app.post("/_/admin/api/links/:id/disable", (c) => {
   const id = parseInt(c.req.param("id"), 10);
@@ -438,7 +442,7 @@ app.get("/_/admin/api/settings", (c) => handleGetSettings(c.env, c.var.identity)
 app.put("/_/admin/api/settings", (c) => handleUpdateSettings(c.req.raw, c.env, c.var.identity));
 
 // Dashboard stats
-app.get("/_/admin/api/dashboard", (c) => handleDashboardStatsApi(c.env, c.req.query("range")));
+app.get("/_/admin/api/dashboard", (c) => handleDashboardStatsApi(c.env, c.var.identity, c.req.query("range")));
 
 // Bundles
 app.get("/_/admin/api/bundles", (c) => handleListBundles(c.env, c.var.identity, { archived: c.req.query("archived") }));
@@ -531,13 +535,13 @@ app.get("/_/api/links/:id/analytics", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
   if (!hasScope(c.var.auth, "read")) return forbiddenResponse();
-  return handleLinkAnalytics(c.env, id);
+  return handleLinkAnalytics(c.env, c.var.auth.identity, id);
 });
 app.get("/_/api/links/:id/timeline", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
   if (!hasScope(c.var.auth, "read")) return forbiddenResponse();
-  return handleLinkTimeline(c.env, id, c.req.query("range"));
+  return handleLinkTimeline(c.env, c.var.auth.identity, id, c.req.query("range"));
 });
 app.post("/_/api/links/:id/disable", (c) => {
   const id = parseInt(c.req.param("id"), 10);

@@ -672,6 +672,19 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 .form-hint { font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.4rem; }
 .form-group-flush { margin-bottom: 0; }
 
+/* Labelled on/off switches (settings page analytics filters, etc.) */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.25rem 0; }
+.toggle-row + .toggle-row { border-top: 1px solid var(--color-border); padding-top: 0.75rem; margin-top: 0.25rem; }
+.toggle-row .toggle-label { font-size: 0.9rem; color: var(--color-text); }
+.toggle-row .toggle-hint { font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.2rem; }
+.toggle-switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; cursor: pointer; }
+.toggle-switch input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; margin: 0; }
+.toggle-switch .toggle-track { position: absolute; inset: 0; background: var(--color-surface-interactive); border-radius: 999px; transition: background 0.2s; }
+.toggle-switch .toggle-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: var(--color-text-muted); border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+.toggle-switch input:checked ~ .toggle-track { background: var(--color-success); }
+.toggle-switch input:checked ~ .toggle-thumb { transform: translateX(16px); background: var(--color-text-inverse); }
+.toggle-switch input:focus-visible ~ .toggle-track { outline: 2px solid var(--color-success); outline-offset: 2px; }
+
 /* Version row spinner */
 .version-status { font-size: 0.875rem; margin-top: 0.5rem; color: var(--color-text-muted); display: inline-flex; align-items: center; gap: 0.35rem; }
 .icon-spin { font-size: 16px; vertical-align: text-bottom; animation: spin 1s linear infinite; }

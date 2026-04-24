@@ -616,6 +616,20 @@ function saveSettings() {
   });
 }
 
+function setFilterBots(checked) {
+  api('/settings', { method: 'PUT', body: JSON.stringify({ filter_bots: Boolean(checked) }) }).then(function(res) {
+    if (res.ok) toast(t('client.settingsSaved'));
+    else toast(t('client.settingsError'), 'error');
+  });
+}
+
+function setFilterSelfReferrers(checked) {
+  api('/settings', { method: 'PUT', body: JSON.stringify({ filter_self_referrers: Boolean(checked) }) }).then(function(res) {
+    if (res.ok) toast(t('client.settingsSaved'));
+    else toast(t('client.settingsError'), 'error');
+  });
+}
+
 function updateComboHint() {
   var el = document.getElementById('slug-combo-hint');
   if (!el) return;

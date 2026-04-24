@@ -2,19 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { LinkRepository, SlugRepository, ClickRepository, SettingRepository } from "../db";
+import type { ClickFilters } from "../db";
 import { SlugCache } from "../kv";
 import { DEFAULT_SLUG_LENGTH } from "../constants";
 import { generateUniqueSlug, validateSlugLength, validateCustomSlug } from "../slugs";
 import { ClickData, ClickStats, DashboardStats, Env, LinkWithSlugs, Slug, TimelineData, TimelineRange } from "../types";
 import { normalizeUrl } from "../normalize-url";
 import { ServiceResult, ok, fail } from "./result";
+import { resolveClickFilters } from "./admin-management";
 
 export type { ServiceResult };
 
-export async function listLinks(env: Env, opts?: { withDeltaRange?: TimelineRange }): Promise<ServiceResult<LinkWithSlugs[]>> {
+export async function listLinks(env: Env, opts?: { withDeltaRange?: TimelineRange; filters?: ClickFilters }): Promise<ServiceResult<LinkWithSlugs[]>> {
   const links = await LinkRepository.list(env.DB);
   if (!opts?.withDeltaRange) return ok(links);
-  const enriched = await ClickRepository.attachLinkDeltasBulk(env.DB, links, opts.withDeltaRange);
+  const enriched = await ClickRepository.attachLinkDeltasBulk(env.DB, links, opts.withDeltaRange, undefined, opts.filters);
   return ok(enriched);
 }
 
@@ -294,23 +296,27 @@ export async function removeSlug(
   return ok({ removed: true });
 }
 
-export async function getLinkTimeline(env: Env, linkId: number, range: TimelineRange): Promise<ServiceResult<TimelineData>> {
+export async function getLinkTimeline(env: Env, linkId: number, range: TimelineRange, identity: string): Promise<ServiceResult<TimelineData>> {
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
-  return ok(await ClickRepository.getTimeline(env.DB, linkId, range));
+  const filters = await resolveClickFilters(env, identity);
+  return ok(await ClickRepository.getTimeline(env.DB, linkId, range, undefined, filters));
 }
 
-export async function getLinkAnalytics(env: Env, linkId: number, range?: TimelineRange): Promise<ServiceResult<ClickStats>> {
+export async function getLinkAnalytics(env: Env, linkId: number, range: TimelineRange | undefined, identity: string): Promise<ServiceResult<ClickStats>> {
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
-  return ok(await ClickRepository.getStats(env.DB, linkId, range));
+  const filters = await resolveClickFilters(env, identity);
+  return ok(await ClickRepository.getStats(env.DB, linkId, range, filters));
 }
 
 export async function getDashboardStats(
   env: Env,
-  range: TimelineRange = "30d",
+  range: TimelineRange,
+  identity: string,
 ): Promise<ServiceResult<DashboardStats>> {
-  return ok(await ClickRepository.getDashboardStats(env.DB, range));
+  const filters = await resolveClickFilters(env, identity);
+  return ok(await ClickRepository.getDashboardStats(env.DB, range, undefined, filters));
 }
 
 export async function findSlugForRedirect(
@@ -323,11 +329,11 @@ export async function findSlugForRedirect(
 export async function searchLinks(
   env: Env,
   query: string,
-  opts?: { includeOwner?: boolean; withDeltaRange?: TimelineRange },
+  opts?: { includeOwner?: boolean; withDeltaRange?: TimelineRange; filters?: ClickFilters },
 ): Promise<ServiceResult<LinkWithSlugs[]>> {
   const links = await LinkRepository.search(env.DB, query, opts);
   if (!opts?.withDeltaRange) return ok(links);
-  const enriched = await ClickRepository.attachLinkDeltasBulk(env.DB, links, opts.withDeltaRange);
+  const enriched = await ClickRepository.attachLinkDeltasBulk(env.DB, links, opts.withDeltaRange, undefined, opts.filters);
   return ok(enriched);
 }
 

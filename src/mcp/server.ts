@@ -226,7 +226,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         link_id: z.number().int().positive().describe("Numeric ID of the link"),
       },
       async ({ link_id }) => {
-        const result = await getLinkAnalytics(this.env, link_id);
+        const result = await getLinkAnalytics(this.env, link_id, undefined, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -311,7 +311,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         limit: limitSchema,
       },
       async ({ range, limit }) => {
-        const result = await getTrendingLinks(this.env, range as TimelineRange, limit);
+        const result = await getTrendingLinks(this.env, range as TimelineRange, limit, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -322,7 +322,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "Get a high-level snapshot: total links, total clicks, top 5 links, top 5 countries, top 5 referrer hosts, and recent links.",
       {},
       async () => {
-        const result = await getDashboardStats(this.env);
+        const result = await getDashboardStats(this.env, "30d", this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -336,7 +336,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("30d").describe("Time range for the timeline"),
       },
       async ({ link_id, range }) => {
-        const result = await getLinkTimeline(this.env, link_id, range as TimelineRange);
+        const result = await getLinkTimeline(this.env, link_id, range as TimelineRange, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -350,7 +350,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         limit: limitSchema,
       },
       async ({ range, limit }) => {
-        const result = await getGlobalBreakdown(this.env, "country", range as TimelineRange, limit);
+        const result = await getGlobalBreakdown(this.env, "country", range as TimelineRange, limit, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -364,7 +364,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         limit: limitSchema,
       },
       async ({ range, limit }) => {
-        const result = await getGlobalBreakdown(this.env, "referrer_host", range as TimelineRange, limit);
+        const result = await getGlobalBreakdown(this.env, "referrer_host", range as TimelineRange, limit, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -379,7 +379,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         limit: limitSchema,
       },
       async ({ dimension, range, limit }) => {
-        const result = await getGlobalBreakdown(this.env, dimension, range as TimelineRange, limit);
+        const result = await getGlobalBreakdown(this.env, dimension, range as TimelineRange, limit, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -393,7 +393,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("all").describe("Shared time range for comparison"),
       },
       async ({ link_ids, range }) => {
-        const result = await compareLinkStats(this.env, link_ids, range as TimelineRange);
+        const result = await compareLinkStats(this.env, link_ids, range as TimelineRange, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -409,7 +409,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         limit: z.number().int().min(1).max(100).default(25).describe("Maximum results"),
       },
       async ({ link_id, dimension, range, limit }) => {
-        const result = await getLinkBreakdown(this.env, link_id, dimension, range as TimelineRange, limit);
+        const result = await getLinkBreakdown(this.env, link_id, dimension, range as TimelineRange, limit, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -422,7 +422,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("all").describe("Time range filter"),
       },
       async ({ range }) => {
-        const result = await getTotalClicks(this.env, range as TimelineRange);
+        const result = await getTotalClicks(this.env, range as TimelineRange, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },

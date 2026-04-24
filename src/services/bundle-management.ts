@@ -4,6 +4,7 @@
 import { BundleRepository, ClickRepository, LinkRepository } from "../db";
 import { Bundle, BundleAccent, BundleStats, BundleWithSummary, Env, LinkWithSlugs, TimelineRange } from "../types";
 import { ServiceResult, fail, ok } from "./result";
+import { resolveClickFilters } from "./admin-management";
 
 const VALID_ACCENTS: BundleAccent[] = ["orange", "red", "green", "blue", "purple"];
 
@@ -69,6 +70,7 @@ export async function listBundles(
 
   const bundleIds = bundles.map((b) => b.id);
 
+  const filters = await resolveClickFilters(env, identity);
   const [linkCounts, summaries] = await Promise.all([
     env.DB
       .prepare(
@@ -76,7 +78,7 @@ export async function listBundles(
       )
       .bind(...bundleIds)
       .all<{ bundle_id: number; cnt: number }>(),
-    ClickRepository.getBundleSummariesBulk(env.DB, bundleIds),
+    ClickRepository.getBundleSummariesBulk(env.DB, bundleIds, undefined, filters),
   ]);
 
   const linkCountMap = new Map((linkCounts.results ?? []).map((r) => [r.bundle_id, r.cnt]));
@@ -192,7 +194,8 @@ export async function getBundleAnalytics(
 ): Promise<ServiceResult<BundleStats>> {
   const bundle = await BundleRepository.getById(env.DB, id);
   if (!bundle || bundle.created_by !== identity) return fail(404, "Bundle not found");
-  const stats = await ClickRepository.getBundleStats(env.DB, id, range);
+  const filters = await resolveClickFilters(env, identity);
+  const stats = await ClickRepository.getBundleStats(env.DB, id, range, undefined, filters);
   return ok(stats!);
 }
 

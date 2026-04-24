@@ -60,7 +60,7 @@ describe("get_trending_links", () => {
     await recordClicks(linkA.slugs[0].slug, 2);
     await recordClicks(linkB.slugs[0].slug, 5);
 
-    const result = await getTrendingLinks(env as never, "24h", 10);
+    const result = await getTrendingLinks(env as never, "24h", 10, "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -80,7 +80,7 @@ describe("get_trending_links", () => {
     await recordClicks(linkB.slugs[0].slug, 2);
     await recordClicks(linkC.slugs[0].slug, 1);
 
-    const result = await getTrendingLinks(env as never, "24h", 2);
+    const result = await getTrendingLinks(env as never, "24h", 2, "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.data.length).toBe(2);
@@ -89,7 +89,7 @@ describe("get_trending_links", () => {
   it("returns empty array when no clicks exist", async () => {
     await seedLink("https://a.com");
 
-    const result = await getTrendingLinks(env as never, "24h", 10);
+    const result = await getTrendingLinks(env as never, "24h", 10, "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.data).toEqual([]);
@@ -103,7 +103,7 @@ describe("get_dashboard_stats (service)", () => {
     const link = await seedLink("https://example.com", "Test");
     await recordClicks(link.slugs[0].slug, 3, { country: "SE" });
 
-    const result = await getDashboardStats(env as never);
+    const result = await getDashboardStats(env as never, "30d", "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -121,7 +121,7 @@ describe("get_link_timeline (service)", () => {
     const link = await seedLink("https://example.com");
     await recordClicks(link.slugs[0].slug, 5);
 
-    const result = await getLinkTimeline(env as never, link.id, "24h");
+    const result = await getLinkTimeline(env as never, link.id, "24h", "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -131,7 +131,7 @@ describe("get_link_timeline (service)", () => {
   });
 
   it("returns 404 for nonexistent link", async () => {
-    const result = await getLinkTimeline(env as never, 9999, "7d");
+    const result = await getLinkTimeline(env as never, 9999, "7d", "test@example.com");
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(404);
@@ -150,7 +150,7 @@ describe("get_clicks_by_country", () => {
     await recordClicks(linkB.slugs[0].slug, 2, { country: "SE" });
     await recordClicks(linkB.slugs[0].slug, 1, { country: "US" });
 
-    const result = await getGlobalBreakdown(env as never, "country", "all", 10);
+    const result = await getGlobalBreakdown(env as never, "country", "all", 10, "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -171,7 +171,7 @@ describe("get_clicks_by_referrer", () => {
     await recordClicks(link.slugs[0].slug, 3, { referrerHost: "twitter.com" });
     await recordClicks(link.slugs[0].slug, 1, { referrerHost: "linkedin.com" });
 
-    const result = await getGlobalBreakdown(env as never, "referrer_host", "all", 10);
+    const result = await getGlobalBreakdown(env as never, "referrer_host", "all", 10, "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -189,7 +189,7 @@ describe("get_clicks_by_device", () => {
     await recordClicks(link.slugs[0].slug, 4, { deviceType: "mobile" });
     await recordClicks(link.slugs[0].slug, 2, { deviceType: "desktop" });
 
-    const result = await getGlobalBreakdown(env as never, "device_type", "all", 10);
+    const result = await getGlobalBreakdown(env as never, "device_type", "all", 10, "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -202,7 +202,7 @@ describe("get_clicks_by_device", () => {
     await recordClicks(link.slugs[0].slug, 3, { os: "iOS" });
     await recordClicks(link.slugs[0].slug, 1, { os: "Android" });
 
-    const result = await getGlobalBreakdown(env as never, "os", "all", 10);
+    const result = await getGlobalBreakdown(env as never, "os", "all", 10, "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -213,7 +213,7 @@ describe("get_clicks_by_device", () => {
     const link = await seedLink("https://a.com");
     await recordClicks(link.slugs[0].slug, 2, { browser: "Firefox" });
 
-    const result = await getGlobalBreakdown(env as never, "browser", "all", 10);
+    const result = await getGlobalBreakdown(env as never, "browser", "all", 10, "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -231,7 +231,7 @@ describe("compare_links", () => {
     await recordClicks(linkA.slugs[0].slug, 5, { country: "US", referrerHost: "google.com" });
     await recordClicks(linkB.slugs[0].slug, 3, { country: "SE", referrerHost: "twitter.com" });
 
-    const result = await compareLinkStats(env as never, [linkA.id, linkB.id], "all");
+    const result = await compareLinkStats(env as never, [linkA.id, linkB.id], "all", "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -251,7 +251,7 @@ describe("compare_links", () => {
 
   it("returns 404 when a link does not exist", async () => {
     const link = await seedLink("https://a.com");
-    const result = await compareLinkStats(env as never, [link.id, 9999], "all");
+    const result = await compareLinkStats(env as never, [link.id, 9999], "all", "test@example.com");
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(404);
@@ -269,7 +269,7 @@ describe("get_link_breakdown", () => {
     await recordClicks(link.slugs[0].slug, 3, { country: "SE" });
     await recordClicks(link.slugs[0].slug, 1, { country: "ID" });
 
-    const result = await getLinkBreakdown(env as never, link.id, "country", "all", 2);
+    const result = await getLinkBreakdown(env as never, link.id, "country", "all", 2, "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -281,7 +281,7 @@ describe("get_link_breakdown", () => {
   });
 
   it("returns 404 for nonexistent link", async () => {
-    const result = await getLinkBreakdown(env as never, 9999, "country", "all", 10);
+    const result = await getLinkBreakdown(env as never, 9999, "country", "all", 10, "test@example.com");
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(404);
@@ -299,14 +299,14 @@ describe("get_total_clicks", () => {
     await recordClicks(linkA.slugs[0].slug, 3);
     await recordClicks(linkB.slugs[0].slug, 7);
 
-    const result = await getTotalClicks(env as never, "all");
+    const result = await getTotalClicks(env as never, "all", "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.data.total_clicks).toBe(10);
   });
 
   it("returns 0 when no clicks exist", async () => {
-    const result = await getTotalClicks(env as never, "all");
+    const result = await getTotalClicks(env as never, "all", "test@example.com");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.data.total_clicks).toBe(0);

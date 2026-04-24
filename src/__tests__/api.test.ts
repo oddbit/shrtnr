@@ -1052,8 +1052,11 @@ describe("Analytics API", () => {
     const created = await createRes.json() as any;
     const slug = created.slugs[0].slug;
     // top_links is ranked by clicks within the range window, so the link
-    // must be clicked at least once to appear.
-    await SELF.fetch(unauthed(`/${slug}`));
+    // must be clicked at least once to appear. Use a browser UA so the click
+    // is not flagged as a bot (default analytics filters exclude bot traffic).
+    await SELF.fetch(unauthed(`/${slug}`, {
+      headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+    }));
     const res = await SELF.fetch(authed("/_/admin/api/dashboard"));
     const body = await res.json() as any;
     expect(Array.isArray(body.top_links)).toBe(true);

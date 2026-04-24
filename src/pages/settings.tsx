@@ -16,12 +16,14 @@ type Props = {
   slugLength: number;
   lang: string;
   defaultRange: TimelineRange | null;
+  filterBots: boolean;
+  filterSelfReferrers: boolean;
   t: TranslateFn;
   mcpConfigured: boolean;
   userEmail?: string | null;
 };
 
-export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange, t, mcpConfigured, userEmail }) => {
+export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange, filterBots, filterSelfReferrers, t, mcpConfigured, userEmail }) => {
   const combos = Math.pow(RANDOM_CHARSET.length, Math.max(slugLength, MIN_SLUG_LENGTH));
   const comboHint =
     slugLength >= 3
@@ -110,6 +112,44 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
                 </select>
               </div>
               <div class="form-hint">{t("settings.defaultRangeHint")}</div>
+            </div>
+          </div>
+
+          <div class="bento-card">
+            <div class="form-group form-group-flush">
+              <label class="form-label">{t("settings.analyticsFilters")}</label>
+              <div class="toggle-row">
+                <div>
+                  <div class="toggle-label">{t("settings.filterBots")}</div>
+                  <div class="toggle-hint">{t("settings.filterBotsHint")}</div>
+                </div>
+                <label class="toggle-switch">
+                  <input
+                    type="checkbox"
+                    id="filter-bots-toggle"
+                    checked={filterBots}
+                    onchange="setFilterBots(this.checked)"
+                  />
+                  <span class="toggle-track"></span>
+                  <span class="toggle-thumb"></span>
+                </label>
+              </div>
+              <div class="toggle-row">
+                <div>
+                  <div class="toggle-label">{t("settings.filterSelfReferrers")}</div>
+                  <div class="toggle-hint">{t("settings.filterSelfReferrersHint")}</div>
+                </div>
+                <label class="toggle-switch">
+                  <input
+                    type="checkbox"
+                    id="filter-self-referrers-toggle"
+                    checked={filterSelfReferrers}
+                    onchange="setFilterSelfReferrers(this.checked)"
+                  />
+                  <span class="toggle-track"></span>
+                  <span class="toggle-thumb"></span>
+                </label>
+              </div>
             </div>
           </div>
 

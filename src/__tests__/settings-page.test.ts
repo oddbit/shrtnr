@@ -42,3 +42,20 @@ describe("Settings page default range control", () => {
     expect(html).toMatch(/<option value=""/);
   });
 });
+
+describe("Settings page analytics filter toggles", () => {
+  it("renders the filter-bots and filter-self-referrers toggles", async () => {
+    const res = await SELF.fetch(req("/_/admin/settings"));
+    const html = await res.text();
+    expect(html).toContain('id="filter-bots-toggle"');
+    expect(html).toContain('id="filter-self-referrers-toggle"');
+  });
+
+  it("both toggles are checked by default (defaults to filtering enabled)", async () => {
+    const res = await SELF.fetch(req("/_/admin/settings"));
+    const html = await res.text();
+    // Each input exists with `checked` in the rendered markup when enabled.
+    expect(html).toMatch(/id="filter-bots-toggle"[^>]*checked/);
+    expect(html).toMatch(/id="filter-self-referrers-toggle"[^>]*checked/);
+  });
+});
