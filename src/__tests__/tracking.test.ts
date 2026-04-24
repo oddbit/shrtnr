@@ -416,6 +416,156 @@ describe("OS and referrer_host tracking", () => {
   });
 });
 
+// ---- Feature: bot detection on redirect ----
+
+describe("bot detection on redirect", () => {
+  it("records is_bot=1 for a crawler User-Agent", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "bot1" });
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/bot1", {
+        redirect: "manual",
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        },
+      }),
+    );
+    expect(res.status).toBe(301);
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const row = await env.DB
+      .prepare("SELECT is_bot FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ is_bot: number }>();
+    expect(row!.is_bot).toBe(1);
+  });
+
+  it("records is_bot=1 for a link-previewer User-Agent", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "bot2" });
+    await SELF.fetch(
+      new Request("https://shrtnr.test/bot2", {
+        redirect: "manual",
+        headers: { "User-Agent": "facebookexternalhit/1.1" },
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await env.DB
+      .prepare("SELECT is_bot FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ is_bot: number }>();
+    expect(row!.is_bot).toBe(1);
+  });
+
+  it("records is_bot=1 when User-Agent header is missing", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "bot3" });
+    // Undici strips User-Agent when set to empty, but the worker sees it as absent → treated as bot.
+    await SELF.fetch(
+      new Request("https://shrtnr.test/bot3", {
+        redirect: "manual",
+        headers: { "User-Agent": "" },
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await env.DB
+      .prepare("SELECT is_bot FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ is_bot: number }>();
+    expect(row!.is_bot).toBe(1);
+  });
+
+  it("records is_bot=0 for a desktop Chrome User-Agent", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "human1" });
+    await SELF.fetch(
+      new Request("https://shrtnr.test/human1", {
+        redirect: "manual",
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await env.DB
+      .prepare("SELECT is_bot FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ is_bot: number }>();
+    expect(row!.is_bot).toBe(0);
+  });
+});
+
+// ---- Feature: self-referrer stripping ----
+
+describe("self-referrer stripping", () => {
+  it("drops referrer when the Referer host matches the request host", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "self1" });
+    await SELF.fetch(
+      new Request("https://shrtnr.test/self1", {
+        redirect: "manual",
+        headers: { Referer: "https://shrtnr.test/" },
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await env.DB
+      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ referrer: string | null; referrer_host: string | null }>();
+    expect(row!.referrer).toBeNull();
+    expect(row!.referrer_host).toBeNull();
+  });
+
+  it("drops referrer when Referer includes a path on the same host", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "self2" });
+    await SELF.fetch(
+      new Request("https://shrtnr.test/self2", {
+        redirect: "manual",
+        headers: { Referer: "https://shrtnr.test/some/internal/page" },
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await env.DB
+      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ referrer: string | null; referrer_host: string | null }>();
+    expect(row!.referrer).toBeNull();
+    expect(row!.referrer_host).toBeNull();
+  });
+
+  it("treats www. prefix as the same host", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "self3" });
+    await SELF.fetch(
+      new Request("https://shrtnr.test/self3", {
+        redirect: "manual",
+        headers: { Referer: "https://www.shrtnr.test/" },
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await env.DB
+      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ referrer: string | null; referrer_host: string | null }>();
+    expect(row!.referrer).toBeNull();
+    expect(row!.referrer_host).toBeNull();
+  });
+
+  it("preserves cross-origin referrers", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "cross1" });
+    await SELF.fetch(
+      new Request("https://shrtnr.test/cross1", {
+        redirect: "manual",
+        headers: { Referer: "https://oddbit.id/en/projects/rekap" },
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await env.DB
+      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ referrer: string | null; referrer_host: string | null }>();
+    expect(row!.referrer).toBe("https://oddbit.id/en/projects/rekap");
+    expect(row!.referrer_host).toBe("oddbit.id");
+  });
+});
+
 // ---- Feature 5: QR SVG generation ----
 
 describe("QR code generation", () => {

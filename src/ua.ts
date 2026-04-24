@@ -23,6 +23,42 @@ export function parseOS(ua: string): string {
   return "other";
 }
 
+const BOT_PATTERNS = new RegExp(
+  [
+    "bot\\b",
+    "crawl",
+    "spider",
+    "slurp",
+    "facebookexternalhit",
+    "mediapartners",
+    "embedly",
+    "feedfetcher",
+    "whatsapp",
+    "skypeuri",
+    "preview",
+    "curl/",
+    "wget/",
+    "python-requests",
+    "go-http-client",
+    "java/",
+    "okhttp",
+    "axios/",
+    "node-fetch",
+    "headlesschrome",
+    "puppeteer",
+    "phantomjs",
+    "selenium",
+    "lighthouse",
+    "pagespeed",
+  ].join("|"),
+  "i",
+);
+
+export function isBot(ua: string): boolean {
+  if (!ua || ua.trim() === "") return true;
+  return BOT_PATTERNS.test(ua);
+}
+
 export function parseBrowser(ua: string): string {
   // Order matters: check more specific patterns first
   if (/EdgA?\//.test(ua)) return "Edge";
