@@ -10,6 +10,7 @@ import { RangePicker } from "../components/range-picker";
 import { escHtml } from "../escape";
 import { formatAvgPerDay } from "../services/trends";
 import { fmtNumber } from "../i18n/format";
+import { ACCESS_METHOD_OPTIONS, fillMissingOptions } from "../analytics-fill";
 
 function deviceIcon(name: string): string {
   if (name === "mobile") return "phone_android";
@@ -79,7 +80,8 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
   const brTotal = stats.browsers.reduce((s, c) => s + c.count, 0);
   const srcTotal = stats.referrers.reduce((s, c) => s + c.count, 0);
   const hostTotal = stats.referrer_hosts.reduce((s, c) => s + c.count, 0);
-  const modeTotal = stats.link_modes.reduce((s, c) => s + c.count, 0);
+  const linkModes = fillMissingOptions(stats.link_modes, ACCESS_METHOD_OPTIONS);
+  const modeTotal = linkModes.reduce((s, c) => s + c.count, 0);
 
   const maxLinkClicks = Math.max(1, stats.total_clicks);
 
@@ -359,20 +361,16 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
           <div class="bento-card">
             <div class="bento-label">{t("linkDetail.linkModes")}</div>
             <div class="stat-card-body">
-              {stats.link_modes.length > 0 ? (
-                stats.link_modes.map((m) => (
-                  <StatBar
-                    name={m.name}
-                    count={m.count}
-                    max={modeTotal || 1}
-                    color="orange"
-                    icon={linkModeIcon(m.name)}
-                    lang={lang}
-                  />
-                ))
-              ) : (
-                <div class="muted-hint">{t("linkDetail.noData")}</div>
-              )}
+              {linkModes.map((m) => (
+                <StatBar
+                  name={m.name}
+                  count={m.count}
+                  max={modeTotal || 1}
+                  color="orange"
+                  icon={linkModeIcon(m.name)}
+                  lang={lang}
+                />
+              ))}
             </div>
           </div>
 

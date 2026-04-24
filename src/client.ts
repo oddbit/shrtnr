@@ -4,9 +4,11 @@
 import type { Translations } from "./i18n/types";
 import { RANDOM_CHARSET } from "./slugs";
 import { MIN_SLUG_LENGTH } from "./constants";
+import { ACCESS_METHOD_OPTIONS } from "./analytics-fill";
 
 export function adminClientScript(version: string, translations: Translations): string {
   const tJson = JSON.stringify(translations);
+  const accessMethodOptionsJson = JSON.stringify(ACCESS_METHOD_OPTIONS);
   return `
 'use strict';
 var API = '/_/admin/api';
@@ -15,6 +17,17 @@ var REPO_URL = 'https://oddb.it/github-shrtnr-app';
 var CHARSET_SIZE = ${RANDOM_CHARSET.length};
 var MIN_SLUG_LEN = ${MIN_SLUG_LENGTH};
 var T = ${tJson};
+var ACCESS_METHOD_OPTIONS = ${accessMethodOptionsJson};
+
+function fillMissingOptions(items, alwaysOn) {
+  var seen = {};
+  var out = [];
+  for (var i = 0; i < items.length; i++) { seen[items[i].name] = true; out.push(items[i]); }
+  for (var j = 0; j < alwaysOn.length; j++) {
+    if (!seen[alwaysOn[j]]) out.push({ name: alwaysOn[j], count: 0 });
+  }
+  return out;
+}
 
 function t(key, params) {
   var val = T[key] || key;
@@ -805,7 +818,7 @@ function loadAnalytics(linkId, range) {
     renderStatCard('card-countries', stats.countries, 'orange', { mapName: countryName, flagFromName: true });
     renderStatCard('card-domains', stats.referrer_hosts, 'mint', { mono: true });
     renderStatCard('card-sources', stats.referrers, 'mint', { mono: true });
-    renderStatCard('card-link-modes', stats.link_modes, 'orange', { iconFn: linkModeIcon });
+    renderStatCard('card-link-modes', fillMissingOptions(stats.link_modes, ACCESS_METHOD_OPTIONS), 'orange', { iconFn: linkModeIcon });
     renderStatCard('card-devices', stats.devices, 'orange', { iconFn: deviceIcon });
     renderStatCard('card-os', stats.os, 'mint', { iconFn: osIcon });
     renderStatCard('card-browsers', stats.browsers, 'mint');

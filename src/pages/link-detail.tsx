@@ -8,6 +8,7 @@ import { countryName } from "../country";
 import { escHtml } from "../escape";
 import { formatAvgPerDay } from "../services/trends";
 import { fmtNumber } from "../i18n/format";
+import { ACCESS_METHOD_OPTIONS, fillMissingOptions } from "../analytics-fill";
 
 const StatBar: FC<{
   name: string;
@@ -487,20 +488,20 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
           <div class="bento-card" id="card-link-modes">
             <div class="bento-label">{t("linkDetail.linkModes")}</div>
             <div class="stat-card-body">
-              {analytics.link_modes.length > 0 ? (
-                analytics.link_modes.map((m) => (
+              {(() => {
+                const modes = fillMissingOptions(analytics.link_modes, ACCESS_METHOD_OPTIONS);
+                const modeMax = modes.reduce((s, i) => s + i.count, 0);
+                return modes.map((m) => (
                   <StatBar
                     name={m.name}
                     count={m.count}
-                    max={analytics.link_modes.reduce((s, i) => s + i.count, 0)}
+                    max={modeMax}
                     color="orange"
                     icon={linkModeIcon(m.name)}
                     lang={lang}
                   />
-                ))
-              ) : (
-                <div class="muted-hint">{t("linkDetail.noData")}</div>
-              )}
+                ));
+              })()}
             </div>
           </div>
 
