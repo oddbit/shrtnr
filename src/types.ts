@@ -68,6 +68,14 @@ export interface ClickData {
   utmContent?: string | null;
   userAgent?: string | null;
   isBot?: number;
+  /**
+   * 1 when the Referer was the bare origin of the serving host
+   * (e.g. `https://<host>/`). Used to hide noisy self-referrer rows
+   * from Sources and Domains breakdowns while keeping the click in
+   * raw totals. Ingest captures the signal; query layer decides how
+   * to display it.
+   */
+  isSelfReferrer?: number;
   /** Silent daily-rotated visitor fingerprint; not exposed in any UI. */
   visitorFp?: string | null;
 }

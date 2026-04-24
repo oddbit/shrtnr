@@ -494,10 +494,10 @@ describe("bot detection on redirect", () => {
   });
 });
 
-// ---- Feature: self-referrer stripping ----
+// ---- Feature: self-referrer flagging (capture-all, filter-at-display) ----
 
-describe("self-referrer stripping", () => {
-  it("drops referrer when the Referer host matches the request host", async () => {
+describe("self-referrer flagging", () => {
+  it("stores raw referrer and flags is_self_referrer=1 for bare-origin same host", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "self1" });
     await SELF.fetch(
       new Request("https://shrtnr.test/self1", {
@@ -507,14 +507,15 @@ describe("self-referrer stripping", () => {
     );
     await new Promise((r) => setTimeout(r, 100));
     const row = await env.DB
-      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .prepare("SELECT referrer, referrer_host, is_self_referrer FROM clicks WHERE slug = ?")
       .bind(link.slugs[0].slug)
-      .first<{ referrer: string | null; referrer_host: string | null }>();
-    expect(row!.referrer).toBeNull();
-    expect(row!.referrer_host).toBeNull();
+      .first<{ referrer: string | null; referrer_host: string | null; is_self_referrer: number }>();
+    expect(row!.referrer).toBe("https://shrtnr.test/");
+    expect(row!.referrer_host).toBe("shrtnr.test");
+    expect(row!.is_self_referrer).toBe(1);
   });
 
-  it("preserves same-host referrer when the path is meaningful (e.g. admin pages)", async () => {
+  it("is_self_referrer=0 for same-host referrer with a meaningful path", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "self2" });
     await SELF.fetch(
       new Request("https://shrtnr.test/self2", {
@@ -524,14 +525,15 @@ describe("self-referrer stripping", () => {
     );
     await new Promise((r) => setTimeout(r, 100));
     const row = await env.DB
-      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .prepare("SELECT referrer, referrer_host, is_self_referrer FROM clicks WHERE slug = ?")
       .bind(link.slugs[0].slug)
-      .first<{ referrer: string | null; referrer_host: string | null }>();
+      .first<{ referrer: string | null; referrer_host: string | null; is_self_referrer: number }>();
     expect(row!.referrer).toBe("https://shrtnr.test/_/admin/settings");
     expect(row!.referrer_host).toBe("shrtnr.test");
+    expect(row!.is_self_referrer).toBe(0);
   });
 
-  it("drops referrer when same-host root is visited without a trailing slash", async () => {
+  it("is_self_referrer=1 when same-host root is visited without a trailing slash", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "self2b" });
     await SELF.fetch(
       new Request("https://shrtnr.test/self2b", {
@@ -541,14 +543,13 @@ describe("self-referrer stripping", () => {
     );
     await new Promise((r) => setTimeout(r, 100));
     const row = await env.DB
-      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .prepare("SELECT is_self_referrer FROM clicks WHERE slug = ?")
       .bind(link.slugs[0].slug)
-      .first<{ referrer: string | null; referrer_host: string | null }>();
-    expect(row!.referrer).toBeNull();
-    expect(row!.referrer_host).toBeNull();
+      .first<{ is_self_referrer: number }>();
+    expect(row!.is_self_referrer).toBe(1);
   });
 
-  it("preserves same-host root referrer if it carries query string or fragment", async () => {
+  it("is_self_referrer=0 for same-host root with query string", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "self2c" });
     await SELF.fetch(
       new Request("https://shrtnr.test/self2c", {
@@ -558,14 +559,13 @@ describe("self-referrer stripping", () => {
     );
     await new Promise((r) => setTimeout(r, 100));
     const row = await env.DB
-      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .prepare("SELECT is_self_referrer FROM clicks WHERE slug = ?")
       .bind(link.slugs[0].slug)
-      .first<{ referrer: string | null; referrer_host: string | null }>();
-    expect(row!.referrer).toBe("https://shrtnr.test/?utm_source=newsletter");
-    expect(row!.referrer_host).toBe("shrtnr.test");
+      .first<{ is_self_referrer: number }>();
+    expect(row!.is_self_referrer).toBe(0);
   });
 
-  it("treats www. prefix as the same host", async () => {
+  it("is_self_referrer=1 when Referer uses www. prefix of the same host", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "self3" });
     await SELF.fetch(
       new Request("https://shrtnr.test/self3", {
@@ -575,14 +575,14 @@ describe("self-referrer stripping", () => {
     );
     await new Promise((r) => setTimeout(r, 100));
     const row = await env.DB
-      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .prepare("SELECT referrer, is_self_referrer FROM clicks WHERE slug = ?")
       .bind(link.slugs[0].slug)
-      .first<{ referrer: string | null; referrer_host: string | null }>();
-    expect(row!.referrer).toBeNull();
-    expect(row!.referrer_host).toBeNull();
+      .first<{ referrer: string | null; is_self_referrer: number }>();
+    expect(row!.referrer).toBe("https://www.shrtnr.test/");
+    expect(row!.is_self_referrer).toBe(1);
   });
 
-  it("preserves cross-origin referrers", async () => {
+  it("is_self_referrer=0 and referrer preserved for cross-origin referrers", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "cross1" });
     await SELF.fetch(
       new Request("https://shrtnr.test/cross1", {
@@ -592,11 +592,60 @@ describe("self-referrer stripping", () => {
     );
     await new Promise((r) => setTimeout(r, 100));
     const row = await env.DB
-      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .prepare("SELECT referrer, referrer_host, is_self_referrer FROM clicks WHERE slug = ?")
       .bind(link.slugs[0].slug)
-      .first<{ referrer: string | null; referrer_host: string | null }>();
+      .first<{ referrer: string | null; referrer_host: string | null; is_self_referrer: number }>();
     expect(row!.referrer).toBe("https://oddbit.id/en/projects/rekap");
     expect(row!.referrer_host).toBe("oddbit.id");
+    expect(row!.is_self_referrer).toBe(0);
+  });
+
+  it("Sources breakdown excludes bare-origin self-referrers but total_clicks still counts them", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "filt1" });
+    const slug = link.slugs[0].slug;
+    // One self-referrer, one meaningful same-host, one cross-origin.
+    await ClickRepository.record(env.DB, slug, {
+      referrer: "https://shrtnr.test/",
+      referrerHost: "shrtnr.test",
+      isSelfReferrer: 1,
+    });
+    await ClickRepository.record(env.DB, slug, {
+      referrer: "https://shrtnr.test/_/admin/settings",
+      referrerHost: "shrtnr.test",
+      isSelfReferrer: 0,
+    });
+    await ClickRepository.record(env.DB, slug, {
+      referrer: "https://pub.dev/",
+      referrerHost: "pub.dev",
+      isSelfReferrer: 0,
+    });
+
+    const stats = await ClickRepository.getStats(env.DB, link.id);
+    expect(stats.total_clicks).toBe(3);
+    const sourceNames = stats.referrers.map((r) => r.name);
+    expect(sourceNames).toContain("https://shrtnr.test/_/admin/settings");
+    expect(sourceNames).toContain("https://pub.dev/");
+    expect(sourceNames).not.toContain("https://shrtnr.test/");
+  });
+
+  it("Domains breakdown excludes bare-origin self-referrers", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "filt2" });
+    const slug = link.slugs[0].slug;
+    await ClickRepository.record(env.DB, slug, {
+      referrer: "https://shrtnr.test/",
+      referrerHost: "shrtnr.test",
+      isSelfReferrer: 1,
+    });
+    await ClickRepository.record(env.DB, slug, {
+      referrer: "https://pub.dev/",
+      referrerHost: "pub.dev",
+      isSelfReferrer: 0,
+    });
+
+    const stats = await ClickRepository.getStats(env.DB, link.id);
+    const domainNames = stats.referrer_hosts.map((r) => r.name);
+    expect(domainNames).toContain("pub.dev");
+    expect(domainNames).not.toContain("shrtnr.test");
   });
 });
 

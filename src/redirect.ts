@@ -82,14 +82,14 @@ export async function handleRedirect(
   const url = new URL(request.url);
   const utmMedium = url.searchParams.get("utm_medium")?.toLowerCase() ?? null;
 
-  // Drop bare-origin self-referrers only. Same-host referrers with a
-  // meaningful path (e.g. `/_/admin/settings`) remain so internal link
-  // clicks stay visible in Sources. Per-request host keeps every
-  // deployment working without hardcoding a domain.
+  // Flag bare-origin self-referrers so the Sources/Domains breakdowns
+  // can hide them at query time without losing the click or the raw
+  // referrer data. Per-request host keeps every deployment working
+  // without hardcoding a domain.
   const requestHost = normalizeHost(url.hostname);
+  const referrer = rawReferrer;
+  const referrerHost = parseReferrerHost(rawReferrer);
   const selfReferrer = isBareOriginSelfReferrer(rawReferrer, requestHost);
-  const referrer = selfReferrer ? null : rawReferrer;
-  const referrerHost = selfReferrer ? null : parseReferrerHost(rawReferrer);
 
   // Best-effort silent visitor fingerprint. Hashed IP + UA + daily salt.
   // Stored for future unique-visitor analytics; never exposed raw anywhere.
@@ -110,6 +110,7 @@ export async function handleRedirect(
     utmContent: url.searchParams.get("utm_content")?.toLowerCase() ?? null,
     userAgent: ua || null,
     isBot: isBot(ua) ? 1 : 0,
+    isSelfReferrer: selfReferrer ? 1 : 0,
     visitorFp,
   };
 
