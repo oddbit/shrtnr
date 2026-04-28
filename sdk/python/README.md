@@ -186,10 +186,11 @@ svg_for_slug = client.get_link_qr(123, slug="my-campaign")
 
 ### `get_link_analytics`
 
-Read click analytics for a link: referrer, country, device type, and browser breakdown.
+Read click analytics for a link: referrer, country, device type, and browser breakdown. Defaults to all-time. Pass an optional `range` keyword to scope results to a window.
 
 ```python
-analytics = client.get_link_analytics(123)
+lifetime = client.get_link_analytics(123)
+last_7d = client.get_link_analytics(123, range="7d")
 ```
 
 ### `health`
@@ -267,11 +268,12 @@ client.unarchive_bundle(42)
 
 ### `get_bundle_analytics`
 
-Read combined analytics across every link in the bundle: timeline, per-link breakdown, countries, devices, browsers. Pass a `TimelineRange` to set the window (default `"30d"`).
+Read combined analytics across every link in the bundle: timeline, per-link breakdown, countries, devices, browsers. Defaults to all-time; pass a `TimelineRange` to scope to a window.
 
 ```python
-stats = client.get_bundle_analytics(42, range="7d")
-print(stats.total_clicks, stats.per_link)
+lifetime = client.get_bundle_analytics(42)
+last_7d = client.get_bundle_analytics(42, range="7d")
+print(lifetime.total_clicks, lifetime.per_link)
 ```
 
 ### `list_bundle_links`

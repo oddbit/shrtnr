@@ -188,12 +188,13 @@ final svgForSlug = await client.getLinkQR(123, slug: 'my-campaign');
 
 ### `getLinkAnalytics`
 
-Read click analytics for a link: referrer, country, device type, and browser breakdown.
+Read click analytics for a link: referrer, country, device type, and browser breakdown. Defaults to all-time. Pass an optional `range` to scope results to a window.
 
 ```dart
-final analytics = await client.getLinkAnalytics(123);
-print(analytics.totalClicks);
-print(analytics.countries);
+final lifetime = await client.getLinkAnalytics(123);
+final last7d = await client.getLinkAnalytics(123, range: '7d');
+print(lifetime.totalClicks);
+print(lifetime.countries);
 ```
 
 ### `health`
@@ -277,12 +278,13 @@ await client.unarchiveBundle(42);
 
 ### `getBundleAnalytics`
 
-Read combined analytics across every link in the bundle: per-link breakdown, countries, devices, browsers. Pass `range` to set the window (default `'30d'`).
+Read combined analytics across every link in the bundle: per-link breakdown, countries, devices, browsers. Defaults to all-time; pass `range` to scope to a window.
 
 ```dart
-final stats = await client.getBundleAnalytics(42, range: '7d');
-print(stats.totalClicks);
-print(stats.perLink);
+final lifetime = await client.getBundleAnalytics(42);
+final last7d = await client.getBundleAnalytics(42, range: '7d');
+print(lifetime.totalClicks);
+print(lifetime.perLink);
 ```
 
 ### `listBundleLinks`

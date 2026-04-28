@@ -173,10 +173,11 @@ const svgForSlug = await client.getLinkQR(123, "my-campaign");
 
 ### `getLinkAnalytics`
 
-Read click analytics for a link: referrer, country, device type, and browser breakdown.
+Read click analytics for a link: referrer, country, device type, and browser breakdown. Defaults to all-time. Pass an optional `TimelineRange` to scope results to a window.
 
 ```ts
-const analytics = await client.getLinkAnalytics(123);
+const lifetime = await client.getLinkAnalytics(123);
+const last7d = await client.getLinkAnalytics(123, "7d");
 ```
 
 ### `health`
@@ -254,11 +255,12 @@ await client.unarchiveBundle(42);
 
 ### `getBundleAnalytics`
 
-Read combined analytics across every link in the bundle: timeline, per-link breakdown, countries, devices, browsers. Pass a `TimelineRange` to set the window (default `"30d"`).
+Read combined analytics across every link in the bundle: timeline, per-link breakdown, countries, devices, browsers. Defaults to all-time; pass a `TimelineRange` to scope to a window.
 
 ```ts
-const stats = await client.getBundleAnalytics(42, "7d");
-console.log(stats.total_clicks, stats.per_link);
+const lifetime = await client.getBundleAnalytics(42);
+const last7d = await client.getBundleAnalytics(42, "7d");
+console.log(lifetime.total_clicks, lifetime.per_link);
 ```
 
 ### `listBundleLinks`
