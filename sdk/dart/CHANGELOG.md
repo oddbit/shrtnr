@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- `getLinkAnalytics(linkId, {range})` accepts an optional `TimelineRange` keyword. Defaults to all-time when omitted. Use the parameter to scope a query to `'7d'`, `'30d'`, or any other supported window in the same call.
+- `getBundleAnalytics(id, {range})` default changed from `'30d'` to `'all'` so it matches `getLinkAnalytics` and returns lifetime stats out of the box. Pass `range: '30d'` if you depended on the previous default.
+- Both methods continue to return raw click counts. The server-side public API does not apply per-identity bot or self-referrer filters, regardless of the API key owner's admin settings, so SDK consumers always get unfiltered data.
+
 ## 0.2.2
 
 - `disableSlug`, `enableSlug`, and `removeSlug` now work against bearer-token API keys. Previously these methods called URLs that only existed under `/_/admin/api/*`, so every call returned 404. The server now exposes the matching routes under `/_/api/*` with ownership enforcement (the API key owner acts-as the identity that minted it). No SDK code change was needed.
