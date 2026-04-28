@@ -177,3 +177,22 @@ export async function resolveClickFilters(env: Env, identity: string): Promise<C
     excludeSelfReferrers: result.data.filter_self_referrers,
   };
 }
+
+/**
+ * Pick the time range an MCP tool should query.
+ *
+ * MCP tools mirror the admin UI: when the caller does not specify a range,
+ * fall back to the user's `default_range` setting, then "30d". Returns the
+ * resolved range so the tool can tell the requesting AI which window the
+ * data covers via a `range_used` field.
+ */
+export async function resolveMcpRange(
+  env: Env,
+  identity: string,
+  requested?: TimelineRange,
+): Promise<TimelineRange> {
+  if (requested) return requested;
+  const result = await getAppSettings(env, identity);
+  if (result.ok && result.data.default_range) return result.data.default_range;
+  return "30d";
+}

@@ -259,7 +259,7 @@ describe("MCP tool behavior (service layer)", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const result = await getLinkAnalytics(env as never, created.data.id, undefined, "test@example.com");
+    const result = await getLinkAnalytics(env as never, created.data.id, undefined);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.total_clicks).toBe(0);

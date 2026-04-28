@@ -44,7 +44,7 @@ import {
   unarchiveBundle,
   updateBundle,
 } from "../services/bundle-management";
-import { resolveClickFilters } from "../services/admin-management";
+import { resolveClickFilters, resolveMcpRange } from "../services/admin-management";
 import {
   getTrendingLinks,
   getGlobalBreakdown,
@@ -222,15 +222,17 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
 
     this.server.tool(
       "get_link_analytics",
-      "Get click analytics for a short link: countries, referrers, devices, browsers, and daily click history",
+      "Get click analytics for a short link: countries, referrers, devices, browsers, and daily click history. Defaults to the user's default_range setting (or 30d) when no range is given. The response includes a `range_used` field so the AI knows which window the data covers.",
       {
         link_id: z.number().int().positive().describe("Numeric ID of the link"),
+        range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).optional().describe("Time range. Omit to use the user's default_range setting (fallback: 30d)."),
       },
-      async ({ link_id }) => {
+      async ({ link_id, range }) => {
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
         const filters = await resolveClickFilters(this.env, this.identity);
-        const result = await getLinkAnalytics(this.env, link_id, undefined, filters);
+        const result = await getLinkAnalytics(this.env, link_id, resolved, filters);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok({ range_used: resolved, ...result.data });
       },
     );
 
@@ -301,133 +303,144 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
 
     // ---- Analytics & insight tools ----
 
-    const rangeSchema = z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("24h").describe("Time range to filter clicks");
+    const optionalRangeSchema = z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).optional().describe("Time range. Omit to use the user's default_range setting (fallback: 30d).");
     const limitSchema = z.number().int().min(1).max(100).default(10).describe("Maximum number of results to return");
     const dimensionSchema = z.enum(["country", "referrer_host", "device_type", "os", "browser", "link_mode", "channel"]).describe("Dimension to group by");
 
     this.server.tool(
       "get_trending_links",
-      "Get the top links ranked by click count within a time window. Use this to find what is popular right now.",
+      "Get the top links ranked by click count within a time window. Defaults to the user's default_range setting (or 30d). Response includes `range_used`.",
       {
-        range: rangeSchema,
+        range: optionalRangeSchema,
         limit: limitSchema,
       },
       async ({ range, limit }) => {
-        const result = await getTrendingLinks(this.env, range as TimelineRange, limit, this.identity);
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
+        const result = await getTrendingLinks(this.env, resolved, limit, this.identity);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok({ range_used: resolved, results: result.data });
       },
     );
 
     this.server.tool(
       "get_dashboard_stats",
-      "Get a high-level snapshot: total links, total clicks, top 5 links, top 5 countries, top 5 referrer hosts, and recent links.",
-      {},
-      async () => {
-        const result = await getDashboardStats(this.env, "30d", this.identity);
+      "Get a high-level snapshot: total links, total clicks, top 5 links, top 5 countries, top 5 referrer hosts, and recent links. Defaults to the user's default_range setting (or 30d). Response includes `range_used`.",
+      {
+        range: optionalRangeSchema,
+      },
+      async ({ range }) => {
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
+        const result = await getDashboardStats(this.env, resolved, this.identity);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok({ range_used: resolved, ...result.data });
       },
     );
 
     this.server.tool(
       "get_link_timeline",
-      "Get time-bucketed click counts for a link with adaptive granularity (hourly, daily, weekly, monthly) and period summaries.",
+      "Get time-bucketed click counts for a link with adaptive granularity. Defaults to the user's default_range setting (or 30d). Response includes `range_used`.",
       {
         link_id: z.number().int().positive().describe("Numeric ID of the link"),
-        range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("30d").describe("Time range for the timeline"),
+        range: optionalRangeSchema,
       },
       async ({ link_id, range }) => {
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
         const filters = await resolveClickFilters(this.env, this.identity);
-        const result = await getLinkTimeline(this.env, link_id, range as TimelineRange, filters);
+        const result = await getLinkTimeline(this.env, link_id, resolved, filters);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok({ range_used: resolved, ...result.data });
       },
     );
 
     this.server.tool(
       "get_clicks_by_country",
-      "Get a cross-link geographic breakdown: which countries generate the most clicks across all links.",
+      "Get a cross-link geographic breakdown. Defaults to the user's default_range setting (or 30d). Response includes `range_used`.",
       {
-        range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("all").describe("Time range filter"),
+        range: optionalRangeSchema,
         limit: limitSchema,
       },
       async ({ range, limit }) => {
-        const result = await getGlobalBreakdown(this.env, "country", range as TimelineRange, limit, this.identity);
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
+        const result = await getGlobalBreakdown(this.env, "country", resolved, limit, this.identity);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok({ range_used: resolved, results: result.data });
       },
     );
 
     this.server.tool(
       "get_clicks_by_referrer",
-      "Get a cross-link referrer breakdown: which traffic sources drive the most clicks across all links.",
+      "Get a cross-link referrer breakdown. Defaults to the user's default_range setting (or 30d). Response includes `range_used`.",
       {
-        range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("all").describe("Time range filter"),
+        range: optionalRangeSchema,
         limit: limitSchema,
       },
       async ({ range, limit }) => {
-        const result = await getGlobalBreakdown(this.env, "referrer_host", range as TimelineRange, limit, this.identity);
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
+        const result = await getGlobalBreakdown(this.env, "referrer_host", resolved, limit, this.identity);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok({ range_used: resolved, results: result.data });
       },
     );
 
     this.server.tool(
       "get_clicks_by_device",
-      "Get a cross-link device/OS/browser breakdown. Choose a dimension to answer questions like 'what share of traffic is mobile?'",
+      "Get a cross-link device/OS/browser breakdown. Defaults to the user's default_range setting (or 30d). Response includes `range_used`.",
       {
         dimension: z.enum(["device_type", "os", "browser"]).default("device_type").describe("Which device dimension to group by"),
-        range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("all").describe("Time range filter"),
+        range: optionalRangeSchema,
         limit: limitSchema,
       },
       async ({ dimension, range, limit }) => {
-        const result = await getGlobalBreakdown(this.env, dimension, range as TimelineRange, limit, this.identity);
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
+        const result = await getGlobalBreakdown(this.env, dimension, resolved, limit, this.identity);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok({ range_used: resolved, results: result.data });
       },
     );
 
     this.server.tool(
       "compare_links",
-      "Compare two or more links side by side. Returns total clicks, top country, and top referrer for each link over a shared time range.",
+      "Compare two or more links side by side. Defaults to the user's default_range setting (or 30d). Response includes `range_used`.",
       {
         link_ids: z.array(z.number().int().positive()).min(2).describe("Array of link IDs to compare"),
-        range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("all").describe("Shared time range for comparison"),
+        range: optionalRangeSchema,
       },
       async ({ link_ids, range }) => {
-        const result = await compareLinkStats(this.env, link_ids, range as TimelineRange, this.identity);
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
+        const result = await compareLinkStats(this.env, link_ids, resolved, this.identity);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok({ range_used: resolved, results: result.data });
       },
     );
 
     this.server.tool(
       "get_link_breakdown",
-      "Drill down into a single dimension for one link with range filtering and a configurable result limit. Use this instead of get_link_analytics when you need deeper detail on one dimension.",
+      "Drill down into a single dimension for one link. Defaults to the user's default_range setting (or 30d). Response includes `range_used`.",
       {
         link_id: z.number().int().positive().describe("Numeric ID of the link"),
         dimension: dimensionSchema,
-        range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("all").describe("Time range filter"),
+        range: optionalRangeSchema,
         limit: z.number().int().min(1).max(100).default(25).describe("Maximum results"),
       },
       async ({ link_id, dimension, range, limit }) => {
-        const result = await getLinkBreakdown(this.env, link_id, dimension, range as TimelineRange, limit, this.identity);
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
+        const result = await getLinkBreakdown(this.env, link_id, dimension, resolved, limit, this.identity);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok({ range_used: resolved, results: result.data });
       },
     );
 
     this.server.tool(
       "get_total_clicks",
-      "Get the total click count across all links, optionally filtered by time range. A quick health check for overall traffic.",
+      "Get the total click count across all links. Defaults to the user's default_range setting (or 30d). Response includes `range_used`.",
       {
-        range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("all").describe("Time range filter"),
+        range: optionalRangeSchema,
       },
       async ({ range }) => {
-        const result = await getTotalClicks(this.env, range as TimelineRange, this.identity);
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
+        const result = await getTotalClicks(this.env, resolved, this.identity);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok({ range_used: resolved, ...result.data });
       },
     );
 
@@ -610,16 +623,17 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
 
     this.server.tool(
       "get_bundle_analytics",
-      "Combined analytics across every link in a bundle: total clicks, per-dimension breakdowns, timeline, and per-link contributions.",
+      "Combined analytics across every link in a bundle. Defaults to the user's default_range setting (or 30d). Response includes `range_used`.",
       {
         bundle_id: z.number().int().positive(),
-        range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("30d").describe("Time range filter"),
+        range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).optional().describe("Time range. Omit to use the user's default_range setting (fallback: 30d)."),
       },
       async ({ bundle_id, range }) => {
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
         const filters = await resolveClickFilters(this.env, this.identity);
-        const result = await getBundleAnalytics(this.env, bundle_id, range as TimelineRange, this.identity, { filters });
+        const result = await getBundleAnalytics(this.env, bundle_id, resolved, this.identity, { filters });
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok({ range_used: resolved, ...result.data });
       },
     );
   }
