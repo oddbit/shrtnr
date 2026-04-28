@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "./setup";
-import { LinkRepository, SlugRepository } from "../db";
+import { ClickRepository, LinkRepository, SlugRepository } from "../db";
 
 beforeAll(applyMigrations);
 beforeEach(resetData);
@@ -324,5 +324,78 @@ describe("LinkRepository.search", () => {
     const results = await LinkRepository.search(env.DB, "oddbit");
 
     expect(results).toHaveLength(1);
+  });
+});
+
+describe("LinkRepository click_count options", () => {
+  async function seedMixed(slug: string): Promise<void> {
+    await ClickRepository.record(env.DB, slug, { isBot: 0, isSelfReferrer: 0 });
+    await ClickRepository.record(env.DB, slug, { isBot: 1, isSelfReferrer: 0 });
+    await ClickRepository.record(env.DB, slug, { isBot: 0, isSelfReferrer: 1 });
+  }
+
+  it("list returns raw lifetime counts when no opts are passed", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "raw" });
+    await seedMixed(link.slugs[0].slug);
+
+    const links = await LinkRepository.list(env.DB);
+
+    expect(links[0].slugs[0].click_count).toBe(3);
+    expect(links[0].total_clicks).toBe(3);
+  });
+
+  it("list excludes bots when filter is passed", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "nobot" });
+    await seedMixed(link.slugs[0].slug);
+
+    const links = await LinkRepository.list(env.DB, { filters: { excludeBots: true } });
+
+    expect(links[0].slugs[0].click_count).toBe(2);
+    expect(links[0].total_clicks).toBe(2);
+  });
+
+  it("list excludes both bots and self-referrers when both filters are passed", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "real" });
+    await seedMixed(link.slugs[0].slug);
+
+    const links = await LinkRepository.list(env.DB, {
+      filters: { excludeBots: true, excludeSelfReferrers: true },
+    });
+
+    expect(links[0].slugs[0].click_count).toBe(1);
+    expect(links[0].total_clicks).toBe(1);
+  });
+
+  it("list applies sinceTs to limit click_count to a window", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "win" });
+    const slug = link.slugs[0].slug;
+    const now = Math.floor(Date.now() / 1000);
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, link_mode, is_bot, is_self_referrer) VALUES (?, ?, 'link', 0, 0)").bind(slug, now - 86400 * 60).run();
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, link_mode, is_bot, is_self_referrer) VALUES (?, ?, 'link', 0, 0)").bind(slug, now - 60).run();
+
+    const all = await LinkRepository.list(env.DB);
+    const recent = await LinkRepository.list(env.DB, { sinceTs: now - 7 * 86400 });
+
+    expect(all[0].total_clicks).toBe(2);
+    expect(recent[0].total_clicks).toBe(1);
+  });
+
+  it("getById applies the same opts as list", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "byid" });
+    await seedMixed(link.slugs[0].slug);
+
+    const filtered = await LinkRepository.getById(env.DB, link.id, { filters: { excludeBots: true } });
+
+    expect(filtered!.slugs[0].click_count).toBe(2);
+    expect(filtered!.total_clicks).toBe(2);
+  });
+
+  it("delete still uses raw lifetime counts as the guard", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "guard" });
+    await ClickRepository.record(env.DB, link.slugs[0].slug, { isBot: 1 });
+
+    const removed = await LinkRepository.delete(env.DB, link.id);
+
+    expect(removed).toBe(false);
   });
 });

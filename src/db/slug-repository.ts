@@ -2,16 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Slug } from "../types";
+import { SlugClickCountOptions, slugClickCountSql } from "./filters";
 
-const SLUG_SELECT = "s.*, (SELECT COUNT(*) FROM clicks c WHERE c.slug = s.slug) AS click_count";
+function slugSelect(opts?: SlugClickCountOptions): string {
+  return `s.*, ${slugClickCountSql(opts)}`;
+}
 
 export class SlugRepository {
   static async findByValue(
     db: D1Database,
     slug: string,
+    opts?: SlugClickCountOptions,
   ): Promise<(Slug & { url: string; expires_at: number | null }) | null> {
     return db
-      .prepare(`SELECT ${SLUG_SELECT}, l.url, l.expires_at FROM slugs s JOIN links l ON s.link_id = l.id WHERE s.slug = ?`)
+      .prepare(`SELECT ${slugSelect(opts)}, l.url, l.expires_at FROM slugs s JOIN links l ON s.link_id = l.id WHERE s.slug = ?`)
       .bind(slug)
       .first<Slug & { url: string; expires_at: number | null }>();
   }
@@ -55,7 +59,7 @@ export class SlugRepository {
     }
 
     return (await db
-      .prepare(`SELECT ${SLUG_SELECT} FROM slugs s WHERE link_id = ? AND slug = ?`)
+      .prepare(`SELECT ${slugSelect()} FROM slugs s WHERE link_id = ? AND slug = ?`)
       .bind(linkId, slug)
       .first<Slug>())!;
   }
@@ -67,7 +71,7 @@ export class SlugRepository {
 
   static async disable(db: D1Database, slug: string): Promise<Slug | null> {
     const now = Math.floor(Date.now() / 1000);
-    const row = await db.prepare(`SELECT ${SLUG_SELECT} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
+    const row = await db.prepare(`SELECT ${slugSelect()} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
     if (!row) return null;
 
     await db.prepare("UPDATE slugs SET disabled_at = ? WHERE slug = ?").bind(now, slug).run();
@@ -81,25 +85,25 @@ export class SlugRepository {
         .run();
     }
 
-    return db.prepare(`SELECT ${SLUG_SELECT} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
+    return db.prepare(`SELECT ${slugSelect()} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
   }
 
   static async enable(db: D1Database, slug: string): Promise<Slug | null> {
     await db.prepare("UPDATE slugs SET disabled_at = NULL WHERE slug = ?").bind(slug).run();
-    return db.prepare(`SELECT ${SLUG_SELECT} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
+    return db.prepare(`SELECT ${slugSelect()} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
   }
 
   static async remove(db: D1Database, slug: string): Promise<boolean> {
-    const row = await db.prepare(`SELECT ${SLUG_SELECT} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
+    // Lifetime guard: never drop a slug that has recorded any click, so
+    // analytics rows are not orphaned. Filter options would mask historical
+    // bot traffic and let real history be deleted.
+    const row = await db.prepare(`SELECT ${slugSelect()} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
     if (!row) return false;
 
-    // Cannot delete random slugs
     if (!row.is_custom) return false;
 
-    // Cannot delete slugs with clicks
     if (row.click_count > 0) return false;
 
-    // If removing the primary, fall back to random slug first
     if (row.is_primary) {
       await db
         .prepare("UPDATE slugs SET is_primary = 1 WHERE link_id = ? AND is_custom = 0")

@@ -2,8 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Link, Slug, LinkWithSlugs } from "../types";
+import { SlugClickCountOptions, slugClickCountSql } from "./filters";
 
-const SLUG_SELECT = "s.*, (SELECT COUNT(*) FROM clicks c WHERE c.slug = s.slug) AS click_count";
+/**
+ * Options that scope per-slug click counts. Repository methods that return
+ * objects with a `click_count` field accept these and forward them into the
+ * SLUG_SELECT subquery so callers can render filtered or range-bounded
+ * numbers without a second query.
+ *
+ * Default (no options) preserves the historical raw lifetime semantics, which
+ * is what callers like deletion guards or redirect lookups need.
+ */
+export type LinkRepoOptions = SlugClickCountOptions;
+
+function slugSelect(opts?: LinkRepoOptions): string {
+  return `s.*, ${slugClickCountSql(opts)}`;
+}
 
 function assembleLink(link: Link, slugs: Slug[]): LinkWithSlugs {
   return {
@@ -14,9 +28,9 @@ function assembleLink(link: Link, slugs: Slug[]): LinkWithSlugs {
 }
 
 export class LinkRepository {
-  static async list(db: D1Database): Promise<LinkWithSlugs[]> {
+  static async list(db: D1Database, opts?: LinkRepoOptions): Promise<LinkWithSlugs[]> {
     const links = await db.prepare("SELECT * FROM links ORDER BY created_at DESC").all<Link>();
-    const slugs = await db.prepare(`SELECT ${SLUG_SELECT} FROM slugs s ORDER BY is_custom ASC, created_at ASC`).all<Slug>();
+    const slugs = await db.prepare(`SELECT ${slugSelect(opts)} FROM slugs s ORDER BY is_custom ASC, created_at ASC`).all<Slug>();
 
     return (links.results ?? []).map((link) => {
       const linkSlugs = (slugs.results ?? []).filter((s) => s.link_id === link.id);
@@ -24,28 +38,28 @@ export class LinkRepository {
     });
   }
 
-  static async getById(db: D1Database, id: number): Promise<LinkWithSlugs | null> {
+  static async getById(db: D1Database, id: number, opts?: LinkRepoOptions): Promise<LinkWithSlugs | null> {
     const link = await db.prepare("SELECT * FROM links WHERE id = ?").bind(id).first<Link>();
     if (!link) return null;
 
     const slugs = await db
-      .prepare(`SELECT ${SLUG_SELECT} FROM slugs s WHERE link_id = ? ORDER BY is_custom ASC, created_at ASC`)
+      .prepare(`SELECT ${slugSelect(opts)} FROM slugs s WHERE link_id = ? ORDER BY is_custom ASC, created_at ASC`)
       .bind(id)
       .all<Slug>();
 
     return assembleLink(link, slugs.results ?? []);
   }
 
-  static async getBySlug(db: D1Database, slug: string): Promise<LinkWithSlugs | null> {
+  static async getBySlug(db: D1Database, slug: string, opts?: LinkRepoOptions): Promise<LinkWithSlugs | null> {
     const row = await db
       .prepare("SELECT link_id FROM slugs WHERE slug = ?")
       .bind(slug)
       .first<{ link_id: number }>();
     if (!row) return null;
-    return LinkRepository.getById(db, row.link_id);
+    return LinkRepository.getById(db, row.link_id, opts);
   }
 
-  static async findByUrl(db: D1Database, url: string): Promise<LinkWithSlugs[]> {
+  static async findByUrl(db: D1Database, url: string, opts?: LinkRepoOptions): Promise<LinkWithSlugs[]> {
     const rows = await db
       .prepare("SELECT id FROM links WHERE url = ? ORDER BY created_at DESC")
       .bind(url)
@@ -54,7 +68,7 @@ export class LinkRepository {
     const ids = rows.results ?? [];
     if (ids.length === 0) return [];
 
-    const results = await Promise.all(ids.map(({ id }) => LinkRepository.getById(db, id)));
+    const results = await Promise.all(ids.map(({ id }) => LinkRepository.getById(db, id, opts)));
     return results.filter((l): l is LinkWithSlugs => l !== null);
   }
 
@@ -124,6 +138,8 @@ export class LinkRepository {
   }
 
   static async delete(db: D1Database, id: number): Promise<boolean> {
+    // Lifetime guard: a link with any historical clicks (bots, self-referrers,
+    // or real users) is preserved so analytics history is not silently dropped.
     const link = await LinkRepository.getById(db, id);
     if (!link) return false;
     if (link.total_clicks > 0) return false;
@@ -134,7 +150,11 @@ export class LinkRepository {
     return true;
   }
 
-  static async search(db: D1Database, query: string, opts?: { includeOwner?: boolean }): Promise<LinkWithSlugs[]> {
+  static async search(
+    db: D1Database,
+    query: string,
+    opts?: LinkRepoOptions & { includeOwner?: boolean },
+  ): Promise<LinkWithSlugs[]> {
     if (!query.trim()) return [];
 
     const pattern = `%${query.trim().toLowerCase()}%`;
@@ -160,11 +180,11 @@ export class LinkRepository {
     const ids = matched.results ?? [];
     if (ids.length === 0) return [];
 
-    const results = await Promise.all(ids.map(({ id }) => LinkRepository.getById(db, id)));
+    const results = await Promise.all(ids.map(({ id }) => LinkRepository.getById(db, id, opts)));
     return results.filter((l): l is LinkWithSlugs => l !== null);
   }
 
-  static async findByOwner(db: D1Database, owner: string): Promise<LinkWithSlugs[]> {
+  static async findByOwner(db: D1Database, owner: string, opts?: LinkRepoOptions): Promise<LinkWithSlugs[]> {
     const rows = await db
       .prepare("SELECT id FROM links WHERE created_by = ? ORDER BY created_at DESC")
       .bind(owner)
@@ -173,7 +193,7 @@ export class LinkRepository {
     const ids = rows.results ?? [];
     if (ids.length === 0) return [];
 
-    const results = await Promise.all(ids.map(({ id }) => LinkRepository.getById(db, id)));
+    const results = await Promise.all(ids.map(({ id }) => LinkRepository.getById(db, id, opts)));
     return results.filter((l): l is LinkWithSlugs => l !== null);
   }
 }

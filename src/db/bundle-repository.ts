@@ -3,9 +3,13 @@
 
 import { Bundle, BundleAccent, LinkWithSlugs, Slug } from "../types";
 import { LinkRepository } from "./link-repository";
+import { SlugClickCountOptions, slugClickCountSql } from "./filters";
 
 const BUNDLE_COLS = "id, name, description, icon, accent, archived_at, created_via, created_by, created_at, updated_at";
-const SLUG_SELECT = "s.*, (SELECT COUNT(*) FROM clicks c WHERE c.slug = s.slug) AS click_count";
+
+function slugSelect(opts?: SlugClickCountOptions): string {
+  return `s.*, ${slugClickCountSql(opts)}`;
+}
 
 export interface CreateBundleInput {
   name: string;
@@ -151,7 +155,7 @@ export class BundleRepository {
     return row?.cnt ?? 0;
   }
 
-  static async listLinks(db: D1Database, bundleId: number): Promise<LinkWithSlugs[]> {
+  static async listLinks(db: D1Database, bundleId: number, opts?: SlugClickCountOptions): Promise<LinkWithSlugs[]> {
     const linkRows = await db
       .prepare(
         `SELECT l.* FROM links l
@@ -169,7 +173,7 @@ export class BundleRepository {
     const placeholders = linkIds.map(() => "?").join(",");
     const slugRows = await db
       .prepare(
-        `SELECT ${SLUG_SELECT} FROM slugs s WHERE link_id IN (${placeholders}) ORDER BY is_custom ASC, created_at ASC`,
+        `SELECT ${slugSelect(opts)} FROM slugs s WHERE link_id IN (${placeholders}) ORDER BY is_custom ASC, created_at ASC`,
       )
       .bind(...linkIds)
       .all<Slug>();

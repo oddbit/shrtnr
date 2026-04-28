@@ -5,6 +5,7 @@ import { BundleStats, BundleStatsPerLink, ClickData, ClickStats, DashboardStats,
 import { LinkRepository } from "./link-repository";
 import { BundleRepository } from "./bundle-repository";
 import { RANGE_SECONDS, computeDelta } from "../services/trends";
+import { ClickFilters, clickFilterSql } from "./filters";
 
 export type BreakdownDimension = "country" | "referrer_host" | "device_type" | "os" | "browser" | "link_mode" | "channel";
 
@@ -12,27 +13,7 @@ const VALID_DIMENSIONS = new Set<BreakdownDimension>([
   "country", "referrer_host", "device_type", "os", "browser", "link_mode", "channel",
 ]);
 
-/**
- * Per-query filters resolved from the caller's settings. Both flags default to
- * undefined (no filter) for compatibility with low-level tests; service-layer
- * callers always resolve them from user settings so dashboards honor toggles.
- */
-export type ClickFilters = {
-  excludeBots?: boolean;
-  excludeSelfReferrers?: boolean;
-};
-
-/**
- * Returns a SQL fragment like ` AND is_bot = 0 AND is_self_referrer = 0` (or
- * empty). Pass `alias` when the clicks table is joined with an alias.
- */
-function clickFilterSql(filters?: ClickFilters, alias = ""): string {
-  const prefix = alias ? `${alias}.` : "";
-  const parts: string[] = [];
-  if (filters?.excludeBots) parts.push(`${prefix}is_bot = 0`);
-  if (filters?.excludeSelfReferrers) parts.push(`${prefix}is_self_referrer = 0`);
-  return parts.length ? " AND " + parts.join(" AND ") : "";
-}
+export type { ClickFilters } from "./filters";
 
 export class ClickRepository {
   static async record(
