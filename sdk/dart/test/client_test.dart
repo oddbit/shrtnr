@@ -312,23 +312,31 @@ void main() {
   // ---- 17. getLinkAnalytics ----
 
   group('getLinkAnalytics', () {
-    test('GETs /_/api/links/:id/analytics', () async {
-      final m = _mock(status: 200, body: {
-        'total_clicks': 42,
-        'countries': <dynamic>[],
-        'referrers': <dynamic>[],
-        'referrer_hosts': <dynamic>[],
-        'devices': <dynamic>[],
-        'os': <dynamic>[],
-        'browsers': <dynamic>[],
-        'link_modes': <dynamic>[],
-        'channels': <dynamic>[],
-        'clicks_over_time': <dynamic>[],
-        'slug_clicks': <dynamic>[],
-      });
+    Map<String, Object?> emptyStats() => {
+          'total_clicks': 42,
+          'countries': <dynamic>[],
+          'referrers': <dynamic>[],
+          'referrer_hosts': <dynamic>[],
+          'devices': <dynamic>[],
+          'os': <dynamic>[],
+          'browsers': <dynamic>[],
+          'link_modes': <dynamic>[],
+          'channels': <dynamic>[],
+          'clicks_over_time': <dynamic>[],
+          'slug_clicks': <dynamic>[],
+        };
+
+    test('defaults to range=all when no range is given', () async {
+      final m = _mock(status: 200, body: emptyStats());
       final stats = await m.client.getLinkAnalytics(5);
       expect(stats.totalClicks, 42);
-      expect(m.capture.request!.url.toString(), '$_base/_/api/links/5/analytics');
+      expect(m.capture.request!.url.toString(), '$_base/_/api/links/5/analytics?range=all');
+    });
+
+    test('forwards an explicit range as a query parameter', () async {
+      final m = _mock(status: 200, body: emptyStats());
+      await m.client.getLinkAnalytics(5, range: '7d');
+      expect(m.capture.request!.url.toString(), '$_base/_/api/links/5/analytics?range=7d');
     });
   });
 
@@ -443,37 +451,48 @@ void main() {
   // ---- 26. getBundleAnalytics ----
 
   group('getBundleAnalytics', () {
-    test('GETs /_/api/bundles/:id/analytics with ?range=', () async {
-      final m = _mock(status: 200, body: {
-        'bundle': _bundleDict(),
-        'link_count': 0,
-        'total_clicks': 0,
-        'clicked_links': 0,
-        'countries_reached': 0,
-        'timeline': {
-          'range': '7d',
-          'buckets': <dynamic>[],
-          'summary': {
-            'last_24h': 0,
-            'last_7d': 0,
-            'last_30d': 0,
-            'last_90d': 0,
-            'last_1y': 0,
+    Map<String, Object?> emptyBundleStats() => {
+          'bundle': _bundleDict(),
+          'link_count': 0,
+          'total_clicks': 0,
+          'clicked_links': 0,
+          'countries_reached': 0,
+          'timeline': {
+            'range': '7d',
+            'buckets': <dynamic>[],
+            'summary': {
+              'last_24h': 0,
+              'last_7d': 0,
+              'last_30d': 0,
+              'last_90d': 0,
+              'last_1y': 0,
+            },
           },
-        },
-        'countries': <dynamic>[],
-        'devices': <dynamic>[],
-        'os': <dynamic>[],
-        'browsers': <dynamic>[],
-        'referrers': <dynamic>[],
-        'referrer_hosts': <dynamic>[],
-        'link_modes': <dynamic>[],
-        'per_link': <dynamic>[],
-      });
+          'countries': <dynamic>[],
+          'devices': <dynamic>[],
+          'os': <dynamic>[],
+          'browsers': <dynamic>[],
+          'referrers': <dynamic>[],
+          'referrer_hosts': <dynamic>[],
+          'link_modes': <dynamic>[],
+          'per_link': <dynamic>[],
+        };
+
+    test('forwards an explicit range as a query parameter', () async {
+      final m = _mock(status: 200, body: emptyBundleStats());
       await m.client.getBundleAnalytics(42, range: '7d');
       expect(
         m.capture.request!.url.toString(),
         '$_base/_/api/bundles/42/analytics?range=7d',
+      );
+    });
+
+    test('defaults to range=all when no range is given', () async {
+      final m = _mock(status: 200, body: emptyBundleStats());
+      await m.client.getBundleAnalytics(42);
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/bundles/42/analytics?range=all',
       );
     });
   });

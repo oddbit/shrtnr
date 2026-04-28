@@ -63,13 +63,16 @@ import { handleGetSettings, handleUpdateSettings } from "./api/settings";
 import { handleListKeys, handleCreateKey, handleDeleteKey } from "./api/keys";
 import {
   handleDashboardStats as handleDashboardStatsApi,
-  handleLinkAnalytics,
-  handleLinkTimeline,
+  handleAdminLinkAnalytics,
+  handlePublicLinkAnalytics,
+  handleAdminLinkTimeline,
+  handlePublicLinkTimeline,
 } from "./api/analytics";
 import {
   handleAddLinkToBundle,
   handleArchiveBundle,
-  handleBundleAnalytics,
+  handleAdminBundleAnalytics,
+  handlePublicBundleAnalytics,
   handleBundleLinks,
   handleCreateBundle,
   handleDeleteBundle,
@@ -273,7 +276,7 @@ app.get("/_/admin/links/:id", async (c) => {
   const linkResult = await getLink(c.env, id, { filters, range: initialRange });
   if (!linkResult.ok) return notFoundResponse();
   const [analyticsResult, bundlesResult] = await Promise.all([
-    getLinkAnalytics(c.env, id, initialRange, identity),
+    getLinkAnalytics(c.env, id, initialRange, filters),
     listBundlesForLink(c.env, id, identity),
   ]);
   const analytics = analyticsResult.ok ? analyticsResult.data : {
@@ -390,12 +393,12 @@ app.put("/_/admin/api/links/:id", (c) => {
 app.get("/_/admin/api/links/:id/analytics", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  return handleLinkAnalytics(c.env, c.var.identity, id, c.req.query("range"));
+  return handleAdminLinkAnalytics(c.env, c.var.identity, id, c.req.query("range"));
 });
 app.get("/_/admin/api/links/:id/timeline", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  return handleLinkTimeline(c.env, c.var.identity, id, c.req.query("range"));
+  return handleAdminLinkTimeline(c.env, c.var.identity, id, c.req.query("range"));
 });
 app.post("/_/admin/api/links/:id/disable", (c) => {
   const id = parseInt(c.req.param("id"), 10);
@@ -484,7 +487,7 @@ app.post("/_/admin/api/bundles/:id/unarchive", (c) => {
 app.get("/_/admin/api/bundles/:id/analytics", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  return handleBundleAnalytics(c.env, id, c.req.query("range"), c.var.identity);
+  return handleAdminBundleAnalytics(c.env, id, c.req.query("range"), c.var.identity);
 });
 app.get("/_/admin/api/bundles/:id/links", (c) => {
   const id = parseInt(c.req.param("id"), 10);
@@ -544,13 +547,13 @@ app.get("/_/api/links/:id/analytics", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
   if (!hasScope(c.var.auth, "read")) return forbiddenResponse();
-  return handleLinkAnalytics(c.env, c.var.auth.identity, id);
+  return handlePublicLinkAnalytics(c.env, id, c.req.query("range"));
 });
 app.get("/_/api/links/:id/timeline", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
   if (!hasScope(c.var.auth, "read")) return forbiddenResponse();
-  return handleLinkTimeline(c.env, c.var.auth.identity, id, c.req.query("range"));
+  return handlePublicLinkTimeline(c.env, id, c.req.query("range"));
 });
 app.post("/_/api/links/:id/disable", (c) => {
   const id = parseInt(c.req.param("id"), 10);
@@ -649,7 +652,7 @@ app.get("/_/api/bundles/:id/analytics", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
   if (!hasScope(c.var.auth, "read")) return forbiddenResponse();
-  return handleBundleAnalytics(c.env, id, c.req.query("range"), c.var.auth.identity);
+  return handlePublicBundleAnalytics(c.env, id, c.req.query("range"), c.var.auth.identity);
 });
 app.get("/_/api/bundles/:id/links", (c) => {
   const id = parseInt(c.req.param("id"), 10);

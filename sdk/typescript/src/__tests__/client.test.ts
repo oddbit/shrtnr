@@ -250,8 +250,8 @@ describe("getLinkBySlug", () => {
 // ---- 17. getLinkAnalytics ----
 
 describe("getLinkAnalytics", () => {
-  it("GETs /_/api/links/:id/analytics", async () => {
-    mockFetch(200, {
+  function emptyStats() {
+    return {
       total_clicks: 42,
       countries: [],
       referrers: [],
@@ -263,10 +263,20 @@ describe("getLinkAnalytics", () => {
       channels: [],
       clicks_over_time: [],
       slug_clicks: [],
-    });
+    };
+  }
+
+  it("defaults to range=all when no range is given", async () => {
+    mockFetch(200, emptyStats());
     const result = await client().getLinkAnalytics(5);
     expect(result.total_clicks).toBe(42);
-    expect(lastCall().url).toBe(BASE + "/_/api/links/5/analytics");
+    expect(lastCall().url).toBe(BASE + "/_/api/links/5/analytics?range=all");
+  });
+
+  it("forwards an explicit range as a query parameter", async () => {
+    mockFetch(200, emptyStats());
+    await client().getLinkAnalytics(5, "7d");
+    expect(lastCall().url).toBe(BASE + "/_/api/links/5/analytics?range=7d");
   });
 });
 
@@ -378,8 +388,8 @@ describe("unarchiveBundle", () => {
 // ---- 26. getBundleAnalytics ----
 
 describe("getBundleAnalytics", () => {
-  it("GETs /_/api/bundles/:id/analytics with ?range=", async () => {
-    mockFetch(200, {
+  function emptyBundleStats() {
+    return {
       bundle: { id: 42, name: "X", accent: "orange" },
       link_count: 0,
       total_clicks: 0,
@@ -394,9 +404,19 @@ describe("getBundleAnalytics", () => {
       referrer_hosts: [],
       link_modes: [],
       per_link: [],
-    });
+    };
+  }
+
+  it("forwards an explicit range as a query parameter", async () => {
+    mockFetch(200, emptyBundleStats());
     await client().getBundleAnalytics(42, "7d");
     expect(lastCall().url).toBe(BASE + "/_/api/bundles/42/analytics?range=7d");
+  });
+
+  it("defaults to range=all when no range is given", async () => {
+    mockFetch(200, emptyBundleStats());
+    await client().getBundleAnalytics(42);
+    expect(lastCall().url).toBe(BASE + "/_/api/bundles/42/analytics?range=all");
   });
 });
 

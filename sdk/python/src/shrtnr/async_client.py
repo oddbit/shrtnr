@@ -174,10 +174,14 @@ class AsyncShrtnr:
 
     # ---- analytics + qr ----
 
-    async def get_link_analytics(self, link_id: int) -> ClickStats:
-        return ClickStats.from_json(
-            _as_dict(await self._get(f"/_/api/links/{link_id}/analytics")),
-        )
+    async def get_link_analytics(
+        self,
+        link_id: int,
+        *,
+        range: TimelineRange = "all",
+    ) -> ClickStats:
+        path = f"/_/api/links/{link_id}/analytics?range={range}"
+        return ClickStats.from_json(_as_dict(await self._get(path)))
 
     async def get_link_qr(self, link_id: int, *, slug: str | None = None) -> str:
         suffix = f"?slug={url_quote(slug)}" if slug else ""
@@ -220,7 +224,7 @@ class AsyncShrtnr:
         self,
         bundle_id: int,
         *,
-        range: TimelineRange = "30d",
+        range: TimelineRange = "all",
     ) -> BundleStats:
         path = f"/_/api/bundles/{bundle_id}/analytics?range={range}"
         return BundleStats.from_json(_as_dict(await self._get(path)))

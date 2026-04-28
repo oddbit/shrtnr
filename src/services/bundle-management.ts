@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BundleRepository, ClickRepository, LinkRepository } from "../db";
+import type { ClickFilters } from "../db";
 import { Bundle, BundleAccent, BundleStats, BundleWithSummary, Env, LinkWithSlugs, TimelineRange } from "../types";
 import { ServiceResult, fail, ok } from "./result";
 import { resolveClickFilters } from "./admin-management";
@@ -190,16 +191,20 @@ export async function removeLinkFromBundle(
   return ok({ removed });
 }
 
+export interface BundleAnalyticsOpts {
+  filters?: ClickFilters;
+}
+
 export async function getBundleAnalytics(
   env: Env,
   id: number,
   range: TimelineRange,
   identity: string,
+  opts?: BundleAnalyticsOpts,
 ): Promise<ServiceResult<BundleStats>> {
   const bundle = await BundleRepository.getById(env.DB, id);
   if (!bundle || bundle.created_by !== identity) return fail(404, "Bundle not found");
-  const filters = await resolveClickFilters(env, identity);
-  const stats = await ClickRepository.getBundleStats(env.DB, id, range, undefined, filters);
+  const stats = await ClickRepository.getBundleStats(env.DB, id, range, undefined, opts?.filters);
   return ok(stats!);
 }
 

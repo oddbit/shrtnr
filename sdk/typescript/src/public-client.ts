@@ -80,8 +80,8 @@ export class ShrtnrClient extends ShrtnrBaseClient {
     return this.request("GET", `/_/api/slugs/${encodeURIComponent(slug)}`);
   }
 
-  async getLinkAnalytics(linkId: number): Promise<ClickStats> {
-    return this.request("GET", `/_/api/links/${linkId}/analytics`);
+  async getLinkAnalytics(linkId: number, range: TimelineRange = "all"): Promise<ClickStats> {
+    return this.request("GET", `/_/api/links/${linkId}/analytics?range=${range}`);
   }
 
   async getLinkQR(linkId: number, slug?: string): Promise<string> {
@@ -122,7 +122,7 @@ export class ShrtnrClient extends ShrtnrBaseClient {
     return this.request("POST", `/_/api/bundles/${id}/unarchive`);
   }
 
-  async getBundleAnalytics(id: number, range: TimelineRange = "30d"): Promise<BundleStats> {
+  async getBundleAnalytics(id: number, range: TimelineRange = "all"): Promise<BundleStats> {
     return this.request("GET", `/_/api/bundles/${id}/analytics?range=${range}`);
   }
 

@@ -264,9 +264,8 @@ def test_get_link_by_slug_url_encodes_reserved_chars(client: Shrtnr) -> None:
 # ---- 17. get_link_analytics ----
 
 
-@respx.mock
-def test_get_link_analytics(client: Shrtnr) -> None:
-    payload: dict[str, Any] = {
+def _empty_link_stats() -> dict[str, Any]:
+    return {
         "total_clicks": 42,
         "countries": [],
         "referrers": [],
@@ -279,11 +278,24 @@ def test_get_link_analytics(client: Shrtnr) -> None:
         "clicks_over_time": [],
         "slug_clicks": [],
     }
-    route = respx.get(f"{BASE_URL}/_/api/links/5/analytics").mock(
-        return_value=httpx.Response(200, json=payload),
+
+
+@respx.mock
+def test_get_link_analytics_defaults_to_all(client: Shrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/links/5/analytics?range=all").mock(
+        return_value=httpx.Response(200, json=_empty_link_stats()),
     )
     stats = client.get_link_analytics(5)
     assert stats.total_clicks == 42
+    assert route.called
+
+
+@respx.mock
+def test_get_link_analytics_forwards_range(client: Shrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/links/5/analytics?range=7d").mock(
+        return_value=httpx.Response(200, json=_empty_link_stats()),
+    )
+    client.get_link_analytics(5, range="7d")
     assert route.called
 
 
@@ -411,9 +423,8 @@ def test_unarchive_bundle(client: Shrtnr) -> None:
 # ---- 26. get_bundle_analytics ----
 
 
-@respx.mock
-def test_get_bundle_analytics_with_range(client: Shrtnr) -> None:
-    payload = {
+def _empty_bundle_stats() -> dict[str, Any]:
+    return {
         "bundle": make_bundle_dict(),
         "link_count": 0,
         "total_clicks": 0,
@@ -439,10 +450,23 @@ def test_get_bundle_analytics_with_range(client: Shrtnr) -> None:
         "link_modes": [],
         "per_link": [],
     }
+
+
+@respx.mock
+def test_get_bundle_analytics_with_range(client: Shrtnr) -> None:
     route = respx.get(f"{BASE_URL}/_/api/bundles/42/analytics?range=7d").mock(
-        return_value=httpx.Response(200, json=payload),
+        return_value=httpx.Response(200, json=_empty_bundle_stats()),
     )
     client.get_bundle_analytics(42, range="7d")
+    assert route.called
+
+
+@respx.mock
+def test_get_bundle_analytics_defaults_to_all(client: Shrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/bundles/42/analytics?range=all").mock(
+        return_value=httpx.Response(200, json=_empty_bundle_stats()),
+    )
+    client.get_bundle_analytics(42)
     assert route.called
 
 

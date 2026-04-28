@@ -172,8 +172,14 @@ class Shrtnr:
 
     # ---- analytics + qr ----
 
-    def get_link_analytics(self, link_id: int) -> ClickStats:
-        return ClickStats.from_json(_as_dict(self._get(f"/_/api/links/{link_id}/analytics")))
+    def get_link_analytics(
+        self,
+        link_id: int,
+        *,
+        range: TimelineRange = "all",
+    ) -> ClickStats:
+        path = f"/_/api/links/{link_id}/analytics?range={range}"
+        return ClickStats.from_json(_as_dict(self._get(path)))
 
     def get_link_qr(self, link_id: int, *, slug: str | None = None) -> str:
         suffix = f"?slug={url_quote(slug)}" if slug else ""
@@ -214,7 +220,7 @@ class Shrtnr:
         self,
         bundle_id: int,
         *,
-        range: TimelineRange = "30d",
+        range: TimelineRange = "all",
     ) -> BundleStats:
         path = f"/_/api/bundles/{bundle_id}/analytics?range={range}"
         return BundleStats.from_json(_as_dict(self._get(path)))

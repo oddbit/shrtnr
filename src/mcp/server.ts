@@ -44,6 +44,7 @@ import {
   unarchiveBundle,
   updateBundle,
 } from "../services/bundle-management";
+import { resolveClickFilters } from "../services/admin-management";
 import {
   getTrendingLinks,
   getGlobalBreakdown,
@@ -226,7 +227,8 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         link_id: z.number().int().positive().describe("Numeric ID of the link"),
       },
       async ({ link_id }) => {
-        const result = await getLinkAnalytics(this.env, link_id, undefined, this.identity);
+        const filters = await resolveClickFilters(this.env, this.identity);
+        const result = await getLinkAnalytics(this.env, link_id, undefined, filters);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -336,7 +338,8 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("30d").describe("Time range for the timeline"),
       },
       async ({ link_id, range }) => {
-        const result = await getLinkTimeline(this.env, link_id, range as TimelineRange, this.identity);
+        const filters = await resolveClickFilters(this.env, this.identity);
+        const result = await getLinkTimeline(this.env, link_id, range as TimelineRange, filters);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
@@ -613,7 +616,8 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]).default("30d").describe("Time range filter"),
       },
       async ({ bundle_id, range }) => {
-        const result = await getBundleAnalytics(this.env, bundle_id, range as TimelineRange, this.identity);
+        const filters = await resolveClickFilters(this.env, this.identity);
+        const result = await getBundleAnalytics(this.env, bundle_id, range as TimelineRange, this.identity, { filters });
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },

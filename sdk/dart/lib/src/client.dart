@@ -153,9 +153,13 @@ class ShrtnrClient extends ShrtnrBaseClient {
 
   // ---- Analytics ----
 
-  /// Reads click analytics for a link.
-  Future<ClickStats> getLinkAnalytics(int linkId) async {
-    final json = await requestJson('GET', '/_/api/links/$linkId/analytics');
+  /// Reads click analytics for a link. Defaults to all-time; pass [range] to
+  /// scope to a window like `7d` or `30d`.
+  Future<ClickStats> getLinkAnalytics(int linkId, {String range = 'all'}) async {
+    final json = await requestJson(
+      'GET',
+      '/_/api/links/$linkId/analytics?range=${Uri.encodeComponent(range)}',
+    );
     return ClickStats.fromJson(json! as Map<String, dynamic>);
   }
 
@@ -236,7 +240,7 @@ class ShrtnrClient extends ShrtnrBaseClient {
   }
 
   /// Reads combined analytics across every link in the bundle.
-  Future<BundleStats> getBundleAnalytics(int id, {String range = '30d'}) async {
+  Future<BundleStats> getBundleAnalytics(int id, {String range = 'all'}) async {
     final json = await requestJson(
       'GET',
       '/_/api/bundles/$id/analytics?range=${Uri.encodeComponent(range)}',

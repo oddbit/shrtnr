@@ -314,17 +314,15 @@ export async function removeSlug(
   return ok({ removed: true });
 }
 
-export async function getLinkTimeline(env: Env, linkId: number, range: TimelineRange, identity: string): Promise<ServiceResult<TimelineData>> {
+export async function getLinkTimeline(env: Env, linkId: number, range: TimelineRange, filters?: ClickFilters): Promise<ServiceResult<TimelineData>> {
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
-  const filters = await resolveClickFilters(env, identity);
   return ok(await ClickRepository.getTimeline(env.DB, linkId, range, undefined, filters));
 }
 
-export async function getLinkAnalytics(env: Env, linkId: number, range: TimelineRange | undefined, identity: string): Promise<ServiceResult<ClickStats>> {
+export async function getLinkAnalytics(env: Env, linkId: number, range: TimelineRange | undefined, filters?: ClickFilters): Promise<ServiceResult<ClickStats>> {
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
-  const filters = await resolveClickFilters(env, identity);
   return ok(await ClickRepository.getStats(env.DB, linkId, range, filters));
 }
 

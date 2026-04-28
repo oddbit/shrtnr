@@ -16,6 +16,7 @@ import {
   unarchiveBundle,
   updateBundle,
 } from "../services/bundle-management";
+import { resolveClickFilters } from "../services/admin-management";
 import { fromServiceResult, json } from "./response";
 
 const VALID_RANGES = new Set<TimelineRange>(["24h", "7d", "30d", "90d", "1y", "all"]);
@@ -71,8 +72,22 @@ export async function handleDeleteBundle(env: Env, id: number, identity: string)
   return fromServiceResult(await deleteBundle(env, id, identity));
 }
 
-export async function handleBundleAnalytics(env: Env, id: number, rangeParam: string | undefined, identity: string): Promise<Response> {
+/**
+ * Admin-side: applies the viewer's filter preferences and falls back to "30d"
+ * when no range is provided.
+ */
+export async function handleAdminBundleAnalytics(env: Env, id: number, rangeParam: string | undefined, identity: string): Promise<Response> {
   const range = parseRange(rangeParam, "30d");
+  const filters = await resolveClickFilters(env, identity);
+  return fromServiceResult(await getBundleAnalytics(env, id, range, identity, { filters }));
+}
+
+/**
+ * Public API: returns raw click counts (no per-identity filter) and defaults
+ * to all-time when no ?range= is provided.
+ */
+export async function handlePublicBundleAnalytics(env: Env, id: number, rangeParam: string | undefined, identity: string): Promise<Response> {
+  const range = parseRange(rangeParam, "all");
   return fromServiceResult(await getBundleAnalytics(env, id, range, identity));
 }
 
