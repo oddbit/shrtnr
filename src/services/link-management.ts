@@ -10,24 +10,42 @@ import { ClickData, ClickStats, DashboardStats, Env, LinkWithSlugs, Slug, Timeli
 import { normalizeUrl } from "../normalize-url";
 import { ServiceResult, ok, fail } from "./result";
 import { resolveClickFilters } from "./admin-management";
+import { rangeToSinceTs } from "./trends";
 
 export type { ServiceResult };
 
-export async function listLinks(env: Env, opts?: { withDeltaRange?: TimelineRange; filters?: ClickFilters }): Promise<ServiceResult<LinkWithSlugs[]>> {
-  const links = await LinkRepository.list(env.DB);
+export interface ListLinksOptions {
+  /** Range used to compute delta_pct vs the previous window. Pass undefined to skip deltas. */
+  withDeltaRange?: TimelineRange;
+  /** Bot/self-referrer filters. Forwarded into both delta queries and the slug click_count subquery. */
+  filters?: ClickFilters;
+  /** Range that scopes the displayed click_count and total_clicks. Pass "all" or omit for lifetime. */
+  range?: TimelineRange;
+}
+
+export async function listLinks(env: Env, opts?: ListLinksOptions): Promise<ServiceResult<LinkWithSlugs[]>> {
+  const sinceTs = rangeToSinceTs(opts?.range);
+  const links = await LinkRepository.list(env.DB, { filters: opts?.filters, sinceTs });
   if (!opts?.withDeltaRange) return ok(links);
   const enriched = await ClickRepository.attachLinkDeltasBulk(env.DB, links, opts.withDeltaRange, undefined, opts.filters);
   return ok(enriched);
 }
 
-export async function getLink(env: Env, id: number): Promise<ServiceResult<LinkWithSlugs>> {
-  const link = await LinkRepository.getById(env.DB, id);
+export interface GetLinkOptions {
+  filters?: ClickFilters;
+  range?: TimelineRange;
+}
+
+export async function getLink(env: Env, id: number, opts?: GetLinkOptions): Promise<ServiceResult<LinkWithSlugs>> {
+  const sinceTs = rangeToSinceTs(opts?.range);
+  const link = await LinkRepository.getById(env.DB, id, { filters: opts?.filters, sinceTs });
   if (!link) return fail(404, "Link not found");
   return ok(link);
 }
 
-export async function getLinkBySlug(env: Env, slug: string): Promise<ServiceResult<LinkWithSlugs>> {
-  const link = await LinkRepository.getBySlug(env.DB, slug);
+export async function getLinkBySlug(env: Env, slug: string, opts?: GetLinkOptions): Promise<ServiceResult<LinkWithSlugs>> {
+  const sinceTs = rangeToSinceTs(opts?.range);
+  const link = await LinkRepository.getBySlug(env.DB, slug, { filters: opts?.filters, sinceTs });
   if (!link) return fail(404, "Link not found");
   return ok(link);
 }
@@ -326,19 +344,29 @@ export async function findSlugForRedirect(
   return SlugRepository.findByValue(env.DB, slug);
 }
 
+export interface SearchLinksOptions extends ListLinksOptions {
+  includeOwner?: boolean;
+}
+
 export async function searchLinks(
   env: Env,
   query: string,
-  opts?: { includeOwner?: boolean; withDeltaRange?: TimelineRange; filters?: ClickFilters },
+  opts?: SearchLinksOptions,
 ): Promise<ServiceResult<LinkWithSlugs[]>> {
-  const links = await LinkRepository.search(env.DB, query, opts);
+  const sinceTs = rangeToSinceTs(opts?.range);
+  const links = await LinkRepository.search(env.DB, query, {
+    includeOwner: opts?.includeOwner,
+    filters: opts?.filters,
+    sinceTs,
+  });
   if (!opts?.withDeltaRange) return ok(links);
   const enriched = await ClickRepository.attachLinkDeltasBulk(env.DB, links, opts.withDeltaRange, undefined, opts.filters);
   return ok(enriched);
 }
 
-export async function listLinksByOwner(env: Env, owner: string): Promise<ServiceResult<LinkWithSlugs[]>> {
-  return ok(await LinkRepository.findByOwner(env.DB, owner));
+export async function listLinksByOwner(env: Env, owner: string, opts?: GetLinkOptions): Promise<ServiceResult<LinkWithSlugs[]>> {
+  const sinceTs = rangeToSinceTs(opts?.range);
+  return ok(await LinkRepository.findByOwner(env.DB, owner, { filters: opts?.filters, sinceTs }));
 }
 
 export async function autoLabelLink(

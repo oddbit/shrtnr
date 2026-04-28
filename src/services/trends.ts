@@ -12,6 +12,16 @@ export const RANGE_SECONDS: Record<Exclude<TimelineRange, "all">, number> = {
 };
 
 /**
+ * Lower-bound timestamp for a given range. `all` returns undefined so callers
+ * can drop the time filter from a SLUG_SELECT subquery and count lifetime.
+ */
+export function rangeToSinceTs(range: TimelineRange | undefined, now?: number): number | undefined {
+  if (!range || range === "all") return undefined;
+  const ts = now ?? Math.floor(Date.now() / 1000);
+  return ts - RANGE_SECONDS[range];
+}
+
+/**
  * Percent change from previous to current, rounded to nearest integer.
  * Returns `undefined` when there is no baseline to compare against (previous is 0),
  * which callers use to suppress the trend pill.

@@ -5,6 +5,7 @@ import { BundleRepository, ClickRepository, LinkRepository } from "../db";
 import { Bundle, BundleAccent, BundleStats, BundleWithSummary, Env, LinkWithSlugs, TimelineRange } from "../types";
 import { ServiceResult, fail, ok } from "./result";
 import { resolveClickFilters } from "./admin-management";
+import { rangeToSinceTs } from "./trends";
 
 const VALID_ACCENTS: BundleAccent[] = ["orange", "red", "green", "blue", "purple"];
 
@@ -25,6 +26,8 @@ export interface UpdateBundleBody {
 export interface ListBundlesOpts {
   includeArchived?: boolean;
   archivedOnly?: boolean;
+  /** Time range that scopes total_clicks, sparkline, delta and top_links on each card. */
+  range?: TimelineRange;
 }
 
 function validateAccent(a?: BundleAccent): string | null {
@@ -71,6 +74,7 @@ export async function listBundles(
   const bundleIds = bundles.map((b) => b.id);
 
   const filters = await resolveClickFilters(env, identity);
+  const range = opts.range ?? "all";
   const [linkCounts, summaries] = await Promise.all([
     env.DB
       .prepare(
@@ -78,7 +82,7 @@ export async function listBundles(
       )
       .bind(...bundleIds)
       .all<{ bundle_id: number; cnt: number }>(),
-    ClickRepository.getBundleSummariesBulk(env.DB, bundleIds, undefined, filters),
+    ClickRepository.getBundleSummariesBulk(env.DB, bundleIds, undefined, filters, range),
   ]);
 
   const linkCountMap = new Map((linkCounts.results ?? []).map((r) => [r.bundle_id, r.cnt]));
@@ -199,14 +203,21 @@ export async function getBundleAnalytics(
   return ok(stats!);
 }
 
+export interface ListBundleLinksOpts {
+  range?: TimelineRange;
+}
+
 export async function listBundleLinks(
   env: Env,
   id: number,
   identity: string,
+  opts?: ListBundleLinksOpts,
 ): Promise<ServiceResult<LinkWithSlugs[]>> {
   const bundle = await BundleRepository.getById(env.DB, id);
   if (!bundle || bundle.created_by !== identity) return fail(404, "Bundle not found");
-  return ok(await BundleRepository.listLinks(env.DB, id));
+  const filters = await resolveClickFilters(env, identity);
+  const sinceTs = rangeToSinceTs(opts?.range);
+  return ok(await BundleRepository.listLinks(env.DB, id, { filters, sinceTs }));
 }
 
 export async function listBundlesForLink(

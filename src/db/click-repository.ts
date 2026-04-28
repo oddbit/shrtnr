@@ -1277,15 +1277,20 @@ export class ClickRepository {
    * Summary stats for the bundles listing page. Always reports:
    *  - total_clicks: lifetime sum across every bundle link (no time filter).
    *  - delta_pct: trend of last 30 days vs the preceding 30 days, to give
-   *    users a fixed trend reading regardless of a range picker.
-   *  - sparkline: 30 daily buckets covering the last 30 days.
-   *  - top_links: top 3 member links by lifetime click count.
+   *    range = "all" has no previous window so delta_pct is undefined.
+   *  - sparkline: bucketed across the selected range. Granularity follows
+   *    getBucketSpec (hourly for 24h, daily for 7d/30d/90d, weekly for 1y,
+   *    adaptive for all).
+   *  - top_links: top 3 member links by click count within the same range.
+   *    With range = "all" this matches the lifetime total used elsewhere on
+   *    the page.
    */
   static async getBundleSummariesBulk(
     db: D1Database,
     bundleIds: number[],
     now?: number,
     filters?: ClickFilters,
+    range: TimelineRange = "all",
   ): Promise<Map<number, { total_clicks: number; delta_pct?: number; sparkline: number[]; top_links: { slug: string; click_count: number }[] }>> {
     const out = new Map<number, { total_clicks: number; delta_pct?: number; sparkline: number[]; top_links: { slug: string; click_count: number }[] }>();
     for (const id of bundleIds) {
@@ -1295,71 +1300,78 @@ export class ClickRepository {
 
     const ts = now ?? Math.floor(Date.now() / 1000);
     const phBundles = bundleIds.map(() => "?").join(",");
-    const span30d = 30 * 86400;
-    const currStart = ts - span30d;
-    const prevStart = ts - 2 * span30d;
-    const sparkSpec = getBucketSpec("30d", ts);
+    const sparkSpec = getBucketSpec(range, ts);
     const filterFrag = clickFilterSql(filters, "c");
+    const rangeSinceTs = range === "all" ? null : ts - RANGE_SECONDS[range];
+    const rangeFilter = rangeSinceTs !== null ? " AND c.clicked_at >= ?" : "";
+    const rangeBinds: number[] = rangeSinceTs !== null ? [rangeSinceTs] : [];
 
-    // Lifetime totals per bundle.
+    // Range-scoped totals per bundle.
     const totalRows = await db
       .prepare(
         `SELECT bl.bundle_id as bundle_id, COUNT(*) as cnt
          FROM clicks c
          JOIN slugs s ON s.slug = c.slug
          JOIN bundle_links bl ON bl.link_id = s.link_id
-         WHERE bl.bundle_id IN (${phBundles})${filterFrag}
+         WHERE bl.bundle_id IN (${phBundles})${filterFrag}${rangeFilter}
          GROUP BY bl.bundle_id`,
       )
-      .bind(...bundleIds)
+      .bind(...bundleIds, ...rangeBinds)
       .all<{ bundle_id: number; cnt: number }>();
     for (const r of totalRows.results ?? []) {
       out.get(r.bundle_id)!.total_clicks = r.cnt;
     }
 
-    // 30d / previous 30d for fixed trend reading.
-    const [curRows, prevRows] = await Promise.all([
-      db
-        .prepare(
-          `SELECT bl.bundle_id as bundle_id, COUNT(*) as cnt
-           FROM clicks c
-           JOIN slugs s ON s.slug = c.slug
-           JOIN bundle_links bl ON bl.link_id = s.link_id
-           WHERE c.clicked_at >= ? AND bl.bundle_id IN (${phBundles})${filterFrag}
-           GROUP BY bl.bundle_id`,
-        )
-        .bind(currStart, ...bundleIds)
-        .all<{ bundle_id: number; cnt: number }>(),
-      db
-        .prepare(
-          `SELECT bl.bundle_id as bundle_id, COUNT(*) as cnt
-           FROM clicks c
-           JOIN slugs s ON s.slug = c.slug
-           JOIN bundle_links bl ON bl.link_id = s.link_id
-           WHERE c.clicked_at >= ? AND c.clicked_at < ? AND bl.bundle_id IN (${phBundles})${filterFrag}
-           GROUP BY bl.bundle_id`,
-        )
-        .bind(prevStart, currStart, ...bundleIds)
-        .all<{ bundle_id: number; cnt: number }>(),
-    ]);
-    const curMap = new Map((curRows.results ?? []).map((r) => [r.bundle_id, r.cnt]));
-    const prevMap = new Map((prevRows.results ?? []).map((r) => [r.bundle_id, r.cnt]));
-    for (const [bundleId, entry] of out) {
-      entry.delta_pct = computeDelta(curMap.get(bundleId) ?? 0, prevMap.get(bundleId) ?? 0);
+    // Trend: current range vs previous equivalent window. "all" has no previous.
+    if (range !== "all") {
+      const span = RANGE_SECONDS[range];
+      const currStart = ts - span;
+      const prevStart = ts - 2 * span;
+      const [curRows, prevRows] = await Promise.all([
+        db
+          .prepare(
+            `SELECT bl.bundle_id as bundle_id, COUNT(*) as cnt
+             FROM clicks c
+             JOIN slugs s ON s.slug = c.slug
+             JOIN bundle_links bl ON bl.link_id = s.link_id
+             WHERE c.clicked_at >= ? AND bl.bundle_id IN (${phBundles})${filterFrag}
+             GROUP BY bl.bundle_id`,
+          )
+          .bind(currStart, ...bundleIds)
+          .all<{ bundle_id: number; cnt: number }>(),
+        db
+          .prepare(
+            `SELECT bl.bundle_id as bundle_id, COUNT(*) as cnt
+             FROM clicks c
+             JOIN slugs s ON s.slug = c.slug
+             JOIN bundle_links bl ON bl.link_id = s.link_id
+             WHERE c.clicked_at >= ? AND c.clicked_at < ? AND bl.bundle_id IN (${phBundles})${filterFrag}
+             GROUP BY bl.bundle_id`,
+          )
+          .bind(prevStart, currStart, ...bundleIds)
+          .all<{ bundle_id: number; cnt: number }>(),
+      ]);
+      const curMap = new Map((curRows.results ?? []).map((r) => [r.bundle_id, r.cnt]));
+      const prevMap = new Map((prevRows.results ?? []).map((r) => [r.bundle_id, r.cnt]));
+      for (const [bundleId, entry] of out) {
+        entry.delta_pct = computeDelta(curMap.get(bundleId) ?? 0, prevMap.get(bundleId) ?? 0);
+      }
     }
 
-    // 30 daily sparkline buckets per bundle.
+    // Sparkline bucketed across the selected range.
+    const sparkSinceFilter = sparkSpec.since !== null ? " AND c.clicked_at >= ?" : "";
+    const sparkBinds: unknown[] = sparkSpec.since !== null ? [sparkSpec.since] : [];
     const sparkRows = await db
       .prepare(
         `SELECT bl.bundle_id as bundle_id, ${sparkSpec.bucketExpr("c.clicked_at")} as label, COUNT(*) as value
          FROM clicks c
          JOIN slugs s ON s.slug = c.slug
          JOIN bundle_links bl ON bl.link_id = s.link_id
-         WHERE c.clicked_at >= ? AND bl.bundle_id IN (${phBundles})${filterFrag}
+         WHERE bl.bundle_id IN (${phBundles})${filterFrag}${sparkSinceFilter}
          GROUP BY bl.bundle_id, label
          ORDER BY label ASC`,
       )
-      .bind(sparkSpec.since!, ...bundleIds)
+      .bind(...bundleIds, ...sparkBinds)
       .all<{ bundle_id: number; label: string; value: number }>();
     const sparkByBundle = new Map<number, { label: string; value: number }[]>();
     for (const r of sparkRows.results ?? []) {
@@ -1368,10 +1380,10 @@ export class ClickRepository {
       sparkByBundle.set(r.bundle_id, arr);
     }
     for (const [bundleId, entry] of out) {
-      entry.sparkline = fillSparkline(sparkByBundle.get(bundleId) ?? [], sparkSpec, "30d", ts);
+      entry.sparkline = fillSparkline(sparkByBundle.get(bundleId) ?? [], sparkSpec, range, ts);
     }
 
-    // Top 3 links per bundle by lifetime clicks.
+    // Top 3 links per bundle within the selected range.
     const topRows = await db
       .prepare(
         `WITH per_link AS (
@@ -1379,7 +1391,7 @@ export class ClickRepository {
            FROM clicks c
            JOIN slugs s ON s.slug = c.slug
            JOIN bundle_links bl ON bl.link_id = s.link_id
-           WHERE bl.bundle_id IN (${phBundles})${filterFrag}
+           WHERE bl.bundle_id IN (${phBundles})${filterFrag}${rangeFilter}
            GROUP BY bl.bundle_id, s.link_id
          ),
          ranked AS (
@@ -1393,7 +1405,7 @@ export class ClickRepository {
          WHERE r.rn <= 3
          ORDER BY r.bundle_id, r.cnt DESC`,
       )
-      .bind(...bundleIds)
+      .bind(...bundleIds, ...rangeBinds)
       .all<{ bundle_id: number; cnt: number; primary_slug: string | null }>();
     for (const r of topRows.results ?? []) {
       const entry = out.get(r.bundle_id);
