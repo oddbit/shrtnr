@@ -133,6 +133,38 @@ describe("ClickRepository.getDashboardStats: ClickFilters", () => {
     expect(stats.top_referrers.map((r) => r.name)).toContain("shrtnr.test");
     expect(stats.top_referrers.map((r) => r.name)).toContain("crawler.example");
   });
+
+  it("recent_links[].total_clicks honors filters so cards match the filtered KPIs", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "f2c" });
+    await seedClicksMixed(link.slugs[0].slug);
+
+    const filtered = await ClickRepository.getDashboardStats(env.DB, "all", undefined, {
+      excludeBots: true,
+      excludeSelfReferrers: true,
+    });
+    const raw = await ClickRepository.getDashboardStats(env.DB, "all");
+
+    expect(raw.recent_links[0].total_clicks).toBe(4);
+    expect(filtered.recent_links[0].total_clicks).toBe(2);
+  });
+
+  it("recent_links[].total_clicks honors the selected time range", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "f2d" });
+    const slug = link.slugs[0].slug;
+    const now = Math.floor(Date.now() / 1000);
+    await env.DB.prepare(
+      "INSERT INTO clicks (slug, clicked_at, link_mode, is_bot, is_self_referrer) VALUES (?, ?, 'link', 0, 0)",
+    ).bind(slug, now - 60 * 86400).run();
+    await env.DB.prepare(
+      "INSERT INTO clicks (slug, clicked_at, link_mode, is_bot, is_self_referrer) VALUES (?, ?, 'link', 0, 0)",
+    ).bind(slug, now - 60).run();
+
+    const all = await ClickRepository.getDashboardStats(env.DB, "all", now);
+    const last7 = await ClickRepository.getDashboardStats(env.DB, "7d", now);
+
+    expect(all.recent_links[0].total_clicks).toBe(2);
+    expect(last7.recent_links[0].total_clicks).toBe(1);
+  });
 });
 
 describe("ClickRepository.getBundleStats: ClickFilters", () => {

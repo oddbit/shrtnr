@@ -718,7 +718,7 @@ export class ClickRepository {
     ] = await Promise.all([
       this.getPeriodClicks(db, range, ts, undefined, filters),
       this.getLinkCreationPeriods(db, range, ts),
-      LinkRepository.list(db),
+      LinkRepository.list(db, { filters, sinceTs: since ?? undefined }),
       countryQuery.all<{ name: string; count: number }>(),
       referrerQuery.all<{ name: string; count: number }>(),
       numReferrersQuery.first<{ cnt: number }>(),
