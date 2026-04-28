@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { FC } from "hono/jsx";
-import type { BundleWithSummary } from "../types";
+import type { BundleWithSummary, TimelineRange } from "../types";
 import type { TranslateFn } from "../i18n";
 import { Sparkline } from "../components/sparkline";
 import { Delta } from "../components/delta";
+import { RangePicker } from "../components/range-picker";
 import { fmtNumber } from "../i18n/format";
 
 type Props = {
@@ -13,9 +14,10 @@ type Props = {
   t: TranslateFn;
   lang: string;
   filter: "active" | "archived" | "all";
+  range: TimelineRange;
 };
 
-export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter }) => {
+export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter, range }) => {
   const filterLinks = [
     { id: "active", label: t("bundles.filterActive") },
     { id: "archived", label: t("bundles.filterArchived") },
@@ -29,12 +31,20 @@ export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter }) => {
           <div class="page-title">{t("bundles.title")}</div>
           <div class="page-subtitle">{t("bundles.subtitle")}</div>
         </div>
+        <div class="topbar-actions">
+          <RangePicker
+            current={range}
+            basePath="/_/admin/bundles"
+            preserveParams={filter === "active" ? {} : { filter }}
+          />
+        </div>
       </div>
 
       <div class="bundle-filter-row">
         {filterLinks.map((f) => {
           const params = new URLSearchParams();
           if (f.id !== "active") params.set("filter", f.id);
+          if (range !== "all") params.set("range", range);
           const href = `/_/admin/bundles${params.toString() ? "?" + params.toString() : ""}`;
           const active = filter === f.id;
           return (

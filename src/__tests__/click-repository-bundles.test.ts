@@ -192,4 +192,30 @@ describe("ClickRepository.getBundleSummariesBulk", () => {
     expect(res.get(bundle.id)?.sparkline.length).toBeGreaterThan(0);
     expect(res.get(bundle.id)?.sparkline.every((x) => x === 0)).toBe(true);
   });
+
+  it("range scopes total_clicks, top_links, and delta on each summary", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "aaa", createdBy: "a@b" });
+    const bundle = await BundleRepository.create(env.DB, { name: "B", createdBy: "a@b" });
+    await BundleRepository.addLink(env.DB, bundle.id, link.id);
+
+    const now = Math.floor(Date.now() / 1000);
+    // 1 click "now" inside any range
+    await recordClick(link.slugs[0].slug, now - 60);
+    // 2 clicks 60 days ago: outside 7d/30d, inside 90d/all, also previous-30d window for delta
+    await recordClick(link.slugs[0].slug, now - 60 * 86400);
+    await recordClick(link.slugs[0].slug, now - 60 * 86400);
+
+    const all = await ClickRepository.getBundleSummariesBulk(env.DB, [bundle.id], now, undefined, "all");
+    expect(all.get(bundle.id)?.total_clicks).toBe(3);
+    expect(all.get(bundle.id)?.delta_pct).toBeUndefined();
+
+    const last7 = await ClickRepository.getBundleSummariesBulk(env.DB, [bundle.id], now, undefined, "7d");
+    expect(last7.get(bundle.id)?.total_clicks).toBe(1);
+    expect(last7.get(bundle.id)?.top_links[0]?.click_count).toBe(1);
+
+    const last30 = await ClickRepository.getBundleSummariesBulk(env.DB, [bundle.id], now, undefined, "30d");
+    expect(last30.get(bundle.id)?.total_clicks).toBe(1);
+    // current 30d has 1, previous 30d has 2 → -50%
+    expect(last30.get(bundle.id)?.delta_pct).toBe(-50);
+  });
 });

@@ -292,17 +292,21 @@ app.get("/_/admin/links/:id", async (c) => {
 
 app.get("/_/admin/bundles", async (c) => {
   const identity = c.var.identity;
-  const { theme, t, lang, translations } = await getPageData(c, identity);
+  const { theme, t, lang, translations, defaultRange } = await getPageData(c, identity);
   const filterParam = c.req.query("filter");
   const filter = filterParam === "archived" || filterParam === "all" ? filterParam : "active";
+  const validRanges = new Set<TimelineRange>(["24h", "7d", "30d", "90d", "1y", "all"]);
+  const rangeParam = c.req.query("range");
+  const range = (validRanges.has(rangeParam as TimelineRange) ? rangeParam : (defaultRange ?? "all")) as TimelineRange;
   const listResult = await listBundles(c.env, identity, {
     includeArchived: filter === "all",
     archivedOnly: filter === "archived",
+    range,
   });
   const bundles = listResult.ok ? listResult.data : [];
   return c.html(
     <Layout active="bundles" theme={theme} t={t} lang={lang} translations={translations}>
-      <BundlesPage bundles={bundles} t={t} lang={lang} filter={filter} />
+      <BundlesPage bundles={bundles} t={t} lang={lang} filter={filter} range={range} />
     </Layout>,
   );
 });
