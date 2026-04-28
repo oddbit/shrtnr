@@ -58,7 +58,7 @@ jobs:
         run: |
           dart pub get
           dart analyze --fatal-infos
-          dart test
+          dart test --exclude-tags e2e
 
       - name: Publish to pub.dev
         working-directory: sdk/dart

@@ -121,7 +121,7 @@ describe("get_link_timeline (service)", () => {
     const link = await seedLink("https://example.com");
     await recordClicks(link.slugs[0].slug, 5);
 
-    const result = await getLinkTimeline(env as never, link.id, "24h", "test@example.com");
+    const result = await getLinkTimeline(env as never, link.id, "24h");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -131,7 +131,7 @@ describe("get_link_timeline (service)", () => {
   });
 
   it("returns 404 for nonexistent link", async () => {
-    const result = await getLinkTimeline(env as never, 9999, "7d", "test@example.com");
+    const result = await getLinkTimeline(env as never, 9999, "7d");
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(404);
