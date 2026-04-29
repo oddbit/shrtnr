@@ -289,75 +289,9 @@ describe("searchLinks service", () => {
 });
 
 describe("URL normalization in createLink", () => {
-  it("returns existing link when URL has a trailing slash", async () => {
-    const original = await createLink(env as any, { url: "https://www.npmjs.com/package/@oddbit/shrtnr" });
-    expect(original.ok).toBe(true);
-    if (!original.ok) return;
-
-    const duplicate = await createLink(env as any, { url: "https://www.npmjs.com/package/@oddbit/shrtnr/" });
-    expect(duplicate.ok).toBe(true);
-    if (!duplicate.ok) return;
-
-    expect(duplicate.data.id).toBe(original.data.id);
-    expect(duplicate.meta?.duplicate).toBe(true);
-  });
-
-  it("returns existing link when URL has a trailing hash", async () => {
-    const original = await createLink(env as any, { url: "https://www.npmjs.com/package/@oddbit/shrtnr" });
-    expect(original.ok).toBe(true);
-    if (!original.ok) return;
-
-    const duplicate = await createLink(env as any, { url: "https://www.npmjs.com/package/@oddbit/shrtnr#" });
-    expect(duplicate.ok).toBe(true);
-    if (!duplicate.ok) return;
-
-    expect(duplicate.data.id).toBe(original.data.id);
-    expect(duplicate.meta?.duplicate).toBe(true);
-  });
-
-  it("returns existing link when URL has a trailing question mark", async () => {
-    const original = await createLink(env as any, { url: "https://www.npmjs.com/package/@oddbit/shrtnr" });
-    expect(original.ok).toBe(true);
-    if (!original.ok) return;
-
-    const duplicate = await createLink(env as any, { url: "https://www.npmjs.com/package/@oddbit/shrtnr?" });
-    expect(duplicate.ok).toBe(true);
-    if (!duplicate.ok) return;
-
-    expect(duplicate.data.id).toBe(original.data.id);
-    expect(duplicate.meta?.duplicate).toBe(true);
-  });
-
-  it("creates a new link when URL has a sub-path", async () => {
-    await createLink(env as any, { url: "https://www.npmjs.com/package/@oddbit/shrtnr" });
-
-    const different = await createLink(env as any, { url: "https://www.npmjs.com/package/@oddbit/shrtnr/sub-path" });
-    expect(different.ok).toBe(true);
-    if (!different.ok) return;
-
-    expect(different.status).toBe(201);
-  });
-
-  it("creates a new link when URL has an anchor", async () => {
-    await createLink(env as any, { url: "https://www.npmjs.com/package/@oddbit/shrtnr" });
-
-    const different = await createLink(env as any, { url: "https://www.npmjs.com/package/@oddbit/shrtnr#some-page-anchor" });
-    expect(different.ok).toBe(true);
-    if (!different.ok) return;
-
-    expect(different.status).toBe(201);
-  });
-
-  it("creates a new link when URL has query parameters", async () => {
-    await createLink(env as any, { url: "https://www.npmjs.com/package/@oddbit/shrtnr" });
-
-    const different = await createLink(env as any, { url: "https://www.npmjs.com/package/@oddbit/shrtnr?some-parameter=value" });
-    expect(different.ok).toBe(true);
-    if (!different.ok) return;
-
-    expect(different.status).toBe(201);
-  });
-
+  // Per-character normalization edge cases live in unit/normalize-url.test.ts.
+  // This describe keeps a single integration assertion proving link-service
+  // invokes normalizeUrl on the input before storage / dedupe.
   it("stores the normalized URL, not the original", async () => {
     const result = await createLink(env as any, { url: "https://example.com/path/" });
     expect(result.ok).toBe(true);
