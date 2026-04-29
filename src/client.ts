@@ -1077,24 +1077,24 @@ function pollDashboard() {
       }
     }
 
-    // Top sources
-    var sourcesCard = document.getElementById('dash-top-sources');
-    if (sourcesCard) {
-      var oldSRows = sourcesCard.querySelectorAll('.stat-row');
+    // Top domains
+    var domainsCard = document.getElementById('dash-top-domains');
+    if (domainsCard) {
+      var oldSRows = domainsCard.querySelectorAll('.stat-row');
       for (var sr = 0; sr < oldSRows.length; sr++) oldSRows[sr].remove();
-      var sNoData = sourcesCard.querySelector('div[style]');
+      var sNoData = domainsCard.querySelector('.muted-hint');
       var sMax = 0;
       for (var si = 0; si < d.top_referrers.length; si++) sMax += d.top_referrers[si].count;
       if (sMax === 0) sMax = 1;
       if (d.top_referrers.length === 0) {
         if (!sNoData) {
           var nd = document.createElement('div');
-          nd.style.cssText = 'color:var(--color-text-muted);font-size:0.875rem';
+          nd.className = 'muted-hint';
           nd.textContent = t('dashboard.noData');
-          sourcesCard.appendChild(nd);
+          domainsCard.appendChild(nd);
         }
       } else {
-        if (sNoData && sNoData.textContent === t('dashboard.noData')) sNoData.remove();
+        if (sNoData) sNoData.remove();
         for (var si = 0; si < d.top_referrers.length; si++) {
           var ref = d.top_referrers[si];
           var rpct = Math.round((ref.count / sMax) * 100);
@@ -1103,7 +1103,7 @@ function pollDashboard() {
           row.innerHTML = '<div class="name"><span class="label">' + esc(ref.name) + '</span></div>' +
             '<div class="right"><span class="count">' + fmtCount(ref.count) + '</span><span class="pct">' + rpct + '%</span></div>' +
             '<div class="bar"><div class="fill mint" style="width:' + rpct + '%"></div></div>';
-          sourcesCard.appendChild(row);
+          domainsCard.appendChild(row);
         }
       }
     }
