@@ -15,13 +15,15 @@
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "secret:put": "wrangler secret put",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "emit-spec": "tsx scripts/emit-spec.ts"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.15.1",
     "@cloudflare/workers-types": "^4.20260426.1",
     "@vitest/runner": "^4.1.5",
     "@vitest/snapshot": "^4.1.5",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.5",
     "wrangler": "^4.86.0"
