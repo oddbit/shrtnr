@@ -672,6 +672,86 @@ describe("self-referrer flagging", () => {
   });
 });
 
+// ---- Feature: click tracking edge cases ----
+
+describe("click tracking edge cases", () => {
+  it("empty User-Agent does not crash; device/os/browser stored as null", async () => {
+    const link = await LinkRepository.create(env.DB, {
+      url: "https://example.com",
+      slug: "edge-empty-ua",
+    });
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/edge-empty-ua", {
+        redirect: "manual",
+        headers: { "User-Agent": "" },
+      }),
+    );
+    expect(res.status).toBe(301);
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const row = await env.DB
+      .prepare(
+        "SELECT device_type, os, browser, user_agent FROM clicks WHERE slug = ?",
+      )
+      .bind(link.slugs[0].slug)
+      .first<{
+        device_type: string | null;
+        os: string | null;
+        browser: string | null;
+        user_agent: string | null;
+      }>();
+    expect(row).not.toBeNull();
+    expect(row!.device_type).toBeNull();
+    expect(row!.os).toBeNull();
+    expect(row!.browser).toBeNull();
+    expect(row!.user_agent).toBeNull();
+  });
+
+  it("missing Referer header stored as referrer = null", async () => {
+    const link = await LinkRepository.create(env.DB, {
+      url: "https://example.com",
+      slug: "edge-no-ref",
+    });
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/edge-no-ref", { redirect: "manual" }),
+    );
+    expect(res.status).toBe(301);
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const row = await env.DB
+      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ referrer: string | null; referrer_host: string | null }>();
+    expect(row).not.toBeNull();
+    expect(row!.referrer).toBeNull();
+    expect(row!.referrer_host).toBeNull();
+  });
+
+  it("missing cf-ipcountry header stored as country = null", async () => {
+    const link = await LinkRepository.create(env.DB, {
+      url: "https://example.com",
+      slug: "edge-no-country",
+    });
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/edge-no-country", {
+        redirect: "manual",
+      }),
+    );
+    expect(res.status).toBe(301);
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const row = await env.DB
+      .prepare("SELECT country FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ country: string | null }>();
+    expect(row).not.toBeNull();
+    expect(row!.country).toBeNull();
+  });
+});
+
 // ---- Feature 5: QR SVG generation ----
 
 describe("QR code generation", () => {
