@@ -17,7 +17,7 @@ export class BundlesResource {
 
   /** Get a bundle by ID with aggregated click summary. */
   get(id: number, options: { range?: TimelineRange } = {}): Promise<BundleWithSummary> {
-    return this.http.request("GET", `/api/bundles/${id}`, {
+    return this.http.request("GET", `/_/api/bundles/${id}`, {
       query: { range: options.range },
     });
   }
@@ -26,55 +26,55 @@ export class BundlesResource {
   list(
     options: { archived?: "1" | "true" | "only" | "all"; range?: TimelineRange } = {},
   ): Promise<BundleWithSummary[]> {
-    return this.http.request("GET", "/api/bundles", {
+    return this.http.request("GET", "/_/api/bundles", {
       query: { archived: options.archived, range: options.range },
     });
   }
 
   /** Create a new bundle. */
   create(body: CreateBundleBody): Promise<Bundle> {
-    return this.http.request("POST", "/api/bundles", { body });
+    return this.http.request("POST", "/_/api/bundles", { body });
   }
 
   /** Update a bundle's name, description, icon, or accent. */
   update(id: number, body: UpdateBundleBody): Promise<Bundle> {
-    return this.http.request("PUT", `/api/bundles/${id}`, { body });
+    return this.http.request("PUT", `/_/api/bundles/${id}`, { body });
   }
 
   /** Permanently delete a bundle. */
   delete(id: number): Promise<{ deleted: boolean }> {
-    return this.http.request("DELETE", `/api/bundles/${id}`);
+    return this.http.request("DELETE", `/_/api/bundles/${id}`);
   }
 
   /** Archive a bundle. */
   archive(id: number): Promise<Bundle> {
-    return this.http.request("POST", `/api/bundles/${id}/archive`);
+    return this.http.request("POST", `/_/api/bundles/${id}/archive`);
   }
 
   /** Unarchive a bundle. */
   unarchive(id: number): Promise<Bundle> {
-    return this.http.request("POST", `/api/bundles/${id}/unarchive`);
+    return this.http.request("POST", `/_/api/bundles/${id}/unarchive`);
   }
 
   /** Get click analytics for a bundle. */
   analytics(id: number, options: { range?: TimelineRange } = {}): Promise<ClickStats> {
-    return this.http.request("GET", `/api/bundles/${id}/analytics`, {
+    return this.http.request("GET", `/_/api/bundles/${id}/analytics`, {
       query: { range: options.range },
     });
   }
 
   /** List links in a bundle. */
   links(id: number): Promise<Link[]> {
-    return this.http.request("GET", `/api/bundles/${id}/links`);
+    return this.http.request("GET", `/_/api/bundles/${id}/links`);
   }
 
   /** Add a link to a bundle. */
   addLink(id: number, linkId: number): Promise<{ added: boolean }> {
-    return this.http.request("POST", `/api/bundles/${id}/links`, { body: { linkId } });
+    return this.http.request("POST", `/_/api/bundles/${id}/links`, { body: { linkId } });
   }
 
   /** Remove a link from a bundle. */
   removeLink(id: number, linkId: number): Promise<{ removed: boolean }> {
-    return this.http.request("DELETE", `/api/bundles/${id}/links/${linkId}`);
+    return this.http.request("DELETE", `/_/api/bundles/${id}/links/${linkId}`);
   }
 }

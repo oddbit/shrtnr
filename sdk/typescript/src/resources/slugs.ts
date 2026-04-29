@@ -9,19 +9,19 @@ export class SlugsResource {
 
   /** Look up a link by its slug. */
   lookup(slug: string): Promise<Link> {
-    return this.http.request("GET", `/api/slugs/${encodeURIComponent(slug)}`);
+    return this.http.request("GET", `/_/api/slugs/${encodeURIComponent(slug)}`);
   }
 
   /** Add a custom slug to a link. */
   add(linkId: number, slug: string): Promise<Slug> {
-    return this.http.request("POST", `/api/links/${linkId}/slugs`, { body: { slug } });
+    return this.http.request("POST", `/_/api/links/${linkId}/slugs`, { body: { slug } });
   }
 
   /** Disable a specific slug on a link. */
   disable(linkId: number, slug: string): Promise<Slug> {
     return this.http.request(
       "POST",
-      `/api/links/${linkId}/slugs/${encodeURIComponent(slug)}/disable`,
+      `/_/api/links/${linkId}/slugs/${encodeURIComponent(slug)}/disable`,
     );
   }
 
@@ -29,7 +29,7 @@ export class SlugsResource {
   enable(linkId: number, slug: string): Promise<Slug> {
     return this.http.request(
       "POST",
-      `/api/links/${linkId}/slugs/${encodeURIComponent(slug)}/enable`,
+      `/_/api/links/${linkId}/slugs/${encodeURIComponent(slug)}/enable`,
     );
   }
 
@@ -37,7 +37,7 @@ export class SlugsResource {
   remove(linkId: number, slug: string): Promise<{ removed: boolean }> {
     return this.http.request(
       "DELETE",
-      `/api/links/${linkId}/slugs/${encodeURIComponent(slug)}`,
+      `/_/api/links/${linkId}/slugs/${encodeURIComponent(slug)}`,
     );
   }
 }

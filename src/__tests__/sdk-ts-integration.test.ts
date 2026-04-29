@@ -73,153 +73,157 @@ afterAll(() => {
 
 beforeEach(resetData);
 
-describe("TS SDK integration — health and auth", () => {
-  it("health() reaches the real /_/health route", async () => {
-    const apiKey = await mintApiKey("owner@example.com", "read");
-    const client = new ShrtnrClient({ baseUrl: BASE_URL, auth: { apiKey } });
-    const h = await client.health();
-    expect(typeof h.status).toBe("string");
-  });
-
+describe("TS SDK integration — auth", () => {
   it("an invalid API key surfaces ShrtnrError(401)", async () => {
     const client = new ShrtnrClient({
       baseUrl: BASE_URL,
-      auth: { apiKey: "sk_000000000000000000000000000000000000000000000000000" },
+      apiKey: "sk_000000000000000000000000000000000000000000000000000",
     });
-    await expect(client.listLinks()).rejects.toBeInstanceOf(ShrtnrError);
+    await expect(client.links.list()).rejects.toBeInstanceOf(ShrtnrError);
   });
 });
 
 describe("TS SDK integration — links", () => {
   it("create/list/get/update/disable/enable/delete round-trip", async () => {
     const apiKey = await mintApiKey("owner@example.com", "create,read");
-    const client = new ShrtnrClient({ baseUrl: BASE_URL, auth: { apiKey } });
+    const client = new ShrtnrClient({ baseUrl: BASE_URL, apiKey });
 
-    const created = await client.createLink({ url: "https://example.com/a", label: "A" });
+    const created = await client.links.create({ url: "https://example.com/a", label: "A" });
     expect(created.url).toBe("https://example.com/a");
 
-    const list = await client.listLinks();
+    const list = await client.links.list();
     expect(list.some((l) => l.id === created.id)).toBe(true);
 
-    const fetched = await client.getLink(created.id);
+    const fetched = await client.links.get(created.id);
     expect(fetched.id).toBe(created.id);
 
-    const updated = await client.updateLink(created.id, { label: "A-updated" });
+    const updated = await client.links.update(created.id, { label: "A-updated" });
     expect(updated.label).toBe("A-updated");
 
-    const disabled = await client.disableLink(created.id);
-    expect(disabled.expires_at).not.toBeNull();
+    const disabled = await client.links.disable(created.id);
+    expect(disabled.expiresAt).not.toBeNull();
 
-    const enabled = await client.enableLink(created.id);
-    expect(enabled.expires_at).toBeNull();
+    const enabled = await client.links.enable(created.id);
+    expect(enabled.expiresAt).toBeNull();
 
     // Only zero-click links can be deleted; this one has zero clicks.
-    const del = await client.deleteLink(created.id);
+    const del = await client.links.delete(created.id);
     expect(del.deleted).toBe(true);
   });
 
-  it("listLinksByOwner filters by the owner query param", async () => {
+  it("list with owner filter returns only matching links", async () => {
     const apiKey = await mintApiKey("owner@example.com", "create,read");
-    const client = new ShrtnrClient({ baseUrl: BASE_URL, auth: { apiKey } });
-    await client.createLink({ url: "https://example.com/filtered" });
-    const mine = await client.listLinksByOwner("owner@example.com");
+    const client = new ShrtnrClient({ baseUrl: BASE_URL, apiKey });
+    await client.links.create({ url: "https://example.com/filtered" });
+    const mine = await client.links.list({ owner: "owner@example.com" });
     expect(mine.length).toBeGreaterThan(0);
-    const others = await client.listLinksByOwner("nobody@example.com");
+    const others = await client.links.list({ owner: "nobody@example.com" });
     expect(others).toEqual([]);
   });
 });
 
 describe("TS SDK integration — slugs (the regression guard)", () => {
-  it("addCustomSlug / disableSlug / enableSlug / removeSlug all resolve against real routes", async () => {
+  it("add / disable / enable / remove all resolve against real routes", async () => {
     const apiKey = await mintApiKey("owner@example.com", "create,read");
-    const client = new ShrtnrClient({ baseUrl: BASE_URL, auth: { apiKey } });
+    const client = new ShrtnrClient({ baseUrl: BASE_URL, apiKey });
 
-    const link = await client.createLink({ url: "https://example.com/slugs" });
-    const slug = await client.addCustomSlug(link.id, "alpha");
+    const link = await client.links.create({ url: "https://example.com/slugs" });
+    const slug = await client.slugs.add(link.id, "alpha");
     expect(slug.slug).toBe("alpha");
 
-    const disabled = await client.disableSlug(link.id, "alpha");
-    expect(disabled.disabled_at).not.toBeNull();
+    const disabled = await client.slugs.disable(link.id, "alpha");
+    expect(disabled.disabledAt).not.toBeNull();
 
-    const enabled = await client.enableSlug(link.id, "alpha");
-    expect(enabled.disabled_at).toBeNull();
+    const enabled = await client.slugs.enable(link.id, "alpha");
+    expect(enabled.disabledAt).toBeNull();
 
     // Remove only succeeds on zero-click custom slugs — this one has none.
-    const removed = await client.removeSlug(link.id, "alpha");
+    const removed = await client.slugs.remove(link.id, "alpha");
     expect(removed.removed).toBe(true);
   });
 
-  it("getLinkBySlug returns the link for a known slug", async () => {
+  it("lookup returns the link for a known slug", async () => {
     const apiKey = await mintApiKey("owner@example.com", "create,read");
-    const client = new ShrtnrClient({ baseUrl: BASE_URL, auth: { apiKey } });
-    const link = await client.createLink({ url: "https://example.com/lookup" });
-    const auto = link.slugs.find((s) => !s.is_custom)!.slug;
-    const found = await client.getLinkBySlug(auto);
+    const client = new ShrtnrClient({ baseUrl: BASE_URL, apiKey });
+    const link = await client.links.create({ url: "https://example.com/lookup" });
+    const auto = link.slugs.find((s) => !s.isCustom)!.slug;
+    const found = await client.slugs.lookup(auto);
     expect(found.id).toBe(link.id);
   });
 });
 
 describe("TS SDK integration — analytics and QR", () => {
-  it("getLinkAnalytics and getLinkQR both return data for a real link", async () => {
+  it("analytics and qr both return data for a real link", async () => {
     const apiKey = await mintApiKey("owner@example.com", "create,read");
-    const client = new ShrtnrClient({ baseUrl: BASE_URL, auth: { apiKey } });
-    const link = await client.createLink({ url: "https://example.com/qr" });
+    const client = new ShrtnrClient({ baseUrl: BASE_URL, apiKey });
+    const link = await client.links.create({ url: "https://example.com/qr" });
 
-    const stats = await client.getLinkAnalytics(link.id);
-    expect(typeof stats.total_clicks).toBe("number");
+    const stats = await client.links.analytics(link.id);
+    expect(typeof stats.totalClicks).toBe("number");
 
-    const svg = await client.getLinkQR(link.id);
+    const svg = await client.links.qr(link.id);
     expect(svg).toMatch(/<svg/);
+  });
+
+  it("timeline returns bucketed data with summary", async () => {
+    const apiKey = await mintApiKey("owner@example.com", "create,read");
+    const client = new ShrtnrClient({ baseUrl: BASE_URL, apiKey });
+    const link = await client.links.create({ url: "https://example.com/timeline" });
+
+    const td = await client.links.timeline(link.id, { range: "7d" });
+    expect(td.range).toBe("7d");
+    expect(Array.isArray(td.buckets)).toBe(true);
+    expect(typeof td.summary.last7d).toBe("number");
   });
 });
 
 describe("TS SDK integration — bundles", () => {
   it("full bundle lifecycle — create/list/get/update/archive/unarchive/delete", async () => {
     const apiKey = await mintApiKey("owner@example.com", "create,read");
-    const client = new ShrtnrClient({ baseUrl: BASE_URL, auth: { apiKey } });
+    const client = new ShrtnrClient({ baseUrl: BASE_URL, apiKey });
 
-    const bundle = await client.createBundle({ name: "Campaign X" });
+    const bundle = await client.bundles.create({ name: "Campaign X" });
     expect(bundle.name).toBe("Campaign X");
 
-    const list = await client.listBundles();
+    const list = await client.bundles.list();
     expect(list.some((b) => b.id === bundle.id)).toBe(true);
 
-    const fetched = await client.getBundle(bundle.id);
+    const fetched = await client.bundles.get(bundle.id);
     expect(fetched.id).toBe(bundle.id);
 
-    const updated = await client.updateBundle(bundle.id, { description: "edited" });
+    const updated = await client.bundles.update(bundle.id, { description: "edited" });
     expect(updated.description).toBe("edited");
 
-    const archived = await client.archiveBundle(bundle.id);
-    expect(archived.archived_at).not.toBeNull();
+    const archived = await client.bundles.archive(bundle.id);
+    expect(archived.archivedAt).not.toBeNull();
 
-    const unarchived = await client.unarchiveBundle(bundle.id);
-    expect(unarchived.archived_at).toBeNull();
+    const unarchived = await client.bundles.unarchive(bundle.id);
+    expect(unarchived.archivedAt).toBeNull();
 
-    const del = await client.deleteBundle(bundle.id);
+    const del = await client.bundles.delete(bundle.id);
     expect(del.deleted).toBe(true);
   });
 
-  it("bundle membership: add/list/listBundlesForLink/remove", async () => {
+  it("bundle membership: add/list/links.bundles/remove", async () => {
     const apiKey = await mintApiKey("owner@example.com", "create,read");
-    const client = new ShrtnrClient({ baseUrl: BASE_URL, auth: { apiKey } });
+    const client = new ShrtnrClient({ baseUrl: BASE_URL, apiKey });
 
-    const link = await client.createLink({ url: "https://example.com/m" });
-    const bundle = await client.createBundle({ name: "M" });
+    const link = await client.links.create({ url: "https://example.com/m" });
+    const bundle = await client.bundles.create({ name: "M" });
 
-    const added = await client.addLinkToBundle(bundle.id, link.id);
+    const added = await client.bundles.addLink(bundle.id, link.id);
     expect(added.added).toBe(true);
 
-    const links = await client.listBundleLinks(bundle.id);
-    expect(links.some((l) => l.id === link.id)).toBe(true);
+    const bundleLinks = await client.bundles.links(bundle.id);
+    expect(bundleLinks.some((l) => l.id === link.id)).toBe(true);
 
-    const bundlesForLink = await client.listBundlesForLink(link.id);
+    const bundlesForLink = await client.links.bundles(link.id);
     expect(bundlesForLink.some((b) => b.id === bundle.id)).toBe(true);
 
-    const analytics = await client.getBundleAnalytics(bundle.id, "30d");
-    expect(analytics.bundle.id).toBe(bundle.id);
+    const analytics = await client.bundles.analytics(bundle.id, { range: "30d" });
+    expect(typeof analytics.totalClicks).toBe("number");
 
-    const removed = await client.removeLinkFromBundle(bundle.id, link.id);
+    const removed = await client.bundles.removeLink(bundle.id, link.id);
     expect(removed.removed).toBe(true);
   });
 });

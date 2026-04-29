@@ -195,20 +195,20 @@ describe("links.get", () => {
   it("GETs /api/links/:id", async () => {
     mockFetch(200, stubLink);
     await client().links.get(3);
-    expect(lastCall().url).toBe(`${BASE}/api/links/3`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links/3`);
     expect(lastCall().init.method).toBe("GET");
   });
 
   it("appends range query param when provided", async () => {
     mockFetch(200, stubLink);
     await client().links.get(3, { range: "7d" });
-    expect(lastCall().url).toBe(`${BASE}/api/links/3?range=7d`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links/3?range=7d`);
   });
 
   it("omits range when not provided", async () => {
     mockFetch(200, stubLink);
     await client().links.get(3);
-    expect(lastCall().url).toBe(`${BASE}/api/links/3`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links/3`);
   });
 });
 
@@ -216,20 +216,20 @@ describe("links.list", () => {
   it("GETs /api/links", async () => {
     mockFetch(200, []);
     await client().links.list();
-    expect(lastCall().url).toBe(`${BASE}/api/links`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links`);
     expect(lastCall().init.method).toBe("GET");
   });
 
   it("appends owner when provided", async () => {
     mockFetch(200, []);
     await client().links.list({ owner: "user@example.com" });
-    expect(lastCall().url).toBe(`${BASE}/api/links?owner=user%40example.com`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links?owner=user%40example.com`);
   });
 
   it("appends range when provided", async () => {
     mockFetch(200, []);
     await client().links.list({ range: "30d" });
-    expect(lastCall().url).toBe(`${BASE}/api/links?range=30d`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links?range=30d`);
   });
 });
 
@@ -238,7 +238,7 @@ describe("links.create", () => {
     mockFetch(201, stubLink);
     await client().links.create({ url: "https://example.com", label: "L" });
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/links`);
+    expect(url).toBe(`${BASE}/_/api/links`);
     expect(init.method).toBe("POST");
     const body = JSON.parse(init.body as string) as Record<string, unknown>;
     expect(body["url"]).toBe("https://example.com");
@@ -251,7 +251,7 @@ describe("links.update", () => {
     mockFetch(200, stubLink);
     await client().links.update(1, { url: "https://new.com" });
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/links/1`);
+    expect(url).toBe(`${BASE}/_/api/links/1`);
     expect(init.method).toBe("PUT");
   });
 });
@@ -261,7 +261,7 @@ describe("links.disable", () => {
     mockFetch(200, stubLink);
     await client().links.disable(1);
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/links/1/disable`);
+    expect(url).toBe(`${BASE}/_/api/links/1/disable`);
     expect(init.method).toBe("POST");
   });
 });
@@ -271,7 +271,7 @@ describe("links.enable", () => {
     mockFetch(200, stubLink);
     await client().links.enable(1);
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/links/1/enable`);
+    expect(url).toBe(`${BASE}/_/api/links/1/enable`);
     expect(init.method).toBe("POST");
   });
 });
@@ -282,7 +282,7 @@ describe("links.delete", () => {
     const result = await client().links.delete(1);
     expect(result.deleted).toBe(true);
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/links/1`);
+    expect(url).toBe(`${BASE}/_/api/links/1`);
     expect(init.method).toBe("DELETE");
   });
 });
@@ -300,13 +300,13 @@ describe("links.analytics", () => {
   it("GETs /api/links/:id/analytics", async () => {
     mockFetch(200, stubStats);
     await client().links.analytics(5);
-    expect(lastCall().url).toBe(`${BASE}/api/links/5/analytics`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links/5/analytics`);
   });
 
   it("appends range when provided", async () => {
     mockFetch(200, stubStats);
     await client().links.analytics(5, { range: "7d" });
-    expect(lastCall().url).toBe(`${BASE}/api/links/5/analytics?range=7d`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links/5/analytics?range=7d`);
   });
 
   it("maps num_countries to numCountries", async () => {
@@ -329,13 +329,13 @@ describe("links.timeline", () => {
   it("GETs /api/links/:id/timeline", async () => {
     mockFetch(200, stubTimeline);
     await client().links.timeline(5);
-    expect(lastCall().url).toBe(`${BASE}/api/links/5/timeline`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links/5/timeline`);
   });
 
   it("appends range when provided", async () => {
     mockFetch(200, stubTimeline);
     await client().links.timeline(5, { range: "30d" });
-    expect(lastCall().url).toBe(`${BASE}/api/links/5/timeline?range=30d`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links/5/timeline?range=30d`);
   });
 
   it("maps summary keys to camelCase", async () => {
@@ -354,13 +354,13 @@ describe("links.qr", () => {
     mockFetch(200, "<svg/>", "image/svg+xml");
     const svg = await client().links.qr(5);
     expect(svg).toMatch(/<svg/);
-    expect(lastCall().url).toBe(`${BASE}/api/links/5/qr`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links/5/qr`);
   });
 
   it("appends slug and size when provided", async () => {
     mockFetch(200, "<svg/>", "image/svg+xml");
     await client().links.qr(5, { slug: "promo", size: "256" });
-    expect(lastCall().url).toBe(`${BASE}/api/links/5/qr?slug=promo&size=256`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links/5/qr?slug=promo&size=256`);
   });
 });
 
@@ -368,7 +368,7 @@ describe("links.bundles", () => {
   it("GETs /api/links/:id/bundles", async () => {
     mockFetch(200, []);
     await client().links.bundles(7);
-    expect(lastCall().url).toBe(`${BASE}/api/links/7/bundles`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links/7/bundles`);
   });
 });
 
@@ -385,13 +385,13 @@ describe("slugs.lookup", () => {
   it("GETs /api/slugs/:slug", async () => {
     mockFetch(200, stubLink);
     await client().slugs.lookup("find-me");
-    expect(lastCall().url).toBe(`${BASE}/api/slugs/find-me`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/slugs/find-me`);
   });
 
   it("URL-encodes slugs with reserved characters", async () => {
     mockFetch(200, stubLink);
     await client().slugs.lookup("foo/bar");
-    expect(lastCall().url).toBe(`${BASE}/api/slugs/foo%2Fbar`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/slugs/foo%2Fbar`);
   });
 });
 
@@ -400,7 +400,7 @@ describe("slugs.add", () => {
     mockFetch(201, stubSlug);
     await client().slugs.add(1, "custom");
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/links/1/slugs`);
+    expect(url).toBe(`${BASE}/_/api/links/1/slugs`);
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body as string)).toEqual({ slug: "custom" });
   });
@@ -411,7 +411,7 @@ describe("slugs.disable", () => {
     mockFetch(200, stubSlug);
     await client().slugs.disable(1, "abc");
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/links/1/slugs/abc/disable`);
+    expect(url).toBe(`${BASE}/_/api/links/1/slugs/abc/disable`);
     expect(init.method).toBe("POST");
   });
 });
@@ -421,7 +421,7 @@ describe("slugs.enable", () => {
     mockFetch(200, stubSlug);
     await client().slugs.enable(1, "abc");
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/links/1/slugs/abc/enable`);
+    expect(url).toBe(`${BASE}/_/api/links/1/slugs/abc/enable`);
     expect(init.method).toBe("POST");
   });
 });
@@ -432,7 +432,7 @@ describe("slugs.remove", () => {
     const result = await client().slugs.remove(1, "abc");
     expect(result.removed).toBe(true);
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/links/1/slugs/abc`);
+    expect(url).toBe(`${BASE}/_/api/links/1/slugs/abc`);
     expect(init.method).toBe("DELETE");
   });
 });
@@ -457,13 +457,13 @@ describe("bundles.get", () => {
   it("GETs /api/bundles/:id", async () => {
     mockFetch(200, stubBundleWithSummary);
     await client().bundles.get(42);
-    expect(lastCall().url).toBe(`${BASE}/api/bundles/42`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/bundles/42`);
   });
 
   it("appends range when provided", async () => {
     mockFetch(200, stubBundleWithSummary);
     await client().bundles.get(42, { range: "90d" });
-    expect(lastCall().url).toBe(`${BASE}/api/bundles/42?range=90d`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/bundles/42?range=90d`);
   });
 
   it("maps snake_case fields to camelCase", async () => {
@@ -480,19 +480,19 @@ describe("bundles.list", () => {
   it("GETs /api/bundles", async () => {
     mockFetch(200, []);
     await client().bundles.list();
-    expect(lastCall().url).toBe(`${BASE}/api/bundles`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/bundles`);
   });
 
   it("appends archived when provided", async () => {
     mockFetch(200, []);
     await client().bundles.list({ archived: "all" });
-    expect(lastCall().url).toBe(`${BASE}/api/bundles?archived=all`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/bundles?archived=all`);
   });
 
   it("appends range when provided", async () => {
     mockFetch(200, []);
     await client().bundles.list({ range: "1y" });
-    expect(lastCall().url).toBe(`${BASE}/api/bundles?range=1y`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/bundles?range=1y`);
   });
 });
 
@@ -501,7 +501,7 @@ describe("bundles.create", () => {
     mockFetch(201, stubBundle);
     await client().bundles.create({ name: "New Bundle" });
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/bundles`);
+    expect(url).toBe(`${BASE}/_/api/bundles`);
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body as string)).toEqual({ name: "New Bundle" });
   });
@@ -512,7 +512,7 @@ describe("bundles.update", () => {
     mockFetch(200, stubBundle);
     await client().bundles.update(42, { description: "Updated" });
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/bundles/42`);
+    expect(url).toBe(`${BASE}/_/api/bundles/42`);
     expect(init.method).toBe("PUT");
   });
 });
@@ -523,7 +523,7 @@ describe("bundles.delete", () => {
     const result = await client().bundles.delete(42);
     expect(result.deleted).toBe(true);
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/bundles/42`);
+    expect(url).toBe(`${BASE}/_/api/bundles/42`);
     expect(init.method).toBe("DELETE");
   });
 });
@@ -533,7 +533,7 @@ describe("bundles.archive", () => {
     mockFetch(200, { ...stubBundle, archived_at: 9999 });
     await client().bundles.archive(42);
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/bundles/42/archive`);
+    expect(url).toBe(`${BASE}/_/api/bundles/42/archive`);
     expect(init.method).toBe("POST");
   });
 });
@@ -543,7 +543,7 @@ describe("bundles.unarchive", () => {
     mockFetch(200, stubBundle);
     await client().bundles.unarchive(42);
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/bundles/42/unarchive`);
+    expect(url).toBe(`${BASE}/_/api/bundles/42/unarchive`);
     expect(init.method).toBe("POST");
   });
 });
@@ -561,13 +561,13 @@ describe("bundles.analytics", () => {
   it("GETs /api/bundles/:id/analytics", async () => {
     mockFetch(200, stubStats);
     await client().bundles.analytics(42);
-    expect(lastCall().url).toBe(`${BASE}/api/bundles/42/analytics`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/bundles/42/analytics`);
   });
 
   it("appends range when provided", async () => {
     mockFetch(200, stubStats);
     await client().bundles.analytics(42, { range: "all" });
-    expect(lastCall().url).toBe(`${BASE}/api/bundles/42/analytics?range=all`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/bundles/42/analytics?range=all`);
   });
 });
 
@@ -575,7 +575,7 @@ describe("bundles.links", () => {
   it("GETs /api/bundles/:id/links", async () => {
     mockFetch(200, []);
     await client().bundles.links(42);
-    expect(lastCall().url).toBe(`${BASE}/api/bundles/42/links`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/bundles/42/links`);
   });
 });
 
@@ -585,7 +585,7 @@ describe("bundles.addLink", () => {
     const result = await client().bundles.addLink(42, 7);
     expect(result.added).toBe(true);
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/bundles/42/links`);
+    expect(url).toBe(`${BASE}/_/api/bundles/42/links`);
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body as string)).toEqual({ link_id: 7 });
   });
@@ -597,7 +597,7 @@ describe("bundles.removeLink", () => {
     const result = await client().bundles.removeLink(42, 7);
     expect(result.removed).toBe(true);
     const { url, init } = lastCall();
-    expect(url).toBe(`${BASE}/api/bundles/42/links/7`);
+    expect(url).toBe(`${BASE}/_/api/bundles/42/links/7`);
     expect(init.method).toBe("DELETE");
   });
 });
@@ -611,14 +611,14 @@ describe("Base URL normalization", () => {
     const c = new ShrtnrClient({ baseUrl: BASE + "/", apiKey: API_KEY, fetch: fetchSpy });
     mockFetch(200, []);
     await c.links.list();
-    expect(lastCall().url).toBe(`${BASE}/api/links`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links`);
   });
 
   it("strips multiple trailing slashes", async () => {
     const c = new ShrtnrClient({ baseUrl: BASE + "///", apiKey: API_KEY, fetch: fetchSpy });
     mockFetch(200, []);
     await c.links.list();
-    expect(lastCall().url).toBe(`${BASE}/api/links`);
+    expect(lastCall().url).toBe(`${BASE}/_/api/links`);
   });
 });
 
