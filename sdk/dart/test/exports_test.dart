@@ -19,8 +19,8 @@ void main() {
       expect(BundleTopLink, isNotNull);
       expect(ClickStats, isNotNull);
       expect(NameCount, isNotNull);
-      expect(DateClickCount, isNotNull);
-      expect(SlugClickCount, isNotNull);
+      expect(DateCount, isNotNull);
+      expect(SlugCount, isNotNull);
       expect(TimelineData, isNotNull);
       expect(TimelineBucket, isNotNull);
       expect(TimelineRange, isNotNull);

@@ -3,11 +3,14 @@
 
 import { HttpClient } from "../internal/http";
 import {
+  AddedResult,
   Bundle,
   BundleWithSummary,
   ClickStats,
   CreateBundleBody,
+  DeletedResult,
   Link,
+  RemovedResult,
   TimelineRange,
   UpdateBundleBody,
 } from "../models";
@@ -42,7 +45,7 @@ export class BundlesResource {
   }
 
   /** Permanently delete a bundle. */
-  delete(id: number): Promise<{ deleted: boolean }> {
+  delete(id: number): Promise<DeletedResult> {
     return this.http.request("DELETE", `/_/api/bundles/${id}`);
   }
 
@@ -69,12 +72,12 @@ export class BundlesResource {
   }
 
   /** Add a link to a bundle. */
-  addLink(id: number, linkId: number): Promise<{ added: boolean }> {
+  addLink(id: number, linkId: number): Promise<AddedResult> {
     return this.http.request("POST", `/_/api/bundles/${id}/links`, { body: { linkId } });
   }
 
   /** Remove a link from a bundle. */
-  removeLink(id: number, linkId: number): Promise<{ removed: boolean }> {
+  removeLink(id: number, linkId: number): Promise<RemovedResult> {
     return this.http.request("DELETE", `/_/api/bundles/${id}/links/${linkId}`);
   }
 }

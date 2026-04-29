@@ -446,12 +446,12 @@ class ClickStats {
         clicksOverTime:
             ((json['clicks_over_time'] as List<dynamic>?) ?? const <dynamic>[])
                 .map((dynamic e) =>
-                    DateClickCount.fromJson(e as Map<String, dynamic>))
+                    DateCount.fromJson(e as Map<String, dynamic>))
                 .toList(growable: false),
         slugClicks:
             ((json['slug_clicks'] as List<dynamic>?) ?? const <dynamic>[])
                 .map((dynamic e) =>
-                    SlugClickCount.fromJson(e as Map<String, dynamic>))
+                    SlugCount.fromJson(e as Map<String, dynamic>))
                 .toList(growable: false),
         numCountries: ((json['num_countries'] as num?) ?? 0).toInt(),
         numReferrers: ((json['num_referrers'] as num?) ?? 0).toInt(),
@@ -488,10 +488,10 @@ class ClickStats {
   final List<NameCount> channels;
 
   /// Click timeline, one entry per date bucket.
-  final List<DateClickCount> clicksOverTime;
+  final List<DateCount> clicksOverTime;
 
   /// Per-slug click counts.
-  final List<SlugClickCount> slugClicks;
+  final List<SlugCount> slugClicks;
 
   /// Distinct country count.
   final int numCountries;
@@ -511,12 +511,12 @@ class ClickStats {
 
 /// A date/count pair in a click timeline.
 @immutable
-class DateClickCount {
-  /// Creates a date/count pair. Most callers should use [DateClickCount.fromJson].
-  const DateClickCount({required this.date, required this.count});
+class DateCount {
+  /// Creates a date/count pair. Most callers should use [DateCount.fromJson].
+  const DateCount({required this.date, required this.count});
 
   /// Parses a date/count pair from JSON.
-  factory DateClickCount.fromJson(Map<String, dynamic> json) => DateClickCount(
+  factory DateCount.fromJson(Map<String, dynamic> json) => DateCount(
         date: (json['date'] as String?) ?? '',
         count: ((json['count'] as num?) ?? 0).toInt(),
       );
@@ -530,12 +530,12 @@ class DateClickCount {
 
 /// A slug/count pair in a per-slug analytics breakdown.
 @immutable
-class SlugClickCount {
-  /// Creates a slug/count pair. Most callers should use [SlugClickCount.fromJson].
-  const SlugClickCount({required this.slug, required this.count});
+class SlugCount {
+  /// Creates a slug/count pair. Most callers should use [SlugCount.fromJson].
+  const SlugCount({required this.slug, required this.count});
 
   /// Parses a slug/count pair from JSON.
-  factory SlugClickCount.fromJson(Map<String, dynamic> json) => SlugClickCount(
+  factory SlugCount.fromJson(Map<String, dynamic> json) => SlugCount(
         slug: (json['slug'] as String?) ?? '',
         count: ((json['count'] as num?) ?? 0).toInt(),
       );

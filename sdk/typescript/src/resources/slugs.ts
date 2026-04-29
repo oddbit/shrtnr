@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { HttpClient } from "../internal/http";
-import { Link, Slug } from "../models";
+import { Link, RemovedResult, Slug } from "../models";
 
 export class SlugsResource {
   constructor(private readonly http: HttpClient) {}
@@ -34,7 +34,7 @@ export class SlugsResource {
   }
 
   /** Remove a custom slug from a link. */
-  remove(linkId: number, slug: string): Promise<{ removed: boolean }> {
+  remove(linkId: number, slug: string): Promise<RemovedResult> {
     return this.http.request(
       "DELETE",
       `/_/api/links/${linkId}/slugs/${encodeURIComponent(slug)}`,

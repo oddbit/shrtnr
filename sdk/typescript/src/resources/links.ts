@@ -6,6 +6,7 @@ import {
   Bundle,
   ClickStats,
   CreateLinkBody,
+  DeletedResult,
   Link,
   TimelineData,
   TimelineRange,
@@ -50,7 +51,7 @@ export class LinksResource {
   }
 
   /** Permanently delete a link. */
-  delete(id: number): Promise<{ deleted: boolean }> {
+  delete(id: number): Promise<DeletedResult> {
     return this.http.request("DELETE", `/_/api/links/${id}`);
   }
 

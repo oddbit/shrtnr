@@ -45,18 +45,36 @@ export interface Bundle {
   updatedAt: number;
 }
 
+/// A top-link entry preview shown in a BundleWithSummary.
+export interface BundleTopLink {
+  slug: string;
+  clickCount: number;
+}
+
 export interface BundleWithSummary extends Bundle {
   linkCount: number;
   totalClicks: number;
   deltaPct?: number;
   sparkline: number[];
-  topLinks: { slug: string; clickCount: number }[];
+  topLinks: BundleTopLink[];
 }
 
 // ---- Analytics models ----
 
 export interface NameCount {
   name: string;
+  count: number;
+}
+
+/// A date/count pair in a click timeline.
+export interface DateCount {
+  date: string;
+  count: number;
+}
+
+/// A slug/count pair in a per-slug analytics breakdown.
+export interface SlugCount {
+  slug: string;
   count: number;
 }
 
@@ -70,8 +88,8 @@ export interface ClickStats {
   browsers: NameCount[];
   linkModes: NameCount[];
   channels: NameCount[];
-  clicksOverTime: { date: string; count: number }[];
-  slugClicks: { slug: string; count: number }[];
+  clicksOverTime: DateCount[];
+  slugClicks: SlugCount[];
   numCountries: number;
   numReferrers: number;
   numReferrerHosts: number;
@@ -128,4 +146,21 @@ export interface UpdateBundleBody {
   description?: string | null;
   icon?: string | null;
   accent?: BundleAccent;
+}
+
+// ---- Result types ----
+
+/// Result of a delete operation.
+export interface DeletedResult {
+  deleted: boolean;
+}
+
+/// Result of an add-link-to-bundle operation.
+export interface AddedResult {
+  added: boolean;
+}
+
+/// Result of a remove-link-from-bundle or remove-slug operation.
+export interface RemovedResult {
+  removed: boolean;
 }
