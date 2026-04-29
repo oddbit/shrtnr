@@ -355,7 +355,7 @@ const linkQrRoute = createRoute({
   responses: {
     200: {
       description: "SVG image",
-      content: { "image/svg+xml": { schema: z.string().openapi({ format: "binary" }) } },
+      content: { "image/svg+xml": { schema: z.string() } },
     },
     400: errorResponses[400],
     401: errorResponses[401],
@@ -402,6 +402,7 @@ const linkAnalyticsRoute = createRoute({
   request: { params: IdParamSchema, query: RangeQuerySchema },
   responses: {
     200: { description: "OK", content: { "application/json": { schema: ClickStatsSchema } } },
+    400: errorResponses[400],
     401: errorResponses[401],
     403: errorResponses[403],
     404: errorResponses[404],
@@ -426,6 +427,7 @@ const linkTimelineRoute = createRoute({
   request: { params: IdParamSchema, query: RangeQuerySchema },
   responses: {
     200: { description: "OK", content: { "application/json": { schema: TimelineDataSchema } } },
+    400: errorResponses[400],
     401: errorResponses[401],
     403: errorResponses[403],
     404: errorResponses[404],

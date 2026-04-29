@@ -318,6 +318,7 @@ const bundleAnalyticsRoute = createRoute({
   request: { params: IdParamSchema, query: RangeQuerySchema },
   responses: {
     200: { description: "OK.", content: { "application/json": { schema: ClickStatsSchema } } },
+    400: errorResponses[400],
     401: errorResponses[401],
     403: errorResponses[403],
     404: errorResponses[404],
