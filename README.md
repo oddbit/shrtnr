@@ -13,6 +13,23 @@ It takes one click to deploy. You get a full admin UI, click analytics, SDKs for
 
 Read more on our [website](https://oddbit.id).
 
+## Preview
+
+<table>
+<tr>
+<td width="33%"><a href="https://oddb.it/shrtnr-info"><img src="https://oddbit.id/images/shrtnr/dashboard-30d.png" alt="Admin dashboard with 30-day analytics"></a></td>
+<td width="33%"><a href="https://oddb.it/shrtnr-info"><img src="https://oddbit.id/images/shrtnr/links.png" alt="Links management"></a></td>
+<td width="33%"><a href="https://oddb.it/shrtnr-info"><img src="https://oddbit.id/images/shrtnr/link-details-30d.png" alt="Per-link analytics"></a></td>
+</tr>
+<tr>
+<td width="33%"><a href="https://oddb.it/shrtnr-info"><img src="https://oddbit.id/images/shrtnr/bundles.png" alt="Bundles overview"></a></td>
+<td width="33%"><a href="https://oddb.it/shrtnr-info"><img src="https://oddbit.id/images/shrtnr/bundle-details-30d.png" alt="Bundle analytics"></a></td>
+<td width="33%"><a href="https://oddb.it/shrtnr-info"><img src="https://oddbit.id/images/shrtnr/claude.gif" alt="Claude MCP integration"></a></td>
+</tr>
+</table>
+
+<p align="right"><a href="https://oddb.it/shrtnr-info">See it in action →</a></p>
+
 ## Features
 
 - **Free hosting** on Cloudflare Workers + D1 (no VPS, no containers, no monthly bill)
