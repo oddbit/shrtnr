@@ -1,29 +1,23 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-export { ShrtnrClient } from "./public-client";
+export { ShrtnrClient } from "./client";
+export type { ShrtnrClientConfig } from "./client";
 export { ShrtnrError } from "./errors";
 export type {
-  ShrtnrConfig,
-  ShrtnrAuth,
-  ApiKeyAuth,
-  Link,
-  Slug,
-  ClickStats,
-  NameCount,
-  DateCount,
-  HealthStatus,
-  CreateLinkOptions,
-  UpdateLinkOptions,
   TimelineRange,
+  BundleAccent,
+  Slug,
+  Link,
+  Bundle,
+  BundleWithSummary,
+  NameCount,
+  ClickStats,
   TimelineBucket,
   TimelineData,
-  Bundle,
-  BundleAccent,
-  BundleWithSummary,
-  BundleStats,
-  BundleStatsPerLink,
-  CreateBundleOptions,
-  UpdateBundleOptions,
-  ListBundlesOptions,
-} from "./types";
+  CreateLinkBody,
+  UpdateLinkBody,
+  AddSlugBody,
+  CreateBundleBody,
+  UpdateBundleBody,
+} from "./models";
