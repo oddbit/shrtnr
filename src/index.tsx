@@ -64,9 +64,7 @@ import { handleListKeys, handleCreateKey, handleDeleteKey } from "./api/keys";
 import {
   handleDashboardStats as handleDashboardStatsApi,
   handleAdminLinkAnalytics,
-  handlePublicLinkAnalytics,
   handleAdminLinkTimeline,
-  handlePublicLinkTimeline,
 } from "./api/analytics";
 import {
   handleAddLinkToBundle,
@@ -508,23 +506,7 @@ app.use("/_/api/*", async (c, next) => {
   await next();
 });
 
-// ---- Public API routes (link management only) ----
-
-app.get("/_/api/links/:id/analytics", (c) => {
-  const id = parseInt(c.req.param("id"), 10);
-  if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  if (!hasScope(c.var.auth, "read")) return forbiddenResponse();
-  return handlePublicLinkAnalytics(c.env, id, c.req.query("range"));
-});
-app.get("/_/api/links/:id/timeline", (c) => {
-  const id = parseInt(c.req.param("id"), 10);
-  if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  if (!hasScope(c.var.auth, "read")) return forbiddenResponse();
-  return handlePublicLinkTimeline(c.env, id, c.req.query("range"));
-});
-
-// Mount the OpenAPI sub-app. Resource routes are added to apiRouter in subsequent commits.
-// For now this serves /_/api/openapi.json and /_/api/docs.
+// Mount the OpenAPI sub-app. All /_/api/* traffic flows through apiRouter.
 app.route("/_/api", apiRouter);
 
 // ---- Root landing page ----

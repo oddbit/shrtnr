@@ -20,6 +20,7 @@ import {
 } from "../services/link-management";
 import { listBundlesForLink } from "../services/bundle-management";
 import { handleLinkQr } from "./qr";
+import { handlePublicLinkAnalytics, handlePublicLinkTimeline } from "./analytics";
 import { fetchPageTitle } from "../title-fetch";
 import { fromServiceResult, json } from "./response";
 import { requireScope } from "./scope";
@@ -27,12 +28,15 @@ import type { Env } from "../types";
 import {
   AddSlugBodySchema,
   BundleSchema,
+  ClickStatsSchema,
   CreateLinkBodySchema,
   ErrorResponseSchema,
   IdParamSchema,
   LinkSchema,
+  RangeQuerySchema,
   SlugParamSchema,
   SlugSchema,
+  TimelineDataSchema,
   UpdateLinkBodySchema,
   paramHook,
 } from "./schemas";
@@ -382,6 +386,54 @@ const listLinkBundlesRoute = createRoute({
 linksApp.openapi(listLinkBundlesRoute, async (c) => {
   const { id } = c.req.valid("param") as { id: number };
   return fromServiceResult(await listBundlesForLink(c.env, id, c.var.auth.identity)) as never;
+}, paramHook);
+
+// ---- GET /:id/analytics ----
+
+const linkAnalyticsRoute = createRoute({
+  method: "get",
+  path: "/{id}/analytics",
+  tags: ["links", "analytics"],
+  summary: "Get analytics for a link (defaults to all-time)",
+  middleware: [requireScope("read")] as const,
+  request: { params: IdParamSchema, query: RangeQuerySchema },
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: ClickStatsSchema } } },
+    401: errorResponses[401],
+    403: errorResponses[403],
+    404: errorResponses[404],
+    500: errorResponses[500],
+  },
+});
+
+linksApp.openapi(linkAnalyticsRoute, async (c) => {
+  const { id } = c.req.valid("param") as { id: number };
+  const { range } = c.req.valid("query") as { range?: string };
+  return (await handlePublicLinkAnalytics(c.env, id, range)) as never;
+}, paramHook);
+
+// ---- GET /:id/timeline ----
+
+const linkTimelineRoute = createRoute({
+  method: "get",
+  path: "/{id}/timeline",
+  tags: ["links", "analytics"],
+  summary: "Get click timeline for a link (defaults to all-time)",
+  middleware: [requireScope("read")] as const,
+  request: { params: IdParamSchema, query: RangeQuerySchema },
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: TimelineDataSchema } } },
+    401: errorResponses[401],
+    403: errorResponses[403],
+    404: errorResponses[404],
+    500: errorResponses[500],
+  },
+});
+
+linksApp.openapi(linkTimelineRoute, async (c) => {
+  const { id } = c.req.valid("param") as { id: number };
+  const { range } = c.req.valid("query") as { range?: string };
+  return (await handlePublicLinkTimeline(c.env, id, range)) as never;
 }, paramHook);
 
 // ---- Named exports consumed by admin routes in index.tsx (pending migration in later tasks) ----
