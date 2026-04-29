@@ -15,6 +15,25 @@ function authed(email: string, path: string, init?: RequestInit): Request {
   });
 }
 
+// Seeds an api_keys row directly so cross-owner isolation tests can mint a
+// Bearer key bound to an arbitrary identity without round-tripping through
+// the admin keys endpoint (which always uses the JWT identity).
+async function seedApiKey(
+  db: D1Database,
+  scope: string | null,
+  identity = "test@shrtnr.test",
+): Promise<string> {
+  const raw = `sk_${crypto.randomUUID().replace(/-/g, "")}`;
+  const prefix = raw.slice(0, 7);
+  const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+  const hash = Array.from(new Uint8Array(hashBuf))
+    .map((b) => b.toString(16).padStart(2, "0")).join("");
+  await db.prepare(
+    "INSERT INTO api_keys (identity, title, key_prefix, key_hash, scope, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+  ).bind(identity, "test", prefix, hash, scope, Math.floor(Date.now() / 1000)).run();
+  return raw;
+}
+
 async function createLinkFor(email: string, url: string, slug: string): Promise<number> {
   const now = Math.floor(Date.now() / 1000);
   const res = await env.DB
@@ -268,5 +287,50 @@ describe("Public API: bundles archive/unarchive", () => {
       headers: { "Authorization": `Bearer ${readKey}` },
     }));
     expect(res.status).toBe(403);
+  });
+});
+
+// ---- Cross-owner bundle isolation at the live handler ----
+//
+// Asserts that a Bearer key bound to identity A cannot read or delete a bundle
+// owned by identity B via the public API. The ownership guard lives in
+// src/services/bundle-management.ts and conflates "not found" with "not yours"
+// (returns 404 in both cases) to avoid leaking existence.
+
+describe("cross-owner bundle isolation", () => {
+  it("owner A's API key cannot GET owner B's bundle (404)", async () => {
+    const keyA = await seedApiKey(env.DB, "create,read", "ownerA@test");
+    const keyB = await seedApiKey(env.DB, "create,read", "ownerB@test");
+
+    const create = await SELF.fetch(new Request("https://shrtnr.test/_/api/bundles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${keyB}` },
+      body: JSON.stringify({ name: "Owner B Only" }),
+    }));
+    expect(create.status).toBe(201);
+    const { id } = await create.json() as { id: number };
+
+    const get = await SELF.fetch(new Request(`https://shrtnr.test/_/api/bundles/${id}`, {
+      headers: { Authorization: `Bearer ${keyA}` },
+    }));
+    expect(get.status).toBe(404);
+  });
+
+  it("owner A's API key cannot DELETE owner B's bundle (404)", async () => {
+    const keyA = await seedApiKey(env.DB, "create,read", "ownerA@test");
+    const keyB = await seedApiKey(env.DB, "create,read", "ownerB@test");
+
+    const create = await SELF.fetch(new Request("https://shrtnr.test/_/api/bundles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${keyB}` },
+      body: JSON.stringify({ name: "Owner B Only Delete" }),
+    }));
+    const { id } = await create.json() as { id: number };
+
+    const del = await SELF.fetch(new Request(`https://shrtnr.test/_/api/bundles/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${keyA}` },
+    }));
+    expect(del.status).toBe(404);
   });
 });

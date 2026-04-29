@@ -893,6 +893,58 @@ describe("POST /_/api/links idempotent on URL", () => {
   });
 });
 
+// ---- Cross-owner isolation at the live handler ----
+//
+// Asserts that owner A's API key cannot mutate owner B's link via the public
+// API, even when both keys have create+read scope. The ownership guard lives
+// in src/services/link-management.ts and returns 403 on mismatch for mutating
+// calls (disable/enable/delete/slug ops).
+//
+// IMPORTANT: GET /_/api/links/:id is intentionally NOT covered here because
+// `getLink` in src/services/link-management.ts does not check ownership. The
+// public GET surface returns any link by id regardless of caller identity.
+// That is a separate concern; this test is about confirming the existing
+// 403 path on the mutating routes, not papering over the GET behavior.
+
+describe("cross-owner link isolation", () => {
+  it("owner A's API key cannot delete owner B's link (403)", async () => {
+    const keyA = await seedApiKey(env.DB, "create,read", "ownerA@test");
+    const keyB = await seedApiKey(env.DB, "create,read", "ownerB@test");
+
+    const create = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${keyB}` },
+      body: JSON.stringify({ url: "https://example.com/owner-b-only-delete" }),
+    }));
+    expect(create.status).toBe(201);
+    const { id } = await create.json() as { id: number };
+
+    const del = await SELF.fetch(new Request(`https://shrtnr.test/_/api/links/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${keyA}` },
+    }));
+    expect(del.status).toBe(403);
+  });
+
+  it("owner A's API key cannot disable owner B's link (403)", async () => {
+    const keyA = await seedApiKey(env.DB, "create,read", "ownerA@test");
+    const keyB = await seedApiKey(env.DB, "create,read", "ownerB@test");
+
+    const create = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${keyB}` },
+      body: JSON.stringify({ url: "https://example.com/owner-b-only-disable" }),
+    }));
+    const { id } = await create.json() as { id: number };
+
+    const disable = await SELF.fetch(new Request(`https://shrtnr.test/_/api/links/${id}/disable`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${keyA}` },
+    }));
+    expect(disable.status).toBe(403);
+  });
+});
+
 // ---- Public-vs-admin schema parity ----
 //
 // Probe the public GET /_/api/links/:id surface to confirm it does not expose
