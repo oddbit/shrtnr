@@ -235,3 +235,74 @@ describe("KV write-through on mutations", () => {
     expect(await SlugCache.get(env.SLUG_KV, "custom-one")).toBeNull();
   });
 });
+
+// Single canonical assertion of the redirect-status matrix. KV is busted
+// after every DB mutation so the live read goes through D1, exercising
+// the redirect guard logic from end to end.
+describe("redirect status by link state", () => {
+  it("active, not expired -> 301", async () => {
+    await LinkRepository.create(env.DB, {
+      url: "https://example.com/active",
+      slug: "active",
+      createdBy: DEV_IDENTITY,
+    });
+    await SlugCache.delete(env.SLUG_KV, "active");
+
+    const res = await SELF.fetch(req("active"));
+    expect(res.status).toBe(301);
+    expect(res.headers.get("Location")).toBe("https://example.com/active");
+  });
+
+  it("disabled -> 404", async () => {
+    const link = await LinkRepository.create(env.DB, {
+      url: "https://example.com/disabled",
+      slug: "disabled-state",
+      createdBy: DEV_IDENTITY,
+    });
+    // Disable the slug (links table has no disabled_at column on its own;
+    // the redirect guard reads slugs.disabled_at via findForRedirect).
+    await env.DB.prepare("UPDATE slugs SET disabled_at = ? WHERE link_id = ?")
+      .bind(Math.floor(Date.now() / 1000), link.id)
+      .run();
+    await SlugCache.delete(env.SLUG_KV, "disabled-state");
+
+    const res = await SELF.fetch(req("disabled-state"));
+    expect(res.status).toBe(404);
+  });
+
+  it("expires_at in past -> 404", async () => {
+    const link = await LinkRepository.create(env.DB, {
+      url: "https://example.com/expired",
+      slug: "expired-state",
+      createdBy: DEV_IDENTITY,
+    });
+    await env.DB.prepare("UPDATE links SET expires_at = ? WHERE id = ?")
+      .bind(1, link.id) // 1970
+      .run();
+    await SlugCache.delete(env.SLUG_KV, "expired-state");
+
+    const res = await SELF.fetch(req("expired-state"));
+    expect(res.status).toBe(404);
+  });
+
+  it("unknown slug -> 404", async () => {
+    const res = await SELF.fetch(req("does-not-exist"));
+    expect(res.status).toBe(404);
+  });
+
+  it("custom slug pointing at deleted link -> 404", async () => {
+    const link = await LinkRepository.create(env.DB, {
+      url: "https://example.com/orphan",
+      slug: "primary-slug",
+      createdBy: DEV_IDENTITY,
+    });
+    await SlugRepository.addCustom(env.DB, link.id, "custom-orphan");
+    // Hard-delete the link. With ON DELETE CASCADE the slug row is gone too,
+    // so the custom slug no longer resolves.
+    await env.DB.prepare("DELETE FROM links WHERE id = ?").bind(link.id).run();
+    await SlugCache.delete(env.SLUG_KV, "custom-orphan");
+
+    const res = await SELF.fetch(req("custom-orphan"));
+    expect(res.status).toBe(404);
+  });
+});
