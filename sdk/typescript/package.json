@@ -47,5 +47,6 @@
     "link-management",
     "click-analytics",
     "custom-slug"
-  ]
+  ],
+  "x-spec-hash": "sha256:8a1fe352d137769a77ba40c42103becfaa8243a186621018f81084fe8e8eec28"
 }
