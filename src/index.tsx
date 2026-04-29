@@ -84,6 +84,7 @@ import {
   handleUpdateBundle,
 } from "./api/bundles";
 import { handleLinkQr } from "./api/qr";
+import type { HonoEnv, AuthContext } from "./api/hono-env";
 import { notFoundResponse } from "./404";
 import { landingResponse } from "./pages/landing";
 import { mcpLandingResponse } from "./mcp/page";
@@ -98,22 +99,7 @@ import { SettingsPage } from "./pages/settings";
 import { BundlesPage } from "./pages/bundles";
 import { BundleDetailPage } from "./pages/bundle-detail";
 
-// ---- Types ----
-
-type AuthContext = {
-  source: "apikey";
-  scope: string | null;
-  identity: string;
-};
-
-type HonoEnv = {
-  Bindings: Env;
-  Variables: {
-    auth: AuthContext;
-    user: AccessUser | null;
-    identity: string;
-  };
-};
+// ---- App ----
 
 const app = new Hono<HonoEnv>();
 
