@@ -88,6 +88,27 @@ implementation details.
 
 See the README for the full method table and migration guide.
 
+### 1.0 post-release fixes (SDK review)
+
+**`BundleAccent` is now a real enum** (was `String`). `Bundle.accent` and
+`BundleWithSummary.accent` are typed `BundleAccent`. Pass `BundleAccent.orange` (etc.)
+instead of a raw string. The enum carries a `wireValue` getter for the string form.
+
+**`TimelineRange` is now a real enum** (was `String?`). All `range` parameters across
+`links`, `bundles`, and the returned `TimelineData.range` field use `TimelineRange`.
+Wire values map via `wireValue`: `TimelineRange.last7d.wireValue == "7d"`.
+
+**`BundleArchivedFilter` is now a real enum** (was `String?`). Pass
+`BundleArchivedFilter.all`, `.trueValue`, or `.activeOnly` to `bundles.list`.
+The wire value `"1"` (numeric alias for `"true"`) is not exposed as a separate member;
+use `trueValue` for both.
+
+**`Bundle.accent` is now required at parse time.** A server response that omits `accent`
+throws immediately rather than silently defaulting to `"orange"`.
+
+**`DateClickCount` renamed to `DateCount`, `SlugClickCount` renamed to `SlugCount`**
+to match the canonical names used by the Python and TypeScript SDKs.
+
 ---
 
 ## 0.3.0

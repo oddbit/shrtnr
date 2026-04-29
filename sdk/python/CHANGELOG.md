@@ -66,6 +66,20 @@ from the JSON response). The `str()` representation formats as
 
 See the README for the full method table and migration guide.
 
+### 1.0 post-release fixes (SDK review)
+
+**`Bundle.accent` is now required at parse time.** `Bundle.from_dict` and
+`BundleWithSummary.from_dict` previously used `data.get("accent", "orange")`,
+masking a missing field. They now use `data["accent"]`, raising `KeyError` if the
+field is absent so the problem surfaces immediately.
+
+**`bundles.list(archived=...)` tightened to `Literal["true","1","only","all"]`**
+(was `str`), matching the TypeScript union type and completing cross-SDK parity.
+
+**Model names confirmed canonical.** `DateCount`, `SlugCount`, `BundleTopLink`,
+`DeletedResult`, `AddedResult`, `RemovedResult` are the reference names adopted by
+all three SDKs.
+
 ---
 
 ## 0.2.0

@@ -56,6 +56,20 @@ new ShrtnrClient({ baseUrl: "...", apiKey: "sk_..." })
 
 See the README for the full method table and migration guide.
 
+### 1.0 post-release fixes (SDK review)
+
+**Named result types.** `links.delete`, `bundles.delete`, `bundles.addLink`,
+`bundles.removeLink`, and `slugs.remove` previously returned anonymous inline object
+types (`Promise<{ deleted: boolean }>` etc.). They now return the named interfaces
+`DeletedResult`, `AddedResult`, and `RemovedResult` exported from the package.
+Existing code that destructures or reads `.deleted`, `.added`, `.removed` continues
+to work without change.
+
+**Named analytics sub-types.** `ClickStats.clicksOverTime` is now `DateCount[]`
+(was `{ date: string; count: number }[]`). `ClickStats.slugClicks` is now
+`SlugCount[]`. `BundleWithSummary.topLinks` is now `BundleTopLink[]`.
+All three interfaces are exported from the package.
+
 ---
 
 ## 0.8.0
