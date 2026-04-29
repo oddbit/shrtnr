@@ -262,6 +262,10 @@ const id: Translations = {
     "Belum dikonfigurasi. Atur rahasia yang diperlukan untuk mengaktifkan OAuth pada endpoint MCP.",
   "settings.mcpDocsLink": "Dokumentasi MCP",
   "settings.mcpSetupLink": "Panduan pengaturan di README",
+  "settings.apiTitle": "API",
+  "settings.apiDesc":
+    "Panggil REST API secara langsung. Telusuri endpoint, skema, dan coba permintaan di dokumentasi.",
+  "settings.apiDocsLink": "Dokumentasi API",
 
   // Months (short)
   "month.jan": "Jan",

@@ -246,6 +246,20 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
             </ul>
           </div>
           <a
+            href="/_/api/docs#tag/links"
+            class="bento-card integration-card"
+          >
+            <div class="integration-card-head">
+              <span class="icon">api</span>
+              <span class="integration-card-title">{t("settings.apiTitle")}</span>
+            </div>
+            <div class="integration-card-desc">{t("settings.apiDesc")}</div>
+            <div class="integration-card-link">
+              <span class="icon">arrow_forward</span>
+              {t("settings.apiDocsLink")}
+            </div>
+          </a>
+          <a
             href="https://oddb.it/mcp-documentation-app"
             target="_blank"
             rel="noopener"

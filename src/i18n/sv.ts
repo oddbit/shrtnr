@@ -262,6 +262,10 @@ const sv: Translations = {
     "Inte konfigurerad. Ange de nödvändiga hemligheterna för att aktivera OAuth för MCP-ändpunkten.",
   "settings.mcpDocsLink": "MCP-dokumentation",
   "settings.mcpSetupLink": "Installationsguide i README",
+  "settings.apiTitle": "API",
+  "settings.apiDesc":
+    "Anropa REST-API:et direkt. Bläddra bland endpoints, scheman och testa förfrågningar i dokumentationen.",
+  "settings.apiDocsLink": "API-dokumentation",
 
   // Months (short)
   "month.jan": "jan",

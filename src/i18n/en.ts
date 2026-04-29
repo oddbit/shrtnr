@@ -259,6 +259,10 @@ const en = {
     "Not configured. Set the required secrets to enable OAuth for the MCP endpoint.",
   "settings.mcpDocsLink": "MCP documentation",
   "settings.mcpSetupLink": "Setup guide in README",
+  "settings.apiTitle": "API",
+  "settings.apiDesc":
+    "Call the REST API directly. Browse endpoints, schemas, and try requests in the docs.",
+  "settings.apiDocsLink": "API documentation",
 
   // Months (short)
   "month.jan": "Jan",
