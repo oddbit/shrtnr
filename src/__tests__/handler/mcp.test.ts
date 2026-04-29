@@ -405,3 +405,173 @@ describe("create_link duplicate semantics", () => {
     expect(result.meta).toBeUndefined();
   });
 });
+
+// ---- MCP error surface ----
+// The streamable-HTTP transport in the `agents` runtime returns parse and
+// session-validation errors directly as a JSON 400 with a JSON-RPC error
+// envelope in the body. Tool-level errors come back via the SSE response
+// stream as a JSON-RPC error envelope inside `data:` lines, so the helper
+// below parses the first such frame.
+
+type JsonRpcResponse = {
+  jsonrpc?: string;
+  id?: number | string | null;
+  result?: unknown;
+  error?: { code: number; message: string };
+};
+
+/**
+ * Read a streamable-HTTP SSE response and pull the first JSON-RPC envelope
+ * out of its `data:` payloads. Returns null if the stream closes before any
+ * JSON message is observed.
+ */
+async function readFirstSseMessage(res: Response): Promise<JsonRpcResponse | null> {
+  if (!res.body) return null;
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (value) buffer += decoder.decode(value, { stream: true });
+    // SSE frames are terminated by a blank line.
+    while (buffer.includes("\n\n")) {
+      const idx = buffer.indexOf("\n\n");
+      const frame = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      for (const line of frame.split("\n")) {
+        if (line.startsWith("data:")) {
+          const payload = line.slice(5).trim();
+          if (payload) {
+            try {
+              await reader.cancel();
+            } catch {
+              // Stream already closed; ignore.
+            }
+            return JSON.parse(payload) as JsonRpcResponse;
+          }
+        }
+      }
+    }
+    if (done) return null;
+  }
+}
+
+/**
+ * Initialize an MCP session and return the negotiated session ID. Throws if
+ * the response is not the expected SSE stream with an `mcp-session-id` header.
+ */
+async function initSession(): Promise<string> {
+  const res = await SELF.fetch(
+    new Request("https://shrtnr.test/_/mcp", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-03-26",
+          capabilities: {},
+          clientInfo: { name: "test", version: "1.0.0" },
+        },
+      }),
+    }),
+  );
+  expect(res.status).toBe(200);
+  const sessionId = res.headers.get("mcp-session-id");
+  expect(sessionId).toBeTruthy();
+  // Drain the initialize response so the durable transport is ready for the
+  // follow-up call. We do not need the body here.
+  await readFirstSseMessage(res);
+  return sessionId!;
+}
+
+describe("MCP error surface", () => {
+  it("malformed JSON-RPC body returns parse error (-32700)", async () => {
+    // No session needed: the parse error fires before session validation.
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/mcp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+        },
+        body: "{ not valid json",
+      }),
+    );
+    // The agents transport returns HTTP 400 with the JSON-RPC error envelope
+    // directly in the JSON body (no SSE for parse errors).
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as JsonRpcResponse;
+    expect(body.error).toBeDefined();
+    expect(body.error?.code).toBe(-32700);
+  });
+
+  it("invalid tool name returns a tool-error result", async () => {
+    // The @modelcontextprotocol/sdk wraps tool-resolution and tool-execution
+    // failures inside CallToolResult { isError: true, content: [{ text }] }
+    // rather than emitting a JSON-RPC error envelope. See
+    // node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js:
+    //   createToolError() -> { content: [{ type: 'text', text }], isError: true }
+    // The JSON-RPC layer therefore reports a `result`, not an `error`.
+    const sessionId = await initSession();
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/mcp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "mcp-session-id": sessionId,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: { name: "no_such_tool_definitely", arguments: {} },
+        }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    const message = await readFirstSseMessage(res);
+    expect(message).not.toBeNull();
+    const result = message!.result as { isError?: boolean; content?: { text?: string }[] } | undefined;
+    expect(result).toBeDefined();
+    expect(result?.isError).toBe(true);
+    expect(result?.content?.[0]?.text).toMatch(/no_such_tool_definitely/);
+  });
+
+  it("malformed args on a real tool returns a tool-error result", async () => {
+    // create_link requires `url`. Omit it to trigger schema validation, which
+    // the SDK converts into a tool-error CallToolResult (same wrapping path
+    // as unknown-tool above).
+    const sessionId = await initSession();
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/mcp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "mcp-session-id": sessionId,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 3,
+          method: "tools/call",
+          params: { name: "create_link", arguments: {} },
+        }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    const message = await readFirstSseMessage(res);
+    expect(message).not.toBeNull();
+    const result = message!.result as { isError?: boolean; content?: { text?: string }[] } | undefined;
+    expect(result).toBeDefined();
+    expect(result?.isError).toBe(true);
+    // The validation error mentions the tool name and the failing field.
+    expect(result?.content?.[0]?.text).toMatch(/create_link/);
+    expect(result?.content?.[0]?.text?.toLowerCase()).toMatch(/url|required|invalid/);
+  });
+});
