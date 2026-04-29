@@ -8,6 +8,25 @@ function makeJwt(email: string): string {
   return `${header}.${body}.fakesig`;
 }
 
+// Seeds an api_keys row directly so scope-enforcement tests can mint a Bearer
+// key with an arbitrary scope (including null = full access) without going
+// through the admin keys endpoint, which itself enforces scope rules.
+async function seedApiKey(
+  db: D1Database,
+  scope: string | null,
+  identity = "test@shrtnr.test",
+): Promise<string> {
+  const raw = `sk_${crypto.randomUUID().replace(/-/g, "")}`;
+  const prefix = raw.slice(0, 7);
+  const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+  const hash = Array.from(new Uint8Array(hashBuf))
+    .map((b) => b.toString(16).padStart(2, "0")).join("");
+  await db.prepare(
+    "INSERT INTO api_keys (identity, title, key_prefix, key_hash, scope, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+  ).bind(identity, "test", prefix, hash, scope, Math.floor(Date.now() / 1000)).run();
+  return raw;
+}
+
 const AUTH_HEADER = { "Cf-Access-Jwt-Assertion": makeJwt("test@example.com") };
 
 function authed(path: string, init?: RequestInit): Request {
@@ -578,4 +597,57 @@ describe("API Key Authentication", () => {
     );
     expect(res.status).toBe(404);
   });
+});
+
+// ---- Scope enforcement at the live handler ----
+//
+// Repository-level tests (api-key-repository.test.ts) cover how scopes are
+// stored. These cases assert the live handler answers a Bearer-key request
+// based on the key's scope: requireScope("create") gates POST /_/api/links,
+// requireScope("read") gates GET, and a null scope (no scope set) is the
+// full-access "dev identity" path documented in src/auth.ts.
+
+describe("API key scope enforcement at handler", () => {
+  it("read-scoped key cannot POST /_/api/links (403)", async () => {
+    const key = await seedApiKey(env.DB, "read");
+    const res = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ url: "https://example.com/scope-read-block" }),
+    }));
+    expect(res.status).toBe(403);
+  });
+
+  it("create-scoped key can POST /_/api/links (201 fresh, 200 duplicate)", async () => {
+    const key = await seedApiKey(env.DB, "create");
+    const res = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ url: "https://example.com/scope-create-ok" }),
+    }));
+    expect([200, 201]).toContain(res.status);
+  });
+
+  it("read-scoped key can GET /_/api/links/:id (200)", async () => {
+    const createKey = await seedApiKey(env.DB, "create");
+    const created = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${createKey}` },
+      body: JSON.stringify({ url: "https://example.com/scope-read-get" }),
+    }));
+    const { id } = await created.json() as { id: number };
+
+    const readKey = await seedApiKey(env.DB, "read");
+    const res = await SELF.fetch(new Request(`https://shrtnr.test/_/api/links/${id}`, {
+      headers: { Authorization: `Bearer ${readKey}` },
+    }));
+    expect(res.status).toBe(200);
+  });
+
+  // Note on the null-scope ("full access") case: the AuthContext shape allows
+  // scope === null and `hasScope()` short-circuits to true, but the api_keys
+  // table column is TEXT NOT NULL (see migrations/0001_initial.sql), so an
+  // API-key-backed AuthContext can never reach the null branch. The null path
+  // is exercised by the JWT-authenticated admin flow, which already has its
+  // own happy-path tests in api-links.test.ts and bundles-api.test.ts.
 });
