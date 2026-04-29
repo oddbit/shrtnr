@@ -135,8 +135,16 @@ jobs:
         env:
           CURRENT: ${{ steps.current.outputs.hash }}
         run: |
-          # Read [tool.shrtnr] spec_hash via grep; avoids Python tomllib version dependency.
-          recorded=$(grep -E '^spec_hash *=' sdk/python/pyproject.toml | sed 's/.*= *"\(.*\)".*/\1/' | sed 's/^sha256://')
+          # Parse spec_hash from [tool.shrtnr] only. Bare grep would match any table; awk
+          # tracks the current section header so it stops at the correct key.
+          recorded=$(awk '
+            /^\[/ { current_table = $0 }
+            current_table == "[tool.shrtnr]" && /^spec_hash *=/ {
+              gsub(/.*= *"/, ""); gsub(/".*/, "");
+              print
+              exit
+            }
+          ' sdk/python/pyproject.toml | sed 's/^sha256://')
           if [ "$recorded" != "$CURRENT" ]; then
             echo "::error file=sdk/python/pyproject.toml::Python SDK [tool.shrtnr] spec_hash is stale"
             echo "  recorded: sha256:$recorded"
