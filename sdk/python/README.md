@@ -8,7 +8,7 @@ Python client for creating short links, managing URLs, and reading click analyti
 pip install shrtnr
 ```
 
-Python 3.9 or newer. `httpx` is the only runtime dependency.
+Python 3.10 or newer. `httpx` is the only runtime dependency.
 
 ## Quick Start
 
