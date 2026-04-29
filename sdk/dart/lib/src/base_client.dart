@@ -5,35 +5,29 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import 'auth.dart';
 import 'errors.dart';
 
-/// Low-level HTTP transport used by [ShrtnrClient]. Handles base URL
-/// normalization, auth headers, and error mapping from non-2xx responses to
-/// [ShrtnrException].
+/// Low-level HTTP transport used by [ShrtnrClient].
 ///
-/// Not intended for direct use. Create a [ShrtnrClient] instead.
+/// Handles base URL normalization, auth header injection, query-string
+/// building, JSON parsing, and error mapping. Not intended for direct use.
 class ShrtnrBaseClient {
-  /// Creates a base client.
-  ///
-  /// - [baseUrl]: the root URL of the shrtnr instance. Trailing slashes are
-  ///   stripped.
-  /// - [auth]: the authentication strategy.
-  /// - [httpClient]: optional injected `http.Client`. Useful for tests; if
-  ///   omitted a new `http.Client` is created and owned by this instance.
   ShrtnrBaseClient({
     required String baseUrl,
-    required ShrtnrAuth auth,
+    required String apiKey,
     http.Client? httpClient,
-  })  : _baseUrl = _stripTrailingSlashes(baseUrl),
+  })  : _baseUrl = _stripTrailing(baseUrl),
+        _authHeader = 'Bearer $apiKey',
         _httpClient = httpClient ?? http.Client(),
-        _headers = _buildHeaders(auth);
+        _owned = httpClient == null;
 
   final String _baseUrl;
+  final String _authHeader;
   final http.Client _httpClient;
-  final Map<String, String> _headers;
+  // True when we created the client ourselves and must close it.
+  final bool _owned;
 
-  static String _stripTrailingSlashes(String url) {
+  static String _stripTrailing(String url) {
     var out = url;
     while (out.endsWith('/')) {
       out = out.substring(0, out.length - 1);
@@ -41,35 +35,33 @@ class ShrtnrBaseClient {
     return out;
   }
 
-  static Map<String, String> _buildHeaders(ShrtnrAuth auth) {
-    return switch (auth) {
-      ApiKeyAuth(:final apiKey) => <String, String>{
-          'Authorization': 'Bearer $apiKey',
-          'X-Client': 'sdk',
-        },
-    };
-  }
-
   /// Issues an HTTP request and returns the parsed JSON body.
   ///
-  /// Throws [ShrtnrException] for non-2xx responses. Returns `null` for 204
-  /// No Content.
+  /// Throws [ShrtnrError] for non-2xx responses or network failures.
   Future<Object?> requestJson(
     String method,
     String path, {
+    Map<String, String?>? query,
     Object? body,
   }) async {
-    final uri = Uri.parse('$_baseUrl$path');
-    final headers = <String, String>{..._headers};
-    final bodyBytes = body == null ? null : utf8.encode(jsonEncode(body));
-    if (bodyBytes != null) {
+    final uri = _buildUri(path, query);
+    final headers = <String, String>{'Authorization': _authHeader};
+    List<int>? bodyBytes;
+    if (body != null) {
+      bodyBytes = utf8.encode(jsonEncode(body));
       headers['Content-Type'] = 'application/json';
     }
 
     final request = http.Request(method, uri)..headers.addAll(headers);
     if (bodyBytes != null) request.bodyBytes = bodyBytes;
 
-    final streamed = await _httpClient.send(request);
+    http.StreamedResponse streamed;
+    try {
+      streamed = await _httpClient.send(request);
+    } catch (e) {
+      throw ShrtnrError(0, e.toString());
+    }
+
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -77,36 +69,77 @@ class ShrtnrBaseClient {
       return jsonDecode(response.body);
     }
 
-    Object? parsed;
+    String serverMessage = 'HTTP ${response.statusCode}';
     try {
-      parsed = response.body.isEmpty ? null : jsonDecode(response.body);
+      if (response.body.isNotEmpty) {
+        final parsed = jsonDecode(response.body);
+        if (parsed is Map && parsed['error'] is String) {
+          serverMessage = parsed['error'] as String;
+        }
+      }
     } catch (_) {
-      parsed = null;
+      // Use the default message derived from status code.
     }
-    throw ShrtnrException(response.statusCode, parsed);
+    throw ShrtnrError(response.statusCode, serverMessage);
   }
 
-  /// Issues a GET request and returns the raw response body as text.
-  /// Used for endpoints that return non-JSON payloads (for example SVG).
-  Future<String> requestText(String method, String path) async {
-    final uri = Uri.parse('$_baseUrl$path');
-    final request = http.Request(method, uri)..headers.addAll(_headers);
-    final streamed = await _httpClient.send(request);
+  /// Issues a request and returns the raw response body as text.
+  ///
+  /// Used for endpoints that return non-JSON payloads, for example SVG.
+  Future<String> requestText(
+    String method,
+    String path, {
+    Map<String, String?>? query,
+  }) async {
+    final uri = _buildUri(path, query);
+    final headers = <String, String>{'Authorization': _authHeader};
+    final request = http.Request(method, uri)..headers.addAll(headers);
+
+    http.StreamedResponse streamed;
+    try {
+      streamed = await _httpClient.send(request);
+    } catch (e) {
+      throw ShrtnrError(0, e.toString());
+    }
+
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return response.body;
     }
 
-    Object? parsed;
+    String serverMessage = 'HTTP ${response.statusCode}';
     try {
-      parsed = response.body.isEmpty ? null : jsonDecode(response.body);
+      if (response.body.isNotEmpty) {
+        final parsed = jsonDecode(response.body);
+        if (parsed is Map && parsed['error'] is String) {
+          serverMessage = parsed['error'] as String;
+        }
+      }
     } catch (_) {
-      parsed = null;
+      // Use the default message.
     }
-    throw ShrtnrException(response.statusCode, parsed);
+    throw ShrtnrError(response.statusCode, serverMessage);
   }
 
-  /// Releases the underlying `http.Client`. Safe to call multiple times.
-  void close() => _httpClient.close();
+  Uri _buildUri(String path, Map<String, String?>? query) {
+    final base = '$_baseUrl$path';
+    if (query == null || query.isEmpty) return Uri.parse(base);
+    final params = <String, String>{};
+    query.forEach((k, v) {
+      if (v != null) params[k] = v;
+    });
+    if (params.isEmpty) return Uri.parse(base);
+    final qs = params.entries
+        .map((e) => '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
+        .join('&');
+    return Uri.parse('$base?$qs');
+  }
+
+  /// Closes the underlying HTTP client. Safe to call multiple times, but only
+  /// closes when this instance owns the client (i.e., no external client was
+  /// injected via the constructor).
+  void close() {
+    if (_owned) _httpClient.close();
+  }
 }

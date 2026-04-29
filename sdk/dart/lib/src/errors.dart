@@ -1,34 +1,23 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-/// Thrown by [ShrtnrClient] when the API returns a non-2xx response.
+/// Thrown by [ShrtnrClient] when the API returns a 4xx/5xx response or when
+/// a network error prevents the request from completing.
 ///
-/// Mirrors the `ShrtnrError` class from the TypeScript SDK. Named
-/// `ShrtnrException` here to follow Dart's convention of using `Exception`
-/// (not `Error`) for runtime failures from external systems.
-class ShrtnrException implements Exception {
-  /// Creates an exception from an HTTP status and optional parsed body.
-  ShrtnrException(this.statusCode, this.body)
-      : message = _extractMessage(statusCode, body);
+/// Mirrors the [ShrtnrError] class from the TypeScript and Python SDKs.
+class ShrtnrError implements Exception {
+  /// Creates an error from an HTTP status and a server-provided message.
+  ///
+  /// Use [status] 0 for network-level failures where no HTTP status exists.
+  const ShrtnrError(this.status, this.serverMessage);
 
-  /// HTTP status code from the failing response.
-  final int statusCode;
+  /// HTTP status code from the failing response, or 0 for network errors.
+  final int status;
 
-  /// Parsed JSON body of the error response, or `null` if the body was not
-  /// JSON or was empty.
-  final Object? body;
-
-  /// Human-readable error message. Derived from the response body's `error`
-  /// field if present, otherwise falls back to `HTTP <status>`.
-  final String message;
-
-  static String _extractMessage(int status, Object? body) {
-    if (body is Map && body['error'] is String) {
-      return body['error'] as String;
-    }
-    return 'HTTP $status';
-  }
+  /// The `error` string from the JSON response body, or a fallback description
+  /// for network errors and responses without a parseable body.
+  final String serverMessage;
 
   @override
-  String toString() => 'ShrtnrException($statusCode): $message';
+  String toString() => 'ShrtnrError(HTTP $status): $serverMessage';
 }
