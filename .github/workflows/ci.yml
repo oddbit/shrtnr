@@ -101,3 +101,58 @@ jobs:
         # Unit tier only. E2e tests have `@Tags(['e2e'])` and run separately
         # via scripts/test-sdks-e2e.sh against a live wrangler dev.
         run: dart test --exclude-tags e2e
+
+  sdk-spec-drift:
+    name: SDK spec hash parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Install root dependencies
+        run: yarn install --frozen-lockfile
+      - name: Compute current spec hash
+        id: current
+        run: |
+          hash=$(./scripts/spec-hash.sh)
+          echo "hash=$hash" >> "$GITHUB_OUTPUT"
+          echo "Current spec hash: $hash"
+      - name: Check TypeScript SDK manifest hash
+        env:
+          CURRENT: ${{ steps.current.outputs.hash }}
+        run: |
+          recorded=$(jq -r '."x-spec-hash"' sdk/typescript/package.json | sed 's/^sha256://')
+          if [ "$recorded" != "$CURRENT" ]; then
+            echo "::error file=sdk/typescript/package.json::TypeScript SDK x-spec-hash is stale"
+            echo "  recorded: sha256:$recorded"
+            echo "  current:  sha256:$CURRENT"
+            echo "Resolve by regenerating the SDK against the current spec and bumping the hash, or by updating the hash if the spec change does not affect the SDK surface (see CLAUDE.md)."
+            exit 1
+          fi
+      - name: Check Python SDK manifest hash
+        env:
+          CURRENT: ${{ steps.current.outputs.hash }}
+        run: |
+          # Read [tool.shrtnr] spec_hash via grep; avoids Python tomllib version dependency.
+          recorded=$(grep -E '^spec_hash *=' sdk/python/pyproject.toml | sed 's/.*= *"\(.*\)".*/\1/' | sed 's/^sha256://')
+          if [ "$recorded" != "$CURRENT" ]; then
+            echo "::error file=sdk/python/pyproject.toml::Python SDK [tool.shrtnr] spec_hash is stale"
+            echo "  recorded: sha256:$recorded"
+            echo "  current:  sha256:$CURRENT"
+            echo "Resolve by regenerating the SDK against the current spec and bumping the hash, or by updating the hash if the spec change does not affect the SDK surface (see CLAUDE.md)."
+            exit 1
+          fi
+      - name: Check Dart SDK manifest hash
+        env:
+          CURRENT: ${{ steps.current.outputs.hash }}
+        run: |
+          recorded=$(grep '^x-spec-hash:' sdk/dart/pubspec.yaml | awk '{print $2}' | sed 's/^sha256://')
+          if [ "$recorded" != "$CURRENT" ]; then
+            echo "::error file=sdk/dart/pubspec.yaml::Dart SDK x-spec-hash is stale"
+            echo "  recorded: sha256:$recorded"
+            echo "  current:  sha256:$CURRENT"
+            echo "Resolve by regenerating the SDK against the current spec and bumping the hash, or by updating the hash if the spec change does not affect the SDK surface (see CLAUDE.md)."
+            exit 1
+          fi
