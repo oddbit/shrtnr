@@ -600,8 +600,7 @@ function downloadQrPng() {
 
 // ---- Settings ----
 function setDefaultRange(range) {
-  var payload = range === '' ? { default_range: null } : { default_range: range };
-  api('/settings', { method: 'PUT', body: JSON.stringify(payload) }).then(function(res) {
+  api('/settings', { method: 'PUT', body: JSON.stringify({ default_range: range }) }).then(function(res) {
     if (res.ok) toast(t('client.settingsSaved'));
     else toast(t('client.settingsError'), 'error');
   });

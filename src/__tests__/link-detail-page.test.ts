@@ -64,4 +64,11 @@ describe("Link detail page server render", () => {
     expect(heroMatch).not.toBeNull();
     expect(heroMatch![1].trim()).toBe("1");
   });
+
+  it("renders 30d as the active range when no default_range is set", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const res = await SELF.fetch(req(`/_/admin/links/${link.id}`));
+    const html = await res.text();
+    expect(html).toMatch(/class="timeline-range-btn active"\s+data-range="30d"/);
+  });
 });

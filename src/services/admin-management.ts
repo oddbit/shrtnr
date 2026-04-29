@@ -9,6 +9,7 @@ import { Env, TimelineRange } from "../types";
 import { ServiceResult, ok, fail } from "./result";
 
 const VALID_RANGES: TimelineRange[] = ["24h", "7d", "30d", "90d", "1y", "all"];
+const DEFAULT_RANGE: TimelineRange = "30d";
 
 function isValidRange(v: unknown): v is TimelineRange {
   return typeof v === "string" && (VALID_RANGES as string[]).includes(v);
@@ -81,7 +82,7 @@ export type AppSettings = {
   slug_default_length: number;
   theme: string | null;
   lang: string | null;
-  default_range: TimelineRange | null;
+  default_range: TimelineRange;
   filter_bots: boolean;
   filter_self_referrers: boolean;
 };
@@ -111,7 +112,7 @@ export async function getAppSettings(
     slug_default_length: parseInt(slugLength ?? String(DEFAULT_SLUG_LENGTH), 10),
     theme: theme ?? null,
     lang: lang ?? null,
-    default_range: isValidRange(defaultRange) ? defaultRange : null,
+    default_range: isValidRange(defaultRange) ? defaultRange : DEFAULT_RANGE,
     filter_bots: parseBoolSetting(filterBots, true),
     filter_self_referrers: parseBoolSetting(filterSelfReferrers, true),
   });
@@ -182,7 +183,7 @@ export async function resolveClickFilters(env: Env, identity: string): Promise<C
  * Pick the time range an MCP tool should query.
  *
  * MCP tools mirror the admin UI: when the caller does not specify a range,
- * fall back to the user's `default_range` setting, then "30d". Returns the
+ * fall back to the user's resolved `default_range` setting. Returns the
  * resolved range so the tool can tell the requesting AI which window the
  * data covers via a `range_used` field.
  */
@@ -193,6 +194,5 @@ export async function resolveMcpRange(
 ): Promise<TimelineRange> {
   if (requested) return requested;
   const result = await getAppSettings(env, identity);
-  if (result.ok && result.data.default_range) return result.data.default_range;
-  return "30d";
+  return result.ok ? result.data.default_range : DEFAULT_RANGE;
 }

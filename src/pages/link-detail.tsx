@@ -64,10 +64,10 @@ type Props = {
   t: TranslateFn;
   lang: string;
   identity: string;
-  initialRange?: TimelineRange;
+  initialRange: TimelineRange;
 };
 
-export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, lang, identity, initialRange = "all" }) => {
+export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, lang, identity, initialRange }) => {
   const now = Math.floor(Date.now() / 1000);
   const isExpired = !!(link.expires_at && link.expires_at < now);
   const isOwner = identity === link.created_by;

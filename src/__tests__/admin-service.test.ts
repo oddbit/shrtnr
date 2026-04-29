@@ -66,11 +66,33 @@ describe("admin-management service", () => {
     }
   });
 
-  it("returns null default_range when not set", async () => {
+  it("returns 30d default_range when not set", async () => {
     const settings = await getAppSettings(env as any, TEST_IDENTITY);
     expect(settings.ok).toBe(true);
     if (settings.ok) {
-      expect(settings.data.default_range).toBeNull();
+      expect(settings.data.default_range).toBe("30d");
+    }
+  });
+
+  it("returns 30d default_range when stored value is empty", async () => {
+    await env.DB.prepare(
+      "INSERT INTO settings (identity, key, value) VALUES (?, 'default_range', '')",
+    ).bind(TEST_IDENTITY).run();
+    const settings = await getAppSettings(env as any, TEST_IDENTITY);
+    expect(settings.ok).toBe(true);
+    if (settings.ok) {
+      expect(settings.data.default_range).toBe("30d");
+    }
+  });
+
+  it("returns 30d default_range when stored value is invalid", async () => {
+    await env.DB.prepare(
+      "INSERT INTO settings (identity, key, value) VALUES (?, 'default_range', 'garbage')",
+    ).bind(TEST_IDENTITY).run();
+    const settings = await getAppSettings(env as any, TEST_IDENTITY);
+    expect(settings.ok).toBe(true);
+    if (settings.ok) {
+      expect(settings.data.default_range).toBe("30d");
     }
   });
 

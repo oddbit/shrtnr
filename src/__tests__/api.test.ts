@@ -934,10 +934,10 @@ describe("Settings API", () => {
     expect(res.status).toBe(400);
   });
 
-  it("GET /_/admin/api/settings should return null default_range when unset", async () => {
+  it("GET /_/admin/api/settings should return 30d default_range when unset", async () => {
     const res = await SELF.fetch(authed("/_/admin/api/settings"));
     const body = await res.json() as any;
-    expect(body.default_range).toBeNull();
+    expect(body.default_range).toBe("30d");
   });
 
   it("PUT /_/admin/api/settings should update default_range", async () => {
@@ -988,6 +988,27 @@ describe("Settings API", () => {
     const res = await SELF.fetch(authed("/_/admin/dashboard?range=90d"));
     const html = await res.text();
     expect(html).toMatch(/class="active"\s+data-range="90d"/);
+  });
+
+  it("dashboard page falls back to 30d when no default_range is set", async () => {
+    const res = await SELF.fetch(authed("/_/admin/dashboard"));
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toMatch(/class="active"\s+data-range="30d"/);
+  });
+
+  it("links page falls back to 30d when no default_range is set", async () => {
+    const res = await SELF.fetch(authed("/_/admin/links"));
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toMatch(/class="active"\s+data-range="30d"/);
+  });
+
+  it("bundles page falls back to 30d when no default_range is set", async () => {
+    const res = await SELF.fetch(authed("/_/admin/bundles"));
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toMatch(/class="active"\s+data-range="30d"/);
   });
 
   it("new links should use updated default length", async () => {

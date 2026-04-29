@@ -179,7 +179,7 @@ async function getPageData(c: { env: Env; req: { raw: Request } }, identity: str
   const theme = settings?.theme ?? getCookie(c.req.raw, "theme") ?? "oddbit";
   const lang = settings?.lang ?? getCookie(c.req.raw, "lang") ?? "en";
   const slugLength = settings?.slug_default_length ?? DEFAULT_SLUG_LENGTH;
-  const defaultRange = settings?.default_range ?? null;
+  const defaultRange: TimelineRange = settings?.default_range ?? "30d";
   const filterBots = settings?.filter_bots ?? true;
   const filterSelfReferrers = settings?.filter_self_referrers ?? true;
   const t = createTranslateFn(lang);
@@ -194,7 +194,7 @@ app.get("/_/admin/dashboard", async (c) => {
   const { theme, t, lang, translations, defaultRange } = await getPageData(c, identity);
   const rangeParam = c.req.query("range");
   const validRanges = new Set(["24h", "7d", "30d", "90d", "1y", "all"]);
-  const range = (validRanges.has(rangeParam || "") ? rangeParam : (defaultRange ?? "30d")) as TimelineRange;
+  const range = (validRanges.has(rangeParam || "") ? rangeParam : defaultRange) as TimelineRange;
   const statsResult = await getDashboardStats(c.env, range, identity);
   const stats = statsResult.ok
     ? statsResult.data
@@ -234,7 +234,7 @@ app.get("/_/admin/links", async (c) => {
   const filters = await resolveClickFilters(c.env, identity);
   const validRanges = new Set<TimelineRange>(["24h", "7d", "30d", "90d", "1y", "all"]);
   const rangeParam = c.req.query("range");
-  const range = (validRanges.has(rangeParam as TimelineRange) ? rangeParam : (defaultRange ?? "30d")) as TimelineRange;
+  const range = (validRanges.has(rangeParam as TimelineRange) ? rangeParam : defaultRange) as TimelineRange;
   const linksResult = searchQuery
     ? await searchLinks(c.env, searchQuery, { includeOwner: true, withDeltaRange: range, filters, range })
     : await listLinks(c.env, { withDeltaRange: range, filters, range });
@@ -271,7 +271,7 @@ app.get("/_/admin/links/:id", async (c) => {
   if (isNaN(id)) return notFoundResponse();
   const identity = c.var.identity;
   const { theme, t, lang, translations, defaultRange } = await getPageData(c, identity);
-  const initialRange: TimelineRange = defaultRange ?? "all";
+  const initialRange: TimelineRange = defaultRange;
   const filters = await resolveClickFilters(c.env, identity);
   const linkResult = await getLink(c.env, id, { filters, range: initialRange });
   if (!linkResult.ok) return notFoundResponse();
@@ -300,7 +300,7 @@ app.get("/_/admin/bundles", async (c) => {
   const filter = filterParam === "archived" || filterParam === "all" ? filterParam : "active";
   const validRanges = new Set<TimelineRange>(["24h", "7d", "30d", "90d", "1y", "all"]);
   const rangeParam = c.req.query("range");
-  const range = (validRanges.has(rangeParam as TimelineRange) ? rangeParam : (defaultRange ?? "all")) as TimelineRange;
+  const range = (validRanges.has(rangeParam as TimelineRange) ? rangeParam : defaultRange) as TimelineRange;
   const listResult = await listBundles(c.env, identity, {
     includeArchived: filter === "all",
     archivedOnly: filter === "archived",
@@ -321,7 +321,7 @@ app.get("/_/admin/bundles/:id", async (c) => {
   const { theme, t, lang, translations, defaultRange } = await getPageData(c, identity);
   const rangeParam = c.req.query("range");
   const validRanges = new Set(["24h", "7d", "30d", "90d", "1y", "all"]);
-  const range = (validRanges.has(rangeParam || "") ? rangeParam : (defaultRange ?? "30d")) as TimelineRange;
+  const range = (validRanges.has(rangeParam || "") ? rangeParam : defaultRange) as TimelineRange;
   const filters = await resolveClickFilters(c.env, identity);
   const statsResult = await getBundleAnalytics(c.env, id, range, identity, { filters });
   if (!statsResult.ok) return notFoundResponse();

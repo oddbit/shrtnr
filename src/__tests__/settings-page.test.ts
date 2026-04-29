@@ -36,10 +36,16 @@ describe("Settings page default range control", () => {
     }
   });
 
-  it("offers an 'unset' option that maps to empty value", async () => {
+  it("does not offer an empty 'unset' option", async () => {
     const res = await SELF.fetch(req("/_/admin/settings"));
     const html = await res.text();
-    expect(html).toMatch(/<option value=""/);
+    expect(html).not.toMatch(/<option value=""/);
+  });
+
+  it("selects 30d by default when no preference is stored", async () => {
+    const res = await SELF.fetch(req("/_/admin/settings"));
+    const html = await res.text();
+    expect(html).toMatch(/<option value="30d"[^>]*selected/);
   });
 });
 

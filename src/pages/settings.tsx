@@ -15,7 +15,7 @@ type Props = {
   theme: string;
   slugLength: number;
   lang: string;
-  defaultRange: TimelineRange | null;
+  defaultRange: TimelineRange;
   filterBots: boolean;
   filterSelfReferrers: boolean;
   t: TranslateFn;
@@ -120,9 +120,6 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
                   id="default-range-picker"
                   onchange="setDefaultRange(this.value)"
                 >
-                  <option value="" selected={defaultRange === null}>
-                    {t("settings.defaultRangeUnset")}
-                  </option>
                   {RANGE_OPTIONS.map((r) => (
                     <option value={r} selected={defaultRange === r}>
                       {t(`range.long.${r}` as const)}
