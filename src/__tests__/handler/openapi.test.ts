@@ -230,3 +230,60 @@ describe("OpenAPI spec coverage", () => {
     }
   });
 });
+
+describe("OpenAPI runtime parity", () => {
+  it("every declared path responds (no 'no route' 404)", async () => {
+    // Mint a single read+create key that we authenticate every probe with,
+    // so the global /_/api/* middleware always lets us through and any 404
+    // we observe is a route-level 404 (or, the failure mode we're hunting,
+    // a framework no-route fall-through).
+    const key = await createApiKey("read,create");
+
+    const specRes = await SELF.fetch("https://shrtnr.test/_/api/openapi.json");
+    expect(specRes.status).toBe(200);
+    const spec = (await specRes.json()) as {
+      paths: Record<string, Record<string, unknown>>;
+    };
+
+    const issues: string[] = [];
+    for (const [path, methods] of Object.entries(spec.paths)) {
+      // Spec paths are relative to the /_/api mount point; templated params
+      // are substituted with safe values that exist in the schema's regex
+      // (e.g. numeric ids and a simple slug).
+      const concrete = path
+        .replace(/\{slug\}/g, "abc")
+        .replace(/\{[^}]+\}/g, "1");
+      const fullPath = `/_/api${concrete}`;
+      for (const method of Object.keys(methods)) {
+        const m = method.toUpperCase();
+        if (m === "PARAMETERS") continue;
+        const res = await SELF.fetch(
+          new Request(`https://shrtnr.test${fullPath}`, {
+            method: m,
+            headers: {
+              Authorization: `Bearer ${key}`,
+              // GET-with-body is illegal; only set Content-Type for write methods.
+              ...(m === "POST" || m === "PUT" || m === "PATCH"
+                ? { "Content-Type": "application/json" }
+                : {}),
+            },
+            body:
+              m === "POST" || m === "PUT" || m === "PATCH"
+                ? JSON.stringify({})
+                : undefined,
+          }),
+        );
+
+        // Distinguish framework no-route 404 (the global notFoundResponse,
+        // text/html) from declared 404 responses (JSON {error: ...}).
+        if (res.status === 404) {
+          const ct = res.headers.get("Content-Type") ?? "";
+          if (!ct.includes("application/json")) {
+            issues.push(`${m} ${fullPath} -> 404 (no route, ct=${ct || "<none>"})`);
+          }
+        }
+      }
+    }
+    expect(issues).toEqual([]);
+  });
+});
