@@ -12,6 +12,12 @@ import 'errors.dart';
 /// Handles base URL normalization, auth header injection, query-string
 /// building, JSON parsing, and error mapping. Not intended for direct use.
 class ShrtnrBaseClient {
+  /// Creates a base client.
+  ///
+  /// - [baseUrl]: root URL; trailing slashes are stripped.
+  /// - [apiKey]: sent as `Authorization: Bearer <apiKey>`.
+  /// - [httpClient]: optional injected client; if omitted one is created and
+  ///   owned by this instance.
   ShrtnrBaseClient({
     required String baseUrl,
     required String apiKey,

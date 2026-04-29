@@ -15,6 +15,7 @@ List<NameCount> _nameCountList(Object? raw) =>
 /// A short URL slug attached to a [Link].
 @immutable
 class Slug {
+  /// Creates a slug. Most callers should use [Slug.fromJson].
   const Slug({
     required this.linkId,
     required this.slug,
@@ -25,6 +26,7 @@ class Slug {
     required this.disabledAt,
   });
 
+  /// Parses a slug from its JSON representation.
   factory Slug.fromJson(Map<String, dynamic> json) => Slug(
         linkId: (json['link_id'] as num).toInt(),
         slug: json['slug'] as String,
@@ -60,6 +62,7 @@ class Slug {
 /// A short link with its slugs, total click count, and metadata.
 @immutable
 class Link {
+  /// Creates a link. Most callers should use [Link.fromJson].
   const Link({
     required this.id,
     required this.url,
@@ -73,6 +76,7 @@ class Link {
     this.deltaPct,
   });
 
+  /// Parses a link from its JSON representation.
   factory Link.fromJson(Map<String, dynamic> json) => Link(
         id: (json['id'] as num).toInt(),
         url: json['url'] as String,
@@ -123,6 +127,7 @@ class Link {
 /// A collection of links grouped to show combined engagement.
 @immutable
 class Bundle {
+  /// Creates a bundle. Most callers should use [Bundle.fromJson].
   const Bundle({
     required this.id,
     required this.name,
@@ -136,6 +141,7 @@ class Bundle {
     required this.updatedAt,
   });
 
+  /// Parses a bundle from its JSON representation.
   factory Bundle.fromJson(Map<String, dynamic> json) => Bundle(
         id: (json['id'] as num).toInt(),
         name: json['name'] as String,
@@ -183,6 +189,7 @@ class Bundle {
 /// Bundle enriched with range-scoped summary data.
 @immutable
 class BundleWithSummary extends Bundle {
+  /// Creates a bundle summary. Most callers should use [BundleWithSummary.fromJson].
   const BundleWithSummary({
     required super.id,
     required super.name,
@@ -201,6 +208,7 @@ class BundleWithSummary extends Bundle {
     this.deltaPct,
   });
 
+  /// Parses a bundle summary from its JSON representation.
   factory BundleWithSummary.fromJson(Map<String, dynamic> json) =>
       BundleWithSummary(
         id: (json['id'] as num).toInt(),
@@ -246,8 +254,10 @@ class BundleWithSummary extends Bundle {
 /// Top-link entry preview shown in a [BundleWithSummary].
 @immutable
 class BundleTopLink {
+  /// Creates a top-link entry. Most callers should use [BundleTopLink.fromJson].
   const BundleTopLink({required this.slug, required this.clickCount});
 
+  /// Parses a top-link entry from JSON.
   factory BundleTopLink.fromJson(Map<String, dynamic> json) => BundleTopLink(
         slug: (json['slug'] as String?) ?? '',
         clickCount: ((json['click_count'] as num?) ?? 0).toInt(),
@@ -265,8 +275,10 @@ class BundleTopLink {
 /// A name/count pair used in analytics breakdowns.
 @immutable
 class NameCount {
+  /// Creates a name/count pair. Most callers should use [NameCount.fromJson].
   const NameCount({required this.name, required this.count});
 
+  /// Parses a name/count pair from JSON.
   factory NameCount.fromJson(Map<String, dynamic> json) => NameCount(
         name: (json['name'] as String?) ?? '',
         count: ((json['count'] as num?) ?? 0).toInt(),
@@ -282,6 +294,7 @@ class NameCount {
 /// Per-link click analytics breakdown.
 @immutable
 class ClickStats {
+  /// Creates click stats. Most callers should use [ClickStats.fromJson].
   const ClickStats({
     required this.totalClicks,
     required this.countries,
@@ -301,6 +314,7 @@ class ClickStats {
     required this.numBrowsers,
   });
 
+  /// Parses click stats from JSON.
   factory ClickStats.fromJson(Map<String, dynamic> json) => ClickStats(
         totalClicks: ((json['total_clicks'] as num?) ?? 0).toInt(),
         countries: _nameCountList(json['countries']),
@@ -380,8 +394,10 @@ class ClickStats {
 /// A date/count pair in a click timeline.
 @immutable
 class DateClickCount {
+  /// Creates a date/count pair. Most callers should use [DateClickCount.fromJson].
   const DateClickCount({required this.date, required this.count});
 
+  /// Parses a date/count pair from JSON.
   factory DateClickCount.fromJson(Map<String, dynamic> json) => DateClickCount(
         date: (json['date'] as String?) ?? '',
         count: ((json['count'] as num?) ?? 0).toInt(),
@@ -397,8 +413,10 @@ class DateClickCount {
 /// A slug/count pair in a per-slug analytics breakdown.
 @immutable
 class SlugClickCount {
+  /// Creates a slug/count pair. Most callers should use [SlugClickCount.fromJson].
   const SlugClickCount({required this.slug, required this.count});
 
+  /// Parses a slug/count pair from JSON.
   factory SlugClickCount.fromJson(Map<String, dynamic> json) => SlugClickCount(
         slug: (json['slug'] as String?) ?? '',
         count: ((json['count'] as num?) ?? 0).toInt(),
@@ -414,8 +432,10 @@ class SlugClickCount {
 /// A single time bucket in a [TimelineData] response.
 @immutable
 class TimelineBucket {
+  /// Creates a timeline bucket. Most callers should use [TimelineBucket.fromJson].
   const TimelineBucket({required this.label, required this.count});
 
+  /// Parses a timeline bucket from JSON.
   factory TimelineBucket.fromJson(Map<String, dynamic> json) => TimelineBucket(
         label: (json['label'] as String?) ?? '',
         count: ((json['count'] as num?) ?? 0).toInt(),
@@ -431,6 +451,7 @@ class TimelineBucket {
 /// Period-summary totals nested inside [TimelineData].
 @immutable
 class TimelineSummary {
+  /// Creates a timeline summary. Most callers should use [TimelineSummary.fromJson].
   const TimelineSummary({
     required this.last24h,
     required this.last7d,
@@ -439,6 +460,7 @@ class TimelineSummary {
     required this.last1y,
   });
 
+  /// Parses a timeline summary from JSON.
   factory TimelineSummary.fromJson(Map<String, dynamic> json) => TimelineSummary(
         last24h: ((json['last_24h'] as num?) ?? 0).toInt(),
         last7d: ((json['last_7d'] as num?) ?? 0).toInt(),
@@ -466,12 +488,14 @@ class TimelineSummary {
 /// Click timeline with bucketed counts and period summaries.
 @immutable
 class TimelineData {
+  /// Creates a timeline data object. Most callers should use [TimelineData.fromJson].
   const TimelineData({
     required this.range,
     required this.buckets,
     required this.summary,
   });
 
+  /// Parses a timeline data response from JSON.
   factory TimelineData.fromJson(Map<String, dynamic> json) => TimelineData(
         range: (json['range'] as String?) ?? 'all',
         buckets: ((json['buckets'] as List<dynamic>?) ?? const <dynamic>[])
@@ -497,8 +521,10 @@ class TimelineData {
 /// Result of a delete operation.
 @immutable
 class DeletedResult {
+  /// Creates a deleted result.
   const DeletedResult({required this.deleted});
 
+  /// Parses a deleted result from JSON.
   factory DeletedResult.fromJson(Map<String, dynamic> json) =>
       DeletedResult(deleted: (json['deleted'] as bool?) ?? false);
 
@@ -509,8 +535,10 @@ class DeletedResult {
 /// Result of an add-link-to-bundle operation.
 @immutable
 class AddedResult {
+  /// Creates an added result.
   const AddedResult({required this.added});
 
+  /// Parses an added result from JSON.
   factory AddedResult.fromJson(Map<String, dynamic> json) =>
       AddedResult(added: (json['added'] as bool?) ?? false);
 
@@ -521,8 +549,10 @@ class AddedResult {
 /// Result of a remove-link-from-bundle or remove-slug operation.
 @immutable
 class RemovedResult {
+  /// Creates a removed result.
   const RemovedResult({required this.removed});
 
+  /// Parses a removed result from JSON.
   factory RemovedResult.fromJson(Map<String, dynamic> json) =>
       RemovedResult(removed: (json['removed'] as bool?) ?? false);
 

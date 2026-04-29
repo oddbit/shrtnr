@@ -6,6 +6,7 @@ import '../models.dart';
 
 /// Methods for the `/api/bundles` and related endpoints.
 class BundlesResource {
+  /// Creates a bundles resource backed by [_http].
   BundlesResource(this._http);
 
   final ShrtnrBaseClient _http;

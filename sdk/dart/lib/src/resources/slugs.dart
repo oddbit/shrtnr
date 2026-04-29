@@ -6,6 +6,7 @@ import '../models.dart';
 
 /// Methods for slug lookup and management endpoints.
 class SlugsResource {
+  /// Creates a slugs resource backed by [_http].
   SlugsResource(this._http);
 
   final ShrtnrBaseClient _http;

@@ -35,49 +35,43 @@ void main() {
     return;
   }
 
-  final client = ShrtnrClient(
-    baseUrl: baseUrl,
-    auth: ApiKeyAuth(apiKey: apiKey),
-  );
+  final client = ShrtnrClient(baseUrl: baseUrl, apiKey: apiKey);
 
   group('Dart SDK e2e — live wrangler dev', () {
-    test('health reaches the live /_/health', () async {
-      final h = await client.health();
-      expect(h.status, isA<String>());
-    });
-
     test('link lifecycle — create, get, delete', () async {
-      final link = await client.createLink(
-        CreateLinkOptions(url: 'https://example.com/dart-e2e', label: 'dart-e2e'),
+      final link = await client.links.create(
+        url: 'https://example.com/dart-e2e',
+        label: 'dart-e2e',
       );
       expect(link.url, 'https://example.com/dart-e2e');
-      final fetched = await client.getLink(link.id);
+      final fetched = await client.links.get(link.id);
       expect(fetched.id, link.id);
-      expect(await client.deleteLink(link.id), isTrue);
+      final result = await client.links.delete(link.id);
+      expect(result.deleted, isTrue);
     });
 
     test('slug mutations work against public routes', () async {
-      final link = await client.createLink(
-        CreateLinkOptions(url: 'https://example.com/dart-slugs'),
+      final link = await client.links.create(
+        url: 'https://example.com/dart-slugs',
       );
       try {
-        await client.addCustomSlug(link.id, 'dart-e2e-slug');
-        final disabled = await client.disableSlug(link.id, 'dart-e2e-slug');
+        await client.slugs.add(link.id, 'dart-e2e-slug');
+        final disabled = await client.slugs.disable(link.id, 'dart-e2e-slug');
         expect(disabled.disabledAt, isNotNull);
-        final enabled = await client.enableSlug(link.id, 'dart-e2e-slug');
+        final enabled = await client.slugs.enable(link.id, 'dart-e2e-slug');
         expect(enabled.disabledAt, isNull);
-        expect(await client.removeSlug(link.id, 'dart-e2e-slug'), isTrue);
+        final removed = await client.slugs.remove(link.id, 'dart-e2e-slug');
+        expect(removed.removed, isTrue);
       } finally {
-        await client.deleteLink(link.id);
+        await client.links.delete(link.id);
       }
     });
 
     test('bundle create/delete against live server', () async {
-      final bundle = await client.createBundle(
-        CreateBundleOptions(name: 'dart e2e bundle'),
-      );
+      final bundle = await client.bundles.create(name: 'dart e2e bundle');
       expect(bundle.name, 'dart e2e bundle');
-      expect(await client.deleteBundle(bundle.id), isTrue);
+      final result = await client.bundles.delete(bundle.id);
+      expect(result.deleted, isTrue);
     });
   });
 }

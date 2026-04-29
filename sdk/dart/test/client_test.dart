@@ -1,12 +1,11 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 //
-// Canonical SDK unit test layout — MUST stay structurally identical to
+// Canonical SDK unit test layout. Structurally mirrors
 // sdk/typescript/src/__tests__/client.test.ts and
-// sdk/python/tests/test_client.py: same describe/group blocks, same
-// order, same test count, same names. When adding a new public method,
-// add a matching test here AND in the other two SDKs. See CLAUDE.md
-// "SDK parity".
+// sdk/python/tests/test_client.py: same describe/group blocks,
+// same order, same test count, same intent. When adding a public
+// method, add a matching test here AND in the other two SDKs.
 
 import 'dart:convert';
 
@@ -32,7 +31,9 @@ class _Capture {
     capture.request = request;
     final bodyString = body == null
         ? ''
-        : (contentType.startsWith('application/json') ? jsonEncode(body) : body as String);
+        : (contentType.startsWith('application/json')
+            ? jsonEncode(body)
+            : body as String);
     return http.Response(
       bodyString,
       status,
@@ -41,159 +42,275 @@ class _Capture {
   });
   final client = ShrtnrClient(
     baseUrl: _base,
-    auth: const ApiKeyAuth(apiKey: _apiKey),
+    apiKey: _apiKey,
     httpClient: mock,
   );
   return (client: client, capture: capture);
 }
 
-Map<String, Object?> _linkDict({
+// ---- Fixture builders ----
+
+Map<String, Object?> _linkJson({
   int id = 1,
   String url = 'https://example.com',
   int totalClicks = 0,
+  double? deltaPct,
   List<Map<String, Object?>> slugs = const [],
-  int? expiresAt,
-}) => {
+}) =>
+    <String, Object?>{
       'id': id,
       'url': url,
       'label': null,
-      'created_at': 1,
-      'expires_at': expiresAt,
+      'created_at': 1000000,
+      'expires_at': null,
       'created_via': 'sdk',
       'created_by': 'owner@example.com',
       'slugs': slugs,
       'total_clicks': totalClicks,
+      if (deltaPct != null) 'delta_pct': deltaPct,
     };
 
-Map<String, Object?> _slugDict({
+Map<String, Object?> _slugJson({
   int linkId = 1,
   String slug = 'custom',
   int isCustom = 1,
   int? disabledAt,
-}) => {
+}) =>
+    <String, Object?>{
       'link_id': linkId,
       'slug': slug,
       'is_custom': isCustom,
       'is_primary': 0,
-      'click_count': 0,
-      'created_at': 1,
+      'click_count': 5,
+      'created_at': 1000000,
       'disabled_at': disabledAt,
     };
 
-Map<String, Object?> _bundleDict({
+Map<String, Object?> _bundleJson({
   int id = 42,
   String name = 'B',
   String accent = 'orange',
   int? archivedAt,
-  String? description,
-}) => {
+}) =>
+    <String, Object?>{
       'id': id,
       'name': name,
-      'description': description,
+      'description': null,
       'icon': null,
       'accent': accent,
       'archived_at': archivedAt,
       'created_via': 'sdk',
       'created_by': 'owner@example.com',
-      'created_at': 1,
-      'updated_at': 1,
+      'created_at': 1000000,
+      'updated_at': 1000000,
+    };
+
+Map<String, Object?> _bundleWithSummaryJson({
+  int id = 42,
+  String name = 'B',
+  String accent = 'orange',
+  int? archivedAt,
+  double? deltaPct,
+}) =>
+    <String, Object?>{
+      ..._bundleJson(id: id, name: name, accent: accent, archivedAt: archivedAt),
+      'link_count': 3,
+      'total_clicks': 100,
+      'sparkline': <int>[10, 20, 30],
+      'top_links': <dynamic>[],
+      if (deltaPct != null) 'delta_pct': deltaPct,
+    };
+
+Map<String, Object?> _clickStatsJson({int totalClicks = 42}) =>
+    <String, Object?>{
+      'total_clicks': totalClicks,
+      'countries': <dynamic>[],
+      'referrers': <dynamic>[],
+      'referrer_hosts': <dynamic>[],
+      'devices': <dynamic>[],
+      'os': <dynamic>[],
+      'browsers': <dynamic>[],
+      'link_modes': <dynamic>[],
+      'channels': <dynamic>[],
+      'clicks_over_time': <dynamic>[],
+      'slug_clicks': <dynamic>[],
+      'num_countries': 5,
+      'num_referrers': 3,
+      'num_referrer_hosts': 2,
+      'num_os': 4,
+      'num_browsers': 6,
+    };
+
+Map<String, Object?> _timelineJson() => <String, Object?>{
+      'range': '7d',
+      'buckets': <Map<String, Object?>>[
+        <String, Object?>{'label': 'Mon', 'count': 10},
+      ],
+      'summary': <String, Object?>{
+        'last_24h': 1,
+        'last_7d': 7,
+        'last_30d': 30,
+        'last_90d': 90,
+        'last_1y': 365,
+      },
     };
 
 void main() {
-  // ---- 1. Auth headers ----
+  // ---- 1. Auth header ----
 
-  group('Auth headers', () {
-    test('sends Bearer + X-Client: sdk on every request', () async {
+  group('Auth header', () {
+    test('sends Authorization: Bearer on every request', () async {
       final m = _mock(status: 200, body: <dynamic>[]);
-      await m.client.listLinks();
-      expect(m.capture.request!.headers['Authorization'], 'Bearer $_apiKey');
-      expect(m.capture.request!.headers['X-Client'], 'sdk');
+      await m.client.links.list();
+      expect(
+        m.capture.request!.headers['Authorization'],
+        'Bearer $_apiKey',
+      );
+    });
+
+    test('does not send X-Client header (removed in 1.0)', () async {
+      final m = _mock(status: 200, body: <dynamic>[]);
+      await m.client.links.list();
+      expect(m.capture.request!.headers.containsKey('X-Client'), isFalse);
     });
   });
 
   // ---- 2. Error handling ----
 
   group('Error handling', () {
-    test('throws ShrtnrException on non-2xx response', () async {
-      final m = _mock(status: 404, body: {'error': 'Link not found'});
-      expect(() => m.client.getLink(999), throwsA(isA<ShrtnrException>()));
+    test('throws ShrtnrError on 4xx', () async {
+      final m = _mock(status: 404, body: <String, Object?>{'error': 'not found'});
+      expect(() => m.client.links.get(999), throwsA(isA<ShrtnrError>()));
     });
 
-    test('includes status and message from error body', () async {
-      final m = _mock(status: 409, body: {'error': 'Slug already exists'});
+    test('populates status and serverMessage from error body', () async {
+      final m =
+          _mock(status: 409, body: <String, Object?>{'error': 'Slug already exists'});
       try {
-        await m.client.addCustomSlug(1, 'taken');
-        fail('expected ShrtnrException');
-      } on ShrtnrException catch (e) {
-        expect(e.statusCode, 409);
-        expect(e.message, 'Slug already exists');
+        await m.client.slugs.add(1, 'taken');
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 409);
+        expect(e.serverMessage, 'Slug already exists');
       }
     });
 
-    test('throws ShrtnrException on 401 unauthorized', () async {
-      final m = _mock(status: 401, body: {'error': 'Unauthorized'});
-      expect(() => m.client.listLinks(), throwsA(isA<ShrtnrException>()));
+    test('throws ShrtnrError on 401', () async {
+      final m = _mock(status: 401, body: <String, Object?>{'error': 'Unauthorized'});
+      expect(() => m.client.links.list(), throwsA(isA<ShrtnrError>()));
+    });
+
+    test('throws ShrtnrError with status 0 on network error', () async {
+      final capture = _Capture();
+      final mock = MockClient((request) async {
+        capture.request = request;
+        throw Exception('connection refused');
+      });
+      final client =
+          ShrtnrClient(baseUrl: _base, apiKey: _apiKey, httpClient: mock);
+      try {
+        await client.links.list();
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 0);
+        expect(e.serverMessage, contains('connection refused'));
+      }
     });
   });
 
-  // ---- 3. health ----
+  // ---- 3. links.get ----
 
-  group('health', () {
-    test('GETs /_/health', () async {
-      final m = _mock(
-        status: 200,
-        body: {'status': 'ok', 'version': '0.1.0', 'timestamp': 1},
+  group('links.get', () {
+    test('GETs /_/api/links/:id', () async {
+      final m = _mock(status: 200, body: _linkJson(id: 3));
+      final link = await m.client.links.get(3);
+      expect(link.id, 3);
+      expect(m.capture.request!.url.toString(), '$_base/_/api/links/3');
+      expect(m.capture.request!.method, 'GET');
+    });
+
+    test('appends range param when given', () async {
+      final m = _mock(status: 200, body: _linkJson());
+      await m.client.links.get(1, range: '7d');
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/links/1?range=7d',
       );
-      final h = await m.client.health();
-      expect(h.status, 'ok');
-      expect(m.capture.request!.url.toString(), '$_base/_/health');
+    });
+
+    test('omits range param when not given', () async {
+      final m = _mock(status: 200, body: _linkJson());
+      await m.client.links.get(1);
+      expect(m.capture.request!.url.toString(), '$_base/_/api/links/1');
     });
   });
 
-  // ---- 4. createLink ----
+  // ---- 4. links.list ----
 
-  group('createLink', () {
-    test('POSTs /_/api/links with body', () async {
-      final m = _mock(status: 201, body: _linkDict(url: 'https://example.com'));
-      await m.client.createLink(
-        const CreateLinkOptions(url: 'https://example.com', label: 'L'),
+  group('links.list', () {
+    test('GETs /_/api/links with no params by default', () async {
+      final m = _mock(status: 200, body: <dynamic>[]);
+      await m.client.links.list();
+      expect(m.capture.request!.url.toString(), '$_base/_/api/links');
+    });
+
+    test('appends owner query param when given', () async {
+      final m = _mock(status: 200, body: <dynamic>[]);
+      await m.client.links.list(owner: 'user@example.com');
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/links?owner=user%40example.com',
+      );
+    });
+
+    test('appends range query param when given', () async {
+      final m = _mock(status: 200, body: <dynamic>[]);
+      await m.client.links.list(range: '30d');
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/links?range=30d',
+      );
+    });
+  });
+
+  // ---- 5. links.create ----
+
+  group('links.create', () {
+    test('POSTs /_/api/links with required and optional fields', () async {
+      final m = _mock(status: 201, body: _linkJson(url: 'https://example.com'));
+      await m.client.links.create(
+        url: 'https://example.com',
+        label: 'My link',
+        slugLength: 6,
+        expiresAt: 9999999,
+        allowDuplicate: true,
       );
       final req = m.capture.request!;
       expect(req.url.toString(), '$_base/_/api/links');
       expect(req.method, 'POST');
       final body = jsonDecode(req.body) as Map<String, Object?>;
       expect(body['url'], 'https://example.com');
-      expect(body['label'], 'L');
+      expect(body['label'], 'My link');
+      expect(body['slug_length'], 6);
+      expect(body['expires_at'], 9999999);
+      expect(body['allow_duplicate'], true);
+    });
+
+    test('omits optional fields when not provided', () async {
+      final m = _mock(status: 201, body: _linkJson());
+      await m.client.links.create(url: 'https://example.com');
+      final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
+      expect(body.containsKey('label'), isFalse);
+      expect(body.containsKey('slug_length'), isFalse);
     });
   });
 
-  // ---- 5. listLinks ----
+  // ---- 6. links.update ----
 
-  group('listLinks', () {
-    test('GETs /_/api/links', () async {
-      final m = _mock(status: 200, body: <dynamic>[]);
-      await m.client.listLinks();
-      expect(m.capture.request!.url.toString(), '$_base/_/api/links');
-      expect(m.capture.request!.method, 'GET');
-    });
-  });
-
-  // ---- 6. getLink ----
-
-  group('getLink', () {
-    test('GETs /_/api/links/:id', () async {
-      final m = _mock(status: 200, body: _linkDict(id: 3));
-      await m.client.getLink(3);
-      expect(m.capture.request!.url.toString(), '$_base/_/api/links/3');
-    });
-  });
-
-  // ---- 7. updateLink ----
-
-  group('updateLink', () {
+  group('links.update', () {
     test('PUTs /_/api/links/:id with patch body', () async {
-      final m = _mock(status: 200, body: _linkDict(url: 'https://new.com'));
-      await m.client.updateLink(1, const UpdateLinkOptions(url: 'https://new.com'));
+      final m = _mock(status: 200, body: _linkJson(url: 'https://new.com'));
+      await m.client.links.update(1, url: 'https://new.com');
       expect(m.capture.request!.url.toString(), '$_base/_/api/links/1');
       expect(m.capture.request!.method, 'PUT');
       final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
@@ -201,362 +318,538 @@ void main() {
     });
   });
 
-  // ---- 8. disableLink ----
+  // ---- 7. links.disable ----
 
-  group('disableLink', () {
+  group('links.disable', () {
     test('POSTs /_/api/links/:id/disable', () async {
-      final m = _mock(status: 200, body: _linkDict(expiresAt: 1));
-      await m.client.disableLink(1);
+      final m = _mock(status: 200, body: _linkJson());
+      await m.client.links.disable(1);
       expect(m.capture.request!.url.toString(), '$_base/_/api/links/1/disable');
       expect(m.capture.request!.method, 'POST');
     });
   });
 
-  // ---- 9. enableLink ----
+  // ---- 8. links.enable ----
 
-  group('enableLink', () {
+  group('links.enable', () {
     test('POSTs /_/api/links/:id/enable', () async {
-      final m = _mock(status: 200, body: _linkDict());
-      await m.client.enableLink(1);
+      final m = _mock(status: 200, body: _linkJson());
+      await m.client.links.enable(1);
       expect(m.capture.request!.url.toString(), '$_base/_/api/links/1/enable');
       expect(m.capture.request!.method, 'POST');
     });
   });
 
-  // ---- 10. deleteLink ----
+  // ---- 9. links.delete ----
 
-  group('deleteLink', () {
-    test('DELETEs /_/api/links/:id', () async {
-      final m = _mock(status: 200, body: {'deleted': true});
-      expect(await m.client.deleteLink(1), isTrue);
+  group('links.delete', () {
+    test('DELETEs /_/api/links/:id and returns DeletedResult', () async {
+      final m =
+          _mock(status: 200, body: <String, Object?>{'deleted': true});
+      final result = await m.client.links.delete(1);
+      expect(result.deleted, isTrue);
       expect(m.capture.request!.url.toString(), '$_base/_/api/links/1');
       expect(m.capture.request!.method, 'DELETE');
     });
   });
 
-  // ---- 11. listLinksByOwner ----
+  // ---- 10. links.analytics ----
 
-  group('listLinksByOwner', () {
-    test('GETs /_/api/links?owner=... with URL-encoded owner', () async {
-      final m = _mock(status: 200, body: <dynamic>[]);
-      await m.client.listLinksByOwner('user@example.com');
+  group('links.analytics', () {
+    test('GETs /_/api/links/:id/analytics', () async {
+      final m = _mock(status: 200, body: _clickStatsJson(totalClicks: 99));
+      final stats = await m.client.links.analytics(5);
+      expect(stats.totalClicks, 99);
       expect(
         m.capture.request!.url.toString(),
-        '$_base/_/api/links?owner=user%40example.com',
+        '$_base/_/api/links/5/analytics',
+      );
+    });
+
+    test('appends range param when given', () async {
+      final m = _mock(status: 200, body: _clickStatsJson());
+      await m.client.links.analytics(5, range: '30d');
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/links/5/analytics?range=30d',
+      );
+    });
+
+    test('omits range param when not given', () async {
+      final m = _mock(status: 200, body: _clickStatsJson());
+      await m.client.links.analytics(5);
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/links/5/analytics',
+      );
+    });
+
+    test('maps snake_case num_* fields to camelCase', () async {
+      final m = _mock(status: 200, body: _clickStatsJson());
+      final stats = await m.client.links.analytics(1);
+      expect(stats.numCountries, 5);
+      expect(stats.numReferrers, 3);
+      expect(stats.numReferrerHosts, 2);
+      expect(stats.numOs, 4);
+      expect(stats.numBrowsers, 6);
+    });
+  });
+
+  // ---- 11. links.timeline ----
+
+  group('links.timeline', () {
+    test('GETs /_/api/links/:id/timeline and parses TimelineData', () async {
+      final m = _mock(status: 200, body: _timelineJson());
+      final td = await m.client.links.timeline(5);
+      expect(td.range, '7d');
+      expect(td.buckets.length, 1);
+      expect(td.buckets[0].label, 'Mon');
+      expect(td.buckets[0].count, 10);
+      expect(td.summary.last7d, 7);
+      expect(td.summary.last30d, 30);
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/links/5/timeline',
+      );
+    });
+
+    test('appends range param when given', () async {
+      final m = _mock(status: 200, body: _timelineJson());
+      await m.client.links.timeline(5, range: '90d');
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/links/5/timeline?range=90d',
       );
     });
   });
 
-  // ---- 12. addCustomSlug ----
+  // ---- 12. links.qr ----
 
-  group('addCustomSlug', () {
-    test('POSTs /_/api/links/:id/slugs', () async {
-      final m = _mock(status: 201, body: _slugDict(slug: 'custom'));
-      await m.client.addCustomSlug(1, 'custom');
-      expect(m.capture.request!.url.toString(), '$_base/_/api/links/1/slugs');
-      expect(m.capture.request!.method, 'POST');
-      final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
-      expect(body, {'slug': 'custom'});
-    });
-  });
-
-  // ---- 13. disableSlug ----
-
-  group('disableSlug', () {
-    test('POSTs /_/api/links/:id/slugs/:slug/disable', () async {
-      final m = _mock(status: 200, body: _slugDict(slug: 'abc', disabledAt: 1));
-      await m.client.disableSlug(1, 'abc');
-      expect(m.capture.request!.url.toString(), '$_base/_/api/links/1/slugs/abc/disable');
-      expect(m.capture.request!.method, 'POST');
-    });
-  });
-
-  // ---- 14. enableSlug ----
-
-  group('enableSlug', () {
-    test('POSTs /_/api/links/:id/slugs/:slug/enable', () async {
-      final m = _mock(status: 200, body: _slugDict(slug: 'abc'));
-      await m.client.enableSlug(1, 'abc');
-      expect(m.capture.request!.url.toString(), '$_base/_/api/links/1/slugs/abc/enable');
-      expect(m.capture.request!.method, 'POST');
-    });
-  });
-
-  // ---- 15. removeSlug ----
-
-  group('removeSlug', () {
-    test('DELETEs /_/api/links/:id/slugs/:slug', () async {
-      final m = _mock(status: 200, body: {'removed': true});
-      expect(await m.client.removeSlug(1, 'abc'), isTrue);
-      expect(m.capture.request!.url.toString(), '$_base/_/api/links/1/slugs/abc');
-      expect(m.capture.request!.method, 'DELETE');
-    });
-  });
-
-  // ---- 16. getLinkBySlug ----
-
-  group('getLinkBySlug', () {
-    test('GETs /_/api/slugs/:slug', () async {
-      final m = _mock(status: 200, body: _linkDict(id: 7));
-      await m.client.getLinkBySlug('find-me');
-      expect(m.capture.request!.url.toString(), '$_base/_/api/slugs/find-me');
-    });
-
-    test('URL-encodes slugs with reserved characters', () async {
-      final m = _mock(status: 200, body: _linkDict());
-      await m.client.getLinkBySlug('foo/bar');
-      expect(m.capture.request!.url.toString(), '$_base/_/api/slugs/foo%2Fbar');
-    });
-  });
-
-  // ---- 17. getLinkAnalytics ----
-
-  group('getLinkAnalytics', () {
-    Map<String, Object?> emptyStats() => {
-          'total_clicks': 42,
-          'countries': <dynamic>[],
-          'referrers': <dynamic>[],
-          'referrer_hosts': <dynamic>[],
-          'devices': <dynamic>[],
-          'os': <dynamic>[],
-          'browsers': <dynamic>[],
-          'link_modes': <dynamic>[],
-          'channels': <dynamic>[],
-          'clicks_over_time': <dynamic>[],
-          'slug_clicks': <dynamic>[],
-        };
-
-    test('defaults to range=all when no range is given', () async {
-      final m = _mock(status: 200, body: emptyStats());
-      final stats = await m.client.getLinkAnalytics(5);
-      expect(stats.totalClicks, 42);
-      expect(m.capture.request!.url.toString(), '$_base/_/api/links/5/analytics?range=all');
-    });
-
-    test('forwards an explicit range as a query parameter', () async {
-      final m = _mock(status: 200, body: emptyStats());
-      await m.client.getLinkAnalytics(5, range: '7d');
-      expect(m.capture.request!.url.toString(), '$_base/_/api/links/5/analytics?range=7d');
-    });
-  });
-
-  // ---- 18. getLinkQR ----
-
-  group('getLinkQR', () {
-    test('GETs /_/api/links/:id/qr and returns the SVG body', () async {
-      final m = _mock(status: 200, body: '<svg/>', contentType: 'image/svg+xml');
-      final svg = await m.client.getLinkQR(5);
+  group('links.qr', () {
+    test('GETs /_/api/links/:id/qr and returns SVG body', () async {
+      final m =
+          _mock(status: 200, body: '<svg/>', contentType: 'image/svg+xml');
+      final svg = await m.client.links.qr(5);
       expect(svg, contains('<svg'));
       expect(m.capture.request!.url.toString(), '$_base/_/api/links/5/qr');
     });
 
-    test('URL-encodes the optional slug query param', () async {
-      final m = _mock(status: 200, body: '<svg/>', contentType: 'image/svg+xml');
-      await m.client.getLinkQR(5, slug: 'foo/bar');
+    test('appends slug and size params when given', () async {
+      final m =
+          _mock(status: 200, body: '<svg/>', contentType: 'image/svg+xml');
+      await m.client.links.qr(5, slug: 'promo', size: 256);
+      final url = m.capture.request!.url.toString();
+      expect(url, contains('slug=promo'));
+      expect(url, contains('size=256'));
+    });
+
+    test('omits query params when not given', () async {
+      final m =
+          _mock(status: 200, body: '<svg/>', contentType: 'image/svg+xml');
+      await m.client.links.qr(5);
+      expect(m.capture.request!.url.toString(), '$_base/_/api/links/5/qr');
+    });
+  });
+
+  // ---- 13. links.bundles ----
+
+  group('links.bundles', () {
+    test('GETs /_/api/links/:id/bundles', () async {
+      final m = _mock(
+        status: 200,
+        body: <Map<String, Object?>>[_bundleJson()],
+      );
+      final bundles = await m.client.links.bundles(7);
+      expect(bundles.length, 1);
+      expect(bundles[0].id, 42);
       expect(
         m.capture.request!.url.toString(),
-        '$_base/_/api/links/5/qr?slug=foo%2Fbar',
+        '$_base/_/api/links/7/bundles',
       );
     });
   });
 
-  // ---- 19. createBundle ----
+  // ---- 14. slugs.lookup ----
 
-  group('createBundle', () {
-    test('POSTs /_/api/bundles with body', () async {
-      final m = _mock(status: 201, body: _bundleDict(name: 'B', accent: 'blue'));
-      await m.client.createBundle(
-        const CreateBundleOptions(name: 'B', accent: BundleAccent.blue),
+  group('slugs.lookup', () {
+    test('GETs /_/api/slugs/:slug', () async {
+      final m = _mock(status: 200, body: _linkJson(id: 7));
+      final link = await m.client.slugs.lookup('find-me');
+      expect(link.id, 7);
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/slugs/find-me',
       );
-      expect(m.capture.request!.url.toString(), '$_base/_/api/bundles');
+    });
+
+    test('URL-encodes slugs with reserved characters', () async {
+      final m = _mock(status: 200, body: _linkJson());
+      await m.client.slugs.lookup('foo/bar');
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/slugs/foo%2Fbar',
+      );
+    });
+  });
+
+  // ---- 15. slugs.add ----
+
+  group('slugs.add', () {
+    test('POSTs /_/api/links/:id/slugs with slug body', () async {
+      final m = _mock(status: 201, body: _slugJson(slug: 'custom'));
+      await m.client.slugs.add(1, 'custom');
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/links/1/slugs',
+      );
       expect(m.capture.request!.method, 'POST');
       final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
-      expect(body['name'], 'B');
-      expect(body['accent'], 'blue');
+      expect(body, <String, Object?>{'slug': 'custom'});
     });
   });
 
-  // ---- 20. listBundles ----
+  // ---- 16. slugs.disable ----
 
-  group('listBundles', () {
-    test('GETs /_/api/bundles by default', () async {
-      final m = _mock(status: 200, body: <dynamic>[]);
-      await m.client.listBundles();
-      expect(m.capture.request!.url.toString(), '$_base/_/api/bundles');
-    });
-
-    test('adds ?archived=all when archived: true', () async {
-      final m = _mock(status: 200, body: <dynamic>[]);
-      await m.client.listBundles(archived: true);
-      expect(m.capture.request!.url.toString(), '$_base/_/api/bundles?archived=all');
+  group('slugs.disable', () {
+    test('POSTs /_/api/links/:id/slugs/:slug/disable', () async {
+      final m = _mock(
+          status: 200, body: _slugJson(slug: 'abc', disabledAt: 9999999));
+      await m.client.slugs.disable(1, 'abc');
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/links/1/slugs/abc/disable',
+      );
+      expect(m.capture.request!.method, 'POST');
     });
   });
 
-  // ---- 21. getBundle ----
+  // ---- 17. slugs.enable ----
 
-  group('getBundle', () {
+  group('slugs.enable', () {
+    test('POSTs /_/api/links/:id/slugs/:slug/enable', () async {
+      final m = _mock(status: 200, body: _slugJson(slug: 'abc'));
+      await m.client.slugs.enable(1, 'abc');
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/links/1/slugs/abc/enable',
+      );
+      expect(m.capture.request!.method, 'POST');
+    });
+  });
+
+  // ---- 18. slugs.remove ----
+
+  group('slugs.remove', () {
+    test('DELETEs /_/api/links/:id/slugs/:slug and returns RemovedResult',
+        () async {
+      final m =
+          _mock(status: 200, body: <String, Object?>{'removed': true});
+      final result = await m.client.slugs.remove(1, 'abc');
+      expect(result.removed, isTrue);
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/links/1/slugs/abc',
+      );
+      expect(m.capture.request!.method, 'DELETE');
+    });
+  });
+
+  // ---- 19. bundles.get ----
+
+  group('bundles.get', () {
     test('GETs /_/api/bundles/:id', () async {
-      final m = _mock(status: 200, body: _bundleDict());
-      await m.client.getBundle(42);
+      final m = _mock(status: 200, body: _bundleWithSummaryJson(id: 42));
+      final b = await m.client.bundles.get(42);
+      expect(b.id, 42);
+      expect(m.capture.request!.url.toString(), '$_base/_/api/bundles/42');
+    });
+
+    test('appends range param when given', () async {
+      final m = _mock(status: 200, body: _bundleWithSummaryJson());
+      await m.client.bundles.get(42, range: '7d');
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/bundles/42?range=7d',
+      );
+    });
+
+    test('omits range param when not given', () async {
+      final m = _mock(status: 200, body: _bundleWithSummaryJson());
+      await m.client.bundles.get(42);
       expect(m.capture.request!.url.toString(), '$_base/_/api/bundles/42');
     });
   });
 
-  // ---- 22. updateBundle ----
+  // ---- 20. bundles.list ----
 
-  group('updateBundle', () {
+  group('bundles.list', () {
+    test('GETs /_/api/bundles with no params by default', () async {
+      final m = _mock(status: 200, body: <dynamic>[]);
+      await m.client.bundles.list();
+      expect(m.capture.request!.url.toString(), '$_base/_/api/bundles');
+    });
+
+    test('appends archived param when given', () async {
+      final m = _mock(status: 200, body: <dynamic>[]);
+      await m.client.bundles.list(archived: 'all');
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/bundles?archived=all',
+      );
+    });
+
+    test('appends range param when given', () async {
+      final m = _mock(status: 200, body: <dynamic>[]);
+      await m.client.bundles.list(range: '30d');
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/bundles?range=30d',
+      );
+    });
+  });
+
+  // ---- 21. bundles.create ----
+
+  group('bundles.create', () {
+    test('POSTs /_/api/bundles with required and optional fields', () async {
+      final m = _mock(status: 201, body: _bundleJson(name: 'B', accent: 'blue'));
+      await m.client.bundles
+          .create(name: 'B', description: 'desc', icon: 'star', accent: 'blue');
+      final req = m.capture.request!;
+      expect(req.url.toString(), '$_base/_/api/bundles');
+      expect(req.method, 'POST');
+      final body = jsonDecode(req.body) as Map<String, Object?>;
+      expect(body['name'], 'B');
+      expect(body['description'], 'desc');
+      expect(body['icon'], 'star');
+      expect(body['accent'], 'blue');
+    });
+
+    test('omits optional fields when not provided', () async {
+      final m = _mock(status: 201, body: _bundleJson());
+      await m.client.bundles.create(name: 'B');
+      final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
+      expect(body.containsKey('description'), isFalse);
+      expect(body.containsKey('icon'), isFalse);
+      expect(body.containsKey('accent'), isFalse);
+    });
+  });
+
+  // ---- 22. bundles.update ----
+
+  group('bundles.update', () {
     test('PUTs /_/api/bundles/:id with patch body', () async {
-      final m = _mock(status: 200, body: _bundleDict(description: 'edited'));
-      await m.client.updateBundle(42, const UpdateBundleOptions(description: 'edited'));
+      final m = _mock(status: 200, body: _bundleJson(name: 'Updated'));
+      await m.client.bundles.update(42, name: 'Updated');
       expect(m.capture.request!.url.toString(), '$_base/_/api/bundles/42');
       expect(m.capture.request!.method, 'PUT');
       final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
-      expect(body['description'], 'edited');
+      expect(body['name'], 'Updated');
     });
   });
 
-  // ---- 23. deleteBundle ----
+  // ---- 23. bundles.delete ----
 
-  group('deleteBundle', () {
-    test('DELETEs /_/api/bundles/:id', () async {
-      final m = _mock(status: 200, body: {'deleted': true});
-      expect(await m.client.deleteBundle(42), isTrue);
+  group('bundles.delete', () {
+    test('DELETEs /_/api/bundles/:id and returns DeletedResult', () async {
+      final m =
+          _mock(status: 200, body: <String, Object?>{'deleted': true});
+      final result = await m.client.bundles.delete(42);
+      expect(result.deleted, isTrue);
       expect(m.capture.request!.url.toString(), '$_base/_/api/bundles/42');
       expect(m.capture.request!.method, 'DELETE');
     });
   });
 
-  // ---- 24. archiveBundle ----
+  // ---- 24. bundles.archive ----
 
-  group('archiveBundle', () {
+  group('bundles.archive', () {
     test('POSTs /_/api/bundles/:id/archive', () async {
-      final m = _mock(status: 200, body: _bundleDict(archivedAt: 1));
-      await m.client.archiveBundle(42);
-      expect(m.capture.request!.url.toString(), '$_base/_/api/bundles/42/archive');
+      final m = _mock(
+          status: 200, body: _bundleJson(archivedAt: 9999999));
+      await m.client.bundles.archive(42);
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/bundles/42/archive',
+      );
       expect(m.capture.request!.method, 'POST');
     });
   });
 
-  // ---- 25. unarchiveBundle ----
+  // ---- 25. bundles.unarchive ----
 
-  group('unarchiveBundle', () {
+  group('bundles.unarchive', () {
     test('POSTs /_/api/bundles/:id/unarchive', () async {
-      final m = _mock(status: 200, body: _bundleDict());
-      await m.client.unarchiveBundle(42);
-      expect(m.capture.request!.url.toString(), '$_base/_/api/bundles/42/unarchive');
+      final m = _mock(status: 200, body: _bundleJson());
+      await m.client.bundles.unarchive(42);
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/bundles/42/unarchive',
+      );
       expect(m.capture.request!.method, 'POST');
     });
   });
 
-  // ---- 26. getBundleAnalytics ----
+  // ---- 26. bundles.analytics ----
 
-  group('getBundleAnalytics', () {
-    Map<String, Object?> emptyBundleStats() => {
-          'bundle': _bundleDict(),
-          'link_count': 0,
-          'total_clicks': 0,
-          'clicked_links': 0,
-          'countries_reached': 0,
-          'timeline': {
-            'range': '7d',
-            'buckets': <dynamic>[],
-            'summary': {
-              'last_24h': 0,
-              'last_7d': 0,
-              'last_30d': 0,
-              'last_90d': 0,
-              'last_1y': 0,
-            },
-          },
-          'countries': <dynamic>[],
-          'devices': <dynamic>[],
-          'os': <dynamic>[],
-          'browsers': <dynamic>[],
-          'referrers': <dynamic>[],
-          'referrer_hosts': <dynamic>[],
-          'link_modes': <dynamic>[],
-          'per_link': <dynamic>[],
-        };
+  group('bundles.analytics', () {
+    test('GETs /_/api/bundles/:id/analytics', () async {
+      final m = _mock(status: 200, body: _clickStatsJson(totalClicks: 55));
+      final stats = await m.client.bundles.analytics(42);
+      expect(stats.totalClicks, 55);
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/bundles/42/analytics',
+      );
+    });
 
-    test('forwards an explicit range as a query parameter', () async {
-      final m = _mock(status: 200, body: emptyBundleStats());
-      await m.client.getBundleAnalytics(42, range: '7d');
+    test('appends range param when given', () async {
+      final m = _mock(status: 200, body: _clickStatsJson());
+      await m.client.bundles.analytics(42, range: '7d');
       expect(
         m.capture.request!.url.toString(),
         '$_base/_/api/bundles/42/analytics?range=7d',
       );
     });
 
-    test('defaults to range=all when no range is given', () async {
-      final m = _mock(status: 200, body: emptyBundleStats());
-      await m.client.getBundleAnalytics(42);
+    test('omits range param when not given', () async {
+      final m = _mock(status: 200, body: _clickStatsJson());
+      await m.client.bundles.analytics(42);
       expect(
         m.capture.request!.url.toString(),
-        '$_base/_/api/bundles/42/analytics?range=all',
+        '$_base/_/api/bundles/42/analytics',
       );
     });
   });
 
-  // ---- 27. listBundleLinks ----
+  // ---- 27. bundles.links ----
 
-  group('listBundleLinks', () {
+  group('bundles.links', () {
     test('GETs /_/api/bundles/:id/links', () async {
-      final m = _mock(status: 200, body: <dynamic>[]);
-      await m.client.listBundleLinks(42);
-      expect(m.capture.request!.url.toString(), '$_base/_/api/bundles/42/links');
+      final m = _mock(
+        status: 200,
+        body: <Map<String, Object?>>[_linkJson(id: 3)],
+      );
+      final links = await m.client.bundles.links(42);
+      expect(links.length, 1);
+      expect(links[0].id, 3);
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/bundles/42/links',
+      );
     });
   });
 
-  // ---- 28. addLinkToBundle ----
+  // ---- 28. bundles.addLink ----
 
-  group('addLinkToBundle', () {
-    test('POSTs /_/api/bundles/:id/links with link_id', () async {
-      final m = _mock(status: 200, body: {'added': true});
-      expect(await m.client.addLinkToBundle(42, 7), isTrue);
-      expect(m.capture.request!.url.toString(), '$_base/_/api/bundles/42/links');
+  group('bundles.addLink', () {
+    test('POSTs /_/api/bundles/:id/links with link_id and returns AddedResult',
+        () async {
+      final m =
+          _mock(status: 200, body: <String, Object?>{'added': true});
+      final result = await m.client.bundles.addLink(42, 7);
+      expect(result.added, isTrue);
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/bundles/42/links',
+      );
       expect(m.capture.request!.method, 'POST');
       final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
-      expect(body, {'link_id': 7});
+      expect(body, <String, Object?>{'link_id': 7});
     });
   });
 
-  // ---- 29. removeLinkFromBundle ----
+  // ---- 29. bundles.removeLink ----
 
-  group('removeLinkFromBundle', () {
-    test('DELETEs /_/api/bundles/:id/links/:linkId', () async {
-      final m = _mock(status: 200, body: {'removed': true});
-      expect(await m.client.removeLinkFromBundle(42, 7), isTrue);
-      expect(m.capture.request!.url.toString(), '$_base/_/api/bundles/42/links/7');
+  group('bundles.removeLink', () {
+    test(
+        'DELETEs /_/api/bundles/:id/links/:linkId and returns RemovedResult',
+        () async {
+      final m =
+          _mock(status: 200, body: <String, Object?>{'removed': true});
+      final result = await m.client.bundles.removeLink(42, 7);
+      expect(result.removed, isTrue);
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/bundles/42/links/7',
+      );
       expect(m.capture.request!.method, 'DELETE');
     });
   });
 
-  // ---- 30. listBundlesForLink ----
-
-  group('listBundlesForLink', () {
-    test('GETs /_/api/links/:id/bundles', () async {
-      final m = _mock(status: 200, body: <dynamic>[]);
-      await m.client.listBundlesForLink(7);
-      expect(m.capture.request!.url.toString(), '$_base/_/api/links/7/bundles');
-    });
-  });
-
-  // ---- 31. Base URL normalization ----
+  // ---- 30. Base URL normalization ----
 
   group('Base URL normalization', () {
     test('strips trailing slashes from baseUrl', () async {
       final capture = _Capture();
       final mock = MockClient((request) async {
         capture.request = request;
-        return http.Response('[]', 200, headers: {'content-type': 'application/json'});
+        return http.Response('[]', 200,
+            headers: <String, String>{'content-type': 'application/json'});
       });
-      final client = ShrtnrClient(
-        baseUrl: '$_base/',
-        auth: const ApiKeyAuth(apiKey: _apiKey),
-        httpClient: mock,
-      );
-      await client.listLinks();
+      final client =
+          ShrtnrClient(baseUrl: '$_base/', apiKey: _apiKey, httpClient: mock);
+      await client.links.list();
       expect(capture.request!.url.toString(), '$_base/_/api/links');
+    });
+  });
+
+  // ---- 31. snake_case → camelCase model mapping ----
+
+  group('snake_case to camelCase model mapping', () {
+    test('Link maps snake_case fields to camelCase', () async {
+      final m = _mock(
+        status: 200,
+        body: _linkJson(id: 99, totalClicks: 77, deltaPct: 12.5),
+      );
+      final link = await m.client.links.get(99);
+      expect(link.totalClicks, 77);
+      expect(link.deltaPct, 12.5);
+      expect(link.createdBy, 'owner@example.com');
+      expect(link.createdVia, 'sdk');
+    });
+
+    test('Slug maps snake_case fields to camelCase', () async {
+      final m = _mock(
+        status: 201,
+        body: _slugJson(linkId: 5, slug: 'custom', isCustom: 1, disabledAt: null),
+      );
+      final slug = await m.client.slugs.add(5, 'custom');
+      expect(slug.linkId, 5);
+      expect(slug.isCustom, 1);
+      expect(slug.isPrimary, 0);
+      expect(slug.clickCount, 5);
+      expect(slug.disabledAt, isNull);
+    });
+
+    test('Bundle maps snake_case fields to camelCase', () async {
+      final m = _mock(status: 200, body: _bundleJson(archivedAt: 9999999));
+      final bundle = await m.client.bundles.archive(42);
+      expect(bundle.archivedAt, 9999999);
+      expect(bundle.createdBy, 'owner@example.com');
+      expect(bundle.createdVia, 'sdk');
+    });
+
+    test('BundleWithSummary maps flat JSON fields correctly', () async {
+      final m = _mock(
+        status: 200,
+        body: _bundleWithSummaryJson(deltaPct: 5.0),
+      );
+      final b = await m.client.bundles.get(42);
+      expect(b.linkCount, 3);
+      expect(b.totalClicks, 100);
+      expect(b.deltaPct, 5.0);
+      expect(b.sparkline, <int>[10, 20, 30]);
+    });
+
+    test('TimelineData.summary maps last_* fields to camelCase', () async {
+      final m = _mock(status: 200, body: _timelineJson());
+      final td = await m.client.links.timeline(1);
+      expect(td.summary.last24h, 1);
+      expect(td.summary.last7d, 7);
+      expect(td.summary.last30d, 30);
+      expect(td.summary.last90d, 90);
+      expect(td.summary.last1y, 365);
     });
   });
 }

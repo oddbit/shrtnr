@@ -6,6 +6,7 @@ import '../models.dart';
 
 /// Methods for the `/api/links` and related endpoints.
 class LinksResource {
+  /// Creates a links resource backed by [_http].
   LinksResource(this._http);
 
   final ShrtnrBaseClient _http;

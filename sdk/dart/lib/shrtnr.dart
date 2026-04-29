@@ -15,7 +15,7 @@
 /// await client.bundles.archive(7);
 /// client.close();
 /// ```
-library shrtnr;
+library;
 
 export 'src/client.dart' show ShrtnrClient, LinksResource, SlugsResource, BundlesResource;
 export 'src/errors.dart' show ShrtnrError;
