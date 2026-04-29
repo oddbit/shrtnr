@@ -11,7 +11,7 @@ language-idiom choice. Python sticks close to the JSON.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 TimelineRange = Literal["24h", "7d", "30d", "90d", "1y", "all"]
 BundleAccent = Literal["orange", "red", "green", "blue", "purple"]
@@ -474,4 +474,4 @@ class UpdateBundleOptions:
 DeleteResult = dict[str, bool]
 RemoveResult = dict[str, bool]
 AddResult = dict[str, bool]
-ListBundlesArchived = Union[bool, Literal["all", "only", "true", "false"]]
+ListBundlesArchived = bool | Literal["all", "only", "true", "false"]

@@ -78,7 +78,7 @@ jobs:
             sdk/python/CHANGELOG.md \
             /tmp/release-notes.md
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: steps.version.outputs.should_run == 'true'
         with:
           python-version: '3.12'
