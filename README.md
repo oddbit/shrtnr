@@ -167,6 +167,8 @@ Every shrtnr deployment includes a built-in [MCP](https://modelcontextprotocol.i
 
 The MCP endpoint authenticates through [Cloudflare Access Managed OAuth](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/). CF Access acts as the OAuth Authorization Server: it handles client registration, token issuance, and validation at the edge. The Worker receives authenticated requests with identity headers and does not implement any OAuth endpoints itself.
 
+> **Authorization model.** The MCP endpoint does not split read from write today. Anyone whose email matches the CF Access policy on the MCP application can call every registered tool, including destructive ones (`delete_link`, `delete_bundle`, `remove_slug`, `archive_bundle`). Per-resource ownership still applies: a user cannot mutate another user's links or bundles. To grant a read-only audience, gate them through a separate MCP application or a separate Worker deployment with the write tools removed.
+
 <br clear="all">
 
 #### MCP setup
