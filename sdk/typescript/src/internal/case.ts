@@ -1,9 +1,12 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-/** Convert a snake_case string to camelCase. */
+/** Convert a snake_case string to camelCase.
+ *
+ * Handles digit segments too: last_24h -> last24h, last_7d -> last7d.
+ */
 export function toCamel(s: string): string {
-  return s.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+  return s.replace(/_([a-z0-9])/g, (_, c: string) => (/[a-z]/.test(c) ? c.toUpperCase() : c));
 }
 
 /** Convert a camelCase string to snake_case. */

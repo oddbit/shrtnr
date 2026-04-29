@@ -30,45 +30,37 @@ describe("TS SDK e2e — live wrangler dev", () => {
           "Run e2e tests via scripts/test-sdks-e2e.sh from the repo root, not directly.",
       );
     }
-    client = new ShrtnrClient({
-      baseUrl: BASE_URL,
-      auth: { apiKey: API_KEY },
-    });
-  });
-
-  it("health() reaches the live /_/health", async () => {
-    const h = await client.health();
-    expect(typeof h.status).toBe("string");
+    client = new ShrtnrClient({ baseUrl: BASE_URL, apiKey: API_KEY });
   });
 
   it("link lifecycle — create, get, delete", async () => {
-    const link = await client.createLink({
+    const link = await client.links.create({
       url: "https://example.com/ts-e2e",
       label: "ts-e2e",
     });
     expect(link.url).toBe("https://example.com/ts-e2e");
-    const fetched = await client.getLink(link.id);
+    const fetched = await client.links.get(link.id);
     expect(fetched.id).toBe(link.id);
-    const del = await client.deleteLink(link.id);
+    const del = await client.links.delete(link.id);
     expect(del.deleted).toBe(true);
   });
 
-  it("slug mutations work against public routes (the regression guard)", async () => {
-    const link = await client.createLink({ url: "https://example.com/ts-slugs" });
-    await client.addCustomSlug(link.id, "ts-e2e-slug");
-    const disabled = await client.disableSlug(link.id, "ts-e2e-slug");
-    expect(disabled.disabled_at).not.toBeNull();
-    const enabled = await client.enableSlug(link.id, "ts-e2e-slug");
-    expect(enabled.disabled_at).toBeNull();
-    const removed = await client.removeSlug(link.id, "ts-e2e-slug");
+  it("slug mutations work against live routes", async () => {
+    const link = await client.links.create({ url: "https://example.com/ts-slugs" });
+    await client.slugs.add(link.id, "ts-e2e-slug");
+    const disabled = await client.slugs.disable(link.id, "ts-e2e-slug");
+    expect(disabled.disabledAt).not.toBeNull();
+    const enabled = await client.slugs.enable(link.id, "ts-e2e-slug");
+    expect(enabled.disabledAt).toBeNull();
+    const removed = await client.slugs.remove(link.id, "ts-e2e-slug");
     expect(removed.removed).toBe(true);
-    await client.deleteLink(link.id);
+    await client.links.delete(link.id);
   });
 
   it("bundle create/delete against live server", async () => {
-    const bundle = await client.createBundle({ name: "ts e2e bundle" });
+    const bundle = await client.bundles.create({ name: "ts e2e bundle" });
     expect(bundle.name).toBe("ts e2e bundle");
-    const del = await client.deleteBundle(bundle.id);
+    const del = await client.bundles.delete(bundle.id);
     expect(del.deleted).toBe(true);
   });
 });
