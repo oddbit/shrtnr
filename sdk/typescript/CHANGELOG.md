@@ -2,6 +2,62 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.0.0 (2026-04-29)
+
+Ground-up rewrite. This is a deliberate breaking release derived from the OpenAPI spec.
+
+### Breaking changes
+
+**Resource-grouped client.** All methods now live under `client.links`, `client.slugs`, or `client.bundles`. Flat methods on the top-level client are gone.
+
+```ts
+// 0.x
+client.createLink(...)
+client.archiveBundle(...)
+
+// 1.0
+client.links.create(...)
+client.bundles.archive(...)
+```
+
+**Constructor shape.** The nested `auth: { apiKey }` object is replaced by a flat `apiKey` field.
+
+```ts
+// 0.x
+new ShrtnrClient({ baseUrl: "...", auth: { apiKey: "sk_..." } })
+
+// 1.0
+new ShrtnrClient({ baseUrl: "...", apiKey: "sk_..." })
+```
+
+**All model fields are camelCase.** The HTTP layer converts snake_case wire format on parse and serialize. Fields like `created_at`, `total_clicks`, `is_custom`, `link_id` are now `createdAt`, `totalClicks`, `isCustom`, `linkId`.
+
+**`ShrtnrError` shape.** The `body` field is removed. Use `serverMessage` (the `error` string from the JSON response). The `message` property formats as `"shrtnr API error (HTTP {status}): {serverMessage}"`.
+
+**`ClickStats` expanded.** New fields from the spec: `referrerHosts`, `linkModes`, `channels`, `numCountries`, `numReferrers`, `numReferrerHosts`, `numOs`, `numBrowsers`.
+
+**`TimelineData.summary` keys renamed.** `last_24h` → `last24h`, `last_7d` → `last7d`, etc.
+
+**`Link` gains `deltaPct?`** — click count change percentage versus the previous period.
+
+**`BundleWithSummary.topLinks[].clickCount`** (was `click_count`).
+
+**`links.list` and `bundles.list` accept `range?`** to scope click counts to a time window.
+
+**`bundles.list` `archived` parameter** is now the raw spec enum (`"all"`, `"only"`, `"1"`, `"true"`) instead of a boolean.
+
+**`health()` removed.** The `/_/health` endpoint is outside the public API spec.
+
+### New surface
+
+- `client.links`: `get`, `list`, `create`, `update`, `disable`, `enable`, `delete`, `analytics`, `timeline`, `qr`, `bundles`
+- `client.slugs`: `lookup`, `add`, `disable`, `enable`, `remove`
+- `client.bundles`: `get`, `list`, `create`, `update`, `delete`, `archive`, `unarchive`, `analytics`, `links`, `addLink`, `removeLink`
+
+See the README for the full method table and migration guide.
+
+---
+
 ## 0.8.0
 
 - `getLinkAnalytics(linkId, range?)` accepts an optional `TimelineRange`. Defaults to all-time when omitted. Use the parameter to scope a query to `"7d"`, `"30d"`, or any other supported window in the same call.

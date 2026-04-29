@@ -1,321 +1,216 @@
-# @oddbit/shrtnr: URL Shortener SDK for TypeScript
+# @oddbit/shrtnr
 
-TypeScript client for creating short links, managing URLs, and reading click analytics from a [shrtnr](https://oddb.it/shrtnr-website-npm) instance. Works in Node.js, Deno, Bun, and the browser.
+TypeScript SDK for [shrtnr](https://oddb.it/shrtnr-website-npm), a self-hosted URL shortener on Cloudflare Workers. Create short links, manage slugs, and read click analytics.
+
+[![npm](https://img.shields.io/npm/v/@oddbit/shrtnr)](https://www.npmjs.com/package/@oddbit/shrtnr)
+[![license](https://img.shields.io/npm/l/@oddbit/shrtnr)](https://www.apache.org/licenses/LICENSE-2.0)
 
 ## Install
 
 ```bash
 npm install @oddbit/shrtnr
+# or
+yarn add @oddbit/shrtnr
 ```
 
-## Quick Start
+## Quick start
 
 ```ts
 import { ShrtnrClient } from "@oddbit/shrtnr";
 
 const client = new ShrtnrClient({
   baseUrl: "https://your-shrtnr.example.com",
-  auth: { apiKey: "sk_your_api_key" },
+  apiKey: "sk_your_api_key",
 });
 
+const link = await client.links.create({ url: "https://example.com/very-long-path" });
+console.log(link.slugs[0].slug); // "a3x9"
+```
+
+## Configuration
+
+```ts
+new ShrtnrClient({
+  baseUrl: "https://your-shrtnr.example.com", // required
+  apiKey: "sk_...",                            // required; from the admin dashboard
+  fetch: customFetch,                          // optional; inject a custom HTTP client
+})
+```
+
+The `fetch` option is useful for test mocking or custom TLS configurations.
+
+## Resources
+
+### Links (`client.links`)
+
+| Method | Description |
+|---|---|
+| `get(id, {range?})` | Get a link with click count |
+| `list({owner?, range?})` | List all links |
+| `create({url, label?, slugLength?, expiresAt?, allowDuplicate?})` | Create a short link |
+| `update(id, {url?, label?, expiresAt?})` | Update URL, label, or expiry |
+| `disable(id)` | Stop redirecting |
+| `enable(id)` | Resume redirecting |
+| `delete(id)` | Permanently delete |
+| `analytics(id, {range?})` | Click breakdown by country, device, referrer, etc. |
+| `timeline(id, {range?})` | Click counts bucketed over time |
+| `qr(id, {slug?, size?})` | QR code as SVG string |
+| `bundles(id)` | Bundles this link belongs to |
+
+```ts
 // Shorten a URL
-const link = await client.createLink({
-  url: "https://example.com/long-page",
-  label: "Campaign landing page",
-});
+const link = await client.links.create({ url: "https://example.com", label: "Landing page" });
 
-console.log(link); // { id: 1, slugs: [{ slug: "a3x", ... }], ... }
+// Get a 7-day click count
+const fresh = await client.links.get(link.id, { range: "7d" });
+
+// Full analytics for the last 30 days
+const stats = await client.links.analytics(link.id, { range: "30d" });
+console.log(stats.totalClicks, stats.countries, stats.browsers);
 ```
 
-## What This SDK Covers
+### Slugs (`client.slugs`)
 
-This package wraps the public link-management API:
-
-- Shorten URLs (create short links)
-- Add, disable, enable, and remove custom slugs
-- List, read, update, disable, enable, and delete links
-- List links by owner identity
-- Read click analytics (referrer, country, device, browser)
-- Group links into bundles and read combined engagement stats
-- Check service health
-
-Administrative operations (API key management, settings, dashboard stats) are not part of this package. Those are accessible through the admin UI.
-
-## API Reference
-
-### `createLink`
-
-Shorten a URL. Returns a `Link` with a random slug.
+| Method | Description |
+|---|---|
+| `lookup(slug)` | Find a link by slug |
+| `add(linkId, slug)` | Add a custom slug |
+| `disable(linkId, slug)` | Disable a slug |
+| `enable(linkId, slug)` | Re-enable a slug |
+| `remove(linkId, slug)` | Remove a slug |
 
 ```ts
-const link = await client.createLink({
-  url: "https://example.com",
-  label: "My link to the example page",
-  expires_at: Math.floor(Date.now() / 1000) + 86400,
-});
+// Add a campaign slug then disable it when the campaign ends
+await client.slugs.add(link.id, "spring-sale");
+await client.slugs.disable(link.id, "spring-sale");
+
+// Look up a link by its slug
+const found = await client.slugs.lookup("spring-sale");
 ```
 
-To add a custom slug, call `addCustomSlug` after creation:
+### Bundles (`client.bundles`)
+
+Groups of related links with combined analytics.
+
+| Method | Description |
+|---|---|
+| `get(id, {range?})` | Get a bundle with click summary |
+| `list({archived?, range?})` | List bundles |
+| `create({name, description?, icon?, accent?})` | Create a bundle |
+| `update(id, {name?, description?, icon?, accent?})` | Update metadata |
+| `delete(id)` | Permanently delete |
+| `archive(id)` | Hide from default listing |
+| `unarchive(id)` | Restore an archived bundle |
+| `analytics(id, {range?})` | Combined click analytics |
+| `links(id)` | List links in the bundle |
+| `addLink(id, linkId)` | Add a link |
+| `removeLink(id, linkId)` | Remove a link |
 
 ```ts
-const link = await client.createLink({ url: "https://example.com" });
-const slug = await client.addCustomSlug(link.id, "my-campaign");
+// Create a bundle and add links to it
+const bundle = await client.bundles.create({ name: "Spring 2026", accent: "green" });
+await client.bundles.addLink(bundle.id, linkA.id);
+await client.bundles.addLink(bundle.id, linkB.id);
+
+// Combined analytics for the last 7 days
+const stats = await client.bundles.analytics(bundle.id, { range: "7d" });
+console.log(stats.totalClicks);
 ```
 
-### `listLinks`
+## Models
 
-List all short links.
+All model fields use camelCase. The SDK converts snake_case JSON from the wire automatically.
 
-```ts
-const links = await client.listLinks();
-```
+Key types exported from `@oddbit/shrtnr`:
 
-### `getLink`
+- `Link`, `Slug`, `Bundle`, `BundleWithSummary`
+- `ClickStats`, `TimelineData`, `NameCount`, `TimelineBucket`
+- `TimelineRange` (`"24h" | "7d" | "30d" | "90d" | "1y" | "all"`)
+- `BundleAccent` (`"orange" | "red" | "green" | "blue" | "purple"`)
+- Request body types: `CreateLinkBody`, `UpdateLinkBody`, `AddSlugBody`, `CreateBundleBody`, `UpdateBundleBody`
 
-Get a single link by ID, including its slugs and click count.
+## Errors
 
-```ts
-const link = await client.getLink(123);
-```
-
-### `getLinkBySlug`
-
-Get a single link by its short URL slug (including custom slugs).
-
-```ts
-const link = await client.getLinkBySlug("my-custom-slug");
-```
-
-### `updateLink`
-
-Update a link's URL, label, or expiry.
-
-```ts
-const updated = await client.updateLink(123, {
-  label: "Updated label",
-  expires_at: null,
-});
-```
-
-### `disableLink`
-
-Disable a link so it stops redirecting.
-
-```ts
-const disabled = await client.disableLink(123);
-```
-
-### `enableLink`
-
-Re-enable a previously disabled link.
-
-```ts
-const link = await client.enableLink(123);
-```
-
-### `deleteLink`
-
-Permanently delete a link. Only succeeds if the link has zero clicks — disable it instead if it has traffic.
-
-```ts
-await client.deleteLink(123);
-```
-
-### `listLinksByOwner`
-
-List all links created by a specific identity (typically an email address).
-
-```ts
-const links = await client.listLinksByOwner("user@example.com");
-```
-
-### `addCustomSlug`
-
-Add a custom short URL slug to an existing link. Throws `ShrtnrError` with
-status 409 if the slug already exists, or 400 for invalid format.
-
-```ts
-const slug = await client.addCustomSlug(123, "campaign");
-```
-
-### `disableSlug`
-
-Disable a custom slug without affecting the parent link or its other slugs.
-
-```ts
-await client.disableSlug(123, "campaign");
-```
-
-### `enableSlug`
-
-Re-enable a disabled custom slug.
-
-```ts
-await client.enableSlug(123, "campaign");
-```
-
-### `removeSlug`
-
-Permanently remove a custom slug. Only succeeds if the slug has zero clicks.
-
-```ts
-await client.removeSlug(123, "campaign");
-```
-
-### `getLinkQR`
-
-Fetch the QR code SVG for a link as a string. Optionally specify which slug to encode.
-
-```ts
-const svg = await client.getLinkQR(123);
-const svgForSlug = await client.getLinkQR(123, "my-campaign");
-```
-
-### `getLinkAnalytics`
-
-Read click analytics for a link: referrer, country, device type, and browser breakdown. Defaults to all-time. Pass an optional `TimelineRange` to scope results to a window.
-
-```ts
-const lifetime = await client.getLinkAnalytics(123);
-const last7d = await client.getLinkAnalytics(123, "7d");
-```
-
-### `health`
-
-Check service health and version.
-
-```ts
-const health = await client.health();
-```
-
-### `createBundle`
-
-Create a bundle to group related links. Returns the new `Bundle`.
-
-```ts
-const bundle = await client.createBundle({
-  name: "Spring campaign",
-  description: "Email, social, and paid drops",
-  icon: "sparkles",
-  accent: "purple",
-});
-```
-
-### `listBundles`
-
-List bundles with summary stats: lifetime click total, 30-day sparkline, and top links. Archived bundles are hidden by default.
-
-```ts
-const bundles = await client.listBundles();
-const withArchived = await client.listBundles({ archived: true });
-```
-
-### `getBundle`
-
-Fetch a single bundle's metadata by ID.
-
-```ts
-const bundle = await client.getBundle(42);
-```
-
-### `updateBundle`
-
-Rename a bundle or change its description, icon, or accent.
-
-```ts
-const updated = await client.updateBundle(42, {
-  name: "Spring 2026 campaign",
-  accent: "green",
-});
-```
-
-### `deleteBundle`
-
-Permanently delete a bundle. Member links are preserved, only the grouping is discarded.
-
-```ts
-await client.deleteBundle(42);
-```
-
-### `archiveBundle`
-
-Archive a bundle so it drops out of the default `listBundles` response. Member links keep working.
-
-```ts
-await client.archiveBundle(42);
-```
-
-### `unarchiveBundle`
-
-Restore a previously archived bundle.
-
-```ts
-await client.unarchiveBundle(42);
-```
-
-### `getBundleAnalytics`
-
-Read combined analytics across every link in the bundle: timeline, per-link breakdown, countries, devices, browsers. Defaults to all-time; pass a `TimelineRange` to scope to a window.
-
-```ts
-const lifetime = await client.getBundleAnalytics(42);
-const last7d = await client.getBundleAnalytics(42, "7d");
-console.log(lifetime.total_clicks, lifetime.per_link);
-```
-
-### `listBundleLinks`
-
-List every link currently in a bundle.
-
-```ts
-const links = await client.listBundleLinks(42);
-```
-
-### `addLinkToBundle`
-
-Attach a link to a bundle. Idempotent: re-adding an existing member is a no-op.
-
-```ts
-await client.addLinkToBundle(42, 123);
-```
-
-### `removeLinkFromBundle`
-
-Detach a link from a bundle. The link itself stays, only the membership is removed.
-
-```ts
-await client.removeLinkFromBundle(42, 123);
-```
-
-### `listBundlesForLink`
-
-List every bundle a given link belongs to.
-
-```ts
-const bundles = await client.listBundlesForLink(123);
-```
-
-## Error Handling
-
-Non-2xx responses throw `ShrtnrError` with the status code, message, and raw response body.
+Every 4xx/5xx response throws `ShrtnrError`. Network failures also throw `ShrtnrError` with `status: 0`.
 
 ```ts
 import { ShrtnrError } from "@oddbit/shrtnr";
 
 try {
-  await client.getLink(99999);
-} catch (error) {
-  if (error instanceof ShrtnrError) {
-    console.error(error.status);  // 404
-    console.error(error.message); // "not found"
-    console.error(error.body);
+  await client.links.get(99999);
+} catch (err) {
+  if (err instanceof ShrtnrError) {
+    console.error(err.status);        // 404
+    console.error(err.serverMessage); // "not found"
+    console.error(err.message);       // "shrtnr API error (HTTP 404): not found"
   }
 }
 ```
 
-Custom slug collisions and format errors from `addCustomSlug` throw
-`ShrtnrError` (status 409 or 400). Handle them per-call.
+## Migrating from 0.x
+
+1.0 is a clean break. Summary of changes:
+
+**Resource-grouped client.** Methods moved to namespaces.
+
+```ts
+// 0.x
+await client.createLink({ url: "..." });
+await client.addCustomSlug(id, "promo");
+await client.archiveBundle(id);
+
+// 1.0
+await client.links.create({ url: "..." });
+await client.slugs.add(id, "promo");
+await client.bundles.archive(id);
+```
+
+**Constructor shape changed.** No more nested `auth` object.
+
+```ts
+// 0.x
+new ShrtnrClient({ baseUrl: "...", auth: { apiKey: "sk_..." } });
+
+// 1.0
+new ShrtnrClient({ baseUrl: "...", apiKey: "sk_..." });
+```
+
+**All fields are now camelCase.** The SDK converts snake_case JSON from the API automatically.
+
+```ts
+// 0.x (raw snake_case from server)
+link.created_at; link.total_clicks; slug.is_custom;
+
+// 1.0 (camelCase)
+link.createdAt; link.totalClicks; slug.isCustom;
+```
+
+**`ShrtnrError` shape changed.** The `body` field is gone; use `serverMessage`.
+
+```ts
+// 0.x
+err.body; // raw parsed body
+
+// 1.0
+err.serverMessage; // the "error" string from the response
+```
+
+**`ClickStats` expanded.** New fields: `referrerHosts`, `linkModes`, `channels`, `numCountries`, `numReferrers`, `numReferrerHosts`, `numOs`, `numBrowsers`.
+
+**`TimelineData.summary` keys changed** from `last_24h`/`last_7d` to `last24h`/`last7d`.
+
+**`BundleWithSummary.topLinks[].clickCount`** (was `click_count`).
+
+**`links.list` and `bundles.list` now accept `range?`** for scoping click counts to a window.
+
+**`BundlesResource.list` `archived` parameter** is now the raw enum string (`"all"`, `"only"`, `"1"`, `"true"`) rather than a boolean, matching the API spec exactly.
+
+## See also
+
+- API docs: `/_/api/docs` on your shrtnr deployment
+- OpenAPI spec: `/_/api/openapi.json`
+- Source: [github.com/oddbit/shrtnr](https://github.com/oddbit/shrtnr)
 
 ## License
 
-Apache-2.0. See the root [LICENSE](../LICENSE) file.
+Apache 2.0. Built and maintained by [Oddbit](https://oddbit.id).
