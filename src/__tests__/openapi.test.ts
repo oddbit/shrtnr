@@ -115,6 +115,82 @@ describe("paramHook handles body and query failures", () => {
   });
 });
 
+describe("slug body validation matches service-layer rules", () => {
+  async function createLink(key: string): Promise<number> {
+    const res = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ url: "https://example.com/slug-test" }),
+    }));
+    return ((await res.json()) as { id: number }).id;
+  }
+
+  async function postSlug(key: string, id: number, slug: string): Promise<Response> {
+    return SELF.fetch(new Request(`https://shrtnr.test/_/api/links/${id}/slugs`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ slug }),
+    }));
+  }
+
+  it.each([
+    ["under_score", "underscore disallowed"],
+    ["-leading", "leading hyphen disallowed"],
+    ["trailing-", "trailing hyphen disallowed"],
+    ["has space", "whitespace disallowed"],
+    ["sl/ash", "slash disallowed"],
+  ])("rejects %s at the schema boundary (%s)", async (slug, _why) => {
+    const key = await createApiKey("create");
+    const id = await createLink(key);
+    const res = await postSlug(key, id, slug);
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error?: string };
+    expect(typeof body.error).toBe("string");
+  });
+
+  it("accepts a valid mixed-case custom slug", async () => {
+    const key = await createApiKey("create");
+    const id = await createLink(key);
+    const res = await postSlug(key, id, "Marketing-Page");
+    expect(res.status).toBe(201);
+  });
+});
+
+describe("expires_at must be non-negative", () => {
+  it("POST /_/api/links rejects a negative expires_at with 400 + {error: string}", async () => {
+    const key = await createApiKey("create");
+    const res = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ url: "https://example.com/expires-neg", expires_at: -1 }),
+    }));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error?: string };
+    expect(typeof body.error).toBe("string");
+    expect(body.error).toMatch(/expires_at/i);
+  });
+
+  it("PUT /_/api/links/:id rejects a negative expires_at with 400 + {error: string}", async () => {
+    const key = await createApiKey("create");
+    const createRes = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ url: "https://example.com/expires-neg-put" }),
+    }));
+    const id = ((await createRes.json()) as { id: number }).id;
+
+    const res = await SELF.fetch(new Request(`https://shrtnr.test/_/api/links/${id}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ expires_at: -1 }),
+    }));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error?: string };
+    expect(typeof body.error).toBe("string");
+    expect(body.error).toMatch(/expires_at/i);
+  });
+});
+
 describe("OpenAPI spec coverage", () => {
   it("the spec documents every migrated public-API path", async () => {
     const res = await SELF.fetch("https://shrtnr.test/_/api/openapi.json");

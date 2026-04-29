@@ -61,7 +61,7 @@ export const CreateLinkBodySchema = z
     url: z.string().url(),
     label: z.string().optional(),
     slug_length: z.number().int().min(3).max(16).optional(),
-    expires_at: z.number().int().optional(),
+    expires_at: z.number().int().nonnegative().optional(),
     allow_duplicate: z.boolean().optional(),
   })
   .strict()
@@ -71,16 +71,25 @@ export const UpdateLinkBodySchema = z
   .object({
     url: z.string().url().optional(),
     label: z.string().nullable().optional(),
-    expires_at: z.number().int().nullable().optional(),
+    expires_at: z.number().int().nonnegative().nullable().optional(),
   })
   .strict()
   .openapi("UpdateLinkBody");
 
 // ---- Slug (request) ----
 
+// Mirrors validateCustomSlug() in src/slugs.ts after server-side lowercase
+// normalization: must start and end with alphanumeric, hyphens allowed in the
+// middle, no underscores, no leading/trailing hyphens.
+export const CustomSlugStringSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i);
+
 export const AddSlugBodySchema = z
   .object({
-    slug: z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/),
+    slug: CustomSlugStringSchema,
   })
   .strict()
   .openapi("AddSlugBody");

@@ -87,7 +87,7 @@ warn_redundant_casts = true
 warn_unreachable = true
 
 [tool.shrtnr]
-spec_hash = "sha256:a2885bc8c56bd1c6d7a6c6c8155ac70b155aa3b76047286bb1b79c9c83c33b10"
+spec_hash = "sha256:a9016d12a5da4adcf2737e1eb614cc60eca86f2fc295ab80fad2a5306e52b39d"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
