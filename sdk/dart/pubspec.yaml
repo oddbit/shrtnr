@@ -1,9 +1,11 @@
 name: shrtnr
 description: Dart client for the shrtnr URL shortener API. Create short links, manage custom slugs, and read click analytics.
-version: 0.3.0
+version: 1.0.0
 homepage: https://oddb.it/shrtnr-website-pub
 repository: https://github.com/oddbit/shrtnr
 issue_tracker: https://github.com/oddbit/shrtnr/issues
+
+x-spec-hash: sha256:8a1fe352d137769a77ba40c42103becfaa8243a186621018f81084fe8e8eec28
 
 topics:
   - url-shortener

@@ -29,57 +29,52 @@ Future<void> main() async {
     return;
   }
 
-  final client = ShrtnrClient(
-    baseUrl: baseUrl,
-    auth: ApiKeyAuth(apiKey: apiKey),
+  final client = ShrtnrClient(baseUrl: baseUrl, apiKey: apiKey);
+
+  // Create a short link.
+  final link = await client.links.create(
+    url: 'https://example.com/long-page',
+    label: 'Dart SDK example link',
   );
+  print('Created link ${link.id} — primary slug: ${link.slugs.first.slug}');
 
-  final health = await client.health();
-  print('shrtnr is healthy: version ${health.version}');
-
-  final link = await client.createLink(
-    const CreateLinkOptions(
-      url: 'https://example.com/long-page',
-      label: 'Dart SDK example link',
-    ),
-  );
-  print('Created link ${link.id} with primary slug ${link.slugs.first.slug}');
-
-  final custom = await client.addCustomSlug(link.id, 'dart-sdk-demo');
+  // Add a campaign slug.
+  final custom = await client.slugs.add(link.id, 'dart-sdk-demo');
   print('Added custom slug /${custom.slug}');
 
-  final analytics = await client.getLinkAnalytics(link.id);
-  print('Total clicks so far: ${analytics.totalClicks}');
+  // Read analytics for the last 7 days.
+  final stats = await client.links.analytics(link.id, range: '7d');
+  print('Clicks (last 7d): ${stats.totalClicks}');
 
-  final bundle = await client.createBundle(
-    const CreateBundleOptions(
-      name: 'Dart SDK demo bundle',
-      description: 'Grouping the example link for combined analytics.',
-      accent: BundleAccent.purple,
-    ),
+  // Create a bundle and attach the link.
+  final bundle = await client.bundles.create(
+    name: 'Dart SDK demo bundle',
+    description: 'Grouping the example link for combined analytics.',
+    accent: 'purple',
   );
   print('Created bundle ${bundle.id} (${bundle.name})');
 
-  await client.addLinkToBundle(bundle.id, link.id);
-  print('Attached link ${link.id} to bundle ${bundle.id}');
+  final added = await client.bundles.addLink(bundle.id, link.id);
+  print('Link attached: ${added.added}');
 
-  final bundleStats = await client.getBundleAnalytics(bundle.id);
-  print(
-    'Bundle has ${bundleStats.linkCount} link(s) and '
-    '${bundleStats.totalClicks} combined click(s) in the last 30 days',
-  );
+  // Combined analytics.
+  final bundleStats = await client.bundles.analytics(bundle.id);
+  print('Bundle total clicks: ${bundleStats.totalClicks}');
 
+  // Clean up.
   try {
-    await client.deleteBundle(bundle.id);
-    print('Cleaned up bundle ${bundle.id}');
-  } on ShrtnrException catch (e) {
-    print('Could not delete bundle (status ${e.statusCode}): ${e.message}');
+    final dr = await client.bundles.delete(bundle.id);
+    print('Bundle deleted: ${dr.deleted}');
+  } on ShrtnrError catch (e) {
+    print('Could not delete bundle (${e.status}): ${e.serverMessage}');
   }
 
   try {
-    await client.deleteLink(link.id);
-    print('Cleaned up link ${link.id}');
-  } on ShrtnrException catch (e) {
-    print('Could not delete link (status ${e.statusCode}): ${e.message}');
+    final dr = await client.links.delete(link.id);
+    print('Link deleted: ${dr.deleted}');
+  } on ShrtnrError catch (e) {
+    print('Could not delete link (${e.status}): ${e.serverMessage}');
   }
+
+  client.close();
 }

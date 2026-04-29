@@ -1,5 +1,95 @@
 # Changelog
 
+## 1.0.0 (2026-04-29)
+
+Ground-up rewrite derived from the OpenAPI spec. This is a deliberate breaking release.
+
+### Breaking changes
+
+**Resource-grouped client.** All methods now live under `client.links`, `client.slugs`, or
+`client.bundles`. Flat methods on the top-level client are gone.
+
+```dart
+// 0.x
+await client.createLink(CreateLinkOptions(url: '...'));
+await client.archiveBundle(42);
+
+// 1.0
+await client.links.create(url: '...');
+await client.bundles.archive(42);
+```
+
+**Constructor shape.** The nested `auth: ApiKeyAuth(apiKey: ...)` parameter is replaced by a
+flat `apiKey` string.
+
+```dart
+// 0.x
+ShrtnrClient(baseUrl: '...', auth: ApiKeyAuth(apiKey: 'sk_...'))
+
+// 1.0
+ShrtnrClient(baseUrl: '...', apiKey: 'sk_...')
+```
+
+**`ShrtnrError` replaces `ShrtnrException`.** The old `body` and `statusCode` fields are gone.
+Use `status` and `serverMessage`.
+
+```dart
+// 0.x
+e.statusCode; e.body;
+
+// 1.0
+e.status; e.serverMessage;
+```
+
+**Result types.** `delete`, `addLink`, and `removeLink` return typed objects instead of `bool`.
+
+```dart
+// 0.x
+if (await client.deleteLink(id)) { ... }
+
+// 1.0
+final result = await client.links.delete(id);
+if (result.deleted) { ... }
+```
+
+**Timestamp fields changed.** `createdAt`, `expiresAt`, `disabledAt`, `archivedAt`,
+`createdAt`, `updatedAt` are now plain `int` Unix seconds rather than `DateTime`. This matches
+the wire format exactly and removes the timezone handling from the SDK.
+
+**`ClickStats` expanded.** New fields from the spec: `referrerHosts`, `linkModes`, `channels`,
+`numCountries`, `numReferrers`, `numReferrerHosts`, `numOs`, `numBrowsers`.
+
+**`Link` gains `deltaPct?`** — click count change percentage versus the previous period.
+
+**`BundleWithSummary` is flat.** Fields are directly on the object (it extends `Bundle`) instead
+of nested under a `bundle` attribute.
+
+**`bundles.list` `archived` parameter** is now the raw spec enum string (`"all"`, `"only"`,
+`"1"`, `"true"`) instead of a `bool`.
+
+**`TimelineData.summary` field names changed.** `last_24h` / `last_7d` style map keys now
+surface as camelCase fields (`last24h`, `last7d`, `last30d`, `last90d`, `last1y`) on a typed
+`TimelineSummary` object.
+
+**`health()` removed.** The `/_/health` endpoint is outside the public API spec.
+
+**`X-Client: sdk` header removed.** The 1.0 HTTP layer sends only `Authorization: Bearer ...`.
+
+**`ApiKeyAuth`, `ShrtnrAuth`, and `ShrtnrBaseClient` are no longer exported.** They are internal
+implementation details.
+
+### New surface
+
+- `client.links`: `get`, `list`, `create`, `update`, `disable`, `enable`, `delete`,
+  `analytics`, `timeline`, `qr`, `bundles`
+- `client.slugs`: `lookup`, `add`, `disable`, `enable`, `remove`
+- `client.bundles`: `get`, `list`, `create`, `update`, `delete`, `archive`, `unarchive`,
+  `analytics`, `links`, `addLink`, `removeLink`
+
+See the README for the full method table and migration guide.
+
+---
+
 ## 0.3.0
 
 - `getLinkAnalytics(linkId, {range})` accepts an optional `TimelineRange` keyword. Defaults to all-time when omitted. Use the parameter to scope a query to `'7d'`, `'30d'`, or any other supported window in the same call.

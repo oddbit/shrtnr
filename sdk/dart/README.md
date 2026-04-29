@@ -1,6 +1,9 @@
-# shrtnr: URL Shortener SDK for Dart and Flutter
+# shrtnr
 
-Dart client for creating short links, managing URLs, and reading click analytics from a [shrtnr](https://oddb.it/shrtnr-website-pub) instance. Works on the Dart VM, Flutter (mobile, desktop, web), and anywhere `package:http` runs.
+Dart SDK for [shrtnr](https://oddb.it/shrtnr-website-pub), a self-hosted URL shortener on Cloudflare Workers. Create short links, manage slugs, and read click analytics.
+
+[![pub.dev](https://img.shields.io/pub/v/shrtnr)](https://pub.dev/packages/shrtnr)
+[![license](https://img.shields.io/pub/l/shrtnr)](https://www.apache.org/licenses/LICENSE-2.0)
 
 ## Install
 
@@ -8,345 +11,218 @@ Dart client for creating short links, managing URLs, and reading click analytics
 dart pub add shrtnr
 ```
 
-or for Flutter:
-
-```bash
-flutter pub add shrtnr
-```
-
-## Quick Start
+## Quick start
 
 ```dart
 import 'package:shrtnr/shrtnr.dart';
 
 final client = ShrtnrClient(
   baseUrl: 'https://your-shrtnr.example.com',
-  auth: const ApiKeyAuth(apiKey: 'sk_your_api_key'),
+  apiKey: 'sk_your_api_key',
 );
 
+final link = await client.links.create(url: 'https://example.com/very-long-path');
+print(link.slugs.first.slug); // 'a3x9'
+
+client.close();
+```
+
+## Configuration
+
+```dart
+ShrtnrClient(
+  baseUrl: 'https://your-shrtnr.example.com', // required
+  apiKey: 'sk_...',                            // required; from the admin dashboard
+  httpClient: customHttpClient,                // optional; inject a custom http.Client
+)
+```
+
+The `httpClient` parameter accepts any `http.Client`. Pass a custom implementation for test
+mocking or custom TLS configuration. When omitted, a new `http.Client` is created and
+closed by `client.close()`.
+
+## Resources
+
+### Links (`client.links`)
+
+| Method | Description |
+|---|---|
+| `get(id, {range?})` | Get a link with click count |
+| `list({owner?, range?})` | List all links |
+| `create({url, label?, slugLength?, expiresAt?, allowDuplicate?})` | Create a short link |
+| `update(id, {url?, label?, expiresAt?})` | Update URL, label, or expiry |
+| `disable(id)` | Stop redirecting |
+| `enable(id)` | Resume redirecting |
+| `delete(id)` | Permanently delete |
+| `analytics(id, {range?})` | Click breakdown by country, device, referrer, etc. |
+| `timeline(id, {range?})` | Click counts bucketed over time |
+| `qr(id, {slug?, size?})` | QR code as SVG string |
+| `bundles(id)` | Bundles this link belongs to |
+
+```dart
 // Shorten a URL
-final link = await client.createLink(
-  const CreateLinkOptions(
-    url: 'https://example.com/long-page',
-    label: 'Campaign landing page',
-  ),
-);
+final link = await client.links.create(url: 'https://example.com', label: 'Landing page');
 
-print(link.id);           // 1
-print(link.slugs.first);  // primary slug
+// Get a 7-day click count
+final fresh = await client.links.get(link.id, range: '7d');
+
+// Full analytics for the last 30 days
+final stats = await client.links.analytics(link.id, range: '30d');
+print('${stats.totalClicks} clicks, ${stats.numCountries} countries');
 ```
 
-## What This SDK Covers
+### Slugs (`client.slugs`)
 
-This package wraps the public link-management API:
-
-- Shorten URLs (create short links)
-- Add, disable, enable, and remove custom slugs
-- List, read, update, disable, enable, and delete links
-- List links by owner identity
-- Read click analytics (referrer, country, device, browser)
-- Group links into bundles and read combined engagement stats
-- Check service health
-
-Administrative operations (API key management, settings, dashboard stats) are not part of this package. Those are accessible through the admin UI.
-
-## API Reference
-
-### `createLink`
-
-Shorten a URL. Returns a `Link` with a random slug.
+| Method | Description |
+|---|---|
+| `lookup(slug)` | Find a link by slug |
+| `add(linkId, slug)` | Add a custom slug |
+| `disable(linkId, slug)` | Disable a slug |
+| `enable(linkId, slug)` | Re-enable a slug |
+| `remove(linkId, slug)` | Remove a slug |
 
 ```dart
-final link = await client.createLink(
-  CreateLinkOptions(
-    url: 'https://example.com',
-    label: 'My link to the example page',
-    expiresAt: DateTime.now().toUtc().add(const Duration(days: 1)),
-  ),
-);
+// Add a campaign slug then disable it when the campaign ends
+await client.slugs.add(link.id, 'spring-sale');
+await client.slugs.disable(link.id, 'spring-sale');
+
+// Look up a link by its slug
+final found = await client.slugs.lookup('spring-sale');
 ```
 
-To add a custom slug, call `addCustomSlug` after creation:
+### Bundles (`client.bundles`)
+
+Groups of related links with combined analytics.
+
+| Method | Description |
+|---|---|
+| `get(id, {range?})` | Get a bundle with click summary |
+| `list({archived?, range?})` | List bundles |
+| `create({name, description?, icon?, accent?})` | Create a bundle |
+| `update(id, {name?, description?, icon?, accent?})` | Update metadata |
+| `delete(id)` | Permanently delete |
+| `archive(id)` | Hide from default listing |
+| `unarchive(id)` | Restore an archived bundle |
+| `analytics(id, {range?})` | Combined click analytics |
+| `links(id)` | List links in the bundle |
+| `addLink(id, linkId)` | Add a link |
+| `removeLink(id, linkId)` | Remove a link |
 
 ```dart
-final link = await client.createLink(
-  const CreateLinkOptions(url: 'https://example.com'),
-);
-final slug = await client.addCustomSlug(link.id, 'my-campaign');
+// Create a bundle and add links to it
+final bundle = await client.bundles.create(name: 'Spring 2026', accent: 'green');
+await client.bundles.addLink(bundle.id, linkA.id);
+await client.bundles.addLink(bundle.id, linkB.id);
+
+// Combined analytics for the last 7 days
+final stats = await client.bundles.analytics(bundle.id, range: '7d');
+print(stats.totalClicks);
 ```
 
-### `listLinks`
+## Models
 
-List all short links.
+All model fields use camelCase. The SDK maps snake_case JSON from the wire automatically
+inside each `fromJson` factory.
 
-```dart
-final links = await client.listLinks();
-```
+Key types exported from `package:shrtnr/shrtnr.dart`:
 
-### `getLink`
+- `Link`, `Slug`, `Bundle`, `BundleWithSummary`, `BundleTopLink`
+- `ClickStats`, `TimelineData`, `TimelineBucket`, `TimelineSummary`, `NameCount`
+- `DateClickCount`, `SlugClickCount`
+- `DeletedResult`, `AddedResult`, `RemovedResult`
 
-Get a single link by ID, including its slugs and click count.
+Timestamp fields (`createdAt`, `expiresAt`, `disabledAt`, `archivedAt`, `updatedAt`) are
+plain `int` Unix seconds, matching the wire format exactly.
 
-```dart
-final link = await client.getLink(123);
-```
+## Errors
 
-### `getLinkBySlug`
-
-Get a single link by its short URL slug (including custom slugs).
-
-```dart
-final link = await client.getLinkBySlug('my-custom-slug');
-```
-
-### `updateLink`
-
-Update a link's URL, label, or expiry. Pass `clearLabel: true` or `clearExpiresAt: true` to explicitly null a field on the server.
-
-```dart
-final updated = await client.updateLink(
-  123,
-  const UpdateLinkOptions(
-    label: 'Updated label',
-    clearExpiresAt: true,
-  ),
-);
-```
-
-### `disableLink`
-
-Disable a link so it stops redirecting.
-
-```dart
-final disabled = await client.disableLink(123);
-```
-
-### `enableLink`
-
-Re-enable a previously disabled link.
-
-```dart
-final link = await client.enableLink(123);
-```
-
-### `deleteLink`
-
-Permanently delete a link. Only succeeds if the link has zero clicks: disable it instead if it has traffic.
-
-```dart
-await client.deleteLink(123);
-```
-
-### `listLinksByOwner`
-
-List all links created by a specific identity (typically an email address).
-
-```dart
-final links = await client.listLinksByOwner('user@example.com');
-```
-
-### `addCustomSlug`
-
-Add a custom short URL slug to an existing link. Throws `ShrtnrException` with status 409 if the slug already exists, or 400 for invalid format.
-
-```dart
-final slug = await client.addCustomSlug(123, 'campaign');
-```
-
-### `disableSlug`
-
-Disable a custom slug without affecting the parent link or its other slugs.
-
-```dart
-await client.disableSlug(123, 'campaign');
-```
-
-### `enableSlug`
-
-Re-enable a disabled custom slug.
-
-```dart
-await client.enableSlug(123, 'campaign');
-```
-
-### `removeSlug`
-
-Permanently remove a custom slug. Only succeeds if the slug has zero clicks.
-
-```dart
-await client.removeSlug(123, 'campaign');
-```
-
-### `getLinkQR`
-
-Fetch the QR code SVG for a link as a string. Optionally specify which slug to encode.
-
-```dart
-final svg = await client.getLinkQR(123);
-final svgForSlug = await client.getLinkQR(123, slug: 'my-campaign');
-```
-
-### `getLinkAnalytics`
-
-Read click analytics for a link: referrer, country, device type, and browser breakdown. Defaults to all-time. Pass an optional `range` to scope results to a window.
-
-```dart
-final lifetime = await client.getLinkAnalytics(123);
-final last7d = await client.getLinkAnalytics(123, range: '7d');
-print(lifetime.totalClicks);
-print(lifetime.countries);
-```
-
-### `health`
-
-Check service health and version.
-
-```dart
-final health = await client.health();
-print(health.version);
-```
-
-### `createBundle`
-
-Create a bundle to group related links. Returns the new `Bundle`.
-
-```dart
-final bundle = await client.createBundle(
-  const CreateBundleOptions(
-    name: 'Spring campaign',
-    description: 'Email, social, and paid drops',
-    icon: 'sparkles',
-    accent: BundleAccent.purple,
-  ),
-);
-```
-
-### `listBundles`
-
-List bundles with summary stats: lifetime click total, 30-day sparkline, and top links. Archived bundles are hidden by default.
-
-```dart
-final bundles = await client.listBundles();
-final withArchived = await client.listBundles(archived: true);
-```
-
-### `getBundle`
-
-Fetch a single bundle's metadata by ID.
-
-```dart
-final bundle = await client.getBundle(42);
-```
-
-### `updateBundle`
-
-Rename a bundle or change its description, icon, or accent. Pass `clearDescription: true` or `clearIcon: true` to explicitly null a field on the server.
-
-```dart
-final updated = await client.updateBundle(
-  42,
-  const UpdateBundleOptions(
-    name: 'Spring 2026 campaign',
-    accent: BundleAccent.green,
-  ),
-);
-```
-
-### `deleteBundle`
-
-Permanently delete a bundle. Member links are preserved, only the grouping is discarded.
-
-```dart
-await client.deleteBundle(42);
-```
-
-### `archiveBundle`
-
-Archive a bundle so it drops out of the default `listBundles` response. Member links keep working.
-
-```dart
-await client.archiveBundle(42);
-```
-
-### `unarchiveBundle`
-
-Restore a previously archived bundle.
-
-```dart
-await client.unarchiveBundle(42);
-```
-
-### `getBundleAnalytics`
-
-Read combined analytics across every link in the bundle: per-link breakdown, countries, devices, browsers. Defaults to all-time; pass `range` to scope to a window.
-
-```dart
-final lifetime = await client.getBundleAnalytics(42);
-final last7d = await client.getBundleAnalytics(42, range: '7d');
-print(lifetime.totalClicks);
-print(lifetime.perLink);
-```
-
-### `listBundleLinks`
-
-List every link currently in a bundle.
-
-```dart
-final links = await client.listBundleLinks(42);
-```
-
-### `addLinkToBundle`
-
-Attach a link to a bundle. Idempotent: re-adding an existing member is a no-op.
-
-```dart
-await client.addLinkToBundle(42, 123);
-```
-
-### `removeLinkFromBundle`
-
-Detach a link from a bundle. The link itself stays, only the membership is removed.
-
-```dart
-await client.removeLinkFromBundle(42, 123);
-```
-
-### `listBundlesForLink`
-
-List every bundle a given link belongs to.
-
-```dart
-final bundles = await client.listBundlesForLink(123);
-```
-
-## Error Handling
-
-Non-2xx responses throw `ShrtnrException` with the status code, message, and raw response body.
+Every 4xx/5xx response throws `ShrtnrError`. Network failures also throw `ShrtnrError` with
+`status: 0`.
 
 ```dart
 import 'package:shrtnr/shrtnr.dart';
 
 try {
-  await client.getLink(99999);
-} on ShrtnrException catch (e) {
-  print(e.statusCode); // 404
-  print(e.message);    // "Link not found"
-  print(e.body);
+  await client.links.get(99999);
+} on ShrtnrError catch (err) {
+  print(err.status);         // 404
+  print(err.serverMessage);  // 'not found'
+  print(err);                // 'ShrtnrError(HTTP 404): not found'
 }
 ```
 
-Custom slug collisions and format errors from `addCustomSlug` throw `ShrtnrException` (status 409 or 400). Handle them per-call.
+## Migrating from 0.x
 
-## Differences from the TypeScript SDK
+1.0 is a clean break. Summary of changes:
 
-The Dart SDK mirrors the TypeScript SDK method-for-method. A few surfaces differ where Dart idioms diverge:
+**Resource-grouped client.** Methods moved to namespaces.
 
-- Constructor takes named parameters (`baseUrl:`, `auth:`) instead of a single config object.
-- Error type is named `ShrtnrException` (Dart reserves `Error` for programmer errors).
-- Timestamp fields (`createdAt`, `expiresAt`, `disabledAt`, health `timestamp`) are `DateTime` in UTC rather than raw Unix seconds.
-- `isCustom` and `isPrimary` are `bool` rather than `0 | 1`.
-- `UpdateLinkOptions` uses `clearLabel` / `clearExpiresAt` flags to distinguish "leave unchanged" from "clear on server", since Dart's null-default pattern collapses them otherwise.
+```dart
+// 0.x
+await client.createLink(CreateLinkOptions(url: '...'));
+await client.addCustomSlug(id, 'promo');
+await client.archiveBundle(id);
+
+// 1.0
+await client.links.create(url: '...');
+await client.slugs.add(id, 'promo');
+await client.bundles.archive(id);
+```
+
+**Constructor shape changed.** `ApiKeyAuth` wrapper removed; pass `apiKey` directly.
+
+```dart
+// 0.x
+ShrtnrClient(baseUrl: '...', auth: ApiKeyAuth(apiKey: 'sk_...'))
+
+// 1.0
+ShrtnrClient(baseUrl: '...', apiKey: 'sk_...')
+```
+
+**`ShrtnrError` replaces `ShrtnrException`.** `statusCode` renamed to `status`; `body` is
+gone, replaced by `serverMessage`.
+
+```dart
+// 0.x
+e.statusCode; e.body;
+
+// 1.0
+e.status; e.serverMessage;
+```
+
+**Result types.** `delete`, `addLink`, and `removeLink` return typed objects instead of `bool`.
+
+```dart
+// 0.x
+if (await client.deleteLink(id)) { ... }
+
+// 1.0
+final result = await client.links.delete(id);
+if (result.deleted) { ... }
+```
+
+**Timestamp fields changed.** All timestamps are now plain `int` Unix seconds, not `DateTime`.
+
+**`ClickStats` expanded.** New fields: `referrerHosts`, `linkModes`, `channels`,
+`numCountries`, `numReferrers`, `numReferrerHosts`, `numOs`, `numBrowsers`.
+
+**`TimelineData.summary` field names changed.** Camelcase `last24h`, `last7d`, `last30d`,
+`last90d`, `last1y` instead of the old snake_case map keys.
+
+**`BundleWithSummary` is flat.** Fields are directly on the object (it extends `Bundle`) instead
+of nested under a `bundle` attribute.
+
+**`bundles.list` `archived` parameter** is now the raw spec enum string (`"all"`, `"only"`,
+`"1"`, `"true"`) instead of a `bool`.
+
+**`health()` removed.** The `/_/health` endpoint is outside the public API spec.
+
+## See also
+
+- API docs: `/_/api/docs` on your shrtnr deployment
+- OpenAPI spec: `/_/api/openapi.json`
+- Source: [github.com/oddbit/shrtnr](https://github.com/oddbit/shrtnr)
 
 ## License
 
-Apache-2.0. See the [root LICENSE](https://github.com/oddbit/shrtnr/blob/main/LICENSE) file.
+Apache 2.0. Built and maintained by [Oddbit](https://oddbit.id).
