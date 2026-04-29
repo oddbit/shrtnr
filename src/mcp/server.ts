@@ -167,14 +167,19 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "list_links",
       {
         title: "List links",
-        description: "List all short links with their slugs and lifetime click counts.",
-        inputSchema: {},
+        description:
+          "List all short links with their slugs and click counts. Counts and `delta_pct` are scoped to the requested range; reuse the same range across follow-ups to keep numbers comparable. Defaults to the user's `default_range` setting (or 30d). Response includes `range_used`.",
+        inputSchema: {
+          range: optionalRangeSchema,
+        },
         annotations: { title: "List links", ...READ_ONLY },
       },
-      async () => {
-        const result = await listLinks(this.env);
+      async ({ range }) => {
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
+        const filters = await resolveClickFilters(this.env, this.identity);
+        const result = await listLinks(this.env, { range: resolved, withDeltaRange: resolved, filters });
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return okWithRange(resolved, { results: result.data });
       },
     );
 
@@ -182,16 +187,20 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "get_link",
       {
         title: "Get link",
-        description: "Get full details for a short link by its numeric ID.",
+        description:
+          "Get full details for a short link by its numeric ID. `total_clicks` and `delta_pct` are scoped to the requested range. Defaults to the user's `default_range` setting (or 30d). Response includes `range_used`.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link"),
+          range: optionalRangeSchema,
         },
         annotations: { title: "Get link", ...READ_ONLY },
       },
-      async ({ link_id }) => {
-        const result = await getLink(this.env, link_id);
+      async ({ link_id, range }) => {
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
+        const filters = await resolveClickFilters(this.env, this.identity);
+        const result = await getLink(this.env, link_id, { range: resolved, filters });
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return okWithRange(resolved, result.data);
       },
     );
 
@@ -632,22 +641,25 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "List bundles",
         description:
-          "List bundles owned by the caller. Bundles group related links so you can see combined click stats across them. Totals are lifetime; the delta is a fixed 30d-vs-prev-30d trend. Use `filter` to control which archival state is returned.",
+          "List bundles owned by the caller. Bundles group related links so you can see combined click stats across them. Totals, sparklines, and `delta_pct` are scoped to the requested range; reuse the same range across follow-ups to keep numbers comparable. Defaults to the user's `default_range` setting (or 30d). Response includes `range_used`. Use `filter` to control which archival state is returned.",
         inputSchema: {
           filter: z
             .enum(["active", "archived", "all"])
             .default("active")
             .describe("active = hide archived (default); archived = only archived; all = both"),
+          range: optionalRangeSchema,
         },
         annotations: { title: "List bundles", ...READ_ONLY },
       },
-      async ({ filter }) => {
+      async ({ filter, range }) => {
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
         const result = await listBundles(this.env, this.identity, {
           archivedOnly: filter === "archived",
           includeArchived: filter === "all",
+          range: resolved,
         });
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return okWithRange(resolved, { results: result.data });
       },
     );
 
@@ -655,16 +667,19 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "get_bundle",
       {
         title: "Get bundle",
-        description: "Get a bundle's metadata by numeric ID. Use get_bundle_analytics for stats.",
+        description:
+          "Get a bundle's metadata and summary stats by numeric ID. `total_clicks`, `sparkline`, `top_links`, and `delta_pct` are scoped to the requested range. Defaults to the user's `default_range` setting (or 30d). Response includes `range_used`. Use `get_bundle_analytics` for the full per-dimension breakdown.",
         inputSchema: {
           bundle_id: z.number().int().positive().describe("Numeric ID of the bundle"),
+          range: optionalRangeSchema,
         },
         annotations: { title: "Get bundle", ...READ_ONLY },
       },
-      async ({ bundle_id }) => {
-        const result = await getBundle(this.env, bundle_id, this.identity);
+      async ({ bundle_id, range }) => {
+        const resolved = await resolveMcpRange(this.env, this.identity, range as TimelineRange | undefined);
+        const result = await getBundle(this.env, bundle_id, this.identity, { range: resolved });
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return okWithRange(resolved, result.data);
       },
     );
 
