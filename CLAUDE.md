@@ -36,6 +36,39 @@ Full details including one-time registry configuration: [docs/release-automation
 - **SDK parity.** When a change is made to any SDK under `sdk/`, the same change must be evaluated and applied to every other SDK in that directory. Public-method additions or renames, new models, auth changes, error-type changes, and base-URL handling all count. If a change intentionally applies to only one SDK (for example a Dart-only helper with no TypeScript analogue), state that explicitly in the commit message. Default: all SDKs move together.
 - **README parity.** Each SDK's `README.md` stays in lockstep with the others. Install snippets, usage examples, auth docs, and the feature list exist in every SDK README, adjusted only for language and platform idioms (for example `await` vs `Future`, `import` vs `require`, `npm install` vs `dart pub add`). Removing or renaming a documented feature in one README requires the same edit in the others.
 
+#### Spec hash and SDK ↔ API parity
+
+Each SDK's package manifest records the SHA-256 of the OpenAPI spec it was last regenerated against:
+
+| SDK | Manifest | Field |
+|---|---|---|
+| TypeScript | `sdk/typescript/package.json` | top-level `x-spec-hash` |
+| Python | `sdk/python/pyproject.toml` | `[tool.shrtnr]` table, key `spec_hash` |
+| Dart | `sdk/dart/pubspec.yaml` | top-level `x-spec-hash` |
+
+When the OpenAPI spec changes (any edit to `src/api/router.ts`, `src/api/schemas.ts`, or any resource sub-app that affects the generated document), all three recorded hashes go stale. CI fails on stale hashes via `.github/workflows/sdk-spec-drift.yml`.
+
+**Workflow when the API changes:**
+
+1. Make and commit the API change. Run `./scripts/spec-hash.sh` from the repo root to get the new canonical hash.
+2. For **each** SDK, decide whether the spec change requires updating SDK code:
+   - **Yes** (new public endpoint, new model field, changed return shape, renamed parameter): regenerate the SDK to surface the new shape. Bump the SDK version per semver, update the SDK's `CHANGELOG.md`, then update the manifest's spec hash field.
+   - **No** (internal docstring tweak, admin-only schema, server-side reorganization that does not affect the public wire format): update the manifest's spec hash field without changing SDK code. State the rationale in the commit message: "spec change does not affect SDK surface; bump hash to record review".
+3. Before updating any SDK's hash, run the parity check below.
+4. Commit per SDK with a focused message. Either "regenerate Python SDK against new spec (1.0.0 → 1.0.1)" or "acknowledge spec change in Python SDK; no surface change required".
+
+**Parity check (run before bumping a hash):**
+
+A hash bump is a declaration that the SDK is aligned with the spec at that hash. Verify before declaring:
+
+- **Models cover spec components.** Every `components.schemas` entry in the OpenAPI document is represented by a corresponding model in the SDK (TS interface, Python dataclass, Dart class). Cross-reference `yarn emit-spec | jq '.components.schemas | keys'` against the SDK's `models.<ext>`.
+- **Endpoints surface as methods.** Every public route in the spec has a method on the corresponding resource (`client.links.*`, `client.slugs.*`, `client.bundles.*`). The resource-grouped pattern is the canonical surface for all three SDKs.
+- **Parameters match.** Every required and optional parameter on every method matches the spec (path params, query params like `range`, request body fields).
+- **Tests pass.** Run the SDK's full test suite. New tests cover any new methods or fields introduced by the spec change.
+- **Cross-SDK parity holds.** When updating one SDK against a new spec, the same surface change must be applied to the other two SDKs in the same logical PR or PR series. The spec hash advances on all three together at the end. A merged main branch with mismatched hashes across SDKs (one current, two stale) means parity work is incomplete.
+
+The hash advances together, the SDKs ship together. A divergent hash state on `main` is a signal that someone abandoned a regeneration mid-flight; treat it as an open issue, not a steady state.
+
 ### Testing
 
 - Always **write tests first** for a feature or change being requested. Define behavior by writing tests first and asking the developer for details. If the behavior is trivial, write the tests directly. Then implement code that passes them.
