@@ -24,6 +24,9 @@ import {
   enableLink,
   deleteLink,
   addCustomSlugToLink,
+  disableSlug,
+  enableSlug,
+  removeSlug,
   getLinkAnalytics,
   getLinkTimeline,
   getDashboardStats,
@@ -318,6 +321,63 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       },
       async ({ link_id, slug }) => {
         const result = await addCustomSlugToLink(this.env, link_id, { slug });
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.registerTool(
+      "disable_slug",
+      {
+        title: "Disable slug",
+        description:
+          "Disable a single custom slug on a link so it stops redirecting. Other slugs on the same link are unaffected. The system-generated slug cannot be disabled this way; disable the whole link instead. Only the link owner can disable a slug.",
+        inputSchema: {
+          link_id: z.number().int().positive().describe("Numeric ID of the link"),
+          slug: CustomSlugStringSchema.describe("The slug to disable, e.g. 'summer-sale'"),
+        },
+        annotations: { title: "Disable slug", ...WRITE_IDEMPOTENT },
+      },
+      async ({ link_id, slug }) => {
+        const result = await disableSlug(this.env, link_id, slug, this.identity);
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.registerTool(
+      "enable_slug",
+      {
+        title: "Enable slug",
+        description:
+          "Re-enable a previously disabled custom slug. Only the link owner can enable a slug.",
+        inputSchema: {
+          link_id: z.number().int().positive().describe("Numeric ID of the link"),
+          slug: CustomSlugStringSchema.describe("The slug to enable"),
+        },
+        annotations: { title: "Enable slug", ...WRITE_IDEMPOTENT },
+      },
+      async ({ link_id, slug }) => {
+        const result = await enableSlug(this.env, link_id, slug, this.identity);
+        if (!result.ok) return fail(result.error);
+        return ok(result.data);
+      },
+    );
+
+    this.server.registerTool(
+      "remove_slug",
+      {
+        title: "Remove slug",
+        description:
+          "Permanently remove a custom slug from a link. Only zero-click slugs can be removed; slugs with clicks should be disabled instead. The system-generated slug cannot be removed. Only the link owner can remove a slug.",
+        inputSchema: {
+          link_id: z.number().int().positive().describe("Numeric ID of the link"),
+          slug: CustomSlugStringSchema.describe("The slug to remove"),
+        },
+        annotations: { title: "Remove slug", ...DESTRUCTIVE },
+      },
+      async ({ link_id, slug }) => {
+        const result = await removeSlug(this.env, link_id, slug, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
