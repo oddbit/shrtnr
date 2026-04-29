@@ -15,6 +15,7 @@ import pytest
 import respx
 
 from shrtnr import Shrtnr, ShrtnrError
+from shrtnr.models import Bundle, BundleWithSummary
 
 from .conftest import (
     API_KEY,
@@ -562,3 +563,46 @@ def test_context_manager_closes_client() -> None:
     with Shrtnr(base_url=BASE_URL, api_key=API_KEY) as c:
         respx.get(f"{BASE_URL}/_/api/links").mock(return_value=httpx.Response(200, json=[]))
         c.links.list()
+
+
+# ---- Bundle.accent required field ----
+
+
+def test_bundle_from_dict_raises_on_missing_accent() -> None:
+    """Bundle.accent is required; a missing key must raise KeyError, not silently default."""
+    data = {
+        "id": 1,
+        "name": "test",
+        "description": None,
+        "icon": None,
+        # accent intentionally absent
+        "archived_at": None,
+        "created_via": None,
+        "created_by": "user@example.com",
+        "created_at": 1000000,
+        "updated_at": 1000000,
+    }
+    with pytest.raises(KeyError):
+        Bundle.from_dict(data)
+
+
+def test_bundle_with_summary_from_dict_raises_on_missing_accent() -> None:
+    """BundleWithSummary.accent is required; a missing key must raise KeyError."""
+    data = {
+        "id": 1,
+        "name": "test",
+        "description": None,
+        "icon": None,
+        # accent intentionally absent
+        "archived_at": None,
+        "created_via": None,
+        "created_by": "user@example.com",
+        "created_at": 1000000,
+        "updated_at": 1000000,
+        "link_count": 0,
+        "total_clicks": 0,
+        "sparkline": [],
+        "top_links": [],
+    }
+    with pytest.raises(KeyError):
+        BundleWithSummary.from_dict(data)

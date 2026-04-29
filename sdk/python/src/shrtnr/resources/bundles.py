@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 
@@ -60,7 +60,7 @@ class Bundles:
     def list(
         self,
         *,
-        archived: str | None = None,
+        archived: Literal["true", "1", "only", "all"] | None = None,
         range: TimelineRange | None = None,
     ) -> list[BundleWithSummary]:
         """List bundles. Filter by archived status and click-count range."""
@@ -180,7 +180,7 @@ class AsyncBundles:
     async def list(
         self,
         *,
-        archived: str | None = None,
+        archived: Literal["true", "1", "only", "all"] | None = None,
         range: TimelineRange | None = None,
     ) -> list[BundleWithSummary]:
         """List bundles. Filter by archived status and click-count range."""
