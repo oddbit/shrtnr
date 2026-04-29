@@ -271,26 +271,16 @@ Replace `your-domain.com` with your actual short domain.
 
 ## API
 
-Authentication model:
+Authentication is determined by route prefix:
 
-- **Admin UI** (`/_/admin/*`) has no built-in auth. Protect it externally (see Access Control above).
-- **API key Bearer tokens** grant scoped access to the public link-management API. Create keys from the admin UI under API Keys. Pass them as `Authorization: Bearer sk_...`.
-- **MCP endpoint** (`mcp.your-domain.com`) uses OAuth via Cloudflare Access. See the MCP section above.
-- The health endpoint is public and does not require auth.
+| Route | Auth | Notes |
+|---|---|---|
+| `/_/api/*` | Bearer token | Public link-management API. Create keys from the admin UI under **API Keys** and pass them as `Authorization: Bearer sk_...`. |
+| `/_/mcp` (and `mcp.<your-domain>`) | OAuth | MCP endpoint for AI assistants. Auth handled by Cloudflare Access. See the MCP section above. |
+| `/_/admin/*` | None built in | Admin UI and admin-only API. Protect externally (see [Access Control](#access-control)). Not callable with API keys. |
+| `/_/health` | Public | Health check. |
 
-Administrative endpoints (settings, dashboard stats, key management) live under `/_/admin/api/*` and are not accessible via API keys.
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `GET` | `/_/api/links` | Bearer token | List all short links |
-| `POST` | `/_/api/links` | Bearer token | Shorten a URL (create a new link) |
-| `GET` | `/_/api/links/:id` | Bearer token | Get a link with click stats |
-| `PUT` | `/_/api/links/:id` | Bearer token | Update a link's URL, label, or expiry |
-| `POST` | `/_/api/links/:id/slugs` | Bearer token | Add a custom slug to a link |
-| `POST` | `/_/api/links/:id/disable` | Bearer token | Disable a link |
-| `GET` | `/_/api/links/:id/analytics` | Bearer token | Get click analytics (referrer, country, device, browser) |
-| `GET` | `/_/health` | Public | Health check |
-| `POST` | `/_/mcp` | OAuth | MCP endpoint for AI assistants (Streamable HTTP) |
+For full endpoint and payload details, use the SDKs ([TypeScript](sdk/typescript/README.md), [Python](sdk/python/README.md), [Dart](sdk/dart/README.md)) or the MCP tool list above. They stay in lockstep with the server per the SDK parity rule in [CLAUDE.md](CLAUDE.md).
 
 ## Development
 
@@ -319,7 +309,7 @@ yarn build
 
 ## Built by Oddbit
 
-shrtnr is one of several open-source tools maintained by **[Oddbit](https://oddb.it/website)**, a senior-led software studio in Sweden. We build custom web apps, mobile apps, and API integrations for funded startups: Cloudflare, Firebase, Flutter, and AI/Genkit work.
+[**shrtnr**](https://oddb.it/shrtnr-info) is one of several open-source tools maintained by **[Oddbit](https://oddb.it/website)**, a senior-led software studio in Indonesia with roots in Sweden.
 
 If shrtnr is useful, the same team is available to build the rest of your stack. [oddbit.id](https://oddb.it/website).
 
