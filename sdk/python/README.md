@@ -168,6 +168,15 @@ except ShrtnrError as err:
 - OpenAPI spec: `/_/api/openapi.json`
 - Source: [github.com/oddbit/shrtnr](https://github.com/oddbit/shrtnr)
 
-## License
+## Attribution
 
-Apache 2.0. Built and maintained by [Oddbit](https://oddbit.id).
+`shrtnr` is developed and maintained by **[Oddbit](https://oddbit.id)**.
+
+- Source repository: <https://github.com/oddbit/shrtnr>
+- License: [Apache License 2.0](LICENSE)
+- Attribution notices: [NOTICE](NOTICE)
+- Name and logo usage: [Trademark Policy](TRADEMARK_POLICY.md)
+
+If you publish a fork or derivative work, retain the license and notice files,
+preserve applicable copyright and attribution notices, and clearly indicate
+that your version has been modified.
