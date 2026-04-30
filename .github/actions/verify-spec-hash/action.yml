@@ -1,0 +1,82 @@
+name: Verify SDK spec hash parity
+description: >
+  Refuses to publish when the SDK's recorded spec hash does not match the
+  current OpenAPI spec. Use as the first publish-gating step in each
+  release-sdk-* workflow so a stale hash blocks the release instead of
+  shipping an SDK whose recorded provenance does not line up with the
+  server it targets.
+
+inputs:
+  sdk:
+    description: Which SDK manifest to verify (typescript | python | dart).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 24
+
+    - name: Install root dependencies
+      shell: bash
+      run: yarn install --frozen-lockfile
+
+    - name: Compare recorded vs current spec hash
+      shell: bash
+      env:
+        SDK: ${{ inputs.sdk }}
+      run: |
+        CURRENT=$(./scripts/spec-hash.sh)
+        case "$SDK" in
+          typescript)
+            MANIFEST=sdk/typescript/package.json
+            RECORDED=$(jq -r '."x-spec-hash"' "$MANIFEST" | sed 's/^sha256://')
+            ;;
+          python)
+            MANIFEST=sdk/python/pyproject.toml
+            # Parse spec_hash from [tool.shrtnr] only — bare grep would match
+            # any table; awk tracks the current section header so it stops
+            # at the correct key.
+            RECORDED=$(awk '
+              /^\[/ { current_table = $0 }
+              current_table == "[tool.shrtnr]" && /^spec_hash *=/ {
+                gsub(/.*= *"/, ""); gsub(/".*/, "");
+                print
+                exit
+              }
+            ' "$MANIFEST" | sed 's/^sha256://')
+            ;;
+          dart)
+            MANIFEST=sdk/dart/pubspec.yaml
+            # Hash lives in a leading comment, not a top-level key, to avoid
+            # a pana score deduction for unknown manifest fields.
+            RECORDED=$(grep '^# x-spec-hash:' "$MANIFEST" | awk '{print $3}' | sed 's/^sha256://')
+            ;;
+          *)
+            echo "::error::unknown sdk input: $SDK (expected typescript | python | dart)"
+            exit 1
+            ;;
+        esac
+        if [ -z "$RECORDED" ]; then
+          echo "::error file=$MANIFEST::could not read recorded spec hash from $MANIFEST"
+          exit 1
+        fi
+        if [ "$RECORDED" != "$CURRENT" ]; then
+          echo "::error file=$MANIFEST::Spec hash drift; refusing to publish $SDK SDK"
+          echo "  recorded: sha256:$RECORDED"
+          echo "  current:  sha256:$CURRENT"
+          echo ""
+          echo "The recorded hash does not match the current OpenAPI spec, so"
+          echo "we cannot prove this SDK was reviewed against the API surface"
+          echo "it is about to ship for. Resolve before re-running:"
+          echo ""
+          echo "  - If the spec change does not affect the SDK surface, bump"
+          echo "    the recorded hash on all three SDK manifests (this happens"
+          echo "    on every app version bump because info.version flows into"
+          echo "    the spec). See CLAUDE.md > 'Spec hash'."
+          echo "  - If the spec change does affect the SDK surface, regenerate"
+          echo "    the SDK and bump both the SDK version and the recorded hash."
+          exit 1
+        fi
+        echo "OK: $SDK SDK spec hash matches current spec (sha256:$CURRENT)"

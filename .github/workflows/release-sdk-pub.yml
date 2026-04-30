@@ -44,6 +44,11 @@ jobs:
           echo "current=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
+      - name: Verify spec hash parity
+        uses: ./.github/actions/verify-spec-hash
+        with:
+          sdk: dart
+
       - name: Extract changelog for version
         run: |
           bash scripts/extract-changelog.sh \

@@ -69,6 +69,12 @@ jobs:
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
+      - name: Verify spec hash parity
+        if: steps.version.outputs.should_run == 'true'
+        uses: ./.github/actions/verify-spec-hash
+        with:
+          sdk: typescript
+
       - name: Extract changelog for version
         if: steps.version.outputs.should_run == 'true'
         run: |
