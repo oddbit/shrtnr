@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncIterator
 
 import pytest
 
@@ -91,11 +92,18 @@ def test_bundle_lifecycle(client: Shrtnr) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(scope="module")
-def async_client() -> AsyncShrtnr:
+@pytest.fixture
+async def async_client() -> AsyncIterator[AsyncShrtnr]:
+    # Function-scoped so the underlying httpx.AsyncClient binds to the
+    # per-test event loop pytest-asyncio creates; a module-scoped client
+    # outlives its loop and the second async test hits "Event loop is closed".
     if not BASE_URL or not API_KEY:
         pytest.skip(_MISSING)
-    return AsyncShrtnr(base_url=BASE_URL, api_key=API_KEY)
+    client = AsyncShrtnr(base_url=BASE_URL, api_key=API_KEY)
+    try:
+        yield client
+    finally:
+        await client.aclose()
 
 
 @pytest.mark.e2e
