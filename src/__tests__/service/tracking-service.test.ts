@@ -416,6 +416,67 @@ describe("OS and referrer_host tracking", () => {
   });
 });
 
+// ---- Feature: app-scheme referrer normalization ----
+//
+// Android in-app browsers send Referer headers like
+// `android-app://com.linkedin.android/` for clicks that originated inside an
+// app. These should be attributed to the brand domain (linkedin.com) in the
+// Domains breakdown, while the raw header value is preserved unchanged in the
+// `referrer` column for forensics and future re-attribution.
+
+describe("app-scheme referrer normalization", () => {
+  it("maps a known android-app package to its brand domain in referrer_host", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "app1" });
+    await SELF.fetch(
+      new Request("https://shrtnr.test/app1", {
+        redirect: "manual",
+        headers: { Referer: "android-app://com.linkedin.android/" },
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await env.DB
+      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ referrer: string | null; referrer_host: string | null }>();
+    expect(row!.referrer).toBe("android-app://com.linkedin.android/");
+    expect(row!.referrer_host).toBe("linkedin.com");
+  });
+
+  it("stores referrer_host = null for an uncurated android-app package, preserving raw", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "app2" });
+    await SELF.fetch(
+      new Request("https://shrtnr.test/app2", {
+        redirect: "manual",
+        headers: { Referer: "android-app://com.some.obscure.app/" },
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await env.DB
+      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ referrer: string | null; referrer_host: string | null }>();
+    expect(row!.referrer).toBe("android-app://com.some.obscure.app/");
+    expect(row!.referrer_host).toBeNull();
+  });
+
+  it("stores referrer_host = null for android browser packages (chrome, samsung)", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "app3" });
+    await SELF.fetch(
+      new Request("https://shrtnr.test/app3", {
+        redirect: "manual",
+        headers: { Referer: "android-app://com.android.chrome/" },
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await env.DB
+      .prepare("SELECT referrer, referrer_host FROM clicks WHERE slug = ?")
+      .bind(link.slugs[0].slug)
+      .first<{ referrer: string | null; referrer_host: string | null }>();
+    expect(row!.referrer).toBe("android-app://com.android.chrome/");
+    expect(row!.referrer_host).toBeNull();
+  });
+});
+
 // ---- Feature: bot detection on redirect ----
 
 describe("bot detection on redirect", () => {

@@ -8,37 +8,7 @@ import { parseDeviceType, parseBrowser, parseOS, isBot } from "./ua";
 import { notFoundResponse } from "./404";
 import { ClickData, Env } from "./types";
 import { computeVisitorFingerprint } from "./fingerprint";
-
-function normalizeHost(host: string): string {
-  const lower = host.toLowerCase();
-  return lower.startsWith("www.") ? lower.slice(4) : lower;
-}
-
-function parseReferrerHost(referrer: string | null): string | null {
-  if (!referrer) return null;
-  try {
-    return normalizeHost(new URL(referrer).hostname);
-  } catch {
-    return null;
-  }
-}
-
-// A bare-origin self-referrer is a Referer whose URL is exactly
-// `scheme://<own host>/` with no path beyond `/`, no query, no fragment.
-// These are noise: browsers send them when the referring page was the
-// root landing page, but content-less landing pages make those clicks
-// uninformative (often bot-forged). Meaningful same-host referrers like
-// `/_/admin/settings` are kept so internal link-click tracking survives.
-function isBareOriginSelfReferrer(rawReferrer: string | null, requestHost: string): boolean {
-  if (!rawReferrer) return false;
-  try {
-    const u = new URL(rawReferrer);
-    if (normalizeHost(u.hostname) !== requestHost) return false;
-    return u.pathname === "/" && u.search === "" && u.hash === "";
-  } catch {
-    return false;
-  }
-}
+import { isBareOriginSelfReferrer, normalizeHost, parseReferrerHost } from "./referrer";
 
 export async function handleRedirect(
   slug: string,
