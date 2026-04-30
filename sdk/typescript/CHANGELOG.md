@@ -2,6 +2,13 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.0.1 (2026-04-30)
+
+Packaging and documentation only. No public surface changes.
+
+- Ship `LICENSE`, `NOTICE`, and `TRADEMARK_POLICY.md` in the published tarball alongside `dist`. Consumers running license scanners now see Apache-2.0 attribution and Oddbit's trademark policy without having to clone the repo.
+- README polish: dropped the "Migrating from 0.x" section (the 0.x line is past its rewrite window) and replaced "License" with an "Attribution" section that points at the same files.
+
 ## 1.0.0 (2026-04-29)
 
 Ground-up rewrite. This is a deliberate breaking release derived from the OpenAPI spec.
