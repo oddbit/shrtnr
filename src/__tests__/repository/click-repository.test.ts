@@ -210,6 +210,35 @@ describe("ClickRepository.getStats", () => {
       { name: "facebook.com", count: 1 },
     ]);
   });
+
+  it("filters app-scheme raw referrers from the Sources breakdown and num_referrers", async () => {
+    // Sources panel groups by raw referrer URL. App-scheme Referer values like
+    // `android-app://com.linkedin.android/` look strange next to real URLs and
+    // are already attributed via referrer_host in the Domains panel. Hide them
+    // here while keeping the raw row in the DB.
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "src1" });
+    const slug = link.slugs[0].slug;
+    await ClickRepository.record(env.DB, slug, {
+      referrer: "https://news.ycombinator.com/item?id=42",
+      referrerHost: "news.ycombinator.com",
+    });
+    await ClickRepository.record(env.DB, slug, {
+      referrer: "android-app://com.linkedin.android/",
+      referrerHost: "linkedin.com",
+    });
+    await ClickRepository.record(env.DB, slug, {
+      referrer: "ios-app://com.linkedin.LinkedIn/",
+      referrerHost: "linkedin.com",
+    });
+    const stats = await ClickRepository.getStats(env.DB, link.id);
+    const sourceNames = stats.referrers.map((r) => r.name);
+    expect(sourceNames).toContain("https://news.ycombinator.com/item?id=42");
+    expect(sourceNames).not.toContain("android-app://com.linkedin.android/");
+    expect(sourceNames).not.toContain("ios-app://com.linkedin.LinkedIn/");
+    expect(stats.num_referrers).toBe(1);
+    // Domains panel still aggregates the rolled-up brand domain.
+    expect(stats.referrer_hosts.find((r) => r.name === "linkedin.com")?.count).toBe(2);
+  });
 });
 
 describe("ClickRepository.getDashboardStats", () => {
