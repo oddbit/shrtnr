@@ -2,6 +2,14 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.0.1 (2026-04-30)
+
+Packaging, documentation, and CI hygiene. No public surface changes.
+
+- Ship `NOTICE` and `TRADEMARK_POLICY.md` in the wheel and sdist alongside the existing `LICENSE`. Consumers running license scanners now see Oddbit's trademark policy without having to clone the repo.
+- README polish: dropped the "Migrating from 0.x" section and replaced "License" with an "Attribution" section that points at the same files.
+- Internal: tightened return-type annotations on resource list methods so `mypy --strict` passes; aligned the e2e test fixture loop scope with `pytest-asyncio`'s current default; cleared the remaining `ruff` warnings so CI runs clean. None of these change runtime behavior.
+
 ## 1.0.0 (2026-04-29)
 
 Ground-up rewrite derived from the OpenAPI spec. This is a deliberate breaking release.
