@@ -5,6 +5,11 @@
 
 from __future__ import annotations
 
+# `Bundles.list` / `AsyncBundles.list` shadow the builtin inside class scope,
+# which trips mypy when other methods declare `list[X]` return types. Aliasing
+# the builtin here lets those methods keep the PEP 585 `list[X]` style without
+# resolving to the method.
+from builtins import list as _list
 from typing import Any, Literal
 
 import httpx
@@ -129,7 +134,7 @@ class Bundles:
         url = self._url(f"/_/api/bundles/{id}/analytics", {"range": range})
         return ClickStats.from_dict(self._request("GET", url, headers=self._headers()))
 
-    def links(self, id: int) -> list[Link]:
+    def links(self, id: int) -> _list[Link]:
         """List links in a bundle."""
         url = self._url(f"/_/api/bundles/{id}/links")
         data = self._request("GET", url, headers=self._headers())
@@ -253,7 +258,7 @@ class AsyncBundles:
         url = self._url(f"/_/api/bundles/{id}/analytics", {"range": range})
         return ClickStats.from_dict(await self._request("GET", url, headers=self._headers()))
 
-    async def links(self, id: int) -> list[Link]:
+    async def links(self, id: int) -> _list[Link]:
         """List links in a bundle."""
         url = self._url(f"/_/api/bundles/{id}/links")
         data = await self._request("GET", url, headers=self._headers())
