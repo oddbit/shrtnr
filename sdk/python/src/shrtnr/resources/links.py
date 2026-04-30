@@ -10,12 +10,10 @@ from typing import Any
 import httpx
 
 from .._base import (
-    DEFAULT_TIMEOUT,
     _build_auth_headers,
     _build_url,
     parse_json_response,
     parse_text_response,
-    url_encode,
 )
 from ..errors import ShrtnrError
 from ..models import (
@@ -90,7 +88,9 @@ class Links:
         if allow_duplicate is not None:
             body["allow_duplicate"] = allow_duplicate
         req_url = self._url("/_/api/links")
-        return Link.from_dict(self._request("POST", req_url, headers=self._json_headers(), json=body))
+        return Link.from_dict(
+            self._request("POST", req_url, headers=self._json_headers(), json=body)
+        )
 
     def update(
         self,
@@ -109,7 +109,9 @@ class Links:
         if expires_at is not None:
             body["expires_at"] = expires_at
         req_url = self._url(f"/_/api/links/{id}")
-        return Link.from_dict(self._request("PUT", req_url, headers=self._json_headers(), json=body))
+        return Link.from_dict(
+            self._request("PUT", req_url, headers=self._json_headers(), json=body)
+        )
 
     def disable(self, id: int) -> Link:
         """Disable a link (stops redirecting)."""

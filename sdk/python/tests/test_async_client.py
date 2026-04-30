@@ -196,9 +196,7 @@ async def test_async_slugs_lookup(client: AsyncShrtnr) -> None:
 @respx.mock
 async def test_async_slugs_add(client: AsyncShrtnr) -> None:
     respx.post(f"{BASE_URL}/_/api/links/1/slugs").mock(
-        return_value=httpx.Response(
-            201, json=make_slug_dict(link_id=1, slug="promo", is_custom=1)
-        ),
+        return_value=httpx.Response(201, json=make_slug_dict(link_id=1, slug="promo", is_custom=1)),
     )
     slug = await client.slugs.add(1, "promo")
     assert slug.slug == "promo"

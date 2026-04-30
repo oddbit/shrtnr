@@ -85,9 +85,7 @@ class AsyncShrtnr:
         self._base_url = base_url.rstrip("/")
         self._api_key = api_key
         self._owns_client = http_client is None
-        self._http = (
-            http_client if http_client is not None else httpx.AsyncClient(timeout=timeout)
-        )
+        self._http = http_client if http_client is not None else httpx.AsyncClient(timeout=timeout)
 
         self.links = AsyncLinks(self._base_url, self._api_key, self._http)
         self.slugs = AsyncSlugs(self._base_url, self._api_key, self._http)

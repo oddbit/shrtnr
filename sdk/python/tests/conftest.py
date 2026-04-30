@@ -92,12 +92,14 @@ def make_bundle_dict(
 
 def make_bundle_with_summary_dict(**kwargs: Any) -> dict[str, Any]:
     d = make_bundle_dict(**kwargs)
-    d.update({
-        "link_count": 0,
-        "total_clicks": 0,
-        "sparkline": [],
-        "top_links": [],
-    })
+    d.update(
+        {
+            "link_count": 0,
+            "total_clicks": 0,
+            "sparkline": [],
+            "top_links": [],
+        }
+    )
     return d
 
 

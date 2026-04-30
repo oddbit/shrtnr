@@ -15,10 +15,10 @@ from .client import AsyncShrtnr, Shrtnr
 from .errors import ShrtnrError
 from .models import (
     AddedResult,
+    Bundle,
     BundleAccent,
     BundleTopLink,
     BundleWithSummary,
-    Bundle,
     ClickStats,
     DateCount,
     DeletedResult,

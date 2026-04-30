@@ -101,7 +101,9 @@ def async_client() -> AsyncShrtnr:
 @pytest.mark.e2e
 async def test_async_link_lifecycle(async_client: AsyncShrtnr) -> None:
     """Create, get, and delete a link using the async client."""
-    link = await async_client.links.create(url="https://example.com/py-async-e2e", label="py-async-e2e")
+    link = await async_client.links.create(
+        url="https://example.com/py-async-e2e", label="py-async-e2e"
+    )
     assert link.url == "https://example.com/py-async-e2e"
     fetched = await async_client.links.get(link.id)
     assert fetched.id == link.id
