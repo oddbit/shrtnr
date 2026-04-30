@@ -65,8 +65,12 @@ export async function listBundles(
   identity: string,
   opts: ListBundlesOpts,
 ): Promise<ServiceResult<BundleWithSummary[]>> {
+  // Reads are open across owners by design (see CLAUDE.md / bundle access
+  // model): any authenticated caller can list every bundle, mirroring the
+  // link+slug model. The `identity` param is still threaded through because
+  // analytics filters are scoped to the caller's preferences, not because we
+  // gate which bundles are visible.
   const bundles = await BundleRepository.list(env.DB, {
-    createdBy: identity,
     includeArchived: opts.includeArchived,
     archivedOnly: opts.archivedOnly,
   });
@@ -109,11 +113,15 @@ export interface GetBundleOpts {
 export async function getBundle(
   env: Env,
   id: number,
-  identity: string,
+  // identity is no longer used to gate visibility; reads are open across
+  // owners by design. Kept in the signature so callers stay consistent with
+  // other bundle endpoints and so a future per-identity scoping (e.g.
+  // analytics filter preferences) can land without another signature churn.
+  _identity: string,
   opts?: GetBundleOpts,
 ): Promise<ServiceResult<Bundle | BundleWithSummary>> {
   const bundle = await BundleRepository.getById(env.DB, id);
-  if (!bundle || bundle.created_by !== identity) return fail(404, "Bundle not found");
+  if (!bundle) return fail(404, "Bundle not found");
   if (!opts?.range) return ok(bundle);
 
   const summaries = await ClickRepository.getBundleSummariesBulk(env.DB, [id], undefined, undefined, opts.range);
@@ -140,7 +148,8 @@ export async function updateBundle(
   identity: string,
 ): Promise<ServiceResult<Bundle>> {
   const bundle = await BundleRepository.getById(env.DB, id);
-  if (!bundle || bundle.created_by !== identity) return fail(404, "Bundle not found");
+  if (!bundle) return fail(404, "Bundle not found");
+  if (bundle.created_by !== identity) return fail(403, "Only the bundle owner can update this bundle");
 
   if (patch.name !== undefined) {
     const trimmed = patch.name.trim();
@@ -161,7 +170,8 @@ export async function archiveBundle(
   identity: string,
 ): Promise<ServiceResult<Bundle>> {
   const bundle = await BundleRepository.getById(env.DB, id);
-  if (!bundle || bundle.created_by !== identity) return fail(404, "Bundle not found");
+  if (!bundle) return fail(404, "Bundle not found");
+  if (bundle.created_by !== identity) return fail(403, "Only the bundle owner can archive this bundle");
   return ok((await BundleRepository.archive(env.DB, id))!);
 }
 
@@ -171,7 +181,8 @@ export async function unarchiveBundle(
   identity: string,
 ): Promise<ServiceResult<Bundle>> {
   const bundle = await BundleRepository.getById(env.DB, id);
-  if (!bundle || bundle.created_by !== identity) return fail(404, "Bundle not found");
+  if (!bundle) return fail(404, "Bundle not found");
+  if (bundle.created_by !== identity) return fail(403, "Only the bundle owner can unarchive this bundle");
   return ok((await BundleRepository.unarchive(env.DB, id))!);
 }
 
@@ -181,7 +192,8 @@ export async function deleteBundle(
   identity: string,
 ): Promise<ServiceResult<{ deleted: boolean }>> {
   const bundle = await BundleRepository.getById(env.DB, id);
-  if (!bundle || bundle.created_by !== identity) return fail(404, "Bundle not found");
+  if (!bundle) return fail(404, "Bundle not found");
+  if (bundle.created_by !== identity) return fail(403, "Only the bundle owner can delete this bundle");
   await BundleRepository.delete(env.DB, id);
   return ok({ deleted: true });
 }
@@ -190,10 +202,14 @@ export async function addLinkToBundle(
   env: Env,
   bundleId: number,
   linkId: number,
-  identity: string,
+  // identity is unused for authorization here. Adding a link to a bundle is
+  // open to any authenticated caller, mirroring the link+slug model where
+  // anyone can append a custom slug to anyone's link. The caller is still
+  // identified at the auth layer; only the gate is removed.
+  _identity: string,
 ): Promise<ServiceResult<{ added: boolean }>> {
   const bundle = await BundleRepository.getById(env.DB, bundleId);
-  if (!bundle || bundle.created_by !== identity) return fail(404, "Bundle not found");
+  if (!bundle) return fail(404, "Bundle not found");
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
   await BundleRepository.addLink(env.DB, bundleId, linkId);
@@ -207,7 +223,8 @@ export async function removeLinkFromBundle(
   identity: string,
 ): Promise<ServiceResult<{ removed: boolean }>> {
   const bundle = await BundleRepository.getById(env.DB, bundleId);
-  if (!bundle || bundle.created_by !== identity) return fail(404, "Bundle not found");
+  if (!bundle) return fail(404, "Bundle not found");
+  if (bundle.created_by !== identity) return fail(403, "Only the bundle owner can remove links from this bundle");
   const removed = await BundleRepository.removeLink(env.DB, bundleId, linkId);
   return ok({ removed });
 }
@@ -220,11 +237,14 @@ export async function getBundleAnalytics(
   env: Env,
   id: number,
   range: TimelineRange,
-  identity: string,
+  // identity is unused for authorization; analytics are open to any
+  // authenticated caller alongside GET /:id. Filters are passed in by the
+  // caller (admin path resolves the viewer's filter preferences upstream).
+  _identity: string,
   opts?: BundleAnalyticsOpts,
 ): Promise<ServiceResult<BundleStats>> {
   const bundle = await BundleRepository.getById(env.DB, id);
-  if (!bundle || bundle.created_by !== identity) return fail(404, "Bundle not found");
+  if (!bundle) return fail(404, "Bundle not found");
   const stats = await ClickRepository.getBundleStats(env.DB, id, range, undefined, opts?.filters);
   return ok(stats!);
 }
@@ -240,7 +260,9 @@ export async function listBundleLinks(
   opts?: ListBundleLinksOpts,
 ): Promise<ServiceResult<LinkWithSlugs[]>> {
   const bundle = await BundleRepository.getById(env.DB, id);
-  if (!bundle || bundle.created_by !== identity) return fail(404, "Bundle not found");
+  if (!bundle) return fail(404, "Bundle not found");
+  // identity still resolves the viewer's click filter preferences; it does
+  // not gate visibility of the bundle itself.
   const filters = await resolveClickFilters(env, identity);
   const sinceTs = rangeToSinceTs(opts?.range);
   return ok(await BundleRepository.listLinks(env.DB, id, { filters, sinceTs }));
@@ -249,10 +271,11 @@ export async function listBundleLinks(
 export async function listBundlesForLink(
   env: Env,
   linkId: number,
-  identity: string,
+  // identity is unused for visibility filtering; reads are open across owners.
+  _identity: string,
 ): Promise<ServiceResult<Bundle[]>> {
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
   const bundles = await BundleRepository.listBundlesForLink(env.DB, linkId);
-  return ok(bundles.filter((b) => b.created_by === identity));
+  return ok(bundles);
 }

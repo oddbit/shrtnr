@@ -28,7 +28,8 @@ export interface UpdateBundleInput {
 }
 
 export interface ListBundlesOptions {
-  createdBy: string;
+  /** Optional owner filter. When omitted, list returns every bundle regardless of creator. */
+  createdBy?: string;
   includeArchived?: boolean;
   archivedOnly?: boolean;
 }
@@ -64,15 +65,20 @@ export class BundleRepository {
   }
 
   static async list(db: D1Database, opts: ListBundlesOptions): Promise<Bundle[]> {
-    let where = "created_by = ?";
-    const binds: unknown[] = [opts.createdBy];
-    if (opts.archivedOnly) {
-      where += " AND archived_at IS NOT NULL";
-    } else if (!opts.includeArchived) {
-      where += " AND archived_at IS NULL";
+    const clauses: string[] = [];
+    const binds: unknown[] = [];
+    if (opts.createdBy !== undefined) {
+      clauses.push("created_by = ?");
+      binds.push(opts.createdBy);
     }
+    if (opts.archivedOnly) {
+      clauses.push("archived_at IS NOT NULL");
+    } else if (!opts.includeArchived) {
+      clauses.push("archived_at IS NULL");
+    }
+    const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
     const rows = await db
-      .prepare(`SELECT ${BUNDLE_COLS} FROM bundles WHERE ${where} ORDER BY created_at DESC`)
+      .prepare(`SELECT ${BUNDLE_COLS} FROM bundles ${where} ORDER BY created_at DESC`)
       .bind(...binds)
       .all<Bundle>();
     return rows.results ?? [];

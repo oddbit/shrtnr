@@ -46,7 +46,7 @@ export const SlugSchema = z
 export const LinkSchema = z
   .object({
     id: z.number().int().openapi({ example: 42 }),
-    url: z.string().url().openapi({ example: "https://example.com/long-url" }),
+    url: z.string().url().max(2048).openapi({ example: "https://example.com/long-url" }),
     label: z.string().nullable().openapi({ example: "Marketing landing" }),
     created_at: z.number().int(),
     expires_at: z.number().int().nullable().openapi({ description: "Unix seconds; null means no expiry." }),
@@ -60,7 +60,7 @@ export const LinkSchema = z
 
 export const CreateLinkBodySchema = z
   .object({
-    url: z.string().url(),
+    url: z.string().url().max(2048),
     label: z.string().optional(),
     slug_length: z.number().int().min(3).max(16).optional(),
     expires_at: z.number().int().nonnegative().optional(),
@@ -71,7 +71,7 @@ export const CreateLinkBodySchema = z
 
 export const UpdateLinkBodySchema = z
   .object({
-    url: z.string().url().optional(),
+    url: z.string().url().max(2048).optional(),
     label: z.string().nullable().optional(),
     expires_at: z.number().int().nonnegative().nullable().optional(),
   })
