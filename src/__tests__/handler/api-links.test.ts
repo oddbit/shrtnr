@@ -923,13 +923,9 @@ describe("POST /_/api/links URL length cap", () => {
 // Asserts that owner A's API key cannot mutate owner B's link via the public
 // API, even when both keys have create+read scope. The ownership guard lives
 // in src/services/link-management.ts and returns 403 on mismatch for mutating
-// calls (disable/enable/delete/slug ops).
-//
-// IMPORTANT: GET /_/api/links/:id is intentionally NOT covered here because
-// `getLink` in src/services/link-management.ts does not check ownership. The
-// public GET surface returns any link by id regardless of caller identity.
-// That is a separate concern; this test is about confirming the existing
-// 403 path on the mutating routes, not papering over the GET behavior.
+// calls (disable/enable/delete/slug ops). Reads are intentionally open across
+// owners by design; that contract is asserted in the "Open read access"
+// describe below.
 
 describe("cross-owner link isolation", () => {
   it("owner A's API key cannot delete owner B's link (403)", async () => {
@@ -999,5 +995,94 @@ describe("GET /_/api/links/:id schema parity", () => {
     // `identity` is the JWT email used for admin views and must never appear
     // on the public response.
     expect(body).not.toHaveProperty("identity");
+  });
+});
+
+// ---- Open read access (design): anyone can read anything ----
+//
+// The app is for internal team/organization use, not public sign-up. Writes
+// are guarded by ownership; reads are intentionally open across owners. This
+// describe locks that contract so a future tightening cannot quietly break
+// it: any authenticated key with `read` scope can fetch any active link by
+// id, and the list endpoint surfaces every owner's links, not just the
+// caller's. See ignore/specs/2026-04-29-test-suite-cleanup-design.md.
+
+describe("Open read access (design): anyone can read anything", () => {
+  it("owner A's API key can GET owner B's link (anyone can read)", async () => {
+    const keyA = await seedApiKey(env.DB, "create,read", "ownerA@test");
+    const keyB = await seedApiKey(env.DB, "create,read", "ownerB@test");
+
+    const create = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${keyB}` },
+      body: JSON.stringify({ url: "https://example.com/owner-b-readable" }),
+    }));
+    expect(create.status).toBe(201);
+    const { id } = await create.json() as { id: number };
+
+    const get = await SELF.fetch(new Request(`https://shrtnr.test/_/api/links/${id}`, {
+      headers: { Authorization: `Bearer ${keyA}` },
+    }));
+    expect(get.status).toBe(200);
+    const body = await get.json() as { id: number; url: string };
+    expect(body.id).toBe(id);
+    expect(body.url).toBe("https://example.com/owner-b-readable");
+  });
+
+  it("owner A's API key sees owner B's links in the list endpoint (anyone can read)", async () => {
+    const keyA = await seedApiKey(env.DB, "create,read", "ownerA@test");
+    const keyB = await seedApiKey(env.DB, "create,read", "ownerB@test");
+
+    const createA = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${keyA}` },
+      body: JSON.stringify({ url: "https://example.com/by-a" }),
+    }));
+    expect(createA.status).toBe(201);
+    const { id: idA } = await createA.json() as { id: number };
+
+    const createB = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${keyB}` },
+      body: JSON.stringify({ url: "https://example.com/by-b" }),
+    }));
+    expect(createB.status).toBe(201);
+    const { id: idB } = await createB.json() as { id: number };
+
+    const list = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      headers: { Authorization: `Bearer ${keyA}` },
+    }));
+    expect(list.status).toBe(200);
+    const body = await list.json() as { id: number }[];
+    const ids = body.map((l) => l.id);
+    expect(ids).toContain(idA);
+    expect(ids).toContain(idB);
+  });
+
+  it("owner A's API key can GET any active link regardless of creator", async () => {
+    const keyA = await seedApiKey(env.DB, "create,read", "ownerA@test");
+    const keyC = await seedApiKey(env.DB, "create,read", "ownerC@test");
+    const keyD = await seedApiKey(env.DB, "create,read", "ownerD@test");
+
+    const createC = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${keyC}` },
+      body: JSON.stringify({ url: "https://example.com/by-c" }),
+    }));
+    const { id: idC } = await createC.json() as { id: number };
+
+    const createD = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${keyD}` },
+      body: JSON.stringify({ url: "https://example.com/by-d" }),
+    }));
+    const { id: idD } = await createD.json() as { id: number };
+
+    for (const id of [idC, idD]) {
+      const res = await SELF.fetch(new Request(`https://shrtnr.test/_/api/links/${id}`, {
+        headers: { Authorization: `Bearer ${keyA}` },
+      }));
+      expect(res.status).toBe(200);
+    }
   });
 });
