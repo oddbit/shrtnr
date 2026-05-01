@@ -15,6 +15,7 @@ from typing import Any, Literal
 import httpx
 
 from .._base import (
+    UNSET,
     _build_auth_headers,
     _build_url,
     parse_json_response,
@@ -97,17 +98,21 @@ class Bundles:
         id: int,
         *,
         name: str | None = None,
-        description: str | None = None,
-        icon: str | None = None,
+        description: str | None = UNSET,
+        icon: str | None = UNSET,
         accent: BundleAccent | None = None,
     ) -> Bundle:
-        """Update a bundle's name, description, icon, or accent."""
+        """Update a bundle's name, description, icon, or accent.
+
+        Pass ``None`` for *description* or *icon* to clear the field.
+        Omitting a parameter leaves the field unchanged.
+        """
         body: dict[str, Any] = {}
         if name is not None:
             body["name"] = name
-        if description is not None:
+        if description is not UNSET:
             body["description"] = description
-        if icon is not None:
+        if icon is not UNSET:
             body["icon"] = icon
         if accent is not None:
             body["accent"] = accent
@@ -219,17 +224,21 @@ class AsyncBundles:
         id: int,
         *,
         name: str | None = None,
-        description: str | None = None,
-        icon: str | None = None,
+        description: str | None = UNSET,
+        icon: str | None = UNSET,
         accent: BundleAccent | None = None,
     ) -> Bundle:
-        """Update a bundle's name, description, icon, or accent."""
+        """Update a bundle's name, description, icon, or accent.
+
+        Pass ``None`` for *description* or *icon* to clear the field.
+        Omitting a parameter leaves the field unchanged.
+        """
         body: dict[str, Any] = {}
         if name is not None:
             body["name"] = name
-        if description is not None:
+        if description is not UNSET:
             body["description"] = description
-        if icon is not None:
+        if icon is not UNSET:
             body["icon"] = icon
         if accent is not None:
             body["accent"] = accent

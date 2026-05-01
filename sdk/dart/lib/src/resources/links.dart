@@ -4,6 +4,9 @@
 import '../base_client.dart';
 import '../models.dart';
 
+// Sentinel distinguishing "not provided" from an explicit null.
+const Object _unset = Object();
+
 /// Methods for the `/api/links` and related endpoints.
 class LinksResource {
   /// Creates a links resource backed by [_http].
@@ -51,16 +54,19 @@ class LinksResource {
   }
 
   /// Update a link's URL, label, or expiry.
+  ///
+  /// Pass `null` for [label] or [expiresAt] to clear the field.
+  /// Omitting a parameter leaves the field unchanged.
   Future<Link> update(
     int id, {
     String? url,
-    String? label,
-    int? expiresAt,
+    Object? label = _unset,
+    Object? expiresAt = _unset,
   }) async {
     final body = <String, dynamic>{};
     if (url != null) body['url'] = url;
-    if (label != null) body['label'] = label;
-    if (expiresAt != null) body['expires_at'] = expiresAt;
+    if (!identical(label, _unset)) body['label'] = label;
+    if (!identical(expiresAt, _unset)) body['expires_at'] = expiresAt;
     final json = await _http.requestJson('PUT', '/_/api/links/$id', body: body);
     return Link.fromJson(json! as Map<String, dynamic>);
   }

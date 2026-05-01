@@ -129,6 +129,7 @@ export async function updateLink(
     } catch {
       return fail(400, "url must be a valid URL");
     }
+    body.url = normalizeUrl(body.url);
   }
 
   const link = await LinkRepository.update(env.DB, id, body);
@@ -170,7 +171,7 @@ export async function enableLink(env: Env, id: number, identity: string): Promis
   const link = await LinkRepository.getById(env.DB, id);
   if (!link) return fail(404, "Link not found");
   if (link.created_by !== identity) return fail(403, "Only the link owner can enable this link");
-  const enabled = await LinkRepository.update(env.DB, id, { expires_at: null });
+  const enabled = await LinkRepository.enable(env.DB, id);
 
   await Promise.all(
     enabled!.slugs.map((s) =>

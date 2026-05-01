@@ -316,6 +316,21 @@ void main() {
       final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
       expect(body['url'], 'https://new.com');
     });
+
+    test('sends label: null to clear the label', () async {
+      final m = _mock(status: 200, body: _linkJson());
+      await m.client.links.update(1, label: null);
+      final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
+      expect(body.containsKey('label'), isTrue);
+      expect(body['label'], isNull);
+    });
+
+    test('omits label when not provided', () async {
+      final m = _mock(status: 200, body: _linkJson());
+      await m.client.links.update(1, url: 'https://new.com');
+      final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
+      expect(body.containsKey('label'), isFalse);
+    });
   });
 
   // ---- 7. links.disable ----
@@ -648,6 +663,21 @@ void main() {
       expect(m.capture.request!.method, 'PUT');
       final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
       expect(body['name'], 'Updated');
+    });
+
+    test('sends description: null to clear the description', () async {
+      final m = _mock(status: 200, body: _bundleJson());
+      await m.client.bundles.update(42, description: null);
+      final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
+      expect(body.containsKey('description'), isTrue);
+      expect(body['description'], isNull);
+    });
+
+    test('omits description when not provided', () async {
+      final m = _mock(status: 200, body: _bundleJson());
+      await m.client.bundles.update(42, name: 'Only Name');
+      final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
+      expect(body.containsKey('description'), isFalse);
     });
   });
 

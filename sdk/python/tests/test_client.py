@@ -182,6 +182,38 @@ def test_links_update(client: Shrtnr) -> None:
     assert body == {"url": "https://new.com"}
 
 
+@respx.mock
+def test_links_update_clears_label_with_none(client: Shrtnr) -> None:
+    route = respx.put(f"{BASE_URL}/_/api/links/1").mock(
+        return_value=httpx.Response(200, json=make_link_dict(link_id=1)),
+    )
+    client.links.update(1, label=None)
+    body = json.loads(route.calls[0].request.content)
+    assert "label" in body
+    assert body["label"] is None
+
+
+@respx.mock
+def test_links_update_omits_label_when_not_provided(client: Shrtnr) -> None:
+    route = respx.put(f"{BASE_URL}/_/api/links/1").mock(
+        return_value=httpx.Response(200, json=make_link_dict(link_id=1)),
+    )
+    client.links.update(1, url="https://new.com")
+    body = json.loads(route.calls[0].request.content)
+    assert "label" not in body
+
+
+@respx.mock
+def test_links_update_clears_expires_at_with_none(client: Shrtnr) -> None:
+    route = respx.put(f"{BASE_URL}/_/api/links/1").mock(
+        return_value=httpx.Response(200, json=make_link_dict(link_id=1)),
+    )
+    client.links.update(1, expires_at=None)
+    body = json.loads(route.calls[0].request.content)
+    assert "expires_at" in body
+    assert body["expires_at"] is None
+
+
 # ---- links.disable ----
 
 
@@ -453,6 +485,27 @@ def test_bundles_update(client: Shrtnr) -> None:
     client.bundles.update(42, description="edited")
     body = json.loads(route.calls[0].request.content)
     assert body == {"description": "edited"}
+
+
+@respx.mock
+def test_bundles_update_clears_description_with_none(client: Shrtnr) -> None:
+    route = respx.put(f"{BASE_URL}/_/api/bundles/42").mock(
+        return_value=httpx.Response(200, json=make_bundle_dict()),
+    )
+    client.bundles.update(42, description=None)
+    body = json.loads(route.calls[0].request.content)
+    assert "description" in body
+    assert body["description"] is None
+
+
+@respx.mock
+def test_bundles_update_omits_description_when_not_provided(client: Shrtnr) -> None:
+    route = respx.put(f"{BASE_URL}/_/api/bundles/42").mock(
+        return_value=httpx.Response(200, json=make_bundle_dict()),
+    )
+    client.bundles.update(42, name="New Name")
+    body = json.loads(route.calls[0].request.content)
+    assert "description" not in body
 
 
 # ---- bundles.delete ----

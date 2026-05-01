@@ -15,6 +15,7 @@ from typing import Any
 import httpx
 
 from .._base import (
+    UNSET,
     _build_auth_headers,
     _build_url,
     parse_json_response,
@@ -102,16 +103,20 @@ class Links:
         id: int,
         *,
         url: str | None = None,
-        label: str | None = None,
-        expires_at: int | None = None,
+        label: str | None = UNSET,
+        expires_at: int | None = UNSET,
     ) -> Link:
-        """Update a link's URL, label, or expiry."""
+        """Update a link's URL, label, or expiry.
+
+        Pass ``None`` for *label* or *expires_at* to clear the field.
+        Omitting a parameter leaves the field unchanged.
+        """
         body: dict[str, Any] = {}
         if url is not None:
             body["url"] = url
-        if label is not None:
+        if label is not UNSET:
             body["label"] = label
-        if expires_at is not None:
+        if expires_at is not UNSET:
             body["expires_at"] = expires_at
         req_url = self._url(f"/_/api/links/{id}")
         return Link.from_dict(
@@ -233,16 +238,20 @@ class AsyncLinks:
         id: int,
         *,
         url: str | None = None,
-        label: str | None = None,
-        expires_at: int | None = None,
+        label: str | None = UNSET,
+        expires_at: int | None = UNSET,
     ) -> Link:
-        """Update a link's URL, label, or expiry."""
+        """Update a link's URL, label, or expiry.
+
+        Pass ``None`` for *label* or *expires_at* to clear the field.
+        Omitting a parameter leaves the field unchanged.
+        """
         body: dict[str, Any] = {}
         if url is not None:
             body["url"] = url
-        if label is not None:
+        if label is not UNSET:
             body["label"] = label
-        if expires_at is not None:
+        if expires_at is not UNSET:
             body["expires_at"] = expires_at
         req_url = self._url(f"/_/api/links/{id}")
         return Link.from_dict(

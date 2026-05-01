@@ -70,10 +70,10 @@ export class LinksResource {
   }
 
   /** Get QR code SVG for a link. Returns the SVG string. */
-  qr(id: number, options: { slug?: string; size?: string } = {}): Promise<string> {
+  qr(id: number, options: { slug?: string; size?: number } = {}): Promise<string> {
     return this.http.requestText("GET", `/_/api/links/${id}/qr`, {
       slug: options.slug,
-      size: options.size,
+      size: options.size !== undefined ? String(options.size) : undefined,
     });
   }
 
