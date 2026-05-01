@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "shrtnr — Self-hosted URL shortener",
+  "name": "shrtnr: Self-hosted URL shortener",
   "short_name": "shrtnr",
   "version": "0.1.0",
   "description": "Shorten the current tab into your own self-hosted shrtnr. One click. Free, open-source, runs on Cloudflare.",
