@@ -2,7 +2,29 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect } from "vitest";
-import { makeQR } from "../../qr";
+import { makeQR, renderQrSvg } from "../../qr";
+
+function extractSvgWidth(svg: string): number {
+  const m = svg.match(/width="([^"]+)"/);
+  return m ? parseFloat(m[1]) : NaN;
+}
+
+describe("renderQrSvg", () => {
+  it("respects the size option: larger size produces larger SVG", () => {
+    const svg200 = renderQrSvg("https://example.com", { size: 200 });
+    const svg400 = renderQrSvg("https://example.com", { size: 400 });
+    expect(svg200).not.toBeNull();
+    expect(svg400).not.toBeNull();
+    expect(extractSvgWidth(svg200!)).toBeCloseTo(200, 0);
+    expect(extractSvgWidth(svg400!)).toBeCloseTo(400, 0);
+  });
+
+  it("uses 220 as default size when no size provided", () => {
+    const svg = renderQrSvg("https://example.com");
+    expect(svg).not.toBeNull();
+    expect(extractSvgWidth(svg!)).toBeCloseTo(220, 0);
+  });
+});
 
 describe("makeQR", () => {
   it("returns a non-empty square boolean matrix for short input", () => {

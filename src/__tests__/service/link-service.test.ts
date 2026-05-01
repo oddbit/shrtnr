@@ -300,3 +300,41 @@ describe("URL normalization in createLink", () => {
     expect(result.data.url).toBe("https://example.com/path");
   });
 });
+
+describe("URL normalization in updateLink", () => {
+  it("strips trailing slash from updated URL", async () => {
+    const created = await createLink(env as any, { url: "https://example.com" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const updated = await updateLink(env as any, created.data.id, { url: "https://example.com/new-path/" });
+    expect(updated.ok).toBe(true);
+    if (updated.ok) {
+      expect(updated.data.url).toBe("https://example.com/new-path");
+    }
+  });
+
+  it("strips trailing question mark from updated URL", async () => {
+    const created = await createLink(env as any, { url: "https://example.com" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const updated = await updateLink(env as any, created.data.id, { url: "https://example.com/page?" });
+    expect(updated.ok).toBe(true);
+    if (updated.ok) {
+      expect(updated.data.url).toBe("https://example.com/page");
+    }
+  });
+
+  it("can clear the label by passing null", async () => {
+    const created = await createLink(env as any, { url: "https://example.com", label: "Old Label" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const updated = await updateLink(env as any, created.data.id, { label: null });
+    expect(updated.ok).toBe(true);
+    if (updated.ok) {
+      expect(updated.data.label).toBeNull();
+    }
+  });
+});

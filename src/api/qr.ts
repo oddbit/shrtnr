@@ -13,6 +13,8 @@ export async function handleLinkQr(request: Request, env: Env, linkId: number): 
   const link = result.data;
   const url = new URL(request.url);
   const requestedSlug = url.searchParams.get("slug");
+  const sizeParam = url.searchParams.get("size");
+  const size = sizeParam ? parseInt(sizeParam, 10) : undefined;
 
   const slug = requestedSlug
     ? link.slugs.find((s) => s.slug === requestedSlug)
@@ -22,7 +24,7 @@ export async function handleLinkQr(request: Request, env: Env, linkId: number): 
 
   const origin = url.origin;
   const qrUrl = `${origin}/${slug.slug}?utm_medium=qr`;
-  const svg = renderQrSvg(qrUrl);
+  const svg = renderQrSvg(qrUrl, { size });
 
   if (!svg) return json({ error: "Failed to generate QR code" }, 500);
 

@@ -32,10 +32,11 @@ import {
   IdParamSchema,
   LinkSchema,
   RangeQuerySchema,
+  TIMELINE_RANGES,
   UpdateBundleBodySchema,
   paramHook,
 } from "./schemas";
-const VALID_RANGES = new Set<TimelineRange>(["24h", "7d", "30d", "90d", "1y", "all"]);
+const VALID_RANGES = new Set<TimelineRange>(TIMELINE_RANGES);
 
 function parseRange(raw: string | undefined, fallback: TimelineRange = "30d"): TimelineRange {
   return VALID_RANGES.has(raw as TimelineRange) ? (raw as TimelineRange) : fallback;
