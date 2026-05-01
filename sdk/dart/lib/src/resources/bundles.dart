@@ -4,6 +4,9 @@
 import '../base_client.dart';
 import '../models.dart';
 
+// Sentinel distinguishing "not provided" from an explicit null.
+const Object _unset = Object();
+
 /// Methods for the `/api/bundles` and related endpoints.
 class BundlesResource {
   /// Creates a bundles resource backed by [_http].
@@ -53,17 +56,20 @@ class BundlesResource {
   }
 
   /// Update a bundle's name, description, icon, or accent.
+  ///
+  /// Pass `null` for [description] or [icon] to clear the field.
+  /// Omitting a parameter leaves the field unchanged.
   Future<Bundle> update(
     int id, {
     String? name,
-    String? description,
-    String? icon,
+    Object? description = _unset,
+    Object? icon = _unset,
     BundleAccent? accent,
   }) async {
     final body = <String, dynamic>{};
     if (name != null) body['name'] = name;
-    if (description != null) body['description'] = description;
-    if (icon != null) body['icon'] = icon;
+    if (!identical(description, _unset)) body['description'] = description;
+    if (!identical(icon, _unset)) body['icon'] = icon;
     if (accent != null) body['accent'] = accent.wireValue;
     final json =
         await _http.requestJson('PUT', '/_/api/bundles/$id', body: body);
