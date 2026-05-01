@@ -20,6 +20,23 @@ from .errors import ShrtnrError
 DEFAULT_TIMEOUT = 30.0
 
 
+class _UnsetType:
+    """Sentinel distinguishing 'not provided' from an explicit ``None``."""
+
+    _instance: _UnsetType | None = None
+
+    def __new__(cls) -> _UnsetType:
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __repr__(self) -> str:
+        return "UNSET"
+
+
+UNSET: Any = _UnsetType()
+
+
 def _build_auth_headers(api_key: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {api_key}"}
 
