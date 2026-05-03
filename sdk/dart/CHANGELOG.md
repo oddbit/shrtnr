@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2 (2026-05-03)
+
+- Replace `LICENSE` with the canonical Apache-2.0 text from apache.org so pana recognizes the license.
+
 ## 1.0.1 (2026-04-30)
 
 Packaging and documentation only. No public surface changes.
