@@ -4,6 +4,7 @@
 import { z } from "@hono/zod-openapi";
 import type { Hook } from "@hono/zod-openapi";
 import { formatZodError } from "./response";
+import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH } from "../constants";
 
 // ---- Common ----
 
@@ -62,7 +63,7 @@ export const CreateLinkBodySchema = z
   .object({
     url: z.string().url().max(2048),
     label: z.string().optional(),
-    slug_length: z.number().int().min(3).max(16).optional(),
+    slug_length: z.number().int().min(MIN_SLUG_LENGTH).max(MAX_SLUG_LENGTH).optional(),
     expires_at: z.number().int().nonnegative().optional(),
     allow_duplicate: z.boolean().optional(),
   })
@@ -86,7 +87,7 @@ export const UpdateLinkBodySchema = z
 export const CustomSlugStringSchema = z
   .string()
   .min(1)
-  .max(64)
+  .max(MAX_SLUG_LENGTH)
   .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i);
 
 export const AddSlugBodySchema = z
