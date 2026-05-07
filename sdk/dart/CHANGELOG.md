@@ -1,8 +1,21 @@
 # Changelog
 
-## 1.0.2 (2026-05-03)
+## 2.0.0 (2026-05-07)
 
-- Replace `LICENSE` with the canonical Apache-2.0 text from apache.org so pana recognizes the license.
+**Breaking change to `update()` methods.** `LinksResource.update` and `BundlesResource.update` now take a `Link` / `Bundle` object instead of an id with optional named parameters. To edit a record, call `copyWith` on the value returned by `get()` (or any other read), then pass it to `update()`.
+
+```dart
+// 1.x
+await client.links.update(42, label: null);
+
+// 2.0
+final link = await client.links.get(42);
+await client.links.update(link.copyWith(label: null));
+```
+
+`Link`, `Bundle`, and `BundleWithSummary` now expose a `copyWith` method. Pass `null` to a nullable field to clear it; omit the parameter to preserve the current value. The disambiguation between "omit" and "explicit null" is encapsulated in `copyWith` via a private sentinel, so callers never see it. `update()` always sends the full writable payload, which sidesteps the omit-vs-clear ambiguity at the wire level.
+
+The Python and TypeScript SDKs keep their existing partial-update shapes; each language implements the same set/clear/omit feature in its own idiom.
 
 ## 1.0.1 (2026-04-30)
 

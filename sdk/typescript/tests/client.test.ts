@@ -254,6 +254,24 @@ describe("links.update", () => {
     expect(url).toBe(`${BASE}/_/api/links/1`);
     expect(init.method).toBe("PUT");
   });
+
+  it("sends label: null to clear the label", async () => {
+    mockFetch(200, stubLink);
+    await client().links.update(1, { label: null });
+    const { init } = lastCall();
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body).toHaveProperty("label");
+    expect(body["label"]).toBeNull();
+  });
+
+  it("sends expires_at: null to clear expiry", async () => {
+    mockFetch(200, stubLink);
+    await client().links.update(1, { expiresAt: null });
+    const { init } = lastCall();
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body).toHaveProperty("expires_at");
+    expect(body["expires_at"]).toBeNull();
+  });
 });
 
 describe("links.disable", () => {
@@ -357,9 +375,9 @@ describe("links.qr", () => {
     expect(lastCall().url).toBe(`${BASE}/_/api/links/5/qr`);
   });
 
-  it("appends slug and size when provided", async () => {
+  it("appends slug and size when provided, converting number to string", async () => {
     mockFetch(200, "<svg/>", "image/svg+xml");
-    await client().links.qr(5, { slug: "promo", size: "256" });
+    await client().links.qr(5, { slug: "promo", size: 256 });
     expect(lastCall().url).toBe(`${BASE}/_/api/links/5/qr?slug=promo&size=256`);
   });
 });
@@ -514,6 +532,15 @@ describe("bundles.update", () => {
     const { url, init } = lastCall();
     expect(url).toBe(`${BASE}/_/api/bundles/42`);
     expect(init.method).toBe("PUT");
+  });
+
+  it("sends description: null to clear the description", async () => {
+    mockFetch(200, stubBundle);
+    await client().bundles.update(42, { description: null });
+    const { init } = lastCall();
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body).toHaveProperty("description");
+    expect(body["description"]).toBeNull();
   });
 });
 

@@ -129,6 +129,7 @@ export async function updateLink(
     } catch {
       return fail(400, "url must be a valid URL");
     }
+    body.url = normalizeUrl(body.url);
   }
 
   const link = await LinkRepository.update(env.DB, id, body);
@@ -170,19 +171,21 @@ export async function enableLink(env: Env, id: number, identity: string): Promis
   const link = await LinkRepository.getById(env.DB, id);
   if (!link) return fail(404, "Link not found");
   if (link.created_by !== identity) return fail(403, "Only the link owner can enable this link");
-  const enabled = await LinkRepository.update(env.DB, id, { expires_at: null });
+  const enabled = await LinkRepository.enable(env.DB, id);
+  // null on race: link deleted between getById and the UPDATE.
+  if (!enabled) return fail(404, "Link not found");
 
   await Promise.all(
-    enabled!.slugs.map((s) =>
+    enabled.slugs.map((s) =>
       SlugCache.put(env.SLUG_KV, s.slug, {
-        url: enabled!.url,
+        url: enabled.url,
         disabled_at: s.disabled_at,
         expires_at: null,
       }),
     ),
   );
 
-  return ok(enabled!);
+  return ok(enabled);
 }
 
 export async function deleteLink(env: Env, id: number, identity: string): Promise<ServiceResult<{ deleted: boolean }>> {

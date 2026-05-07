@@ -50,18 +50,21 @@ class LinksResource {
     return Link.fromJson(json! as Map<String, dynamic>);
   }
 
-  /// Update a link's URL, label, or expiry.
-  Future<Link> update(
-    int id, {
-    String? url,
-    String? label,
-    int? expiresAt,
-  }) async {
-    final body = <String, dynamic>{};
-    if (url != null) body['url'] = url;
-    if (label != null) body['label'] = label;
-    if (expiresAt != null) body['expires_at'] = expiresAt;
-    final json = await _http.requestJson('PUT', '/_/api/links/$id', body: body);
+  /// Update a link with the values held by [link].
+  ///
+  /// The writable fields ([Link.url], [Link.label], [Link.expiresAt]) are
+  /// always sent on the wire; pass a [Link] produced by [Link.copyWith] with
+  /// the desired changes (use `null` on a nullable field to clear it).
+  /// Read-only fields like [Link.id] are used for routing; server-managed
+  /// fields like slugs and click counts are not included in the request body
+  /// (the server's update schema is strict and would reject them).
+  Future<Link> update(Link link) async {
+    final body = <String, dynamic>{
+      'url': link.url,
+      'label': link.label,
+      'expires_at': link.expiresAt,
+    };
+    final json = await _http.requestJson('PUT', '/_/api/links/${link.id}', body: body);
     return Link.fromJson(json! as Map<String, dynamic>);
   }
 

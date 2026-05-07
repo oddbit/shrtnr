@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { SlugRepository } from "./db";
-import { MIN_SLUG_LENGTH } from "./constants";
+import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH } from "./constants";
 
 // Unambiguous lowercase characters: removed l, o, 0, 1 to avoid confusion
 export const RANDOM_CHARSET = "abcdefghijkmnpqrstuvwxyz23456789";
@@ -43,6 +43,6 @@ export function validateCustomSlug(slug: string): string | null {
 
 export function validateSlugLength(length: number): string | null {
   if (!Number.isInteger(length) || length < MIN_SLUG_LENGTH) return `Slug length must be an integer >= ${MIN_SLUG_LENGTH}`;
-  if (length > 128) return "Slug length must be an integer <= 128";
+  if (length > MAX_SLUG_LENGTH) return `Slug length must be an integer <= ${MAX_SLUG_LENGTH}`;
   return null;
 }
