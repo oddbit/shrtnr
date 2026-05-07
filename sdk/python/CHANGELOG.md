@@ -2,6 +2,10 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.0.2 (2026-05-07)
+
+- `links.update()` and `bundles.update()` can now distinguish "omit this field" from "set this field to null". Optional nullable params (`label`, `expires_at`, `description`, `icon`) default to a private `UNSET` sentinel; only keys explicitly provided by the caller are included in the request body. Pass `None` to clear a value, omit the param to leave the server-side value untouched. Sync and async resources both updated; regression tests cover both clients.
+
 ## 1.0.1 (2026-04-30)
 
 Packaging, documentation, and CI hygiene. No public surface changes.
