@@ -12,6 +12,10 @@ export async function handleLinkQr(request: Request, env: Env, linkId: number): 
   const requestedSlug = url.searchParams.get("slug") ?? undefined;
   const sizeParam = url.searchParams.get("size");
 
+  if (requestedSlug === "") {
+    return json({ error: "slug must not be empty" }, 400);
+  }
+
   let size: number | undefined;
   if (sizeParam !== null) {
     const parsed = Number(sizeParam);
