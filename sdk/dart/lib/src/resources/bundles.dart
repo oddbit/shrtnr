@@ -4,9 +4,6 @@
 import '../base_client.dart';
 import '../models.dart';
 
-// Sentinel distinguishing "not provided" from an explicit null.
-const Object _unset = Object();
-
 /// Methods for the `/api/bundles` and related endpoints.
 class BundlesResource {
   /// Creates a bundles resource backed by [_http].
@@ -55,24 +52,22 @@ class BundlesResource {
     return Bundle.fromJson(json! as Map<String, dynamic>);
   }
 
-  /// Update a bundle's name, description, icon, or accent.
+  /// Update a bundle with the values held by [bundle].
   ///
-  /// Pass `null` for [description] or [icon] to clear the field.
-  /// Omitting a parameter leaves the field unchanged.
-  Future<Bundle> update(
-    int id, {
-    String? name,
-    Object? description = _unset,
-    Object? icon = _unset,
-    BundleAccent? accent,
-  }) async {
-    final body = <String, dynamic>{};
-    if (name != null) body['name'] = name;
-    if (!identical(description, _unset)) body['description'] = description;
-    if (!identical(icon, _unset)) body['icon'] = icon;
-    if (accent != null) body['accent'] = accent.wireValue;
+  /// The writable fields ([Bundle.name], [Bundle.description], [Bundle.icon],
+  /// [Bundle.accent]) are always sent on the wire; pass a [Bundle] produced
+  /// by [Bundle.copyWith] with the desired changes (use `null` on a nullable
+  /// field to clear it). [BundleWithSummary] is also accepted because it
+  /// extends [Bundle]; its summary fields are ignored by the server.
+  Future<Bundle> update(Bundle bundle) async {
+    final body = <String, dynamic>{
+      'name': bundle.name,
+      'description': bundle.description,
+      'icon': bundle.icon,
+      'accent': bundle.accent.wireValue,
+    };
     final json =
-        await _http.requestJson('PUT', '/_/api/bundles/$id', body: body);
+        await _http.requestJson('PUT', '/_/api/bundles/${bundle.id}', body: body);
     return Bundle.fromJson(json! as Map<String, dynamic>);
   }
 

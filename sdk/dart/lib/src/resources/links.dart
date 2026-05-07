@@ -4,9 +4,6 @@
 import '../base_client.dart';
 import '../models.dart';
 
-// Sentinel distinguishing "not provided" from an explicit null.
-const Object _unset = Object();
-
 /// Methods for the `/api/links` and related endpoints.
 class LinksResource {
   /// Creates a links resource backed by [_http].
@@ -53,21 +50,20 @@ class LinksResource {
     return Link.fromJson(json! as Map<String, dynamic>);
   }
 
-  /// Update a link's URL, label, or expiry.
+  /// Update a link with the values held by [link].
   ///
-  /// Pass `null` for [label] or [expiresAt] to clear the field.
-  /// Omitting a parameter leaves the field unchanged.
-  Future<Link> update(
-    int id, {
-    String? url,
-    Object? label = _unset,
-    Object? expiresAt = _unset,
-  }) async {
-    final body = <String, dynamic>{};
-    if (url != null) body['url'] = url;
-    if (!identical(label, _unset)) body['label'] = label;
-    if (!identical(expiresAt, _unset)) body['expires_at'] = expiresAt;
-    final json = await _http.requestJson('PUT', '/_/api/links/$id', body: body);
+  /// The writable fields ([Link.url], [Link.label], [Link.expiresAt]) are
+  /// always sent on the wire; pass a [Link] produced by [Link.copyWith] with
+  /// the desired changes (use `null` on a nullable field to clear it).
+  /// Read-only fields like [Link.id] are used for routing; server-managed
+  /// fields like slugs and click counts are ignored by the server.
+  Future<Link> update(Link link) async {
+    final body = <String, dynamic>{
+      'url': link.url,
+      'label': link.label,
+      'expires_at': link.expiresAt,
+    };
+    final json = await _http.requestJson('PUT', '/_/api/links/${link.id}', body: body);
     return Link.fromJson(json! as Map<String, dynamic>);
   }
 
