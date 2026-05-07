@@ -76,7 +76,7 @@ export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter, range }) => {
                 {b.archived_at && <span class="bundle-archived-badge">{t("bundles.archived")}</span>}
                 {b.delta_pct !== undefined && (
                   <span class="bundle-card-delta">
-                    <Delta pct={b.delta_pct} />
+                    <Delta pct={b.delta_pct} lang={lang} />
                   </span>
                 )}
               </div>

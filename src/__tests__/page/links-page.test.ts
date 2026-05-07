@@ -133,6 +133,29 @@ describe("Links listing page", () => {
     expect(html).toMatch(/<td[^>]*class="[^"]*col-date[^"]*"[^>]*>[\s\S]*?class="delta /);
   });
 
+  it("delta pct of 4+ digits uses locale thousands separators", async () => {
+    const link = await LinkRepository.create(env.DB, {
+      url: "https://example.com",
+      slug: "abc",
+    });
+    const now = Math.floor(Date.now() / 1000);
+    // 1 click in the previous 30d window, 15 clicks in the current → pct = 1400
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)")
+      .bind(link.slugs[0].slug, now - 40 * 86400)
+      .run();
+    for (let i = 0; i < 15; i++) {
+      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)")
+        .bind(link.slugs[0].slug, now - 60 - i)
+        .run();
+    }
+
+    const res = await SELF.fetch(req("/_/admin/links"));
+    const html = await res.text();
+    // en (default lang) groups with comma. The bare "+1400%" form must not appear.
+    expect(html).toMatch(/class="delta-label">\+1,400%</);
+    expect(html).not.toMatch(/class="delta-label">\+1400%</);
+  });
+
   it("pagination shows a '1–N of Total' summary", async () => {
     for (let i = 0; i < 30; i++) {
       await LinkRepository.create(env.DB, {

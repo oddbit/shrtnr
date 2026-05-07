@@ -87,6 +87,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
           valueId="dash-total-links"
           deltaPct={d.new_links_delta}
           deltaId="dash-links-delta"
+          lang={lang}
           sparkline={d.timeline_links}
         />
         <KpiCard
@@ -97,6 +98,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
           valueId="dash-clicked-links"
           deltaPct={d.clicked_links_delta}
           deltaId="dash-clicked-links-delta"
+          lang={lang}
           sparkline={d.timeline_clicked_links}
         />
         <KpiCard
@@ -107,6 +109,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
           valueId="dash-total-clicks"
           deltaPct={d.total_clicks_delta}
           deltaId="dash-clicks-delta"
+          lang={lang}
           sparkline={d.timeline}
         />
         <KpiCard
@@ -117,6 +120,7 @@ export const DashboardPage: FC<Props> = ({ stats, t, lang, range }) => {
           valueId="dash-clicks-per-day"
           deltaPct={d.clicks_per_day_delta}
           deltaId="dash-clicks-per-day-delta"
+          lang={lang}
           sparkline={d.timeline}
         />
       </div>
