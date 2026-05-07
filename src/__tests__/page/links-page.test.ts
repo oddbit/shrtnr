@@ -140,13 +140,10 @@ describe("Links listing page", () => {
     });
     const now = Math.floor(Date.now() / 1000);
     // 1 click in the previous 30d window, 15 clicks in the current → pct = 1400
-    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)")
-      .bind(link.slugs[0].slug, now - 40 * 86400)
-      .run();
+    const insertClick = env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)");
+    await insertClick.bind(link.slugs[0].slug, now - 40 * 86400).run();
     for (let i = 0; i < 15; i++) {
-      await env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)")
-        .bind(link.slugs[0].slug, now - 60 - i)
-        .run();
+      await insertClick.bind(link.slugs[0].slug, now - 60 - i).run();
     }
 
     // Pin lang=en so the comma-grouping assertion is deterministic regardless of
