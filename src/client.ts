@@ -39,6 +39,16 @@ function t(key, params) {
   return val;
 }
 
+// The slug to display or copy when "the link" needs one representative chip:
+// the link's primary, with slugs[0] as a defensive fallback for malformed data.
+function pickPrimarySlug(link) {
+  if (!link.slugs || link.slugs.length === 0) return null;
+  for (var i = 0; i < link.slugs.length; i++) {
+    if (link.slugs[i].is_primary) return link.slugs[i];
+  }
+  return link.slugs[0];
+}
+
 // ---- Toast ----
 function toast(msg, type) {
   var el = document.getElementById('toast');
@@ -150,7 +160,7 @@ function quickShorten() {
             window.location.href = '/_/admin/links/' + link.id;
           }
         } else {
-          var primary = link.slugs.find(function(s) { return s.is_primary; }) || link.slugs[0];
+          var primary = pickPrimarySlug(link);
           if (primary) copyUrl(primary.slug);
           toast(t('client.linkCreatedCopied'));
           window.location.href = '/_/admin/links/' + link.id;
@@ -247,7 +257,7 @@ function createDuplicate(url) {
   api('/links', { method: 'POST', body: JSON.stringify({ url: url, allow_duplicate: true }) }).then(function(res) {
     if (res.ok) {
       return res.json().then(function(link) {
-        var primary = link.slugs.find(function(s) { return s.is_primary; }) || link.slugs[0];
+        var primary = pickPrimarySlug(link);
         if (primary) copyUrl(primary.slug);
         toast(t('client.linkCreatedCopied'));
         window.location.href = '/_/admin/links/' + link.id;
@@ -1125,11 +1135,8 @@ function pollDashboard() {
         if (recentNoData) recentNoData.remove();
         for (var ri = 0; ri < d.recent_links.length; ri++) {
           var link = d.recent_links[ri];
-          var slug = '';
-          for (var si = 0; si < link.slugs.length; si++) {
-            if (link.slugs[si].is_primary) { slug = link.slugs[si].slug; break; }
-          }
-          if (!slug && link.slugs.length > 0) slug = link.slugs[0].slug;
+          var primarySlug = pickPrimarySlug(link);
+          var slug = primarySlug ? primarySlug.slug : '';
           var a = document.createElement('a');
           a.href = '/_/admin/links/' + link.id;
           a.style.cssText = 'display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;cursor:pointer;overflow:hidden;min-width:0;text-decoration:none;color:inherit';
@@ -1161,11 +1168,8 @@ function pollDashboard() {
         if (tlNoData) tlNoData.remove();
         for (var ti = 0; ti < d.top_links.length; ti++) {
           var tLink = d.top_links[ti];
-          var tSlug = '';
-          for (var si = 0; si < tLink.slugs.length; si++) {
-            if (tLink.slugs[si].is_primary) { tSlug = tLink.slugs[si].slug; break; }
-          }
-          if (!tSlug && tLink.slugs.length > 0) tSlug = tLink.slugs[0].slug;
+          var tPrimary = pickPrimarySlug(tLink);
+          var tSlug = tPrimary ? tPrimary.slug : '';
           var tPct = Math.round((tLink.total_clicks / tlMax) * 100);
           var a = document.createElement('a');
           a.href = '/_/admin/links/' + tLink.id;
@@ -1503,11 +1507,8 @@ function showAddLinkToBundlePicker(bundleId, excludeIds) {
         html += '<div class="muted-hint">' + esc(t('bundles.allLinksAdded')) + '</div>';
       } else {
         available.forEach(function(link) {
-          var slug = '';
-          if (link.slugs && link.slugs.length > 0) {
-            var primary = link.slugs.find(function(s) { return s.is_primary; }) || link.slugs[0];
-            slug = primary.slug;
-          }
+          var primary = pickPrimarySlug(link);
+          var slug = primary ? primary.slug : '';
           var label = link.label || link.url;
           html += '<div class="add-to-bundle-row" data-search="' + esc((link.label || '') + ' ' + link.url + ' ' + slug).toLowerCase() + '" onclick="doAddLinkToBundle(' + bundleId + ',' + link.id + ')">';
           html += '<span class="slug-chip">' + esc(slug) + '</span>';
