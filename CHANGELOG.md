@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.35.1 (2026-05-07)
+
+- Admin views that render "the link" (link-stat copy, link-create success state) now select the user's primary slug instead of the first auto-generated one. A `pickPrimarySlug` helper centralizes the rule (`is_primary` first, otherwise the lowest-id slug) so every surface picks the same slug for the same record.
+- `TIMELINE_RANGES` is now the single source of truth for timeline-range tuples. `RangeSchema`, `RANGE_VALUES`, the admin time-range selector, analytics defaults, and bundle defaults all derive from this constant; the previous `?? "30d"` fallbacks scattered across files now reference an exported `DEFAULT_TIMELINE_RANGE`. OpenAPI surface unchanged.
+- Runtime and dev dependencies refreshed to current published versions: `@cloudflare/workers-oauth-provider 0.4 → 0.5`, `@cloudflare/vitest-pool-workers 0.15 → 0.16`, `@cloudflare/workers-types 4.20260426 → 4.20260507`, `agents 0.11.6 → 0.12.3`, `hono 4.12.15 → 4.12.18`, `wrangler 4.86 → 4.88`, `zod 4.3 → 4.4`. The full vitest suite (50 files, 889 tests) passes against the new versions.
+
 ## 0.35.0 (2026-05-01)
 
 - Android (and iOS) in-app browser clicks now attribute to the originating brand in the Domains breakdown. The new `src/referrer.ts` module maps known package identifiers (`com.linkedin.android` → `linkedin.com`, `com.twitter.android` → `x.com`, Facebook, Instagram, TikTok, Reddit, Pinterest, Slack, Discord, Telegram, WhatsApp, YouTube, Gmail, Outlook) to their canonical domain, so a click from the LinkedIn Android app shows up under `linkedin.com` instead of as an opaque `android-app://com.linkedin.android/`. Uncurated packages fall through to "no referrer" rather than polluting the breakdown.
