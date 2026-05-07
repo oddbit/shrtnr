@@ -52,21 +52,24 @@ class BundlesResource {
     return Bundle.fromJson(json! as Map<String, dynamic>);
   }
 
-  /// Update a bundle's name, description, icon, or accent.
-  Future<Bundle> update(
-    int id, {
-    String? name,
-    String? description,
-    String? icon,
-    BundleAccent? accent,
-  }) async {
-    final body = <String, dynamic>{};
-    if (name != null) body['name'] = name;
-    if (description != null) body['description'] = description;
-    if (icon != null) body['icon'] = icon;
-    if (accent != null) body['accent'] = accent.wireValue;
+  /// Update a bundle with the values held by [bundle].
+  ///
+  /// The writable fields ([Bundle.name], [Bundle.description], [Bundle.icon],
+  /// [Bundle.accent]) are always sent on the wire; pass a [Bundle] produced
+  /// by [Bundle.copyWith] with the desired changes (use `null` on a nullable
+  /// field to clear it). [BundleWithSummary] is also accepted because it
+  /// extends [Bundle]; only the writable fields above are put on the wire,
+  /// so the summary fields never reach the server (whose update schema is
+  /// strict and would reject them).
+  Future<Bundle> update(Bundle bundle) async {
+    final body = <String, dynamic>{
+      'name': bundle.name,
+      'description': bundle.description,
+      'icon': bundle.icon,
+      'accent': bundle.accent.wireValue,
+    };
     final json =
-        await _http.requestJson('PUT', '/_/api/bundles/$id', body: body);
+        await _http.requestJson('PUT', '/_/api/bundles/${bundle.id}', body: body);
     return Bundle.fromJson(json! as Map<String, dynamic>);
   }
 

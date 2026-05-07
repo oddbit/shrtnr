@@ -119,6 +119,19 @@ async def test_async_links_update(client: AsyncShrtnr) -> None:
 
 
 @respx.mock
+async def test_async_links_update_clears_label_with_none(client: AsyncShrtnr) -> None:
+    import json as _json
+
+    route = respx.put(f"{BASE_URL}/_/api/links/1").mock(
+        return_value=httpx.Response(200, json=make_link_dict()),
+    )
+    await client.links.update(1, label=None)
+    body = _json.loads(route.calls[0].request.content)
+    assert "label" in body
+    assert body["label"] is None
+
+
+@respx.mock
 async def test_async_links_disable(client: AsyncShrtnr) -> None:
     route = respx.post(f"{BASE_URL}/_/api/links/1/disable").mock(
         return_value=httpx.Response(200, json=make_link_dict()),
@@ -272,6 +285,19 @@ async def test_async_bundles_update(client: AsyncShrtnr) -> None:
     )
     b = await client.bundles.update(42, name="Renamed")
     assert b.id == 42
+
+
+@respx.mock
+async def test_async_bundles_update_clears_description_with_none(client: AsyncShrtnr) -> None:
+    import json as _json
+
+    route = respx.put(f"{BASE_URL}/_/api/bundles/42").mock(
+        return_value=httpx.Response(200, json=make_bundle_dict()),
+    )
+    await client.bundles.update(42, description=None)
+    body = _json.loads(route.calls[0].request.content)
+    assert "description" in body
+    assert body["description"] is None
 
 
 @respx.mock

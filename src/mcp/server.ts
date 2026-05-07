@@ -56,7 +56,7 @@ import {
   compareLinkStats,
 } from "../services/analytics";
 import type { TimelineRange } from "../types";
-import { TIMELINE_RANGES } from "../constants";
+import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH, DEFAULT_SLUG_LENGTH, TIMELINE_RANGES } from "../constants";
 import { renderQrSvg } from "../qr";
 import {
   BUNDLE_ACCENTS,
@@ -216,7 +216,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         inputSchema: {
           url: z.string().url().describe("Destination URL to shorten"),
           label: z.string().optional().describe("Human-readable label for the link"),
-          slug_length: z.number().int().min(3).max(16).optional().describe("Length of the random slug (default: 3)"),
+          slug_length: z.number().int().min(MIN_SLUG_LENGTH).max(MAX_SLUG_LENGTH).optional().describe(`Length of the random slug (default: ${DEFAULT_SLUG_LENGTH})`),
           custom_slug: z
             .union([CustomSlugStringSchema, z.array(CustomSlugStringSchema)])
             .optional()
@@ -468,7 +468,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         description: "Get a QR code SVG for a short link. The QR encodes the short URL with a ?qr tracking parameter.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link"),
-          slug: z.string().optional().describe("Specific slug to use (defaults to custom slug or primary)"),
+          slug: z.string().optional().describe("Specific slug to use (defaults to the link's primary slug)"),
           base_url: z.string().url().describe("Base URL of the shrtnr instance, e.g. https://oddb.it"),
         },
         annotations: { title: "Link QR code", ...READ_ONLY },
@@ -480,7 +480,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
 
         const target = requestedSlug
           ? link.slugs.find((s) => s.slug === requestedSlug)
-          : (link.slugs.find((s) => s.is_custom) ?? link.slugs[0]);
+          : (link.slugs.find((s) => s.is_primary) ?? link.slugs[0]);
 
         if (!target) return fail("Slug not found");
 

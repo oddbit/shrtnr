@@ -25,7 +25,8 @@ describe("CustomSlugStringSchema", () => {
     ["trailing-", false],
     ["with space", false],
     ["sl/ash", false],
-    ["a".repeat(65), false],
+    ["a".repeat(128), true],
+    ["a".repeat(129), false],
   ])("safeParse(%j) -> ok=%s", (value, expectedOk) => {
     const result = CustomSlugStringSchema.safeParse(value);
     expect(result.success).toBe(expectedOk);

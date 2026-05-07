@@ -1180,3 +1180,111 @@ describe("Link+slug access model (design): anyone reads, anyone adds slugs, only
     expect(enable.status).toBe(403);
   });
 });
+
+describe("GET /_/api/links/:id/qr size validation", () => {
+  async function createTestLink(): Promise<number> {
+    const res = await SELF.fetch(
+      authed("/_/admin/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com" }),
+      })
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json() as { id: number };
+    return body.id;
+  }
+
+  it("rejects size=0 with 400", async () => {
+    const id = await createTestLink();
+    const key = await seedApiKey(env.DB, "read");
+    const res = await SELF.fetch(new Request(`https://shrtnr.test/_/api/links/${id}/qr?size=0`, {
+      headers: { Authorization: `Bearer ${key}` },
+    }));
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects negative size with 400", async () => {
+    const id = await createTestLink();
+    const res = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr?size=-5`));
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects non-numeric size with 400", async () => {
+    const id = await createTestLink();
+    const res = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr?size=abc`));
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects size above 2048 with 400 on the OpenAPI route", async () => {
+    const id = await createTestLink();
+    const key = await seedApiKey(env.DB, "read");
+    const res = await SELF.fetch(new Request(`https://shrtnr.test/_/api/links/${id}/qr?size=2049`, {
+      headers: { Authorization: `Bearer ${key}` },
+    }));
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects size above 2048 with 400 on the admin route", async () => {
+    const id = await createTestLink();
+    const res = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr?size=2049`));
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects empty slug with 400 on the admin route", async () => {
+    const id = await createTestLink();
+    const res = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr?slug=`));
+    expect(res.status).toBe(400);
+  });
+
+  it("accepts size=300 and returns SVG sized to 300", async () => {
+    const id = await createTestLink();
+    const res = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr?size=300`));
+    expect(res.status).toBe(200);
+    const svg = await res.text();
+    expect(svg).toMatch(/width="300"/);
+  });
+
+  it("accepts no size and returns SVG sized to default 220", async () => {
+    const id = await createTestLink();
+    const res = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr`));
+    expect(res.status).toBe(200);
+    const svg = await res.text();
+    expect(svg).toMatch(/width="220"/);
+  });
+
+  it("defaults to the link's primary slug, not just any custom slug", async () => {
+    // Setup: link with auto-slug ("primary"), plus a custom slug that is
+    // explicitly NOT primary. Default-pick must pick the auto-slug.
+    const createRes = await SELF.fetch(
+      authed("/_/admin/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com/primary-pick" }),
+      })
+    );
+    expect(createRes.status).toBe(201);
+    const created = await createRes.json() as { id: number; slugs: { slug: string }[] };
+    const id = created.id;
+    const autoSlug = created.slugs[0].slug;
+
+    const addRes = await SELF.fetch(authed(`/_/admin/api/links/${id}/slugs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: "my-custom-pick" }),
+    }));
+    expect(addRes.status).toBe(201);
+
+    // addCustom flipped primary to "my-custom-pick"; flip it back so the
+    // test exercises the bug shape: primary != custom.
+    await env.DB.prepare("UPDATE slugs SET is_primary = (slug = ?) WHERE link_id = ?")
+      .bind(autoSlug, id)
+      .run();
+
+    const noSlug = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr`));
+    const explicitPrimary = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr?slug=${autoSlug}`));
+    expect(noSlug.status).toBe(200);
+    expect(explicitPrimary.status).toBe(200);
+    expect(await noSlug.text()).toBe(await explicitPrimary.text());
+  });
+});

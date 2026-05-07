@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Env, TimelineRange } from "../types";
+import { TIMELINE_RANGES } from "../constants";
 import {
   getDashboardStats,
   getLinkAnalytics,
@@ -10,7 +11,7 @@ import {
 import { resolveClickFilters } from "../services/admin-management";
 import { fromServiceResult } from "./response";
 
-const VALID_RANGES = new Set<TimelineRange>(["24h", "7d", "30d", "90d", "1y", "all"]);
+const VALID_RANGES = new Set<TimelineRange>(TIMELINE_RANGES);
 
 function parseRange(rangeParam: string | null | undefined): TimelineRange | undefined {
   return VALID_RANGES.has(rangeParam as TimelineRange) ? (rangeParam as TimelineRange) : undefined;
