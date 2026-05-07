@@ -2,6 +2,11 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.0.2 (2026-05-07)
+
+- `qr()` now accepts `size` as a `number` instead of a `string`. The API schema declares the parameter as an integer, so the previous string type forced callers to pre-stringify a number they already had. The method converts internally before appending to the query string.
+- Regression coverage added for null-clearing on `links.update` (label, expiresAt) and `bundles.update` (description) so omit-vs-clear semantics are pinned down by tests.
+
 ## 1.0.1 (2026-04-30)
 
 Packaging and documentation only. No public surface changes.
