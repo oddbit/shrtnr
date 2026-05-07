@@ -13,7 +13,7 @@ type DeltaProps = {
 export const Delta: FC<DeltaProps> = ({ pct, lang, id }) => {
   // Normalize -0 to 0 so Intl.NumberFormat does not render a confusing "-0%"
   // when dir is "flat".
-  const safePct = pct + 0;
+  const safePct = Object.is(pct, -0) ? 0 : pct;
   const dir = safePct > 0 ? "up" : safePct < 0 ? "down" : "flat";
   const icon = dir === "up" ? "trending_up" : dir === "down" ? "trending_down" : "trending_flat";
   const sign = safePct > 0 ? "+" : "";
