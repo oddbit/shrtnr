@@ -348,8 +348,8 @@ const linkQrRoute = createRoute({
     query: z.object({
       slug: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional()
         .openapi({ description: "Optional specific slug. Defaults to the link's primary slug." }),
-      size: z.string().regex(/^\d+$/).optional()
-        .openapi({ description: "PNG dimensions in pixels (square). Default per server config." }),
+      size: z.coerce.number().int().min(1).max(2048).optional()
+        .openapi({ description: "QR pixel dimensions (square). Integer 1-2048; defaults to 220." }),
     }),
   },
   responses: {

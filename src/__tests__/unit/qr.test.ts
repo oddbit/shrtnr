@@ -24,6 +24,19 @@ describe("renderQrSvg", () => {
     expect(svg).not.toBeNull();
     expect(extractSvgWidth(svg!)).toBeCloseTo(220, 0);
   });
+
+  it("returns null for non-positive or non-integer sizes", () => {
+    expect(renderQrSvg("https://example.com", { size: 0 })).toBeNull();
+    expect(renderQrSvg("https://example.com", { size: -5 })).toBeNull();
+    expect(renderQrSvg("https://example.com", { size: 1.5 })).toBeNull();
+    expect(renderQrSvg("https://example.com", { size: NaN })).toBeNull();
+  });
+
+  it("accepts size = 1 (smallest valid)", () => {
+    const svg = renderQrSvg("https://example.com", { size: 1 });
+    expect(svg).not.toBeNull();
+    expect(extractSvgWidth(svg!)).toBeCloseTo(1, 0);
+  });
 });
 
 describe("makeQR", () => {

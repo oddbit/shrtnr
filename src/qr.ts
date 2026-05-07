@@ -197,12 +197,16 @@ function rsEncode(data: number[], numEcc: number): number[] {
 
 /**
  * Render a QR code as an SVG string.
- * Returns null if the text cannot be encoded.
+ * Returns null if the text cannot be encoded or the size is invalid.
  */
 export function renderQrSvg(
   text: string,
   options: { size?: number; fg?: string; bg?: string } = {},
 ): string | null {
+  if (options.size !== undefined && (!Number.isInteger(options.size) || options.size < 1)) {
+    return null;
+  }
+
   const matrix = makeQR(text);
   if (!matrix) return null;
 

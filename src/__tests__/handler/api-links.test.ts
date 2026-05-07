@@ -1180,3 +1180,64 @@ describe("Link+slug access model (design): anyone reads, anyone adds slugs, only
     expect(enable.status).toBe(403);
   });
 });
+
+describe("GET /_/api/links/:id/qr size validation", () => {
+  async function createTestLink(): Promise<number> {
+    const res = await SELF.fetch(
+      authed("/_/admin/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com" }),
+      })
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json() as { id: number };
+    return body.id;
+  }
+
+  it("rejects size=0 with 400", async () => {
+    const id = await createTestLink();
+    const key = await seedApiKey(env.DB, "read");
+    const res = await SELF.fetch(new Request(`https://shrtnr.test/_/api/links/${id}/qr?size=0`, {
+      headers: { Authorization: `Bearer ${key}` },
+    }));
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects negative size with 400", async () => {
+    const id = await createTestLink();
+    const res = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr?size=-5`));
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects non-numeric size with 400", async () => {
+    const id = await createTestLink();
+    const res = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr?size=abc`));
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects size above 2048 with 400 on the OpenAPI route", async () => {
+    const id = await createTestLink();
+    const key = await seedApiKey(env.DB, "read");
+    const res = await SELF.fetch(new Request(`https://shrtnr.test/_/api/links/${id}/qr?size=2049`, {
+      headers: { Authorization: `Bearer ${key}` },
+    }));
+    expect(res.status).toBe(400);
+  });
+
+  it("accepts size=300 and returns SVG sized to 300", async () => {
+    const id = await createTestLink();
+    const res = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr?size=300`));
+    expect(res.status).toBe(200);
+    const svg = await res.text();
+    expect(svg).toMatch(/width="300"/);
+  });
+
+  it("accepts no size and returns SVG sized to default 220", async () => {
+    const id = await createTestLink();
+    const res = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr`));
+    expect(res.status).toBe(200);
+    const svg = await res.text();
+    expect(svg).toMatch(/width="220"/);
+  });
+});

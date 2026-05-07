@@ -7,23 +7,30 @@ import { renderQrSvg } from "../qr";
 import { json } from "./response";
 
 export async function handleLinkQr(request: Request, env: Env, linkId: number): Promise<Response> {
+  const url = new URL(request.url);
+  const requestedSlug = url.searchParams.get("slug") ?? undefined;
+  const sizeParam = url.searchParams.get("size");
+
+  let size: number | undefined;
+  if (sizeParam !== null) {
+    const parsed = Number(sizeParam);
+    if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) {
+      return json({ error: "size must be a positive integer" }, 400);
+    }
+    size = parsed;
+  }
+
   const result = await getLink(env, linkId);
   if (!result.ok) return json({ error: result.error }, result.status);
 
   const link = result.data;
-  const url = new URL(request.url);
-  const requestedSlug = url.searchParams.get("slug");
-  const sizeParam = url.searchParams.get("size");
-  const size = sizeParam ? parseInt(sizeParam, 10) : undefined;
-
   const slug = requestedSlug
     ? link.slugs.find((s) => s.slug === requestedSlug)
     : link.slugs.find((s) => s.is_custom) ?? link.slugs[0];
 
   if (!slug) return json({ error: "Slug not found" }, 404);
 
-  const origin = url.origin;
-  const qrUrl = `${origin}/${slug.slug}?utm_medium=qr`;
+  const qrUrl = `${url.origin}/${slug.slug}?utm_medium=qr`;
   const svg = renderQrSvg(qrUrl, { size });
 
   if (!svg) return json({ error: "Failed to generate QR code" }, 500);
