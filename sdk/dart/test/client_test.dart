@@ -308,13 +308,78 @@ void main() {
   // ---- 6. links.update ----
 
   group('links.update', () {
-    test('PUTs /_/api/links/:id with patch body', () async {
+    test('PUTs /_/api/links/:id with full writable payload', () async {
       final m = _mock(status: 200, body: _linkJson(url: 'https://new.com'));
-      await m.client.links.update(1, url: 'https://new.com');
+      final original = Link.fromJson(_linkJson(id: 1, url: 'https://old.com'));
+      await m.client.links.update(original.copyWith(url: 'https://new.com'));
       expect(m.capture.request!.url.toString(), '$_base/_/api/links/1');
       expect(m.capture.request!.method, 'PUT');
       final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
       expect(body['url'], 'https://new.com');
+      // All writable fields are present in the wire payload.
+      expect(body.containsKey('label'), isTrue);
+      expect(body.containsKey('expires_at'), isTrue);
+    });
+
+    test('copyWith(label: null) sends label: null to clear', () async {
+      final m = _mock(status: 200, body: _linkJson());
+      final original = Link.fromJson(<String, Object?>{
+        ..._linkJson(id: 1),
+        'label': 'old label',
+      });
+      await m.client.links.update(original.copyWith(label: null));
+      final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
+      expect(body['label'], isNull);
+    });
+
+    test('copyWith preserves unchanged label so the server keeps the old value',
+        () async {
+      final m = _mock(status: 200, body: _linkJson());
+      final original = Link.fromJson(<String, Object?>{
+        ..._linkJson(id: 1),
+        'label': 'preserve me',
+      });
+      await m.client.links.update(original.copyWith(url: 'https://new.com'));
+      final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
+      expect(body['label'], 'preserve me');
+    });
+  });
+
+  // ---- 6a. Link.copyWith semantics ----
+
+  group('Link.copyWith', () {
+    test('omitted parameters preserve the existing value', () {
+      final link = Link.fromJson(<String, Object?>{
+        ..._linkJson(id: 5, url: 'https://orig.com'),
+        'label': 'keep',
+        'expires_at': 9999999,
+      });
+      final copy = link.copyWith();
+      expect(copy.id, 5);
+      expect(copy.url, 'https://orig.com');
+      expect(copy.label, 'keep');
+      expect(copy.expiresAt, 9999999);
+    });
+
+    test('passing null clears nullable fields', () {
+      final link = Link.fromJson(<String, Object?>{
+        ..._linkJson(id: 5),
+        'label': 'old',
+        'expires_at': 9999999,
+      });
+      final copy = link.copyWith(label: null, expiresAt: null);
+      expect(copy.label, isNull);
+      expect(copy.expiresAt, isNull);
+    });
+
+    test('passing a value overrides only that field', () {
+      final link = Link.fromJson(<String, Object?>{
+        ..._linkJson(id: 5, url: 'https://orig.com'),
+        'label': 'keep',
+      });
+      final copy = link.copyWith(url: 'https://new.com');
+      expect(copy.url, 'https://new.com');
+      expect(copy.label, 'keep');
     });
   });
 
@@ -641,13 +706,90 @@ void main() {
   // ---- 22. bundles.update ----
 
   group('bundles.update', () {
-    test('PUTs /_/api/bundles/:id with patch body', () async {
+    test('PUTs /_/api/bundles/:id with full writable payload', () async {
       final m = _mock(status: 200, body: _bundleJson(name: 'Updated'));
-      await m.client.bundles.update(42, name: 'Updated');
+      final original = Bundle.fromJson(_bundleJson(id: 42, name: 'Old'));
+      await m.client.bundles.update(original.copyWith(name: 'Updated'));
       expect(m.capture.request!.url.toString(), '$_base/_/api/bundles/42');
       expect(m.capture.request!.method, 'PUT');
       final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
       expect(body['name'], 'Updated');
+      // Full writable payload: all four fields present.
+      expect(body.containsKey('description'), isTrue);
+      expect(body.containsKey('icon'), isTrue);
+      expect(body['accent'], 'orange');
+    });
+
+    test('copyWith(description: null) sends description: null to clear', () async {
+      final m = _mock(status: 200, body: _bundleJson());
+      final original = Bundle.fromJson(<String, Object?>{
+        ..._bundleJson(id: 42),
+        'description': 'old desc',
+      });
+      await m.client.bundles.update(original.copyWith(description: null));
+      final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
+      expect(body['description'], isNull);
+    });
+
+    test('copyWith preserves the description so the server keeps the old value',
+        () async {
+      final m = _mock(status: 200, body: _bundleJson());
+      final original = Bundle.fromJson(<String, Object?>{
+        ..._bundleJson(id: 42),
+        'description': 'preserve me',
+      });
+      await m.client.bundles.update(original.copyWith(name: 'Renamed'));
+      final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
+      expect(body['description'], 'preserve me');
+    });
+
+    test('accepts a BundleWithSummary (covariant)', () async {
+      final m = _mock(status: 200, body: _bundleJson(name: 'Updated'));
+      final summary = BundleWithSummary.fromJson(_bundleWithSummaryJson(id: 42));
+      await m.client.bundles.update(summary.copyWith(name: 'Updated'));
+      final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
+      expect(body['name'], 'Updated');
+      // Summary fields like link_count are not part of the wire payload.
+      expect(body.containsKey('link_count'), isFalse);
+    });
+  });
+
+  // ---- 22a. Bundle.copyWith semantics ----
+
+  group('Bundle.copyWith', () {
+    test('omitted parameters preserve the existing value', () {
+      final bundle = Bundle.fromJson(<String, Object?>{
+        ..._bundleJson(id: 42, name: 'orig', accent: 'blue'),
+        'description': 'desc',
+        'icon': 'star',
+      });
+      final copy = bundle.copyWith();
+      expect(copy.id, 42);
+      expect(copy.name, 'orig');
+      expect(copy.description, 'desc');
+      expect(copy.icon, 'star');
+      expect(copy.accent, BundleAccent.blue);
+    });
+
+    test('passing null clears nullable fields', () {
+      final bundle = Bundle.fromJson(<String, Object?>{
+        ..._bundleJson(id: 42),
+        'description': 'old',
+        'icon': 'star',
+      });
+      final copy = bundle.copyWith(description: null, icon: null);
+      expect(copy.description, isNull);
+      expect(copy.icon, isNull);
+    });
+
+    test('BundleWithSummary.copyWith returns BundleWithSummary preserving summary',
+        () {
+      final summary = BundleWithSummary.fromJson(_bundleWithSummaryJson(id: 42));
+      final copy = summary.copyWith(name: 'Renamed');
+      expect(copy, isA<BundleWithSummary>());
+      expect(copy.name, 'Renamed');
+      expect(copy.linkCount, 3);
+      expect(copy.totalClicks, 100);
     });
   });
 

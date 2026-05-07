@@ -3,6 +3,17 @@
 
 import 'package:meta/meta.dart';
 
+// ---- copyWith sentinel ----
+
+// Distinguishes "argument not passed" from "argument explicitly null" inside
+// copyWith. A private named class is used (not `const Object()`) so the
+// sentinel cannot be matched by any value an external caller could construct.
+class _Unset {
+  const _Unset();
+}
+
+const _Unset _unset = _Unset();
+
 // ---- Enum types ----
 
 /// Accent color applied to a bundle.
@@ -240,6 +251,36 @@ class Link {
   /// Click count change as a percentage versus the previous equivalent period.
   /// Absent when comparison data is unavailable.
   final double? deltaPct;
+
+  /// Returns a copy with selected fields replaced.
+  ///
+  /// Pass `null` to a nullable field to clear it. Omit the parameter to
+  /// preserve the current value.
+  Link copyWith({
+    int? id,
+    String? url,
+    Object? label = _unset,
+    int? createdAt,
+    Object? expiresAt = _unset,
+    Object? createdVia = _unset,
+    String? createdBy,
+    List<Slug>? slugs,
+    int? totalClicks,
+    Object? deltaPct = _unset,
+  }) {
+    return Link(
+      id: id ?? this.id,
+      url: url ?? this.url,
+      label: identical(label, _unset) ? this.label : label as String?,
+      createdAt: createdAt ?? this.createdAt,
+      expiresAt: identical(expiresAt, _unset) ? this.expiresAt : expiresAt as int?,
+      createdVia: identical(createdVia, _unset) ? this.createdVia : createdVia as String?,
+      createdBy: createdBy ?? this.createdBy,
+      slugs: slugs ?? this.slugs,
+      totalClicks: totalClicks ?? this.totalClicks,
+      deltaPct: identical(deltaPct, _unset) ? this.deltaPct : deltaPct as double?,
+    );
+  }
 }
 
 /// A collection of links grouped to show combined engagement.
@@ -302,6 +343,36 @@ class Bundle {
 
   /// Unix seconds when the bundle was last modified.
   final int updatedAt;
+
+  /// Returns a copy with selected fields replaced.
+  ///
+  /// Pass `null` to a nullable field to clear it. Omit the parameter to
+  /// preserve the current value.
+  Bundle copyWith({
+    int? id,
+    String? name,
+    Object? description = _unset,
+    Object? icon = _unset,
+    BundleAccent? accent,
+    Object? archivedAt = _unset,
+    Object? createdVia = _unset,
+    String? createdBy,
+    int? createdAt,
+    int? updatedAt,
+  }) {
+    return Bundle(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: identical(description, _unset) ? this.description : description as String?,
+      icon: identical(icon, _unset) ? this.icon : icon as String?,
+      accent: accent ?? this.accent,
+      archivedAt: identical(archivedAt, _unset) ? this.archivedAt : archivedAt as int?,
+      createdVia: identical(createdVia, _unset) ? this.createdVia : createdVia as String?,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }
 
 /// Bundle enriched with range-scoped summary data.
@@ -367,6 +438,47 @@ class BundleWithSummary extends Bundle {
 
   /// Top member links by click count.
   final List<BundleTopLink> topLinks;
+
+  /// Returns a copy with selected fields replaced.
+  ///
+  /// Pass `null` to a nullable field to clear it. Omit the parameter to
+  /// preserve the current value.
+  @override
+  BundleWithSummary copyWith({
+    int? id,
+    String? name,
+    Object? description = _unset,
+    Object? icon = _unset,
+    BundleAccent? accent,
+    Object? archivedAt = _unset,
+    Object? createdVia = _unset,
+    String? createdBy,
+    int? createdAt,
+    int? updatedAt,
+    int? linkCount,
+    int? totalClicks,
+    Object? deltaPct = _unset,
+    List<int>? sparkline,
+    List<BundleTopLink>? topLinks,
+  }) {
+    return BundleWithSummary(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: identical(description, _unset) ? this.description : description as String?,
+      icon: identical(icon, _unset) ? this.icon : icon as String?,
+      accent: accent ?? this.accent,
+      archivedAt: identical(archivedAt, _unset) ? this.archivedAt : archivedAt as int?,
+      createdVia: identical(createdVia, _unset) ? this.createdVia : createdVia as String?,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      linkCount: linkCount ?? this.linkCount,
+      totalClicks: totalClicks ?? this.totalClicks,
+      deltaPct: identical(deltaPct, _unset) ? this.deltaPct : deltaPct as double?,
+      sparkline: sparkline ?? this.sparkline,
+      topLinks: topLinks ?? this.topLinks,
+    );
+  }
 }
 
 /// Top-link entry preview shown in a [BundleWithSummary].

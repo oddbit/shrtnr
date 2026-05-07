@@ -94,11 +94,12 @@ describe("Redirect with KV cache", () => {
 
 describe("KV write-through on mutations", () => {
   it("populates KV when a link is created", async () => {
+    // label suppresses autoLabelLink's outbound fetch; without it the next beforeEach times out on CI.
     const res = await SELF.fetch(
       new Request("https://shrtnr.test/_/admin/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://new-link.com/page" }),
+        body: JSON.stringify({ url: "https://new-link.com/page", label: "preset" }),
       }),
     );
     expect(res.status).toBe(201);

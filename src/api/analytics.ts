@@ -9,8 +9,9 @@ import {
 } from "../services/link-management";
 import { resolveClickFilters } from "../services/admin-management";
 import { fromServiceResult } from "./response";
+import { TIMELINE_RANGES } from "./schemas";
 
-const VALID_RANGES = new Set<TimelineRange>(["24h", "7d", "30d", "90d", "1y", "all"]);
+const VALID_RANGES = new Set<TimelineRange>(TIMELINE_RANGES);
 
 function parseRange(rangeParam: string | null | undefined): TimelineRange | undefined {
   return VALID_RANGES.has(rangeParam as TimelineRange) ? (rangeParam as TimelineRange) : undefined;
