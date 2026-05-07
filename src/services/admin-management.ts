@@ -3,16 +3,15 @@
 
 import { ApiKeyRepository, SettingRepository } from "../db";
 import type { ApiKeyRow, ClickFilters } from "../db";
-import { DEFAULT_SLUG_LENGTH } from "../constants";
+import { DEFAULT_SLUG_LENGTH, DEFAULT_TIMELINE_RANGE, TIMELINE_RANGES } from "../constants";
 import { validateSlugLength } from "../slugs";
 import { Env, TimelineRange } from "../types";
 import { ServiceResult, ok, fail } from "./result";
 
-const VALID_RANGES: TimelineRange[] = ["24h", "7d", "30d", "90d", "1y", "all"];
-const DEFAULT_RANGE: TimelineRange = "30d";
+const VALID_RANGES = new Set<TimelineRange>(TIMELINE_RANGES);
 
 function isValidRange(v: unknown): v is TimelineRange {
-  return typeof v === "string" && (VALID_RANGES as string[]).includes(v);
+  return typeof v === "string" && VALID_RANGES.has(v as TimelineRange);
 }
 
 export type { ServiceResult };
@@ -112,7 +111,7 @@ export async function getAppSettings(
     slug_default_length: parseInt(slugLength ?? String(DEFAULT_SLUG_LENGTH), 10),
     theme: theme ?? null,
     lang: lang ?? null,
-    default_range: isValidRange(defaultRange) ? defaultRange : DEFAULT_RANGE,
+    default_range: isValidRange(defaultRange) ? defaultRange : DEFAULT_TIMELINE_RANGE,
     filter_bots: parseBoolSetting(filterBots, true),
     filter_self_referrers: parseBoolSetting(filterSelfReferrers, true),
   });
@@ -147,7 +146,7 @@ export async function updateAppSettings(
     } else if (isValidRange(body.default_range)) {
       await SettingRepository.set(env.DB, identity, "default_range", body.default_range);
     } else {
-      return fail(400, `default_range must be one of: ${VALID_RANGES.join(", ")}`);
+      return fail(400, `default_range must be one of: ${TIMELINE_RANGES.join(", ")}`);
     }
   }
   if (body.filter_bots !== undefined) {
@@ -194,5 +193,5 @@ export async function resolveMcpRange(
 ): Promise<TimelineRange> {
   if (requested) return requested;
   const result = await getAppSettings(env, identity);
-  return result.ok ? result.data.default_range : DEFAULT_RANGE;
+  return result.ok ? result.data.default_range : DEFAULT_TIMELINE_RANGE;
 }

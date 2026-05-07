@@ -3,8 +3,8 @@
 
 import { z } from "@hono/zod-openapi";
 import type { Hook } from "@hono/zod-openapi";
+import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH, TIMELINE_RANGES } from "../constants";
 import { formatZodError } from "./response";
-import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH } from "../constants";
 
 // ---- Common ----
 
@@ -12,8 +12,6 @@ export const ErrorResponseSchema = z
   .object({ error: z.string() })
   .strict()
   .openapi("ErrorResponse", { description: "Error response with a single human-readable message." });
-
-export const TIMELINE_RANGES = ["24h", "7d", "30d", "90d", "1y", "all"] as const;
 
 export const RangeQuerySchema = z
   .object({
@@ -203,7 +201,7 @@ export const TimelineBucketSchema = z
 
 export const TimelineDataSchema = z
   .object({
-    range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]),
+    range: z.enum(TIMELINE_RANGES),
     buckets: z.array(TimelineBucketSchema),
     summary: z.object({
       last_24h: z.number().int().nonnegative(),
