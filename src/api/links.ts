@@ -25,6 +25,7 @@ import { handlePublicLinkAnalytics, handlePublicLinkTimeline } from "./analytics
 import { fetchPageTitle } from "../title-fetch";
 import { fromServiceResult, json } from "./response";
 import { requireScope } from "./scope";
+import { DEFAULT_QR_SIZE, MAX_QR_SIZE, MIN_QR_SIZE } from "../constants";
 import type { Env, TimelineRange } from "../types";
 import {
   AddSlugBodySchema,
@@ -348,8 +349,8 @@ const linkQrRoute = createRoute({
     query: z.object({
       slug: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional()
         .openapi({ description: "Optional specific slug. Defaults to the link's primary slug." }),
-      size: z.coerce.number().int().min(1).max(2048).optional()
-        .openapi({ description: "QR pixel dimensions (square). Integer 1-2048; defaults to 220." }),
+      size: z.coerce.number().int().min(MIN_QR_SIZE).max(MAX_QR_SIZE).optional()
+        .openapi({ description: `QR pixel dimensions (square). Integer ${MIN_QR_SIZE}-${MAX_QR_SIZE}; defaults to ${DEFAULT_QR_SIZE}.` }),
     }),
   },
   responses: {

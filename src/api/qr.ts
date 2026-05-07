@@ -1,6 +1,7 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
+import { MAX_QR_SIZE, MIN_QR_SIZE } from "../constants";
 import { Env } from "../types";
 import { getLink } from "../services/link-management";
 import { renderQrSvg } from "../qr";
@@ -14,8 +15,8 @@ export async function handleLinkQr(request: Request, env: Env, linkId: number): 
   let size: number | undefined;
   if (sizeParam !== null) {
     const parsed = Number(sizeParam);
-    if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) {
-      return json({ error: "size must be a positive integer" }, 400);
+    if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < MIN_QR_SIZE || parsed > MAX_QR_SIZE) {
+      return json({ error: `size must be an integer between ${MIN_QR_SIZE} and ${MAX_QR_SIZE}` }, 400);
     }
     size = parsed;
   }

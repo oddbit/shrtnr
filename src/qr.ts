@@ -1,6 +1,8 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
+import { DEFAULT_QR_SIZE, MIN_QR_SIZE } from "./constants";
+
 /**
  * Generate a QR code matrix for the given text.
  * Returns a 2D boolean grid (true = dark module) or null if the text is too long.
@@ -203,7 +205,7 @@ export function renderQrSvg(
   text: string,
   options: { size?: number; fg?: string; bg?: string } = {},
 ): string | null {
-  if (options.size !== undefined && (!Number.isInteger(options.size) || options.size < 1)) {
+  if (options.size !== undefined && (!Number.isInteger(options.size) || options.size < MIN_QR_SIZE)) {
     return null;
   }
 
@@ -213,7 +215,7 @@ export function renderQrSvg(
   const modules = matrix.length;
   const margin = 4;
   const total = modules + margin * 2;
-  const cellSize = (options.size ?? 220) / total;
+  const cellSize = (options.size ?? DEFAULT_QR_SIZE) / total;
   const svgSize = total * cellSize;
   const fg = options.fg ?? "#001110";
   const bg = options.bg ?? "#ffffff";

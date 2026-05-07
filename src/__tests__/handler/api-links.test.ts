@@ -1225,6 +1225,12 @@ describe("GET /_/api/links/:id/qr size validation", () => {
     expect(res.status).toBe(400);
   });
 
+  it("rejects size above 2048 with 400 on the admin route", async () => {
+    const id = await createTestLink();
+    const res = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr?size=2049`));
+    expect(res.status).toBe(400);
+  });
+
   it("accepts size=300 and returns SVG sized to 300", async () => {
     const id = await createTestLink();
     const res = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr?size=300`));
