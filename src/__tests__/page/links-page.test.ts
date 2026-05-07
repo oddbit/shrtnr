@@ -6,8 +6,8 @@ import { SELF, env } from "cloudflare:test";
 import { LinkRepository, SlugRepository } from "../../db";
 import { applyMigrations, resetData } from "../setup";
 
-function req(path: string): Request {
-  return new Request(`https://shrtnr.test${path}`);
+function req(path: string, init?: RequestInit): Request {
+  return new Request(`https://shrtnr.test${path}`, init);
 }
 
 beforeAll(applyMigrations);
@@ -131,6 +131,27 @@ describe("Links listing page", () => {
     expect(html).toMatch(/class="delta /);
     // The delta should appear in a created-column cell, not a clicks-column cell
     expect(html).toMatch(/<td[^>]*class="[^"]*col-date[^"]*"[^>]*>[\s\S]*?class="delta /);
+  });
+
+  it("delta pct of 4+ digits uses locale thousands separators", async () => {
+    const link = await LinkRepository.create(env.DB, {
+      url: "https://example.com",
+      slug: "abc",
+    });
+    const now = Math.floor(Date.now() / 1000);
+    // 1 click in the previous 30d window, 15 clicks in the current → pct = 1400
+    const insertClick = env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)");
+    await insertClick.bind(link.slugs[0].slug, now - 40 * 86400).run();
+    for (let i = 0; i < 15; i++) {
+      await insertClick.bind(link.slugs[0].slug, now - 60 - i).run();
+    }
+
+    // Pin lang=en so the comma-grouping assertion is deterministic regardless of
+    // future default-locale changes.
+    const res = await SELF.fetch(req("/_/admin/links", { headers: { Cookie: "lang=en" } }));
+    const html = await res.text();
+    expect(html).toMatch(/class="delta-label">\+1,400%</);
+    expect(html).not.toMatch(/class="delta-label">\+1400%</);
   });
 
   it("pagination shows a '1–N of Total' summary", async () => {

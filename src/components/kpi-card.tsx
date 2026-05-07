@@ -13,6 +13,7 @@ type KpiCardProps = {
   valueId?: string;
   deltaPct?: number | null;
   deltaId?: string;
+  lang: string;
   hint?: string;
   sparkline?: number[];
   span?: 1 | 2 | 3;
@@ -26,6 +27,7 @@ export const KpiCard: FC<KpiCardProps> = ({
   valueId,
   deltaPct,
   deltaId,
+  lang,
   hint,
   sparkline,
   span = 1,
@@ -38,7 +40,7 @@ export const KpiCard: FC<KpiCardProps> = ({
           {icon && <span class="icon">{icon}</span>}
           <span>{label}</span>
         </div>
-        {deltaPct !== undefined && deltaPct !== null && <Delta pct={deltaPct} id={deltaId} />}
+        {deltaPct !== undefined && deltaPct !== null && <Delta pct={deltaPct} lang={lang} id={deltaId} />}
       </div>
       <div class="kpi-value" id={valueId}>{value}</div>
       {hint && <div class="kpi-hint">{hint}</div>}

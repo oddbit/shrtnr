@@ -247,7 +247,7 @@ export const LinksPage: FC<Props> = ({
                           <span class="col-date-cell">
                             <span>{formatDate(link.created_at, lang)}</span>
                             {typeof link.delta_pct === "number" && link.total_clicks > 0 && (
-                              <Delta pct={link.delta_pct} />
+                              <Delta pct={link.delta_pct} lang={lang} />
                             )}
                           </span>
                         </td>
