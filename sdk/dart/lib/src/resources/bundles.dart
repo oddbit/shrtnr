@@ -58,7 +58,9 @@ class BundlesResource {
   /// [Bundle.accent]) are always sent on the wire; pass a [Bundle] produced
   /// by [Bundle.copyWith] with the desired changes (use `null` on a nullable
   /// field to clear it). [BundleWithSummary] is also accepted because it
-  /// extends [Bundle]; its summary fields are ignored by the server.
+  /// extends [Bundle]; only the writable fields above are put on the wire,
+  /// so the summary fields never reach the server (whose update schema is
+  /// strict and would reject them).
   Future<Bundle> update(Bundle bundle) async {
     final body = <String, dynamic>{
       'name': bundle.name,

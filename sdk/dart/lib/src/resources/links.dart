@@ -56,7 +56,8 @@ class LinksResource {
   /// always sent on the wire; pass a [Link] produced by [Link.copyWith] with
   /// the desired changes (use `null` on a nullable field to clear it).
   /// Read-only fields like [Link.id] are used for routing; server-managed
-  /// fields like slugs and click counts are ignored by the server.
+  /// fields like slugs and click counts are not included in the request body
+  /// (the server's update schema is strict and would reject them).
   Future<Link> update(Link link) async {
     final body = <String, dynamic>{
       'url': link.url,

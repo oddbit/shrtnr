@@ -5,10 +5,10 @@
 **Breaking change to `update()` methods.** `LinksResource.update` and `BundlesResource.update` now take a `Link` / `Bundle` object instead of an id with optional named parameters. To edit a record, call `copyWith` on the value returned by `get()` (or any other read), then pass it to `update()`.
 
 ```dart
-// 1.0
+// 1.x
 await client.links.update(42, label: null);
 
-// 1.1
+// 2.0
 final link = await client.links.get(42);
 await client.links.update(link.copyWith(label: null));
 ```
