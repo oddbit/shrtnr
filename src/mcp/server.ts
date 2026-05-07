@@ -469,7 +469,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         description: "Get a QR code SVG for a short link. The QR encodes the short URL with a ?qr tracking parameter.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link"),
-          slug: z.string().optional().describe("Specific slug to use (defaults to custom slug or primary)"),
+          slug: z.string().optional().describe("Specific slug to use (defaults to the link's primary slug)"),
           base_url: z.string().url().describe("Base URL of the shrtnr instance, e.g. https://oddb.it"),
         },
         annotations: { title: "Link QR code", ...READ_ONLY },
@@ -481,7 +481,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
 
         const target = requestedSlug
           ? link.slugs.find((s) => s.slug === requestedSlug)
-          : (link.slugs.find((s) => s.is_custom) ?? link.slugs[0]);
+          : (link.slugs.find((s) => s.is_primary) ?? link.slugs[0]);
 
         if (!target) return fail("Slug not found");
 

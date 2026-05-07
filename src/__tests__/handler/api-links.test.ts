@@ -1246,4 +1246,39 @@ describe("GET /_/api/links/:id/qr size validation", () => {
     const svg = await res.text();
     expect(svg).toMatch(/width="220"/);
   });
+
+  it("defaults to the link's primary slug, not just any custom slug", async () => {
+    // Setup: link with auto-slug ("primary"), plus a custom slug that is
+    // explicitly NOT primary. Default-pick must pick the auto-slug.
+    const createRes = await SELF.fetch(
+      authed("/_/admin/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com/primary-pick" }),
+      })
+    );
+    expect(createRes.status).toBe(201);
+    const created = await createRes.json() as { id: number; slugs: { slug: string }[] };
+    const id = created.id;
+    const autoSlug = created.slugs[0].slug;
+
+    const addRes = await SELF.fetch(authed(`/_/admin/api/links/${id}/slugs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: "my-custom-pick" }),
+    }));
+    expect(addRes.status).toBe(201);
+
+    // addCustom flipped primary to "my-custom-pick"; flip it back so the
+    // test exercises the bug shape: primary != custom.
+    await env.DB.prepare("UPDATE slugs SET is_primary = (slug = ?) WHERE link_id = ?")
+      .bind(autoSlug, id)
+      .run();
+
+    const noSlug = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr`));
+    const explicitPrimary = await SELF.fetch(authed(`/_/admin/api/links/${id}/qr?slug=${autoSlug}`));
+    expect(noSlug.status).toBe(200);
+    expect(explicitPrimary.status).toBe(200);
+    expect(await noSlug.text()).toBe(await explicitPrimary.text());
+  });
 });
