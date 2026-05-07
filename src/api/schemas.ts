@@ -202,7 +202,7 @@ export const TimelineBucketSchema = z
 
 export const TimelineDataSchema = z
   .object({
-    range: z.enum(["24h", "7d", "30d", "90d", "1y", "all"]),
+    range: z.enum(TIMELINE_RANGES),
     buckets: z.array(TimelineBucketSchema),
     summary: z.object({
       last_24h: z.number().int().nonnegative(),

@@ -4,15 +4,15 @@
 import { ApiKeyRepository, SettingRepository } from "../db";
 import type { ApiKeyRow, ClickFilters } from "../db";
 import { DEFAULT_SLUG_LENGTH } from "../constants";
+import { TIMELINE_RANGES } from "../api/schemas";
 import { validateSlugLength } from "../slugs";
 import { Env, TimelineRange } from "../types";
 import { ServiceResult, ok, fail } from "./result";
 
-const VALID_RANGES: TimelineRange[] = ["24h", "7d", "30d", "90d", "1y", "all"];
 const DEFAULT_RANGE: TimelineRange = "30d";
 
 function isValidRange(v: unknown): v is TimelineRange {
-  return typeof v === "string" && (VALID_RANGES as string[]).includes(v);
+  return typeof v === "string" && (TIMELINE_RANGES as readonly string[]).includes(v);
 }
 
 export type { ServiceResult };
@@ -147,7 +147,7 @@ export async function updateAppSettings(
     } else if (isValidRange(body.default_range)) {
       await SettingRepository.set(env.DB, identity, "default_range", body.default_range);
     } else {
-      return fail(400, `default_range must be one of: ${VALID_RANGES.join(", ")}`);
+      return fail(400, `default_range must be one of: ${TIMELINE_RANGES.join(", ")}`);
     }
   }
   if (body.filter_bots !== undefined) {
