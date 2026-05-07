@@ -56,13 +56,12 @@ import {
   compareLinkStats,
 } from "../services/analytics";
 import type { TimelineRange } from "../types";
+import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH, DEFAULT_SLUG_LENGTH, TIMELINE_RANGES } from "../constants";
 import { renderQrSvg } from "../qr";
 import {
   BUNDLE_ACCENTS,
   CustomSlugStringSchema,
-  TIMELINE_RANGES,
 } from "../api/schemas";
-import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH, DEFAULT_SLUG_LENGTH } from "../constants";
 import pkg from "../../package.json";
 
 type ToolResult = {
