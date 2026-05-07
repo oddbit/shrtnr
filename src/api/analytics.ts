@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Env, TimelineRange } from "../types";
-import { TIMELINE_RANGES } from "../constants";
+import { DEFAULT_TIMELINE_RANGE, TIMELINE_RANGES } from "../constants";
 import {
   getDashboardStats,
   getLinkAnalytics,
@@ -18,7 +18,7 @@ function parseRange(rangeParam: string | null | undefined): TimelineRange | unde
 }
 
 export async function handleDashboardStats(env: Env, identity: string, rangeParam?: string | null): Promise<Response> {
-  const range: TimelineRange = parseRange(rangeParam) ?? "30d";
+  const range: TimelineRange = parseRange(rangeParam) ?? DEFAULT_TIMELINE_RANGE;
   return fromServiceResult(await getDashboardStats(env, range, identity));
 }
 
@@ -44,7 +44,7 @@ export async function handlePublicLinkAnalytics(env: Env, linkId: number, rangeP
 }
 
 export async function handleAdminLinkTimeline(env: Env, identity: string, linkId: number, rangeParam?: string | null): Promise<Response> {
-  const range: TimelineRange = parseRange(rangeParam) ?? "30d";
+  const range: TimelineRange = parseRange(rangeParam) ?? DEFAULT_TIMELINE_RANGE;
   const filters = await resolveClickFilters(env, identity);
   return fromServiceResult(await getLinkTimeline(env, linkId, range, filters));
 }

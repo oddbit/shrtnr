@@ -1,7 +1,7 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-import { TIMELINE_RANGES } from "./constants";
+import type { TIMELINE_RANGES } from "./constants";
 
 export interface Env {
   DB: D1Database;

@@ -3,12 +3,11 @@
 
 import { ApiKeyRepository, SettingRepository } from "../db";
 import type { ApiKeyRow, ClickFilters } from "../db";
-import { DEFAULT_SLUG_LENGTH, TIMELINE_RANGES } from "../constants";
+import { DEFAULT_SLUG_LENGTH, DEFAULT_TIMELINE_RANGE, TIMELINE_RANGES } from "../constants";
 import { validateSlugLength } from "../slugs";
 import { Env, TimelineRange } from "../types";
 import { ServiceResult, ok, fail } from "./result";
 
-const DEFAULT_RANGE: TimelineRange = "30d";
 const VALID_RANGES = new Set<TimelineRange>(TIMELINE_RANGES);
 
 function isValidRange(v: unknown): v is TimelineRange {
@@ -112,7 +111,7 @@ export async function getAppSettings(
     slug_default_length: parseInt(slugLength ?? String(DEFAULT_SLUG_LENGTH), 10),
     theme: theme ?? null,
     lang: lang ?? null,
-    default_range: isValidRange(defaultRange) ? defaultRange : DEFAULT_RANGE,
+    default_range: isValidRange(defaultRange) ? defaultRange : DEFAULT_TIMELINE_RANGE,
     filter_bots: parseBoolSetting(filterBots, true),
     filter_self_referrers: parseBoolSetting(filterSelfReferrers, true),
   });
@@ -194,5 +193,5 @@ export async function resolveMcpRange(
 ): Promise<TimelineRange> {
   if (requested) return requested;
   const result = await getAppSettings(env, identity);
-  return result.ok ? result.data.default_range : DEFAULT_RANGE;
+  return result.ok ? result.data.default_range : DEFAULT_TIMELINE_RANGE;
 }
