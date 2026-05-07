@@ -6,8 +6,8 @@ import { SELF, env } from "cloudflare:test";
 import { LinkRepository, SlugRepository } from "../../db";
 import { applyMigrations, resetData } from "../setup";
 
-function req(path: string): Request {
-  return new Request(`https://shrtnr.test${path}`);
+function req(path: string, init?: RequestInit): Request {
+  return new Request(`https://shrtnr.test${path}`, init);
 }
 
 beforeAll(applyMigrations);
@@ -149,9 +149,10 @@ describe("Links listing page", () => {
         .run();
     }
 
-    const res = await SELF.fetch(req("/_/admin/links"));
+    // Pin lang=en so the comma-grouping assertion is deterministic regardless of
+    // future default-locale changes.
+    const res = await SELF.fetch(req("/_/admin/links", { headers: { Cookie: "lang=en" } }));
     const html = await res.text();
-    // en (default lang) groups with comma. The bare "+1400%" form must not appear.
     expect(html).toMatch(/class="delta-label">\+1,400%</);
     expect(html).not.toMatch(/class="delta-label">\+1400%</);
   });
