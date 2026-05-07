@@ -3,6 +3,7 @@
 
 import { z } from "@hono/zod-openapi";
 import type { Hook } from "@hono/zod-openapi";
+import { TIMELINE_RANGES } from "../constants";
 import { formatZodError } from "./response";
 
 // ---- Common ----
@@ -11,8 +12,6 @@ export const ErrorResponseSchema = z
   .object({ error: z.string() })
   .strict()
   .openapi("ErrorResponse", { description: "Error response with a single human-readable message." });
-
-export const TIMELINE_RANGES = ["24h", "7d", "30d", "90d", "1y", "all"] as const;
 
 export const RangeQuerySchema = z
   .object({

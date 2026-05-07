@@ -56,11 +56,11 @@ import {
   compareLinkStats,
 } from "../services/analytics";
 import type { TimelineRange } from "../types";
+import { TIMELINE_RANGES } from "../constants";
 import { renderQrSvg } from "../qr";
 import {
   BUNDLE_ACCENTS,
   CustomSlugStringSchema,
-  TIMELINE_RANGES,
 } from "../api/schemas";
 import pkg from "../../package.json";
 

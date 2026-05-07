@@ -3,16 +3,16 @@
 
 import { ApiKeyRepository, SettingRepository } from "../db";
 import type { ApiKeyRow, ClickFilters } from "../db";
-import { DEFAULT_SLUG_LENGTH } from "../constants";
-import { TIMELINE_RANGES } from "../api/schemas";
+import { DEFAULT_SLUG_LENGTH, TIMELINE_RANGES } from "../constants";
 import { validateSlugLength } from "../slugs";
 import { Env, TimelineRange } from "../types";
 import { ServiceResult, ok, fail } from "./result";
 
 const DEFAULT_RANGE: TimelineRange = "30d";
+const VALID_RANGES = new Set<TimelineRange>(TIMELINE_RANGES);
 
 function isValidRange(v: unknown): v is TimelineRange {
-  return typeof v === "string" && (TIMELINE_RANGES as readonly string[]).includes(v);
+  return typeof v === "string" && VALID_RANGES.has(v as TimelineRange);
 }
 
 export type { ServiceResult };

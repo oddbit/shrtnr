@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect } from "vitest";
+import { TIMELINE_RANGES } from "../../constants";
 import {
   CustomSlugStringSchema,
   BundleAccentSchema,
   BUNDLE_ACCENTS,
-  TIMELINE_RANGES,
   CreateLinkBodySchema,
   UpdateLinkBodySchema,
 } from "../../api/schemas";

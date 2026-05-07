@@ -1,6 +1,8 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
+import { TIMELINE_RANGES } from "./constants";
+
 export interface Env {
   DB: D1Database;
   SLUG_KV?: KVNamespace;
@@ -102,7 +104,7 @@ export interface ClickStats {
   num_browsers: number;
 }
 
-export type TimelineRange = "24h" | "7d" | "30d" | "90d" | "1y" | "all";
+export type TimelineRange = (typeof TIMELINE_RANGES)[number];
 
 export interface TimelineBucket {
   label: string;
