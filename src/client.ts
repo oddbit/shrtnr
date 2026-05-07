@@ -39,14 +39,14 @@ function t(key, params) {
   return val;
 }
 
-// The slug to display or copy when "the link" needs one representative chip:
-// the link's primary, with slugs[0] as a defensive fallback for malformed data.
+// The slug string to display or copy when "the link" needs one representative
+// chip: the link's primary, falling back to the first slug.
 function pickPrimarySlug(link) {
-  if (!link.slugs || link.slugs.length === 0) return null;
+  if (!link.slugs || link.slugs.length === 0) return '';
   for (var i = 0; i < link.slugs.length; i++) {
-    if (link.slugs[i].is_primary) return link.slugs[i];
+    if (link.slugs[i].is_primary) return link.slugs[i].slug;
   }
-  return link.slugs[0];
+  return link.slugs[0].slug;
 }
 
 // ---- Toast ----
@@ -161,7 +161,7 @@ function quickShorten() {
           }
         } else {
           var primary = pickPrimarySlug(link);
-          if (primary) copyUrl(primary.slug);
+          if (primary) copyUrl(primary);
           toast(t('client.linkCreatedCopied'));
           window.location.href = '/_/admin/links/' + link.id;
         }
@@ -258,7 +258,7 @@ function createDuplicate(url) {
     if (res.ok) {
       return res.json().then(function(link) {
         var primary = pickPrimarySlug(link);
-        if (primary) copyUrl(primary.slug);
+        if (primary) copyUrl(primary);
         toast(t('client.linkCreatedCopied'));
         window.location.href = '/_/admin/links/' + link.id;
       });
@@ -1135,8 +1135,7 @@ function pollDashboard() {
         if (recentNoData) recentNoData.remove();
         for (var ri = 0; ri < d.recent_links.length; ri++) {
           var link = d.recent_links[ri];
-          var primarySlug = pickPrimarySlug(link);
-          var slug = primarySlug ? primarySlug.slug : '';
+          var slug = pickPrimarySlug(link);
           var a = document.createElement('a');
           a.href = '/_/admin/links/' + link.id;
           a.style.cssText = 'display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;cursor:pointer;overflow:hidden;min-width:0;text-decoration:none;color:inherit';
@@ -1168,8 +1167,7 @@ function pollDashboard() {
         if (tlNoData) tlNoData.remove();
         for (var ti = 0; ti < d.top_links.length; ti++) {
           var tLink = d.top_links[ti];
-          var tPrimary = pickPrimarySlug(tLink);
-          var tSlug = tPrimary ? tPrimary.slug : '';
+          var tSlug = pickPrimarySlug(tLink);
           var tPct = Math.round((tLink.total_clicks / tlMax) * 100);
           var a = document.createElement('a');
           a.href = '/_/admin/links/' + tLink.id;
@@ -1507,8 +1505,7 @@ function showAddLinkToBundlePicker(bundleId, excludeIds) {
         html += '<div class="muted-hint">' + esc(t('bundles.allLinksAdded')) + '</div>';
       } else {
         available.forEach(function(link) {
-          var primary = pickPrimarySlug(link);
-          var slug = primary ? primary.slug : '';
+          var slug = pickPrimarySlug(link);
           var label = link.label || link.url;
           html += '<div class="add-to-bundle-row" data-search="' + esc((link.label || '') + ' ' + link.url + ' ' + slug).toLowerCase() + '" onclick="doAddLinkToBundle(' + bundleId + ',' + link.id + ')">';
           html += '<span class="slug-chip">' + esc(slug) + '</span>';
