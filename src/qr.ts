@@ -1,7 +1,7 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-import { DEFAULT_QR_SIZE, MIN_QR_SIZE } from "./constants";
+import { DEFAULT_QR_SIZE, MAX_QR_SIZE, MIN_QR_SIZE } from "./constants";
 
 /**
  * Generate a QR code matrix for the given text.
@@ -205,7 +205,7 @@ export function renderQrSvg(
   text: string,
   options: { size?: number; fg?: string; bg?: string } = {},
 ): string | null {
-  if (options.size !== undefined && (!Number.isInteger(options.size) || options.size < MIN_QR_SIZE)) {
+  if (options.size !== undefined && (!Number.isInteger(options.size) || options.size < MIN_QR_SIZE || options.size > MAX_QR_SIZE)) {
     return null;
   }
 

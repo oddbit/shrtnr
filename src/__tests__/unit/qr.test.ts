@@ -32,10 +32,21 @@ describe("renderQrSvg", () => {
     expect(renderQrSvg("https://example.com", { size: NaN })).toBeNull();
   });
 
+  it("returns null for sizes above MAX_QR_SIZE (2048)", () => {
+    expect(renderQrSvg("https://example.com", { size: 2049 })).toBeNull();
+    expect(renderQrSvg("https://example.com", { size: 100000 })).toBeNull();
+  });
+
   it("accepts size = 1 (smallest valid)", () => {
     const svg = renderQrSvg("https://example.com", { size: 1 });
     expect(svg).not.toBeNull();
     expect(extractSvgWidth(svg!)).toBeCloseTo(1, 0);
+  });
+
+  it("accepts size = 2048 (largest valid)", () => {
+    const svg = renderQrSvg("https://example.com", { size: 2048 });
+    expect(svg).not.toBeNull();
+    expect(extractSvgWidth(svg!)).toBeCloseTo(2048, 0);
   });
 });
 
