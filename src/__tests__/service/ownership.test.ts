@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
 import { LinkRepository } from "../../db";
@@ -269,6 +269,50 @@ describe("List links by owner", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data).toHaveLength(0);
+    }
+  });
+});
+
+describe("deleteLink: DB-level guard return value is honored", () => {
+  it("returns 400 when the repository delete guard fires after the service-level check", async () => {
+    // Simulate the race where a click is recorded between the service's
+    // total_clicks check and the underlying DB delete: the repository
+    // re-checks inside delete() and returns false. The service must surface
+    // that as a 400, not silently report { deleted: true }.
+    const link = await createOwnedLink();
+
+    const spy = vi.spyOn(LinkRepository, "delete").mockResolvedValueOnce(false);
+    const result = await deleteLink(env as any, link.id, OWNER);
+    spy.mockRestore();
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(400);
+    }
+  });
+
+  it("link is not in DB after a successful deleteLink", async () => {
+    const link = await createOwnedLink();
+    const result = await deleteLink(env as any, link.id, OWNER);
+    expect(result.ok).toBe(true);
+    expect(await LinkRepository.getById(env.DB, link.id)).toBeNull();
+  });
+});
+
+describe("disableLink: null return from repository does not throw", () => {
+  it("returns 404 rather than throwing when the link is concurrently deleted", async () => {
+    // Simulate the narrow race: the link exists at getById time but is
+    // deleted before the UPDATE inside LinkRepository.disable(). Without the
+    // null check the function would crash with a TypeError on disabled!.slugs.
+    const link = await createOwnedLink();
+
+    const spy = vi.spyOn(LinkRepository, "disable").mockResolvedValueOnce(null);
+    const result = await disableLink(env as any, link.id, OWNER);
+    spy.mockRestore();
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(404);
     }
   });
 });
