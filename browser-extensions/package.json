@@ -24,17 +24,17 @@
     "verify-build": "node scripts/verify-build.mjs"
   },
   "dependencies": {
-    "@oddbit/shrtnr": "^1.0.1",
-    "preact": "^10.25.0"
+    "@oddbit/shrtnr": "^1.0.2",
+    "preact": "^10.29.2"
   },
   "devDependencies": {
     "@testing-library/preact": "^3.2.4",
-    "@types/chrome": "^0.0.287",
-    "esbuild": "^0.24.2",
-    "happy-dom": "^15.11.7",
+    "@types/chrome": "^0.1.42",
+    "esbuild": "^0.28.0",
+    "happy-dom": "^20.9.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.5",
-    "web-ext": "^8.3.0"
+    "vitest": "^4.1.7",
+    "web-ext": "^10.3.0"
   },
   "repository": {
     "type": "git",
