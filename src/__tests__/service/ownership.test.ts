@@ -282,12 +282,7 @@ describe("deleteLink: DB-level guard return value is honored", () => {
     const link = await createOwnedLink();
 
     const spy = vi.spyOn(LinkRepository, "delete").mockResolvedValueOnce(false);
-    let result;
-    try {
-      result = await deleteLink(env as any, link.id, OWNER);
-    } finally {
-      spy.mockRestore();
-    }
+    const result = await deleteLink(env as any, link.id, OWNER).finally(() => spy.mockRestore());
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -306,12 +301,7 @@ describe("deleteLink: DB-level guard return value is honored", () => {
       await db.prepare("DELETE FROM links WHERE id = ?").bind(id).run();
       return false;
     });
-    let result;
-    try {
-      result = await deleteLink(env as any, link.id, OWNER);
-    } finally {
-      spy.mockRestore();
-    }
+    const result = await deleteLink(env as any, link.id, OWNER).finally(() => spy.mockRestore());
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -335,12 +325,7 @@ describe("disableLink: null return from repository does not throw", () => {
     const link = await createOwnedLink();
 
     const spy = vi.spyOn(LinkRepository, "disable").mockResolvedValueOnce(null);
-    let result;
-    try {
-      result = await disableLink(env as any, link.id, OWNER);
-    } finally {
-      spy.mockRestore();
-    }
+    const result = await disableLink(env as any, link.id, OWNER).finally(() => spy.mockRestore());
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
