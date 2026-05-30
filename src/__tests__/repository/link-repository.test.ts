@@ -398,4 +398,23 @@ describe("LinkRepository click_count options", () => {
 
     expect(removed).toBe(false);
   });
+
+  it("delete returns every slug it removed on success", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "primary" });
+    await SlugRepository.addCustom(env.DB, link.id, "secondary");
+
+    const removed = await LinkRepository.delete(env.DB, link.id);
+
+    expect(removed).not.toBe(false);
+    if (removed !== false) {
+      expect([...removed].sort()).toEqual(["primary", "secondary"]);
+    }
+  });
+
+  it("exists reports whether a link row is present", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "present" });
+
+    expect(await LinkRepository.exists(env.DB, link.id)).toBe(true);
+    expect(await LinkRepository.exists(env.DB, 999999)).toBe(false);
+  });
 });

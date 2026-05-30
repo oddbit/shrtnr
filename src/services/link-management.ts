@@ -153,18 +153,19 @@ export async function disableLink(env: Env, id: number, identity: string): Promi
   if (!link) return fail(404, "Link not found");
   if (link.created_by !== identity) return fail(403, "Only the link owner can disable this link");
   const disabled = await LinkRepository.disable(env.DB, id);
+  if (!disabled) return fail(404, "Link not found");
 
   await Promise.all(
-    disabled!.slugs.map((s) =>
+    disabled.slugs.map((s) =>
       SlugCache.put(env.SLUG_KV, s.slug, {
-        url: disabled!.url,
+        url: disabled.url,
         disabled_at: s.disabled_at,
-        expires_at: disabled!.expires_at,
+        expires_at: disabled.expires_at,
       }),
     ),
   );
 
-  return ok(disabled!);
+  return ok(disabled);
 }
 
 export async function enableLink(env: Env, id: number, identity: string): Promise<ServiceResult<LinkWithSlugs>> {
@@ -194,9 +195,17 @@ export async function deleteLink(env: Env, id: number, identity: string): Promis
   if (link.created_by !== identity) return fail(403, "Only the link owner can delete this link");
   if (link.total_clicks > 0) return fail(400, "Cannot delete a link with clicks, disable it instead");
 
-  const slugsToDelete = link.slugs.map((s) => s.slug);
-  await LinkRepository.delete(env.DB, id);
-  await Promise.all(slugsToDelete.map((s) => SlugCache.delete(env.SLUG_KV, s)));
+  const deletedSlugs = await LinkRepository.delete(env.DB, id);
+  if (!deletedSlugs) {
+    // delete() returns false for two reasons: a concurrent request removed the
+    // link, or a concurrent click pushed total_clicks past the lifetime guard.
+    // A cheap existence check disambiguates: 404 for a vanished link, 400 otherwise.
+    if (!(await LinkRepository.exists(env.DB, id))) return fail(404, "Link not found");
+    return fail(400, "Cannot delete a link with clicks, disable it instead");
+  }
+  // Evict the slug set the repository removed at delete time, not the slugs from
+  // the read above, so a custom slug added in between is not orphaned in KV.
+  await Promise.all(deletedSlugs.map((s) => SlugCache.delete(env.SLUG_KV, s)));
 
   return ok({ deleted: true });
 }

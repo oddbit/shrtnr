@@ -137,17 +137,27 @@ export class LinkRepository {
     return LinkRepository.getById(db, id);
   }
 
-  static async delete(db: D1Database, id: number): Promise<boolean> {
+  static async exists(db: D1Database, id: number): Promise<boolean> {
+    const row = await db.prepare("SELECT 1 FROM links WHERE id = ?").bind(id).first();
+    return row !== null;
+  }
+
+  static async delete(db: D1Database, id: number): Promise<string[] | false> {
     // Lifetime guard: a link with any historical clicks (bots, self-referrers,
     // or real users) is preserved so analytics history is not silently dropped.
     const link = await LinkRepository.getById(db, id);
     if (!link) return false;
     if (link.total_clicks > 0) return false;
 
+    // Capture the slug set at delete time. The caller evicts these from KV;
+    // sourcing them here (not from the caller's earlier read) covers a custom
+    // slug added in the window before this delete cascades the slug rows.
+    const slugs = link.slugs.map((s) => s.slug);
+
     await db.prepare("DELETE FROM clicks WHERE slug IN (SELECT slug FROM slugs WHERE link_id = ?)").bind(id).run();
     await db.prepare("DELETE FROM slugs WHERE link_id = ?").bind(id).run();
     await db.prepare("DELETE FROM links WHERE id = ?").bind(id).run();
-    return true;
+    return slugs;
   }
 
   static async search(
