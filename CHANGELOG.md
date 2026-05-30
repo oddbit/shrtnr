@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.35.2 (2026-05-30)
+
+- Link deletion no longer reports success when the database guard blocks it. `deleteLink` now honors the boolean from `LinkRepository.delete()`: if a click lands between the service's click check and the row delete, the API returns the real outcome instead of `{ deleted: true }`. A link that gained clicks returns 400, a link that was concurrently removed returns 404. The existence check on that path uses a cheap `SELECT 1` rather than a full link load.
+- Deleting a link evicts the slug set captured at delete time, not the slugs read at the start of the call. A custom slug added in the race window is now removed from KV instead of lingering with no TTL, which had kept the deleted link resolving on redirects.
+- `disableLink` returns 404 when the link is concurrently deleted instead of throwing a 500. It now null-guards the repository result the same way `enableLink` already did.
+- Dependency refresh: `wrangler 4.88 → 4.95`, `hono 4.12.18 → 4.12.23`, `agents 0.12.3 → 0.13.3`, `@cloudflare/workers-oauth-provider 0.5 → 0.7`, `@hono/zod-openapi 1.3 → 1.4`, `@cloudflare/vitest-pool-workers 0.16.0 → 0.16.10`, `@cloudflare/workers-types → 4.20260528`.
+- CI reads the Node version from `package.json` (pinned to 22) instead of hardcoding 24, so the tested major matches the supported floor.
+- OpenAPI surface unchanged. The version bump refreshes the recorded spec hash in all three SDKs; no SDK code changes.
+
 ## 0.35.1 (2026-05-07)
 
 - Admin views that render "the link" (link-stat copy, link-create success state) now select the user's primary slug instead of the first auto-generated one. A `pickPrimarySlug` helper centralizes the rule (`is_primary` first, otherwise the lowest-id slug) so every surface picks the same slug for the same record.
