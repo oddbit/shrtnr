@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
 import { LinkRepository } from "../../db";
+import { SlugCache } from "../../kv";
 import {
   createLink,
   disableLink,
@@ -314,6 +315,27 @@ describe("deleteLink: DB-level guard return value is honored", () => {
     const result = await deleteLink(env as any, link.id, OWNER);
     expect(result.ok).toBe(true);
     expect(await LinkRepository.getById(env.DB, link.id)).toBeNull();
+  });
+
+  it("evicts a custom slug added between the read and the repository delete", async () => {
+    // The link is read, then a custom slug lands before the repository delete
+    // cascades the slug rows. The repository reports the slug set at delete
+    // time, so the service must evict the raced slug from KV. Otherwise the
+    // KV entry (no TTL) keeps the deleted link resolving on redirects.
+    const link = await createOwnedLink();
+    const systemSlug = link.slugs[0].slug;
+    const racedSlug = "raced-slug";
+
+    const realDelete = LinkRepository.delete;
+    const spy = vi.spyOn(LinkRepository, "delete").mockImplementationOnce(async (db, id) => {
+      await addCustomSlugToLink(env as any, id, { slug: racedSlug });
+      return realDelete(db, id);
+    });
+    const result = await deleteLink(env as any, link.id, OWNER).finally(() => spy.mockRestore());
+
+    expect(result.ok).toBe(true);
+    expect(await SlugCache.get(env.SLUG_KV, systemSlug)).toBeNull();
+    expect(await SlugCache.get(env.SLUG_KV, racedSlug)).toBeNull();
   });
 });
 
