@@ -197,7 +197,13 @@ export async function deleteLink(env: Env, id: number, identity: string): Promis
 
   const slugsToDelete = link.slugs.map((s) => s.slug);
   const deleted = await LinkRepository.delete(env.DB, id);
-  if (!deleted) return fail(400, "Cannot delete a link with clicks, disable it instead");
+  if (!deleted) {
+    // delete() returns false for two reasons: a concurrent request removed the
+    // link, or a concurrent click pushed total_clicks past the lifetime guard.
+    // Disambiguate so the caller gets 404 for a vanished link, 400 otherwise.
+    if (!(await LinkRepository.getById(env.DB, id))) return fail(404, "Link not found");
+    return fail(400, "Cannot delete a link with clicks, disable it instead");
+  }
   await Promise.all(slugsToDelete.map((s) => SlugCache.delete(env.SLUG_KV, s)));
 
   return ok({ deleted: true });

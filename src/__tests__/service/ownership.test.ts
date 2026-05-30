@@ -282,12 +282,40 @@ describe("deleteLink: DB-level guard return value is honored", () => {
     const link = await createOwnedLink();
 
     const spy = vi.spyOn(LinkRepository, "delete").mockResolvedValueOnce(false);
-    const result = await deleteLink(env as any, link.id, OWNER);
-    spy.mockRestore();
+    let result;
+    try {
+      result = await deleteLink(env as any, link.id, OWNER);
+    } finally {
+      spy.mockRestore();
+    }
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(400);
+    }
+  });
+
+  it("returns 404 when the link is concurrently deleted before the repository delete", async () => {
+    // The link exists at the service's getById and ownership checks, then
+    // vanishes before the repository delete runs. delete() returns false for a
+    // missing row exactly as it does for the click guard, so the service must
+    // re-check existence and surface 404 rather than a misleading 400.
+    const link = await createOwnedLink();
+
+    const spy = vi.spyOn(LinkRepository, "delete").mockImplementationOnce(async (db, id) => {
+      await db.prepare("DELETE FROM links WHERE id = ?").bind(id).run();
+      return false;
+    });
+    let result;
+    try {
+      result = await deleteLink(env as any, link.id, OWNER);
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(404);
     }
   });
 
@@ -307,8 +335,12 @@ describe("disableLink: null return from repository does not throw", () => {
     const link = await createOwnedLink();
 
     const spy = vi.spyOn(LinkRepository, "disable").mockResolvedValueOnce(null);
-    const result = await disableLink(env as any, link.id, OWNER);
-    spy.mockRestore();
+    let result;
+    try {
+      result = await disableLink(env as any, link.id, OWNER);
+    } finally {
+      spy.mockRestore();
+    }
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
