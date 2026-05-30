@@ -4,7 +4,7 @@
   "description": "A free, open-source, self-hosted URL shortener built on Cloudflare Workers + D1",
   "license": "Apache-2.0",
   "engines": {
-    "node": ">=22.0.0"
+    "node": "22"
   },
   "scripts": {
     "dev": "wrangler dev",

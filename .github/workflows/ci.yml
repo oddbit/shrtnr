@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: package.json
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Typecheck
@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: package.json
       - name: Install dependencies
         working-directory: sdk/typescript
         run: yarn install --frozen-lockfile
@@ -110,7 +110,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: package.json
       - name: Install dependencies
         working-directory: browser-extensions
         run: yarn install --frozen-lockfile
@@ -138,7 +138,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: package.json
       - name: Install root dependencies
         run: yarn install --frozen-lockfile
       - name: Compute current spec hash

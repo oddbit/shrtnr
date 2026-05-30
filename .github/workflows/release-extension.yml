@@ -69,7 +69,7 @@ jobs:
       - uses: actions/setup-node@v6
         if: steps.version.outputs.should_run == 'true'
         with:
-          node-version: 24
+          node-version-file: package.json
 
       - name: Install + test + build
         if: steps.version.outputs.should_run == 'true'
