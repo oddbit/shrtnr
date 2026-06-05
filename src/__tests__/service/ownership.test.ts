@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
-import { LinkRepository } from "../../db";
+import { LinkRepository, SlugRepository } from "../../db";
 import { SlugCache } from "../../kv";
 import {
   createLink,
@@ -168,6 +168,25 @@ describe("Slug ownership: remove", () => {
   });
 });
 
+describe("addCustomSlugToLink: concurrent UNIQUE violation returns 409", () => {
+  it("returns 409 rather than 500 when a concurrent request claims the slug between the existence check and the insert", async () => {
+    // Two concurrent requests both pass SlugRepository.exists() before either
+    // commits. The second INSERT hits the UNIQUE constraint. Without a try/catch
+    // in the service layer, the D1 error propagates as an unhandled 500.
+    const link = await createOwnedLink();
+
+    const spy = vi.spyOn(SlugRepository, "addCustom").mockRejectedValueOnce(
+      new Error("D1_ERROR: UNIQUE constraint failed: slugs.slug"),
+    );
+    const result = await addCustomSlugToLink(env as any, link.id, { slug: "raced-slug" }).finally(() => spy.mockRestore());
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(409);
+    }
+  });
+});
+
 describe("Collaboration: adding slugs", () => {
   it("non-owner can add a custom slug to another user's link", async () => {
     const link = await createOwnedLink();
@@ -209,6 +228,33 @@ describe("Link disable via expires_at", () => {
     const refreshed = await LinkRepository.getById(env.DB, link.id);
     for (const slug of refreshed!.slugs) {
       expect(slug.disabled_at).toBeNull();
+    }
+  });
+});
+
+describe("searchLinks: LIKE metacharacter escaping", () => {
+  it("searching for _ does not return links that have no literal underscore", async () => {
+    // Without escaping, the LIKE pattern '%_%' matches any non-empty string,
+    // returning every link. With correct escaping it matches only links whose
+    // label, slug, or URL literally contains an underscore character.
+    await createLink(env as any, { url: "https://example.com", label: "hello world", created_by: OWNER });
+    await createLink(env as any, { url: "https://other.com", label: "other link", created_by: OTHER, allow_duplicate: true });
+
+    const result = await searchLinks(env as any, "_", { includeOwner: true });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(0);
+    }
+  });
+
+  it("searching for % does not return links that have no literal percent sign", async () => {
+    // Without escaping, the LIKE pattern '%%' matches every string.
+    await createLink(env as any, { url: "https://example.com", label: "hello world", created_by: OWNER });
+
+    const result = await searchLinks(env as any, "%");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toHaveLength(0);
     }
   });
 });
@@ -348,6 +394,43 @@ describe("disableLink: null return from repository does not throw", () => {
 
     const spy = vi.spyOn(LinkRepository, "disable").mockResolvedValueOnce(null);
     const result = await disableLink(env as any, link.id, OWNER).finally(() => spy.mockRestore());
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(404);
+    }
+  });
+});
+
+describe("disableSlug: null return from repository does not crash", () => {
+  it("returns 404 rather than throwing when the slug is concurrently deleted", async () => {
+    // SlugRepository.disable() returns null when the slug row vanishes between
+    // the service's existence check and the UPDATE. Without a null guard the
+    // service dereferences disabled!.disabled_at and throws a TypeError.
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "concurrent-slug" });
+
+    const spy = vi.spyOn(SlugRepository, "disable").mockResolvedValueOnce(null);
+    const result = await disableSlug(env as any, link.id, "concurrent-slug", OWNER).finally(() => spy.mockRestore());
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(404);
+    }
+  });
+});
+
+describe("enableSlug: null return from repository returns 404", () => {
+  it("returns 404 rather than returning null data when the slug is concurrently deleted", async () => {
+    // SlugRepository.enable() returns null when the slug row vanishes between
+    // the service's existence check and the UPDATE. Without a null guard the
+    // service returns ok(null) instead of a proper 404.
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "concurrent-slug" });
+    await disableSlug(env as any, link.id, "concurrent-slug", OWNER);
+
+    const spy = vi.spyOn(SlugRepository, "enable").mockResolvedValueOnce(null);
+    const result = await enableSlug(env as any, link.id, "concurrent-slug", OWNER).finally(() => spy.mockRestore());
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
