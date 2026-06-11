@@ -167,11 +167,17 @@ export class LinkRepository {
   ): Promise<LinkWithSlugs[]> {
     if (!query.trim()) return [];
 
-    const pattern = `%${query.trim().toLowerCase()}%`;
+    // Escape SQLite LIKE metacharacters so a user query of "_" or "50%" is
+    // treated as a literal string, not a wildcard pattern.
+    const escaped = query.trim().toLowerCase()
+      .replace(/\\/g, "\\\\")
+      .replace(/%/g, "\\%")
+      .replace(/_/g, "\\_");
+    const pattern = `%${escaped}%`;
 
     const where = opts?.includeOwner
-      ? "lower(l.label) LIKE ? OR lower(s.slug) LIKE ? OR lower(l.url) LIKE ? OR lower(l.created_by) LIKE ?"
-      : "lower(l.label) LIKE ? OR lower(s.slug) LIKE ? OR lower(l.url) LIKE ?";
+      ? "lower(l.label) LIKE ? ESCAPE '\\' OR lower(s.slug) LIKE ? ESCAPE '\\' OR lower(l.url) LIKE ? ESCAPE '\\' OR lower(l.created_by) LIKE ? ESCAPE '\\'"
+      : "lower(l.label) LIKE ? ESCAPE '\\' OR lower(s.slug) LIKE ? ESCAPE '\\' OR lower(l.url) LIKE ? ESCAPE '\\'";
 
     const binds = opts?.includeOwner
       ? [pattern, pattern, pattern, pattern]
