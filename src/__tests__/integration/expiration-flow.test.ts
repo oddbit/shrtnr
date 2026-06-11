@@ -69,3 +69,21 @@ describe("expires_at flow", () => {
     }
   });
 });
+
+describe("expires_at = 0 boundary", () => {
+  it("treats 0 as an epoch timestamp (expired), not as no expiry", async () => {
+    // The Link schema documents "null means no expiry". A stored 0 is a real
+    // timestamp (1970-01-01) and must 404, so the expiry check has to be
+    // null-aware rather than truthy.
+    const slug = "expzero";
+    await LinkRepository.create(env.DB, {
+      url: "https://example.com/expzero",
+      slug,
+      expiresAt: 0,
+      createdBy: DEV_IDENTITY,
+    });
+
+    const res = await SELF.fetch(req(slug));
+    expect(res.status).toBe(404);
+  });
+});

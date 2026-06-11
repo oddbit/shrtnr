@@ -128,6 +128,32 @@ describe("Routing", () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ---- Admin auth in production mode (ACCESS_AUD configured) ----
+
+describe("Admin auth with ACCESS_AUD configured", () => {
+  it("unauthenticated /_/admin/api requests get 401 JSON instead of a redirect", async () => {
+    (env as unknown as Record<string, unknown>).ACCESS_AUD = "test-aud-tag";
+    try {
+      const res = await SELF.fetch(unauthed("/_/admin/api/keys"), { redirect: "manual" });
+      expect(res.status).toBe(401);
+      expect(res.headers.get("Content-Type")).toContain("application/json");
+    } finally {
+      delete (env as unknown as Record<string, unknown>).ACCESS_AUD;
+    }
+  });
+
+  it("unauthenticated /_/admin page requests still redirect to the landing page", async () => {
+    (env as unknown as Record<string, unknown>).ACCESS_AUD = "test-aud-tag";
+    try {
+      const res = await SELF.fetch(unauthed("/_/admin/dashboard"), { redirect: "manual" });
+      expect(res.status).toBe(302);
+      expect(res.headers.get("Location")).toContain("/");
+    } finally {
+      delete (env as unknown as Record<string, unknown>).ACCESS_AUD;
+    }
+  });
+});
 // ---- Redirect ----
 
 describe("Redirect", () => {

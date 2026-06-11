@@ -113,18 +113,18 @@ export interface GetBundleOpts {
 export async function getBundle(
   env: Env,
   id: number,
-  // identity is no longer used to gate visibility; reads are open across
-  // owners by design. Kept in the signature so callers stay consistent with
-  // other bundle endpoints and so a future per-identity scoping (e.g.
-  // analytics filter preferences) can land without another signature churn.
-  _identity: string,
+  // identity does not gate visibility; reads are open across owners by
+  // design. It only resolves the viewer's click filter preferences so the
+  // summary numbers match listBundles for the same caller.
+  identity: string,
   opts?: GetBundleOpts,
 ): Promise<ServiceResult<Bundle | BundleWithSummary>> {
   const bundle = await BundleRepository.getById(env.DB, id);
   if (!bundle) return fail(404, "Bundle not found");
   if (!opts?.range) return ok(bundle);
 
-  const summaries = await ClickRepository.getBundleSummariesBulk(env.DB, [id], undefined, undefined, opts.range);
+  const filters = await resolveClickFilters(env, identity);
+  const summaries = await ClickRepository.getBundleSummariesBulk(env.DB, [id], undefined, filters, opts.range);
   const s = summaries.get(id);
   const linkCount = await env.DB
     .prepare("SELECT COUNT(*) as cnt FROM bundle_links WHERE bundle_id = ?")

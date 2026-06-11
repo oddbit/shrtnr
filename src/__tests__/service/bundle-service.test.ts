@@ -104,6 +104,26 @@ describe("getBundle / updateBundle", () => {
     }
   });
 
+  it("applies the viewer's click filter preferences to range summaries, matching listBundles", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "fff", createdBy: "a@b" });
+    const bundle = await BundleRepository.create(env.DB, { name: "Filtered", createdBy: "a@b" });
+    await BundleRepository.addLink(env.DB, bundle.id, link.id);
+    const now = Math.floor(Date.now() / 1000);
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, link_mode, is_bot) VALUES (?, ?, 'link', 0)")
+      .bind(link.slugs[0].slug, now).run();
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, link_mode, is_bot) VALUES (?, ?, 'link', 1)")
+      .bind(link.slugs[0].slug, now).run();
+
+    // Default settings filter bots, so both views must agree on 1 click.
+    const listRes = await svc.listBundles(e, "a@b", { range: "30d" });
+    const getRes = await svc.getBundle(e, bundle.id, "a@b", { range: "30d" });
+    expect(listRes.ok && getRes.ok).toBe(true);
+    if (listRes.ok && getRes.ok) {
+      expect(listRes.data[0].total_clicks).toBe(1);
+      expect((getRes.data as { total_clicks: number }).total_clicks).toBe(1);
+    }
+  });
+
   it("enforces ownership on update", async () => {
     const b = await BundleRepository.create(env.DB, { name: "Mine", createdBy: "a@b" });
     const res = await svc.updateBundle(e, b.id, { name: "Stolen" }, "not-owner@x");

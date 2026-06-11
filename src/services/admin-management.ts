@@ -3,7 +3,8 @@
 
 import { ApiKeyRepository, SettingRepository } from "../db";
 import type { ApiKeyRow, ClickFilters } from "../db";
-import { DEFAULT_SLUG_LENGTH, DEFAULT_TIMELINE_RANGE, TIMELINE_RANGES } from "../constants";
+import { DEFAULT_SLUG_LENGTH, DEFAULT_TIMELINE_RANGE, MAX_TITLE_LENGTH, THEMES, TIMELINE_RANGES } from "../constants";
+import { SUPPORTED_LANGUAGES } from "../i18n";
 import { validateSlugLength } from "../slugs";
 import { Env, TimelineRange } from "../types";
 import { ServiceResult, ok, fail } from "./result";
@@ -42,6 +43,9 @@ export async function createNewApiKey(
 ): Promise<ServiceResult<{ key: unknown; raw_key: string }>> {
   if (!body.title || typeof body.title !== "string" || !body.title.trim()) {
     return fail(400, "Title is required");
+  }
+  if (body.title.trim().length > MAX_TITLE_LENGTH) {
+    return fail(400, `Title must be ${MAX_TITLE_LENGTH} characters or fewer`);
   }
   if (!body.scope || !VALID_SCOPES.includes(body.scope)) {
     return fail(400, "Scope must be one of: " + VALID_SCOPES.join(", "));
@@ -107,10 +111,17 @@ export async function getAppSettings(
     SettingRepository.get(env.DB, identity, "filter_bots"),
     SettingRepository.get(env.DB, identity, "filter_self_referrers"),
   ]);
+  // A corrupted or out-of-bounds stored value must not poison link creation
+  // or the settings page; fall back to the hardcoded default instead.
+  // Theme and lang clamp to their allowed sets on read as well: rows written
+  // before write-side validation existed (or edited directly in D1) must not
+  // leak unknown values to settings consumers. Null means "unset"; callers
+  // apply their own defaults.
+  const parsedSlugLength = parseInt(slugLength ?? String(DEFAULT_SLUG_LENGTH), 10);
   return ok({
-    slug_default_length: parseInt(slugLength ?? String(DEFAULT_SLUG_LENGTH), 10),
-    theme: theme ?? null,
-    lang: lang ?? null,
+    slug_default_length: validateSlugLength(parsedSlugLength) === null ? parsedSlugLength : DEFAULT_SLUG_LENGTH,
+    theme: theme !== null && (THEMES as readonly string[]).includes(theme) ? theme : null,
+    lang: lang !== null && (SUPPORTED_LANGUAGES as readonly string[]).includes(lang) ? lang : null,
     default_range: isValidRange(defaultRange) ? defaultRange : DEFAULT_TIMELINE_RANGE,
     filter_bots: parseBoolSetting(filterBots, true),
     filter_self_referrers: parseBoolSetting(filterSelfReferrers, true),
@@ -134,10 +145,16 @@ export async function updateAppSettings(
     if (err) return fail(400, err);
     await SettingRepository.set(env.DB, identity, "slug_default_length", String(body.slug_default_length));
   }
-  if (body.theme !== undefined && typeof body.theme === "string") {
+  if (body.theme !== undefined) {
+    if (typeof body.theme !== "string" || !(THEMES as readonly string[]).includes(body.theme)) {
+      return fail(400, `theme must be one of: ${THEMES.join(", ")}`);
+    }
     await SettingRepository.set(env.DB, identity, "theme", body.theme);
   }
-  if (body.lang !== undefined && typeof body.lang === "string") {
+  if (body.lang !== undefined) {
+    if (typeof body.lang !== "string" || !(SUPPORTED_LANGUAGES as readonly string[]).includes(body.lang)) {
+      return fail(400, `lang must be one of: ${SUPPORTED_LANGUAGES.join(", ")}`);
+    }
     await SettingRepository.set(env.DB, identity, "lang", body.lang);
   }
   if (body.default_range !== undefined) {

@@ -145,19 +145,34 @@ export class LinkRepository {
   static async delete(db: D1Database, id: number): Promise<string[] | false> {
     // Lifetime guard: a link with any historical clicks (bots, self-referrers,
     // or real users) is preserved so analytics history is not silently dropped.
+    // This pre-read only short-circuits the obvious cases; the authoritative
+    // guard is the NOT EXISTS inside the transactional batch below, evaluated
+    // atomically with the deletes, so a click recorded after this read cannot
+    // be deleted along with the link.
     const link = await LinkRepository.getById(db, id);
     if (!link) return false;
     if (link.total_clicks > 0) return false;
 
-    // Capture the slug set at delete time. The caller evicts these from KV;
-    // sourcing them here (not from the caller's earlier read) covers a custom
-    // slug added in the window before this delete cascades the slug rows.
-    const slugs = link.slugs.map((s) => s.slug);
+    // One transaction: the SELECT captures the slug set at delete time for
+    // KV eviction, the links DELETE re-checks the click guard atomically,
+    // and the slugs DELETE only fires once the links row is actually gone.
+    // No clicks DELETE: when the guard passes there are zero joined click
+    // rows inside this transaction, so it could never match anything.
+    const [slugRows, linkDelete] = await db.batch([
+      db.prepare("SELECT slug FROM slugs WHERE link_id = ?").bind(id),
+      db
+        .prepare(
+          `DELETE FROM links WHERE id = ?
+             AND NOT EXISTS (SELECT 1 FROM clicks c JOIN slugs s ON s.slug = c.slug WHERE s.link_id = ?)`,
+        )
+        .bind(id, id),
+      db
+        .prepare("DELETE FROM slugs WHERE link_id = ? AND NOT EXISTS (SELECT 1 FROM links WHERE id = ?)")
+        .bind(id, id),
+    ]);
 
-    await db.prepare("DELETE FROM clicks WHERE slug IN (SELECT slug FROM slugs WHERE link_id = ?)").bind(id).run();
-    await db.prepare("DELETE FROM slugs WHERE link_id = ?").bind(id).run();
-    await db.prepare("DELETE FROM links WHERE id = ?").bind(id).run();
-    return slugs;
+    if ((linkDelete.meta.changes ?? 0) === 0) return false;
+    return ((slugRows.results ?? []) as { slug: string }[]).map((r) => r.slug);
   }
 
   static async search(

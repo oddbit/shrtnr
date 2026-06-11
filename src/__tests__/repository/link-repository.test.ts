@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
 import { ClickRepository, LinkRepository, SlugRepository } from "../../db";
@@ -409,6 +409,41 @@ describe("LinkRepository click_count options", () => {
     if (removed !== false) {
       expect([...removed].sort()).toEqual(["primary", "secondary"]);
     }
+  });
+
+  it("delete guard holds when a click lands between the pre-read and the batch", async () => {
+    // Simulate the check-then-act race: the pre-read reports zero clicks,
+    // but a click row exists by the time the transactional batch runs. The
+    // in-transaction NOT EXISTS guard must block the delete so the click
+    // history survives.
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "racewin" });
+    await ClickRepository.record(env.DB, "racewin", {});
+
+    const spy = vi
+      .spyOn(LinkRepository, "getById")
+      .mockResolvedValueOnce({ ...link, total_clicks: 0 });
+    const removed = await LinkRepository.delete(env.DB, link.id).finally(() => spy.mockRestore());
+
+    expect(removed).toBe(false);
+    const linkRow = await env.DB.prepare("SELECT 1 FROM links WHERE id = ?").bind(link.id).first();
+    const slugRow = await env.DB.prepare("SELECT 1 FROM slugs WHERE slug = 'racewin'").first();
+    const clickRow = await env.DB.prepare("SELECT 1 FROM clicks WHERE slug = 'racewin'").first();
+    expect(linkRow).not.toBeNull();
+    expect(slugRow).not.toBeNull();
+    expect(clickRow).not.toBeNull();
+  });
+
+  it("delete leaves no orphan rows in links or slugs", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "wipe" });
+    await SlugRepository.addCustom(env.DB, link.id, "wipe-custom");
+
+    const removed = await LinkRepository.delete(env.DB, link.id);
+    expect(removed).not.toBe(false);
+
+    const linkRow = await env.DB.prepare("SELECT 1 FROM links WHERE id = ?").bind(link.id).first();
+    const slugRows = await env.DB.prepare("SELECT COUNT(*) as cnt FROM slugs WHERE link_id = ?").bind(link.id).first<{ cnt: number }>();
+    expect(linkRow).toBeNull();
+    expect(slugRows?.cnt).toBe(0);
   });
 
   it("exists reports whether a link row is present", async () => {

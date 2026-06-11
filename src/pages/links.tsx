@@ -45,7 +45,7 @@ export const LinksPage: FC<Props> = ({
 }) => {
   const now = Math.floor(Date.now() / 1000);
   const isLinkDisabled = (l: LinkWithSlugs) =>
-    !!(l.expires_at && l.expires_at < now);
+    l.expires_at != null && l.expires_at < now;
 
   const activeLinks = links.filter((l) => !isLinkDisabled(l));
   const disabledLinks = links.filter((l) => isLinkDisabled(l));
