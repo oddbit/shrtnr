@@ -489,6 +489,46 @@ async function initSession(): Promise<string> {
   return sessionId!;
 }
 
+describe("MCP get_link_qr", () => {
+  it("encodes the short URL with the utm_medium=qr tracking parameter", async () => {
+    const created = await createLink(env as any, { url: "https://example.com/qr-target" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const sessionId = await initSession();
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/mcp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "mcp-session-id": sessionId,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 4,
+          method: "tools/call",
+          params: {
+            name: "get_link_qr",
+            arguments: { link_id: created.data.id, base_url: "https://shrtnr.test" },
+          },
+        }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    const message = await readFirstSseMessage(res);
+    expect(message).not.toBeNull();
+    const result = message!.result as { isError?: boolean; content?: { type: string; text?: string }[] } | undefined;
+    expect(result?.isError).toBeFalsy();
+
+    const text = result?.content?.find((c) => c.type === "text")?.text ?? "";
+    const slug = created.data.slugs[0].slug;
+    // The QR must encode the same tracked URL shape as the REST endpoint
+    // (api/qr.ts), so redirect.ts records the scan with link_mode = "qr".
+    expect(text).toContain(`https://shrtnr.test/${slug}?utm_medium=qr`);
+  });
+});
+
 describe("MCP error surface", () => {
   it("malformed JSON-RPC body returns parse error (-32700)", async () => {
     // No session needed: the parse error fires before session validation.

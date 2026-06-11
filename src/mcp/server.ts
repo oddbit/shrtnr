@@ -465,7 +465,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "get_link_qr",
       {
         title: "Link QR code",
-        description: "Get a QR code SVG for a short link. The QR encodes the short URL with a ?qr tracking parameter.",
+        description: "Get a QR code SVG for a short link. The QR encodes the short URL with a utm_medium=qr tracking parameter so scans show up as QR traffic in analytics.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link"),
           slug: z.string().optional().describe("Specific slug to use (defaults to the link's primary slug)"),
@@ -484,7 +484,10 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
 
         if (!target) return fail("Slug not found");
 
-        const qrUrl = `${base_url.replace(/\/+$/, "")}/${target.slug}?qr`;
+        // Same tracked URL shape as the REST QR endpoint (api/qr.ts): the
+        // redirect handler maps utm_medium=qr to link_mode "qr". A bare ?qr
+        // parameter would record the scan as a plain link click.
+        const qrUrl = `${base_url.replace(/\/+$/, "")}/${target.slug}?utm_medium=qr`;
         const svg = renderQrSvg(qrUrl, { size: 400 });
         if (!svg) return fail("Failed to generate QR code");
 
