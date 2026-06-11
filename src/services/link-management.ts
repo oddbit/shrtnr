@@ -14,6 +14,22 @@ import { rangeToSinceTs } from "./trends";
 
 export type { ServiceResult };
 
+// Field validators shared by createLink and updateLink. They guard the admin
+// API path, which parses raw JSON without a zod schema.
+function validateLabel(label: unknown): string | null {
+  if (label === undefined || label === null) return null;
+  if (typeof label !== "string") return "label must be a string";
+  return null;
+}
+
+function validateExpiresAt(expiresAt: unknown): string | null {
+  if (expiresAt === undefined || expiresAt === null) return null;
+  if (typeof expiresAt !== "number" || !Number.isInteger(expiresAt) || expiresAt < 0) {
+    return "expires_at must be a nonnegative integer Unix timestamp";
+  }
+  return null;
+}
+
 export interface ListLinksOptions {
   /** Range used to compute delta_pct vs the previous window. Pass undefined to skip deltas. */
   withDeltaRange?: TimelineRange;
@@ -69,6 +85,15 @@ export async function createLink(
     return fail(400, "url must be a valid URL");
   }
 
+  // The admin API path parses raw JSON without a schema, so the service layer
+  // must reject malformed field types before they reach D1. A non-numeric
+  // expires_at would otherwise be stored verbatim and break the numeric
+  // expiry comparison in the redirect handler.
+  const labelErr = validateLabel(body.label);
+  if (labelErr) return fail(400, labelErr);
+  const expiresErr = validateExpiresAt(body.expires_at);
+  if (expiresErr) return fail(400, expiresErr);
+
   body.url = normalizeUrl(body.url);
 
   if (!body.allow_duplicate) {
@@ -81,14 +106,16 @@ export async function createLink(
   let slugLength: number;
   if (body.slug_length !== undefined) {
     slugLength = body.slug_length;
+    const lengthErr = validateSlugLength(slugLength);
+    if (lengthErr) return fail(400, lengthErr);
   } else {
     const identity = body.created_by ?? "anonymous";
     const dbDefault = await SettingRepository.get(env.DB, identity, "slug_default_length");
-    slugLength = parseInt(dbDefault ?? String(DEFAULT_SLUG_LENGTH), 10);
+    const parsed = parseInt(dbDefault ?? String(DEFAULT_SLUG_LENGTH), 10);
+    // A corrupted stored setting must not block link creation; only explicit
+    // caller input gets a 400 above.
+    slugLength = validateSlugLength(parsed) === null ? parsed : DEFAULT_SLUG_LENGTH;
   }
-
-  const lengthErr = validateSlugLength(slugLength);
-  if (lengthErr) return fail(400, lengthErr);
 
   let slug: string;
   try {
@@ -131,6 +158,11 @@ export async function updateLink(
     }
     body.url = normalizeUrl(body.url);
   }
+
+  const labelErr = validateLabel(body.label);
+  if (labelErr) return fail(400, labelErr);
+  const expiresErr = validateExpiresAt(body.expires_at);
+  if (expiresErr) return fail(400, expiresErr);
 
   const link = await LinkRepository.update(env.DB, id, body);
   if (!link) return fail(404, "Link not found");
@@ -231,7 +263,17 @@ export async function addCustomSlugToLink(
     return fail(409, "Slug already exists");
   }
 
-  const slug = await SlugRepository.addCustom(env.DB, linkId, normalizedSlug);
+  let slug: Slug;
+  try {
+    slug = await SlugRepository.addCustom(env.DB, linkId, normalizedSlug);
+  } catch (e) {
+    // A concurrent insert can win between the existence pre-check and this
+    // insert; surface the UNIQUE violation as the same 409 instead of a 500.
+    if (String(e).includes("UNIQUE constraint failed")) {
+      return fail(409, "Slug already exists");
+    }
+    throw e;
+  }
 
   await SlugCache.put(env.SLUG_KV, normalizedSlug, {
     url: link.url,

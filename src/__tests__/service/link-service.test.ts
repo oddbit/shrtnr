@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
 import {
@@ -8,7 +8,7 @@ import {
   getLinkBySlug,
   updateLink,
 } from "../../services/link-management";
-import { SettingRepository } from "../../db";
+import { SettingRepository, SlugRepository } from "../../db";
 
 beforeAll(applyMigrations);
 beforeEach(resetData);
@@ -335,6 +335,108 @@ describe("URL normalization in updateLink", () => {
     expect(updated.ok).toBe(true);
     if (updated.ok) {
       expect(updated.data.label).toBeNull();
+    }
+  });
+});
+
+describe("field type validation in createLink", () => {
+  // The admin API path parses raw JSON without a zod schema, so the service
+  // layer is the only guard against malformed field types reaching D1.
+  it("rejects a string expires_at", async () => {
+    const result = await createLink(env as any, { url: "https://example.com", expires_at: "tomorrow" as any });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(400);
+  });
+
+  it("rejects a negative expires_at", async () => {
+    const result = await createLink(env as any, { url: "https://example.com", expires_at: -5 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(400);
+  });
+
+  it("rejects a fractional expires_at", async () => {
+    const result = await createLink(env as any, { url: "https://example.com", expires_at: 1.5 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(400);
+  });
+
+  it("rejects a non-string label", async () => {
+    const result = await createLink(env as any, { url: "https://example.com", label: 42 as any });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(400);
+  });
+
+  it("accepts a valid integer expires_at", async () => {
+    const result = await createLink(env as any, { url: "https://example.com", expires_at: 4102444800 });
+    expect(result.ok).toBe(true);
+  });
+
+  it("falls back to the default slug length when the stored setting is corrupted", async () => {
+    await SettingRepository.set(env.DB, "anonymous", "slug_default_length", "garbage");
+
+    const result = await createLink(env as any, { url: "https://example.com" });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const autoSlug = result.data.slugs.find((s) => s.is_custom === 0);
+      expect(autoSlug?.slug).toHaveLength(3);
+    }
+  });
+});
+
+describe("field type validation in updateLink", () => {
+  it("rejects a string expires_at", async () => {
+    const created = await createLink(env as any, { url: "https://example.com" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const updated = await updateLink(env as any, created.data.id, { expires_at: "never" as any });
+    expect(updated.ok).toBe(false);
+    if (!updated.ok) expect(updated.status).toBe(400);
+  });
+
+  it("rejects a non-string label", async () => {
+    const created = await createLink(env as any, { url: "https://example.com" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const updated = await updateLink(env as any, created.data.id, { label: 42 as any });
+    expect(updated.ok).toBe(false);
+    if (!updated.ok) expect(updated.status).toBe(400);
+  });
+
+  it("accepts null expires_at to clear an expiry", async () => {
+    const created = await createLink(env as any, { url: "https://example.com", expires_at: 4102444800 });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const updated = await updateLink(env as any, created.data.id, { expires_at: null });
+    expect(updated.ok).toBe(true);
+    if (updated.ok) expect(updated.data.expires_at).toBeNull();
+  });
+});
+
+describe("custom slug uniqueness under race conditions", () => {
+  it("returns 409 when the insert collides even if the pre-check missed it", async () => {
+    const first = await createLink(env as any, { url: "https://example.com/a" });
+    const second = await createLink(env as any, { url: "https://example.com/b" });
+    expect(first.ok && second.ok).toBe(true);
+    if (!first.ok || !second.ok) return;
+
+    const added = await addCustomSlugToLink(env as any, first.data.id, { slug: "taken-slug" });
+    expect(added.ok).toBe(true);
+
+    // Simulate the race: the existence pre-check reports the slug as free,
+    // but the UNIQUE index still rejects the insert.
+    const spy = vi.spyOn(SlugRepository, "exists").mockResolvedValue(false);
+    try {
+      const result = await addCustomSlugToLink(env as any, second.data.id, { slug: "taken-slug" });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.status).toBe(409);
+        expect(result.error).toBe("Slug already exists");
+      }
+    } finally {
+      spy.mockRestore();
     }
   });
 });
