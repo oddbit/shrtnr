@@ -154,9 +154,13 @@ export class LinkRepository {
     // slug added in the window before this delete cascades the slug rows.
     const slugs = link.slugs.map((s) => s.slug);
 
-    await db.prepare("DELETE FROM clicks WHERE slug IN (SELECT slug FROM slugs WHERE link_id = ?)").bind(id).run();
-    await db.prepare("DELETE FROM slugs WHERE link_id = ?").bind(id).run();
-    await db.prepare("DELETE FROM links WHERE id = ?").bind(id).run();
+    // All three deletes run in one transactional batch so a mid-sequence
+    // failure cannot leave orphan slug or click rows behind.
+    await db.batch([
+      db.prepare("DELETE FROM clicks WHERE slug IN (SELECT slug FROM slugs WHERE link_id = ?)").bind(id),
+      db.prepare("DELETE FROM slugs WHERE link_id = ?").bind(id),
+      db.prepare("DELETE FROM links WHERE id = ?").bind(id),
+    ]);
     return slugs;
   }
 

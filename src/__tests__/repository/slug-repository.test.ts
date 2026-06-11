@@ -134,6 +134,27 @@ describe("SlugRepository.setPrimary", () => {
     expect(final!.slugs.find((s) => s.slug === "custom-1")!.is_primary).toBe(0);
     expect(final!.slugs.find((s) => s.slug === "abc")!.is_primary).toBe(0);
   });
+
+  it("leaves primary flags unchanged when the slug does not belong to the link", async () => {
+    const linkA = await LinkRepository.create(env.DB, { url: "https://example.com/a", slug: "aaa" });
+    const linkB = await LinkRepository.create(env.DB, { url: "https://example.com/b", slug: "bbb" });
+
+    await SlugRepository.setPrimary(env.DB, linkA.id, "bbb");
+
+    const a = await LinkRepository.getById(env.DB, linkA.id);
+    const b = await LinkRepository.getById(env.DB, linkB.id);
+    expect(a!.slugs.find((s) => s.slug === "aaa")!.is_primary).toBe(1);
+    expect(b!.slugs.find((s) => s.slug === "bbb")!.is_primary).toBe(1);
+  });
+
+  it("leaves primary flags unchanged when the slug does not exist at all", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+
+    await SlugRepository.setPrimary(env.DB, link.id, "ghost");
+
+    const updated = await LinkRepository.getById(env.DB, link.id);
+    expect(updated!.slugs.find((s) => s.slug === "abc")!.is_primary).toBe(1);
+  });
 });
 
 describe("SlugRepository.disable", () => {

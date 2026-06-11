@@ -45,18 +45,21 @@ export class SlugRepository {
       .first();
     const isFirstCustom = !existingCustom;
 
-    await db
-      .prepare("INSERT INTO slugs (link_id, slug, is_custom, is_primary, created_at) VALUES (?, ?, 1, ?, ?)")
-      .bind(linkId, slug, isFirstCustom ? 1 : 0, now)
-      .run();
-
-    // If first custom slug, clear primary from all other slugs on this link
+    // Insert and the primary handover run in one batch (D1 batches are
+    // transactional), so a failure cannot leave the link with two primaries.
+    const statements = [
+      db
+        .prepare("INSERT INTO slugs (link_id, slug, is_custom, is_primary, created_at) VALUES (?, ?, 1, ?, ?)")
+        .bind(linkId, slug, isFirstCustom ? 1 : 0, now),
+    ];
     if (isFirstCustom) {
-      await db
-        .prepare("UPDATE slugs SET is_primary = 0 WHERE link_id = ? AND slug != ?")
-        .bind(linkId, slug)
-        .run();
+      statements.push(
+        db
+          .prepare("UPDATE slugs SET is_primary = 0 WHERE link_id = ? AND slug != ?")
+          .bind(linkId, slug),
+      );
     }
+    await db.batch(statements);
 
     return (await db
       .prepare(`SELECT ${slugSelect()} FROM slugs s WHERE link_id = ? AND slug = ?`)
@@ -65,8 +68,18 @@ export class SlugRepository {
   }
 
   static async setPrimary(db: D1Database, linkId: number, slug: string): Promise<void> {
-    await db.prepare("UPDATE slugs SET is_primary = 0 WHERE link_id = ?").bind(linkId).run();
-    await db.prepare("UPDATE slugs SET is_primary = 1 WHERE slug = ? AND link_id = ?").bind(slug, linkId).run();
+    // Verify membership first: clearing primaries and then matching nothing
+    // would leave the link without any primary slug.
+    const member = await db
+      .prepare("SELECT 1 FROM slugs WHERE slug = ? AND link_id = ?")
+      .bind(slug, linkId)
+      .first();
+    if (!member) return;
+
+    await db.batch([
+      db.prepare("UPDATE slugs SET is_primary = 0 WHERE link_id = ?").bind(linkId),
+      db.prepare("UPDATE slugs SET is_primary = 1 WHERE slug = ? AND link_id = ?").bind(slug, linkId),
+    ]);
   }
 
   static async disable(db: D1Database, slug: string): Promise<Slug | null> {
@@ -74,16 +87,18 @@ export class SlugRepository {
     const row = await db.prepare(`SELECT ${slugSelect()} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
     if (!row) return null;
 
-    await db.prepare("UPDATE slugs SET disabled_at = ? WHERE slug = ?").bind(now, slug).run();
-
-    // If disabling the primary, fall back to the random slug
+    // Disable and the primary fallback run in one transactional batch so a
+    // failure cannot strand the link without a primary slug.
+    const statements = [
+      db.prepare("UPDATE slugs SET disabled_at = ? WHERE slug = ?").bind(now, slug),
+    ];
     if (row.is_primary) {
-      await db.prepare("UPDATE slugs SET is_primary = 0 WHERE slug = ?").bind(slug).run();
-      await db
-        .prepare("UPDATE slugs SET is_primary = 1 WHERE link_id = ? AND is_custom = 0")
-        .bind(row.link_id)
-        .run();
+      statements.push(
+        db.prepare("UPDATE slugs SET is_primary = 0 WHERE slug = ?").bind(slug),
+        db.prepare("UPDATE slugs SET is_primary = 1 WHERE link_id = ? AND is_custom = 0").bind(row.link_id),
+      );
     }
+    await db.batch(statements);
 
     return db.prepare(`SELECT ${slugSelect()} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
   }
@@ -104,14 +119,15 @@ export class SlugRepository {
 
     if (row.click_count > 0) return false;
 
+    // Primary handover and delete run in one transactional batch.
+    const statements = [];
     if (row.is_primary) {
-      await db
-        .prepare("UPDATE slugs SET is_primary = 1 WHERE link_id = ? AND is_custom = 0")
-        .bind(row.link_id)
-        .run();
+      statements.push(
+        db.prepare("UPDATE slugs SET is_primary = 1 WHERE link_id = ? AND is_custom = 0").bind(row.link_id),
+      );
     }
-
-    await db.prepare("DELETE FROM slugs WHERE slug = ?").bind(slug).run();
+    statements.push(db.prepare("DELETE FROM slugs WHERE slug = ?").bind(slug));
+    await db.batch(statements);
     return true;
   }
 }

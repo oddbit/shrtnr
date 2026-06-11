@@ -411,6 +411,19 @@ describe("LinkRepository click_count options", () => {
     }
   });
 
+  it("delete leaves no orphan rows in links or slugs", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "wipe" });
+    await SlugRepository.addCustom(env.DB, link.id, "wipe-custom");
+
+    const removed = await LinkRepository.delete(env.DB, link.id);
+    expect(removed).not.toBe(false);
+
+    const linkRow = await env.DB.prepare("SELECT 1 FROM links WHERE id = ?").bind(link.id).first();
+    const slugRows = await env.DB.prepare("SELECT COUNT(*) as cnt FROM slugs WHERE link_id = ?").bind(link.id).first<{ cnt: number }>();
+    expect(linkRow).toBeNull();
+    expect(slugRows?.cnt).toBe(0);
+  });
+
   it("exists reports whether a link row is present", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "present" });
 
