@@ -68,18 +68,20 @@ export class SlugRepository {
   }
 
   static async setPrimary(db: D1Database, linkId: number, slug: string): Promise<void> {
-    // Verify membership first: clearing primaries and then matching nothing
-    // would leave the link without any primary slug.
-    const member = await db
-      .prepare("SELECT 1 FROM slugs WHERE slug = ? AND link_id = ?")
-      .bind(slug, linkId)
-      .first();
-    if (!member) return;
-
-    await db.batch([
-      db.prepare("UPDATE slugs SET is_primary = 0 WHERE link_id = ?").bind(linkId),
-      db.prepare("UPDATE slugs SET is_primary = 1 WHERE slug = ? AND link_id = ?").bind(slug, linkId),
-    ]);
+    // Single conditional UPDATE: the membership check and the primary
+    // handover happen in one statement, so no interleaving delete or
+    // reassignment can clear every primary flag without setting a new one.
+    // When the slug does not belong to the link, the EXISTS guard matches
+    // no rows and primary flags stay untouched.
+    await db
+      .prepare(
+        `UPDATE slugs
+         SET is_primary = CASE WHEN slug = ? THEN 1 ELSE 0 END
+         WHERE link_id = ?
+           AND EXISTS (SELECT 1 FROM slugs WHERE link_id = ? AND slug = ?)`,
+      )
+      .bind(slug, linkId, linkId, slug)
+      .run();
   }
 
   static async disable(db: D1Database, slug: string): Promise<Slug | null> {
