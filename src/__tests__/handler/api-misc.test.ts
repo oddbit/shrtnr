@@ -146,6 +146,26 @@ describe("Redirect", () => {
     expect(res.headers.get("Location")).toBe("https://destination.com/");
   });
 
+  it("redirect carries a short private Cache-Control so disables and retargets reach returning visitors", async () => {
+    // A bare 301 is cached by browsers indefinitely: a returning visitor
+    // never contacts the Worker again, so disabling or retargeting the link
+    // has no effect for them and their repeat clicks go unrecorded. The
+    // short private max-age keeps the SEO semantics of a 301 while forcing
+    // revalidation within seconds.
+    const createRes = await SELF.fetch(
+      authed("/_/admin/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://cached.example.com" }),
+      })
+    );
+    const created = await createRes.json() as any;
+    const slug = created.slugs[0].slug;
+    const res = await SELF.fetch(unauthed(`/${slug}`), { redirect: "manual" });
+    expect(res.status).toBe(301);
+    expect(res.headers.get("Cache-Control")).toBe("private, max-age=90");
+  });
+
   it("should return 404 for a non-existent slug", async () => {
     const res = await SELF.fetch(unauthed("/nonexistent999"));
     expect(res.status).toBe(404);
