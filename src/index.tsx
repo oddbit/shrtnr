@@ -40,8 +40,8 @@ import {
   listBundleLinks,
   getBundleAnalytics,
 } from "./services";
-import { DEFAULT_SLUG_LENGTH } from "./constants";
-import { createTranslateFn, getTranslations } from "./i18n";
+import { DEFAULT_SLUG_LENGTH, DEFAULT_THEME, THEMES } from "./constants";
+import { createTranslateFn, getTranslations, DEFAULT_LANGUAGE, isSupportedLanguage } from "./i18n";
 import { handleHealth } from "./api/health";
 import {
   handleListLinks,
@@ -109,8 +109,13 @@ app.get("/_/health", () => handleHealth());
 app.use("/_/admin/*", async (c, next) => {
   const user = await verifyAccessJwt(c.req.raw, c.env);
   // When ACCESS_AUD is configured, redirect unauthenticated visitors to
-  // the landing page rather than showing a raw 403.
+  // the landing page rather than showing a raw 403. API clients get a 401
+  // JSON response instead: following a redirect to an HTML page would only
+  // confuse fetch() callers expecting JSON.
   if (c.env.ACCESS_AUD && !user) {
+    if (new URL(c.req.url).pathname.startsWith("/_/admin/api/")) {
+      return unauthorizedResponse();
+    }
     return c.redirect("/", 302);
   }
   c.set("user", user);
@@ -159,8 +164,12 @@ function getCookie(request: Request, name: string): string | null {
 async function getPageData(c: { env: Env; req: { raw: Request } }, identity: string) {
   const settingsResult = await getAppSettings(c.env, identity);
   const settings = settingsResult.ok ? settingsResult.data : null;
-  const theme = settings?.theme ?? getCookie(c.req.raw, "theme") ?? "oddbit";
-  const lang = settings?.lang ?? getCookie(c.req.raw, "lang") ?? "en";
+  // Cookie values are caller-controlled and stored settings may predate
+  // validation; clamp both to the known sets before rendering.
+  const themeRaw = settings?.theme ?? getCookie(c.req.raw, "theme") ?? DEFAULT_THEME;
+  const theme = (THEMES as readonly string[]).includes(themeRaw) ? themeRaw : DEFAULT_THEME;
+  const langRaw = settings?.lang ?? getCookie(c.req.raw, "lang") ?? DEFAULT_LANGUAGE;
+  const lang = isSupportedLanguage(langRaw) ? langRaw : DEFAULT_LANGUAGE;
   const slugLength = settings?.slug_default_length ?? DEFAULT_SLUG_LENGTH;
   const defaultRange: TimelineRange = settings?.default_range ?? "30d";
   const filterBots = settings?.filter_bots ?? true;
