@@ -174,4 +174,85 @@ describe("admin-management service", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.status).toBe(400);
   });
+
+  it("falls back to the default slug length when the stored setting is not a number", async () => {
+    await env.DB.prepare(
+      "INSERT INTO settings (identity, key, value) VALUES (?, 'slug_default_length', 'garbage')",
+    ).bind(TEST_IDENTITY).run();
+
+    const settings = await getAppSettings(env as any, TEST_IDENTITY);
+    expect(settings.ok).toBe(true);
+    if (settings.ok) {
+      expect(settings.data.slug_default_length).toBe(3);
+    }
+  });
+
+  it("falls back to the default slug length when the stored setting is out of bounds", async () => {
+    await env.DB.prepare(
+      "INSERT INTO settings (identity, key, value) VALUES (?, 'slug_default_length', '9999')",
+    ).bind(TEST_IDENTITY).run();
+
+    const settings = await getAppSettings(env as any, TEST_IDENTITY);
+    expect(settings.ok).toBe(true);
+    if (settings.ok) {
+      expect(settings.data.slug_default_length).toBe(3);
+    }
+  });
+});
+
+describe("settings theme and language validation", () => {
+  it("accepts every known theme", async () => {
+    for (const theme of ["oddbit", "dark", "light"]) {
+      const result = await updateAppSettings(env as any, TEST_IDENTITY, { theme });
+      expect(result.ok).toBe(true);
+      const settings = await getAppSettings(env as any, TEST_IDENTITY);
+      if (settings.ok) expect(settings.data.theme).toBe(theme);
+    }
+  });
+
+  it("rejects an unknown theme", async () => {
+    const result = await updateAppSettings(env as any, TEST_IDENTITY, { theme: "neon" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(400);
+  });
+
+  it("rejects a non-string theme", async () => {
+    const result = await updateAppSettings(env as any, TEST_IDENTITY, { theme: 42 as any });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(400);
+  });
+
+  it("accepts every supported language", async () => {
+    for (const lang of ["en", "id", "sv"]) {
+      const result = await updateAppSettings(env as any, TEST_IDENTITY, { lang });
+      expect(result.ok).toBe(true);
+      const settings = await getAppSettings(env as any, TEST_IDENTITY);
+      if (settings.ok) expect(settings.data.lang).toBe(lang);
+    }
+  });
+
+  it("rejects an unsupported language", async () => {
+    const result = await updateAppSettings(env as any, TEST_IDENTITY, { lang: "xx" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(400);
+  });
+});
+
+describe("API key title validation", () => {
+  it("rejects a title longer than 120 characters", async () => {
+    const result = await createNewApiKey(env as any, TEST_IDENTITY, {
+      title: "x".repeat(121),
+      scope: "create",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(400);
+  });
+
+  it("accepts a title of exactly 120 characters", async () => {
+    const result = await createNewApiKey(env as any, TEST_IDENTITY, {
+      title: "x".repeat(120),
+      scope: "create",
+    });
+    expect(result.ok).toBe(true);
+  });
 });
