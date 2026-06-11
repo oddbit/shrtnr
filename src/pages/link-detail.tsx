@@ -69,7 +69,7 @@ type Props = {
 
 export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, lang, identity, initialRange }) => {
   const now = Math.floor(Date.now() / 1000);
-  const isExpired = !!(link.expires_at && link.expires_at < now);
+  const isExpired = link.expires_at != null && link.expires_at < now;
   const isOwner = identity === link.created_by;
 
   // Primary slug is the one marked is_primary, falling back to first custom, then random
@@ -253,7 +253,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
               <button class="inline-edit-btn confirm" onclick={`saveDetailExpiry(${link.id})`}>
                 <span class="icon">check</span>
               </button>
-              {link.expires_at && (
+              {link.expires_at != null && (
                 <button
                   class="btn btn-ghost btn-sm"
                   onclick={`clearDetailExpiry(${link.id})`}
