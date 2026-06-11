@@ -267,9 +267,9 @@ export async function addCustomSlugToLink(
   try {
     slug = await SlugRepository.addCustom(env.DB, linkId, normalizedSlug);
   } catch (e) {
-    // A concurrent insert can win between the existence pre-check and this
-    // insert; surface the UNIQUE violation as the same 409 instead of a 500.
-    if (String(e).includes("UNIQUE constraint failed")) {
+    // A concurrent request may claim the same slug between the exists() check
+    // and the INSERT, hitting the UNIQUE constraint. Surface it as 409.
+    if (e instanceof Error && e.message.includes("UNIQUE constraint failed")) {
       return fail(409, "Slug already exists");
     }
     throw e;
@@ -315,14 +315,15 @@ export async function disableSlug(
   if (!slugObj.is_custom) return fail(400, "Cannot disable the system-generated slug; only custom slugs can be disabled. Disable the whole link instead.");
 
   const disabled = await SlugRepository.disable(env.DB, slug);
+  if (!disabled) return fail(404, "Slug not found");
 
   await SlugCache.put(env.SLUG_KV, slug, {
     url: link.url,
-    disabled_at: disabled!.disabled_at,
+    disabled_at: disabled.disabled_at,
     expires_at: link.expires_at,
   });
 
-  return ok(disabled!);
+  return ok(disabled);
 }
 
 export async function enableSlug(
@@ -339,6 +340,7 @@ export async function enableSlug(
   if (!slugObj) return fail(404, "Slug not found on this link");
 
   const enabled = await SlugRepository.enable(env.DB, slug);
+  if (!enabled) return fail(404, "Slug not found");
 
   await SlugCache.put(env.SLUG_KV, slug, {
     url: link.url,
@@ -346,7 +348,7 @@ export async function enableSlug(
     expires_at: link.expires_at,
   });
 
-  return ok(enabled!);
+  return ok(enabled);
 }
 
 export async function removeSlug(

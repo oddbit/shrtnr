@@ -86,6 +86,17 @@ export async function handleRedirect(
 
   ctx.waitUntil(recordClick(env, normalizedSlug, data));
 
-  // 6. Redirect
-  return Response.redirect(entry.url, 301);
+  // 6. Redirect. 301 keeps the SEO signal of a permanent move, but a bare
+  // 301 is cached by browsers indefinitely: returning visitors would skip
+  // the Worker forever, so disables and retargets would never reach them
+  // and their repeat clicks would go unrecorded. The short private max-age
+  // forces revalidation within seconds (same approach Bitly uses).
+  // new URL(...).href mirrors Response.redirect's Location serialization.
+  return new Response(null, {
+    status: 301,
+    headers: {
+      Location: new URL(entry.url).href,
+      "Cache-Control": "private, max-age=90",
+    },
+  });
 }
