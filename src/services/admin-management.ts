@@ -113,11 +113,15 @@ export async function getAppSettings(
   ]);
   // A corrupted or out-of-bounds stored value must not poison link creation
   // or the settings page; fall back to the hardcoded default instead.
+  // Theme and lang clamp to their allowed sets on read as well: rows written
+  // before write-side validation existed (or edited directly in D1) must not
+  // leak unknown values to settings consumers. Null means "unset"; callers
+  // apply their own defaults.
   const parsedSlugLength = parseInt(slugLength ?? String(DEFAULT_SLUG_LENGTH), 10);
   return ok({
     slug_default_length: validateSlugLength(parsedSlugLength) === null ? parsedSlugLength : DEFAULT_SLUG_LENGTH,
-    theme: theme ?? null,
-    lang: lang ?? null,
+    theme: theme !== null && (THEMES as readonly string[]).includes(theme) ? theme : null,
+    lang: lang !== null && (SUPPORTED_LANGUAGES as readonly string[]).includes(lang) ? lang : null,
     default_range: isValidRange(defaultRange) ? defaultRange : DEFAULT_TIMELINE_RANGE,
     filter_bots: parseBoolSetting(filterBots, true),
     filter_self_referrers: parseBoolSetting(filterSelfReferrers, true),

@@ -236,6 +236,28 @@ describe("settings theme and language validation", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.status).toBe(400);
   });
+
+  it("clamps a legacy stored theme outside the allowed set to null on read", async () => {
+    // Rows written before write-side validation existed (or edited directly
+    // in D1) must not leak unknown values to settings consumers.
+    await env.DB.prepare(
+      "INSERT INTO settings (identity, key, value) VALUES (?, 'theme', 'neon')",
+    ).bind(TEST_IDENTITY).run();
+
+    const settings = await getAppSettings(env as any, TEST_IDENTITY);
+    expect(settings.ok).toBe(true);
+    if (settings.ok) expect(settings.data.theme).toBeNull();
+  });
+
+  it("clamps a legacy stored language outside the allowed set to null on read", async () => {
+    await env.DB.prepare(
+      "INSERT INTO settings (identity, key, value) VALUES (?, 'lang', 'xx')",
+    ).bind(TEST_IDENTITY).run();
+
+    const settings = await getAppSettings(env as any, TEST_IDENTITY);
+    expect(settings.ok).toBe(true);
+    if (settings.ok) expect(settings.data.lang).toBeNull();
+  });
 });
 
 describe("API key title validation", () => {
