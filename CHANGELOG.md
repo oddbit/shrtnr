@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.35.3 (2026-06-12)
+
+Robustness release: two defect-review PRs (#12, #13) hardening concurrency, input validation, and redirect behavior. No new features.
+
+- Slug redirects now send `Cache-Control: private, max-age=90` alongside the 301. A bare 301 is cached by browsers indefinitely, so returning visitors skipped the Worker forever: disabling, expiring, or retargeting a link never reached them and their repeat clicks went unrecorded. The short private max-age (the Bitly approach) keeps the SEO semantics while forcing revalidation within seconds.
+- `expires_at = 0` now reads as a real epoch timestamp (expired) instead of "no expiry". The redirect handler and the admin pages (expired filter, expired badge, expiry control) use null-aware checks, matching the documented contract that null means no expiry.
+- Multi-statement mutations run in transactional D1 batches: link deletion, custom slug insertion with primary handover, slug disable/remove primary fallback. A mid-sequence failure can no longer orphan slug or click rows or strand a link without a primary slug. `setPrimary` collapsed to a single conditional UPDATE that no-ops when the slug does not belong to the link; previously a mismatched slug cleared every primary flag and set none.
+- The "never delete a link with clicks" guard moved inside the delete transaction as a `NOT EXISTS` condition. A click recorded between the service's check and the delete now blocks the delete instead of being silently removed with the link.
+- Concurrent requests racing on the same custom slug get a 409 from the UNIQUE constraint instead of an unhandled 500. `disableSlug`/`enableSlug` return 404 instead of crashing when the slug is concurrently deleted.
+- Link search escapes SQLite LIKE metacharacters. Searching for `_` previously matched every link; `%` and `\` are escaped the same way and every comparison carries `ESCAPE '\'`.
+- MCP `get_link_qr` encodes `utm_medium=qr` instead of a bare `?qr`, so scans of MCP-issued QR codes register as QR traffic in analytics, matching the REST QR endpoint.
+- Settings validation: theme and lang are checked against their allowed sets on write and clamped to null on read (legacy rows and direct D1 edits no longer leak unknown values), API key titles cap at 120 characters, and a corrupted stored `slug_default_length` falls back to the default instead of returning NaN or blocking link creation.
+- The admin JSON path (no zod schema) now rejects malformed field types at the service layer: non-string labels and non-integer or negative `expires_at` values return 400 instead of being stored verbatim.
+- `getBundle` applies the viewer's bot and self-referrer filter preferences, so bundle detail and the MCP `get_bundle` tool report the same totals as the bundles list.
+- With Cloudflare Access configured, unauthenticated requests to `/_/admin/api/*` get 401 JSON instead of a 302 redirect to the landing page; page routes keep the redirect. Theme and lang cookie values clamp to known sets before rendering.
+- OpenAPI surface unchanged. The version bump refreshes the recorded spec hash in all three SDKs; no SDK code changes. Full suite: 50 files, 932 tests.
+
 ## 0.35.2 (2026-05-30)
 
 - Link deletion no longer reports success when the database guard blocks it. `deleteLink` now honors the boolean from `LinkRepository.delete()`: if a click lands between the service's click check and the row delete, the API returns the real outcome instead of `{ deleted: true }`. A link that gained clicks returns 400, a link that was concurrently removed returns 404. The existence check on that path uses a cheap `SELECT 1` rather than a full link load.
