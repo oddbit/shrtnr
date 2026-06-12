@@ -114,7 +114,9 @@ export class SlugRepository {
     // Lifetime guard: never drop a slug that has recorded any click, so
     // analytics rows are not orphaned. Filter options would mask historical
     // bot traffic and let real history be deleted.
-    const row = await db.prepare(`SELECT ${slugSelect()} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
+    // findByValue is used (rather than a bare db.prepare) so the pre-read
+    // is a named static method that tests can spy on.
+    const row = await SlugRepository.findByValue(db, slug);
     if (!row) return false;
 
     if (!row.is_custom) return false;
@@ -122,14 +124,21 @@ export class SlugRepository {
     if (row.click_count > 0) return false;
 
     // Primary handover and delete run in one transactional batch.
+    // NOT EXISTS re-checks atomically that no click arrived since the pre-read:
+    // FK cascade is not active (no PRAGMA foreign_keys), so a click arriving
+    // in the window would otherwise orphan its clicks row.
     const statements = [];
     if (row.is_primary) {
       statements.push(
         db.prepare("UPDATE slugs SET is_primary = 1 WHERE link_id = ? AND is_custom = 0").bind(row.link_id),
       );
     }
-    statements.push(db.prepare("DELETE FROM slugs WHERE slug = ?").bind(slug));
-    await db.batch(statements);
-    return true;
+    statements.push(
+      db.prepare("DELETE FROM slugs WHERE slug = ? AND NOT EXISTS (SELECT 1 FROM clicks WHERE slug = ?)")
+        .bind(slug, slug),
+    );
+    const results = await db.batch(statements);
+    const deleteResult = results[results.length - 1];
+    return (deleteResult.meta.changes ?? 0) > 0;
   }
 }

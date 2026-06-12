@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
 import { LinkRepository, SlugRepository } from "../../db";
@@ -218,5 +218,26 @@ describe("SlugRepository.remove", () => {
     const updated = await LinkRepository.getById(env.DB, link.id);
     const primary = updated!.slugs.find((s) => s.is_primary);
     expect(primary!.slug).toBe("abc");
+  });
+
+  it("guard holds when a click lands between the pre-read and the batch delete", async () => {
+    // The pre-read reports click_count = 0, but a click record exists in the
+    // DB by the time the DELETE runs. The NOT EXISTS guard inside the batch
+    // must block the delete so the click record is not orphaned.
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "rmrace" });
+    await SlugRepository.addCustom(env.DB, link.id, "rmrace-c");
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, link_mode) VALUES (?, ?, 'link')")
+      .bind("rmrace-c", Math.floor(Date.now() / 1000)).run();
+
+    const spy = vi
+      .spyOn(SlugRepository, "findByValue")
+      .mockResolvedValueOnce({ ...(await SlugRepository.findByValue(env.DB, "rmrace-c"))!, click_count: 0 });
+    const removed = await SlugRepository.remove(env.DB, "rmrace-c").finally(() => spy.mockRestore());
+
+    expect(removed).toBe(false);
+    const clickRow = await env.DB.prepare("SELECT 1 FROM clicks WHERE slug = 'rmrace-c'").first();
+    const slugRow = await env.DB.prepare("SELECT 1 FROM slugs WHERE slug = 'rmrace-c'").first();
+    expect(clickRow).not.toBeNull();
+    expect(slugRow).not.toBeNull();
   });
 });
