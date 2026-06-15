@@ -196,16 +196,40 @@ describe("removeSlug: repository guard blocks the delete under a race", () => {
 
   it("returns 404 when the slug vanished concurrently before the delete", async () => {
     // remove() also returns false when a concurrent request already removed the
-    // slug. The existence check then reports it gone, so the service returns 404
-    // rather than the click-history 400.
+    // slug. The membership re-read then finds nothing, so the service returns
+    // 404 rather than the click-history 400.
     const link = await createOwnedLink();
     await addCustomSlugToLink(env as any, link.id, { slug: "vanished-remove" });
 
     const removeSpy = vi.spyOn(SlugRepository, "remove").mockResolvedValueOnce(false);
-    const existsSpy = vi.spyOn(SlugRepository, "exists").mockResolvedValueOnce(false);
+    const findSpy = vi.spyOn(SlugRepository, "findByValue").mockResolvedValueOnce(null);
     const result = await removeSlug(env as any, link.id, "vanished-remove", OWNER).finally(() => {
       removeSpy.mockRestore();
-      existsSpy.mockRestore();
+      findSpy.mockRestore();
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(404);
+    }
+  });
+
+  it("returns 404 when the slug was re-claimed by another link before the disambiguation", async () => {
+    // Slug values are globally unique, so a slug freed from this link can be
+    // re-claimed by a different link. The membership re-read must check link_id,
+    // or a re-claimed slug would be misreported as still-here-with-clicks (400).
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "reclaimed-remove" });
+    const original = (await SlugRepository.findByValue(env.DB, "reclaimed-remove"))!;
+
+    const removeSpy = vi.spyOn(SlugRepository, "remove").mockResolvedValueOnce(false);
+    // The slug now resolves to a different link than the one being operated on.
+    const findSpy = vi
+      .spyOn(SlugRepository, "findByValue")
+      .mockResolvedValueOnce({ ...original, link_id: original.link_id + 1 });
+    const result = await removeSlug(env as any, link.id, "reclaimed-remove", OWNER).finally(() => {
+      removeSpy.mockRestore();
+      findSpy.mockRestore();
     });
 
     expect(result.ok).toBe(false);
