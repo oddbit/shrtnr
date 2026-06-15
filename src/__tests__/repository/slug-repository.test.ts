@@ -229,11 +229,26 @@ describe("SlugRepository.remove", () => {
     await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, link_mode) VALUES (?, ?, 'link')")
       .bind("rmrace-c", Math.floor(Date.now() / 1000)).run();
 
+    // Capture the real row (click_count > 0) BEFORE installing the spy, so this
+    // read is not itself counted against the mock. The spy then forces the one
+    // pre-read inside remove to report click_count = 0, simulating a click that
+    // lands after the pre-read but before the batch DELETE.
+    const realRow = (await SlugRepository.findByValue(env.DB, "rmrace-c"))!;
+    expect(realRow.click_count).toBeGreaterThan(0);
     const spy = vi
       .spyOn(SlugRepository, "findByValue")
-      .mockResolvedValueOnce({ ...(await SlugRepository.findByValue(env.DB, "rmrace-c"))!, click_count: 0 });
-    const removed = await SlugRepository.remove(env.DB, "rmrace-c").finally(() => spy.mockRestore());
-
+      .mockResolvedValueOnce({ ...realRow, click_count: 0 });
+    // The pre-read goes through the spy exactly once and sees click_count = 0,
+    // so a false result proves the batch NOT EXISTS guard blocked the delete
+    // rather than an early return on the click count. The call-count check runs
+    // before mockRestore, which clears the recorded calls.
+    let removed = false;
+    try {
+      removed = await SlugRepository.remove(env.DB, "rmrace-c");
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
     expect(removed).toBe(false);
     const clickRow = await env.DB.prepare("SELECT 1 FROM clicks WHERE slug = 'rmrace-c'").first();
     const slugRow = await env.DB.prepare("SELECT 1 FROM slugs WHERE slug = 'rmrace-c'").first();
