@@ -168,6 +168,53 @@ describe("Slug ownership: remove", () => {
   });
 });
 
+describe("removeSlug: repository guard blocks the delete under a race", () => {
+  it("returns 400 and does not evict the cache when remove() reports the slug was not deleted", async () => {
+    // A click can land between the service pre-read and the repository's
+    // transactional delete; the NOT EXISTS guard then blocks the delete and
+    // remove() returns false. The slug is still present and resolving, so the
+    // service must report failure, not a false success, and must not evict the
+    // still-live cache entry.
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "raced-remove" });
+
+    const removeSpy = vi.spyOn(SlugRepository, "remove").mockResolvedValueOnce(false);
+    const cacheSpy = vi.spyOn(SlugCache, "delete");
+    try {
+      const result = await removeSlug(env as any, link.id, "raced-remove", OWNER);
+      // Asserted before mockRestore clears the recorded calls.
+      expect(cacheSpy).not.toHaveBeenCalled();
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.status).toBe(400);
+      }
+    } finally {
+      removeSpy.mockRestore();
+      cacheSpy.mockRestore();
+    }
+  });
+
+  it("returns 404 when the slug vanished concurrently before the delete", async () => {
+    // remove() also returns false when a concurrent request already removed the
+    // slug. The existence check then reports it gone, so the service returns 404
+    // rather than the click-history 400.
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "vanished-remove" });
+
+    const removeSpy = vi.spyOn(SlugRepository, "remove").mockResolvedValueOnce(false);
+    const existsSpy = vi.spyOn(SlugRepository, "exists").mockResolvedValueOnce(false);
+    const result = await removeSlug(env as any, link.id, "vanished-remove", OWNER).finally(() => {
+      removeSpy.mockRestore();
+      existsSpy.mockRestore();
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(404);
+    }
+  });
+});
+
 describe("addCustomSlugToLink: concurrent UNIQUE violation returns 409", () => {
   it("returns 409 rather than 500 when a concurrent request claims the slug between the existence check and the insert", async () => {
     // Two concurrent requests both pass SlugRepository.exists() before either
