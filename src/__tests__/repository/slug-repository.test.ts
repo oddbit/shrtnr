@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
 import { LinkRepository, SlugRepository } from "../../db";
@@ -174,6 +174,33 @@ describe("SlugRepository.disable", () => {
     expect(primary!.slug).toBe("abc");
     expect(primary!.is_custom).toBe(0);
   });
+
+  it("does not promote the random slug when the disabled slug stopped being primary before the batch", async () => {
+    // The pre-read sees the custom slug as primary, but a concurrent setPrimary
+    // moves primary to a different custom slug before the batch runs. The
+    // handover must re-check current primary status, or it promotes the random
+    // slug alongside the new primary and leaves the link with two primaries.
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "dsprim" });
+    await SlugRepository.addCustom(env.DB, link.id, "dsprim-c"); // first custom slug becomes primary
+    await SlugRepository.addCustom(env.DB, link.id, "dsprim-c2");
+    await SlugRepository.setPrimary(env.DB, link.id, "dsprim-c2"); // primary moves off dsprim-c
+
+    // Stale pre-read: dsprim-c still looks primary even though it no longer is.
+    const stale = { ...(await SlugRepository.findByValue(env.DB, "dsprim-c"))!, is_primary: 1 };
+    const spy = vi.spyOn(SlugRepository, "findByValue").mockResolvedValueOnce(stale);
+    try {
+      const result = await SlugRepository.disable(env.DB, "dsprim-c");
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(result).not.toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+
+    const updated = await LinkRepository.getById(env.DB, link.id);
+    const primaries = updated!.slugs.filter((s) => s.is_primary);
+    expect(primaries).toHaveLength(1);
+    expect(primaries[0].slug).toBe("dsprim-c2");
+  });
 });
 
 describe("SlugRepository.enable", () => {
@@ -218,5 +245,78 @@ describe("SlugRepository.remove", () => {
     const updated = await LinkRepository.getById(env.DB, link.id);
     const primary = updated!.slugs.find((s) => s.is_primary);
     expect(primary!.slug).toBe("abc");
+  });
+
+  it("guard holds when a click lands between the pre-read and the batch delete", async () => {
+    // The pre-read reports click_count = 0, but a click record exists in the
+    // DB by the time the DELETE runs. The NOT EXISTS guard inside the batch
+    // must block the delete so the click record is not orphaned.
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "rmrace" });
+    await SlugRepository.addCustom(env.DB, link.id, "rmrace-c");
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, link_mode) VALUES (?, ?, 'link')")
+      .bind("rmrace-c", Math.floor(Date.now() / 1000)).run();
+
+    // Capture the real row (click_count > 0) BEFORE installing the spy, so this
+    // read is not itself counted against the mock. The spy then forces the one
+    // pre-read inside remove to report click_count = 0, simulating a click that
+    // lands after the pre-read but before the batch DELETE.
+    const realRow = (await SlugRepository.findByValue(env.DB, "rmrace-c"))!;
+    expect(realRow.click_count).toBeGreaterThan(0);
+    const spy = vi
+      .spyOn(SlugRepository, "findByValue")
+      .mockResolvedValueOnce({ ...realRow, click_count: 0 });
+    // The pre-read goes through the spy exactly once and sees click_count = 0,
+    // so a false result proves the batch NOT EXISTS guard blocked the delete
+    // rather than an early return on the click count. The call-count check runs
+    // before mockRestore, which clears the recorded calls.
+    let removed = false;
+    try {
+      removed = await SlugRepository.remove(env.DB, "rmrace-c");
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(removed).toBe(false);
+    const clickRow = await env.DB.prepare("SELECT 1 FROM clicks WHERE slug = 'rmrace-c'").first();
+    const slugRow = await env.DB.prepare("SELECT 1 FROM slugs WHERE slug = 'rmrace-c'").first();
+    expect(clickRow).not.toBeNull();
+    expect(slugRow).not.toBeNull();
+
+    // The blocked delete must leave the primary set untouched. The custom slug
+    // was primary; the handover UPDATE must not run when the delete is guarded,
+    // or the link ends up with two primaries.
+    const updated = await LinkRepository.getById(env.DB, link.id);
+    const primaries = updated!.slugs.filter((s) => s.is_primary);
+    expect(primaries).toHaveLength(1);
+    expect(primaries[0].slug).toBe("rmrace-c");
+  });
+
+  it("does not promote the random slug when the removed slug stopped being primary before the batch", async () => {
+    // The pre-read sees the custom slug as primary, but a concurrent setPrimary
+    // moves primary to a different custom slug before the batch runs. The
+    // handover must re-check current primary status, or it promotes the random
+    // slug alongside the new primary and leaves the link with two primaries.
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "rmprim" });
+    await SlugRepository.addCustom(env.DB, link.id, "rmprim-c"); // first custom slug becomes primary
+    await SlugRepository.addCustom(env.DB, link.id, "rmprim-c2");
+    await SlugRepository.setPrimary(env.DB, link.id, "rmprim-c2"); // primary moves off rmprim-c
+
+    // Stale pre-read: rmprim-c still looks primary even though it no longer is.
+    const stale = { ...(await SlugRepository.findByValue(env.DB, "rmprim-c"))!, is_primary: 1 };
+    const spy = vi.spyOn(SlugRepository, "findByValue").mockResolvedValueOnce(stale);
+    let removed = false;
+    try {
+      removed = await SlugRepository.remove(env.DB, "rmprim-c");
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
+
+    // rmprim-c has no clicks, so the delete fires; the handover must not run.
+    expect(removed).toBe(true);
+    const updated = await LinkRepository.getById(env.DB, link.id);
+    const primaries = updated!.slugs.filter((s) => s.is_primary);
+    expect(primaries).toHaveLength(1);
+    expect(primaries[0].slug).toBe("rmprim-c2");
   });
 });

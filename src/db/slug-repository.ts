@@ -86,18 +86,31 @@ export class SlugRepository {
 
   static async disable(db: D1Database, slug: string): Promise<Slug | null> {
     const now = Math.floor(Date.now() / 1000);
-    const row = await db.prepare(`SELECT ${slugSelect()} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
+    // findByValue (rather than a bare db.prepare) so the pre-read is a named
+    // static method that tests can spy on.
+    const row = await SlugRepository.findByValue(db, slug);
     if (!row) return null;
 
     // Disable and the primary fallback run in one transactional batch so a
-    // failure cannot strand the link without a primary slug.
-    const statements = [
+    // failure cannot strand the link without a primary slug. The handover
+    // re-checks inside the batch that this slug still holds primary: a
+    // concurrent setPrimary could have moved primary to another slug since the
+    // pre-read, and an unconditional handover would then promote the random
+    // slug alongside the new primary, leaving two primaries. Promote first
+    // (while this slug still holds primary), then demote this slug.
+    const statements: D1PreparedStatement[] = [
       db.prepare("UPDATE slugs SET disabled_at = ? WHERE slug = ?").bind(now, slug),
     ];
     if (row.is_primary) {
       statements.push(
+        db
+          .prepare(
+            `UPDATE slugs SET is_primary = 1
+             WHERE link_id = ? AND is_custom = 0
+               AND EXISTS (SELECT 1 FROM slugs WHERE slug = ? AND is_primary = 1)`,
+          )
+          .bind(row.link_id, slug),
         db.prepare("UPDATE slugs SET is_primary = 0 WHERE slug = ?").bind(slug),
-        db.prepare("UPDATE slugs SET is_primary = 1 WHERE link_id = ? AND is_custom = 0").bind(row.link_id),
       );
     }
     await db.batch(statements);
@@ -114,7 +127,9 @@ export class SlugRepository {
     // Lifetime guard: never drop a slug that has recorded any click, so
     // analytics rows are not orphaned. Filter options would mask historical
     // bot traffic and let real history be deleted.
-    const row = await db.prepare(`SELECT ${slugSelect()} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
+    // findByValue is used (rather than a bare db.prepare) so the pre-read
+    // is a named static method that tests can spy on.
+    const row = await SlugRepository.findByValue(db, slug);
     if (!row) return false;
 
     if (!row.is_custom) return false;
@@ -122,14 +137,33 @@ export class SlugRepository {
     if (row.click_count > 0) return false;
 
     // Primary handover and delete run in one transactional batch.
-    const statements = [];
+    // NOT EXISTS re-checks atomically that no click arrived since the pre-read.
+    // A slug with clicks must never be deleted: depending on whether FK
+    // enforcement is active, the delete would either orphan its clicks rows or
+    // cascade them away, and both lose analytics history. The handover re-reads
+    // both facts inside the batch so it only promotes the random slug when the
+    // delete actually fires and this slug is still the primary: a click in the
+    // window would otherwise strand two primaries, and a concurrent setPrimary
+    // could promote the random slug alongside a new primary on another slug.
+    const statements: D1PreparedStatement[] = [];
     if (row.is_primary) {
       statements.push(
-        db.prepare("UPDATE slugs SET is_primary = 1 WHERE link_id = ? AND is_custom = 0").bind(row.link_id),
+        db
+          .prepare(
+            `UPDATE slugs SET is_primary = 1
+             WHERE link_id = ? AND is_custom = 0
+               AND NOT EXISTS (SELECT 1 FROM clicks WHERE slug = ?)
+               AND EXISTS (SELECT 1 FROM slugs WHERE slug = ? AND is_primary = 1)`,
+          )
+          .bind(row.link_id, slug, slug),
       );
     }
-    statements.push(db.prepare("DELETE FROM slugs WHERE slug = ?").bind(slug));
-    await db.batch(statements);
-    return true;
+    statements.push(
+      db.prepare("DELETE FROM slugs WHERE slug = ? AND NOT EXISTS (SELECT 1 FROM clicks WHERE slug = ?)")
+        .bind(slug, slug),
+    );
+    const results = await db.batch(statements);
+    const deleteResult = results[results.length - 1];
+    return (deleteResult.meta.changes ?? 0) > 0;
   }
 }

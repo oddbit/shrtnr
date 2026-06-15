@@ -366,7 +366,21 @@ export async function removeSlug(
   if (!slugObj.is_custom) return fail(400, "Cannot remove the system-generated slug; only custom slugs can be removed.");
   if (slugObj.click_count > 0) return fail(400, "Cannot remove a slug with clicks, disable it instead");
 
-  await SlugRepository.remove(env.DB, slug);
+  const removed = await SlugRepository.remove(env.DB, slug);
+  if (!removed) {
+    // remove() returns false for two reasons: a concurrent request already
+    // removed the slug from this link, or a click landed between the pre-read
+    // above and the transactional delete (the NOT EXISTS guard then blocks it).
+    // Re-read to disambiguate by membership: slug values are globally unique
+    // and can be re-claimed by another link once freed, so a global existence
+    // check could misattribute a re-claimed slug. 404 when the slug no longer
+    // belongs to this link, 400 (still here, has clicks) otherwise.
+    const current = await SlugRepository.findByValue(env.DB, slug);
+    if (!current || current.link_id !== linkId) return fail(404, "Slug not found on this link");
+    return fail(400, "Cannot remove a slug with clicks, disable it instead");
+  }
+  // Evict only after a confirmed delete, so a blocked delete does not drop the
+  // cache entry for a slug that is still resolving.
   await SlugCache.delete(env.SLUG_KV, slug);
 
   return ok({ removed: true });
