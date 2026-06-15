@@ -86,18 +86,31 @@ export class SlugRepository {
 
   static async disable(db: D1Database, slug: string): Promise<Slug | null> {
     const now = Math.floor(Date.now() / 1000);
-    const row = await db.prepare(`SELECT ${slugSelect()} FROM slugs s WHERE slug = ?`).bind(slug).first<Slug>();
+    // findByValue (rather than a bare db.prepare) so the pre-read is a named
+    // static method that tests can spy on.
+    const row = await SlugRepository.findByValue(db, slug);
     if (!row) return null;
 
     // Disable and the primary fallback run in one transactional batch so a
-    // failure cannot strand the link without a primary slug.
-    const statements = [
+    // failure cannot strand the link without a primary slug. The handover
+    // re-checks inside the batch that this slug still holds primary: a
+    // concurrent setPrimary could have moved primary to another slug since the
+    // pre-read, and an unconditional handover would then promote the random
+    // slug alongside the new primary, leaving two primaries. Promote first
+    // (while this slug still holds primary), then demote this slug.
+    const statements: D1PreparedStatement[] = [
       db.prepare("UPDATE slugs SET disabled_at = ? WHERE slug = ?").bind(now, slug),
     ];
     if (row.is_primary) {
       statements.push(
+        db
+          .prepare(
+            `UPDATE slugs SET is_primary = 1
+             WHERE link_id = ? AND is_custom = 0
+               AND EXISTS (SELECT 1 FROM slugs WHERE slug = ? AND is_primary = 1)`,
+          )
+          .bind(row.link_id, slug),
         db.prepare("UPDATE slugs SET is_primary = 0 WHERE slug = ?").bind(slug),
-        db.prepare("UPDATE slugs SET is_primary = 1 WHERE link_id = ? AND is_custom = 0").bind(row.link_id),
       );
     }
     await db.batch(statements);

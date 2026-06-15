@@ -174,6 +174,33 @@ describe("SlugRepository.disable", () => {
     expect(primary!.slug).toBe("abc");
     expect(primary!.is_custom).toBe(0);
   });
+
+  it("does not promote the random slug when the disabled slug stopped being primary before the batch", async () => {
+    // The pre-read sees the custom slug as primary, but a concurrent setPrimary
+    // moves primary to a different custom slug before the batch runs. The
+    // handover must re-check current primary status, or it promotes the random
+    // slug alongside the new primary and leaves the link with two primaries.
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "dsprim" });
+    await SlugRepository.addCustom(env.DB, link.id, "dsprim-c"); // first custom slug becomes primary
+    await SlugRepository.addCustom(env.DB, link.id, "dsprim-c2");
+    await SlugRepository.setPrimary(env.DB, link.id, "dsprim-c2"); // primary moves off dsprim-c
+
+    // Stale pre-read: dsprim-c still looks primary even though it no longer is.
+    const stale = { ...(await SlugRepository.findByValue(env.DB, "dsprim-c"))!, is_primary: 1 };
+    const spy = vi.spyOn(SlugRepository, "findByValue").mockResolvedValueOnce(stale);
+    try {
+      const result = await SlugRepository.disable(env.DB, "dsprim-c");
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(result).not.toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+
+    const updated = await LinkRepository.getById(env.DB, link.id);
+    const primaries = updated!.slugs.filter((s) => s.is_primary);
+    expect(primaries).toHaveLength(1);
+    expect(primaries[0].slug).toBe("dsprim-c2");
+  });
 });
 
 describe("SlugRepository.enable", () => {
