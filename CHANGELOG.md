@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.35.4 (2026-06-15)
+
+Defect-review release (PR #14) extending the 0.35.3 concurrency hardening to slug removal and disable. No new features.
+
+- Removing a slug no longer orphans analytics rows when a click lands mid-operation. The lifetime guard moved inside the delete transaction as a `NOT EXISTS (SELECT 1 FROM clicks ...)` condition, so a click recorded between the service's pre-read and the batch delete blocks the delete instead of stranding its click rows.
+- Removing or disabling a primary slug no longer leaves a link with two primaries under concurrency. The primary handover re-checks inside the batch that the slug still holds primary, so a concurrent `setPrimary` that moved primary to another slug can no longer promote the random slug alongside the new primary.
+- `removeSlug` reports the real outcome instead of a false success. When the guard blocks the delete, the API returns 400 (slug still present, has clicks) or 404 (slug left this link concurrently) rather than `{ removed: true }`, and the cache entry is evicted only after a confirmed delete so a still-resolving slug is not dropped. The 404-vs-400 disambiguation compares `link_id`, since a freed slug value can be re-claimed by another link.
+- OpenAPI surface unchanged. The version bump refreshes the recorded spec hash in all three SDKs; no SDK code changes. Full suite: 50 files, 938 tests.
+
 ## 0.35.3 (2026-06-12)
 
 Robustness release: two defect-review PRs (#12, #13) hardening concurrency, input validation, and redirect behavior. No new features.
