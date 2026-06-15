@@ -239,5 +239,13 @@ describe("SlugRepository.remove", () => {
     const slugRow = await env.DB.prepare("SELECT 1 FROM slugs WHERE slug = 'rmrace-c'").first();
     expect(clickRow).not.toBeNull();
     expect(slugRow).not.toBeNull();
+
+    // The blocked delete must leave the primary set untouched. The custom slug
+    // was primary; the handover UPDATE must not run when the delete is guarded,
+    // or the link ends up with two primaries.
+    const updated = await LinkRepository.getById(env.DB, link.id);
+    const primaries = updated!.slugs.filter((s) => s.is_primary);
+    expect(primaries).toHaveLength(1);
+    expect(primaries[0].slug).toBe("rmrace-c");
   });
 });

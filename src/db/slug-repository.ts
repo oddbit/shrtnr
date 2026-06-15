@@ -126,11 +126,18 @@ export class SlugRepository {
     // Primary handover and delete run in one transactional batch.
     // NOT EXISTS re-checks atomically that no click arrived since the pre-read:
     // FK cascade is not active (no PRAGMA foreign_keys), so a click arriving
-    // in the window would otherwise orphan its clicks row.
+    // in the window would otherwise orphan its clicks row. The handover carries
+    // the same guard so it only flips the random slug to primary when the
+    // delete actually fires; otherwise a blocked delete would strand the link
+    // with two primaries.
     const statements = [];
     if (row.is_primary) {
       statements.push(
-        db.prepare("UPDATE slugs SET is_primary = 1 WHERE link_id = ? AND is_custom = 0").bind(row.link_id),
+        db
+          .prepare(
+            "UPDATE slugs SET is_primary = 1 WHERE link_id = ? AND is_custom = 0 AND NOT EXISTS (SELECT 1 FROM clicks WHERE slug = ?)",
+          )
+          .bind(row.link_id, slug),
       );
     }
     statements.push(
