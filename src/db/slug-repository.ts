@@ -130,7 +130,7 @@ export class SlugRepository {
     // the same guard so it only flips the random slug to primary when the
     // delete actually fires; otherwise a blocked delete would strand the link
     // with two primaries.
-    const statements = [];
+    const statements: D1PreparedStatement[] = [];
     if (row.is_primary) {
       statements.push(
         db
