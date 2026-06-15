@@ -124,9 +124,10 @@ export class SlugRepository {
     if (row.click_count > 0) return false;
 
     // Primary handover and delete run in one transactional batch.
-    // NOT EXISTS re-checks atomically that no click arrived since the pre-read:
-    // FK cascade is not active (no PRAGMA foreign_keys), so a click arriving
-    // in the window would otherwise orphan its clicks row. The handover carries
+    // NOT EXISTS re-checks atomically that no click arrived since the pre-read.
+    // A slug with clicks must never be deleted: depending on whether FK
+    // enforcement is active, the delete would either orphan its clicks rows or
+    // cascade them away, and both lose analytics history. The handover carries
     // the same guard so it only flips the random slug to primary when the
     // delete actually fires; otherwise a blocked delete would strand the link
     // with two primaries.
