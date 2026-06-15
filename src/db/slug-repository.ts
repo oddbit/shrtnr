@@ -127,18 +127,22 @@ export class SlugRepository {
     // NOT EXISTS re-checks atomically that no click arrived since the pre-read.
     // A slug with clicks must never be deleted: depending on whether FK
     // enforcement is active, the delete would either orphan its clicks rows or
-    // cascade them away, and both lose analytics history. The handover carries
-    // the same guard so it only flips the random slug to primary when the
-    // delete actually fires; otherwise a blocked delete would strand the link
-    // with two primaries.
+    // cascade them away, and both lose analytics history. The handover re-reads
+    // both facts inside the batch so it only promotes the random slug when the
+    // delete actually fires and this slug is still the primary: a click in the
+    // window would otherwise strand two primaries, and a concurrent setPrimary
+    // could promote the random slug alongside a new primary on another slug.
     const statements: D1PreparedStatement[] = [];
     if (row.is_primary) {
       statements.push(
         db
           .prepare(
-            "UPDATE slugs SET is_primary = 1 WHERE link_id = ? AND is_custom = 0 AND NOT EXISTS (SELECT 1 FROM clicks WHERE slug = ?)",
+            `UPDATE slugs SET is_primary = 1
+             WHERE link_id = ? AND is_custom = 0
+               AND NOT EXISTS (SELECT 1 FROM clicks WHERE slug = ?)
+               AND EXISTS (SELECT 1 FROM slugs WHERE slug = ? AND is_primary = 1)`,
           )
-          .bind(row.link_id, slug),
+          .bind(row.link_id, slug, slug),
       );
     }
     statements.push(

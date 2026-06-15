@@ -263,4 +263,33 @@ describe("SlugRepository.remove", () => {
     expect(primaries).toHaveLength(1);
     expect(primaries[0].slug).toBe("rmrace-c");
   });
+
+  it("does not promote the random slug when the removed slug stopped being primary before the batch", async () => {
+    // The pre-read sees the custom slug as primary, but a concurrent setPrimary
+    // moves primary to a different custom slug before the batch runs. The
+    // handover must re-check current primary status, or it promotes the random
+    // slug alongside the new primary and leaves the link with two primaries.
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "rmprim" });
+    await SlugRepository.addCustom(env.DB, link.id, "rmprim-c"); // first custom slug becomes primary
+    await SlugRepository.addCustom(env.DB, link.id, "rmprim-c2");
+    await SlugRepository.setPrimary(env.DB, link.id, "rmprim-c2"); // primary moves off rmprim-c
+
+    // Stale pre-read: rmprim-c still looks primary even though it no longer is.
+    const stale = { ...(await SlugRepository.findByValue(env.DB, "rmprim-c"))!, is_primary: 1 };
+    const spy = vi.spyOn(SlugRepository, "findByValue").mockResolvedValueOnce(stale);
+    let removed = false;
+    try {
+      removed = await SlugRepository.remove(env.DB, "rmprim-c");
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
+
+    // rmprim-c has no clicks, so the delete fires; the handover must not run.
+    expect(removed).toBe(true);
+    const updated = await LinkRepository.getById(env.DB, link.id);
+    const primaries = updated!.slugs.filter((s) => s.is_primary);
+    expect(primaries).toHaveLength(1);
+    expect(primaries[0].slug).toBe("rmprim-c2");
+  });
 });
