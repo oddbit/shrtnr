@@ -75,3 +75,32 @@ export function isBareOriginSelfReferrer(rawReferrer: string | null, requestHost
     return false;
   }
 }
+
+// A self-referrer is any Referer whose host matches the deployment's own host
+// and whose path is not a real page. Real pages live under the reserved `_`
+// prefix (admin, api, health); a visitor can sit on one and click through, so
+// those stay as meaningful internal referrers. Every other same-host path is a
+// slug, and a slug is never a page: it only 301s away. So a Referer pointing at
+// a slug can only be a self-referral artifact (a self-looping or cross-slug
+// crawler that stamps `Referer` with the URL it fetched), never a real source.
+// The host is passed in per-request, so no domain is hardcoded and every
+// deployment works.
+export function isSelfReferrer(rawReferrer: string | null, requestHost: string): boolean {
+  if (!rawReferrer) return false;
+  let u: URL;
+  try {
+    u = new URL(rawReferrer);
+  } catch {
+    return false;
+  }
+  if (normalizeHost(u.hostname) !== requestHost) return false;
+
+  const firstSegment = u.pathname.replace(/^\/+/, "").split("/")[0];
+  if (firstSegment.startsWith("_")) return false;
+
+  // The root is noise only when bare. A query-bearing root may be a real
+  // campaign landing, so defer to the stricter bare-origin rule there.
+  if (u.pathname === "/") return isBareOriginSelfReferrer(rawReferrer, requestHost);
+
+  return true;
+}

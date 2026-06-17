@@ -8,7 +8,7 @@ import { parseDeviceType, parseBrowser, parseOS, isBot } from "./ua";
 import { notFoundResponse } from "./404";
 import { ClickData, Env } from "./types";
 import { computeVisitorFingerprint } from "./fingerprint";
-import { isBareOriginSelfReferrer, normalizeHost, parseReferrerHost } from "./referrer";
+import { isSelfReferrer, normalizeHost, parseReferrerHost } from "./referrer";
 
 export async function handleRedirect(
   slug: string,
@@ -53,14 +53,16 @@ export async function handleRedirect(
   const url = new URL(request.url);
   const utmMedium = url.searchParams.get("utm_medium")?.toLowerCase() ?? null;
 
-  // Flag bare-origin self-referrers so the Sources/Domains breakdowns
-  // can hide them at query time without losing the click or the raw
-  // referrer data. Per-request host keeps every deployment working
-  // without hardcoding a domain.
+  // Flag self-referrers so the Sources/Domains breakdowns can hide them at
+  // query time without losing the click or the raw referrer data. A same-host
+  // Referer pointing at a slug is always noise: slugs are not pages, so the
+  // hit comes from a crawler that stamped its own URL as the Referer. The
+  // reserved `_` namespace (admin/api) stays exempt. Per-request host keeps
+  // every deployment working without hardcoding a domain.
   const requestHost = normalizeHost(url.hostname);
   const referrer = rawReferrer;
   const referrerHost = parseReferrerHost(rawReferrer);
-  const selfReferrer = isBareOriginSelfReferrer(rawReferrer, requestHost);
+  const selfReferrer = isSelfReferrer(rawReferrer, requestHost);
 
   // Best-effort silent visitor fingerprint. Hashed IP + UA + daily salt.
   // Stored for future unique-visitor analytics; never exposed raw anywhere.
