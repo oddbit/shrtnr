@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   APP_PACKAGE_TO_DOMAIN,
   isBareOriginSelfReferrer,
+  isSelfReferrer,
   mapAppPackage,
   normalizeHost,
   parseAppReferrer,
@@ -138,5 +139,69 @@ describe("isBareOriginSelfReferrer", () => {
 
   it("returns false for null referrer", () => {
     expect(isBareOriginSelfReferrer(null, "shrtnr.test")).toBe(false);
+  });
+});
+
+describe("isSelfReferrer", () => {
+  it("flags a same-host slug-path referrer (a slug is never a page, only a 301)", () => {
+    expect(isSelfReferrer("https://shrtnr.test/rhg", "shrtnr.test")).toBe(true);
+  });
+
+  it("flags a same-host slug self-loop (referrer equals the slug being clicked)", () => {
+    expect(isSelfReferrer("https://shrtnr.test/gie", "shrtnr.test")).toBe(true);
+  });
+
+  it("flags a same-host slug referrer that carries a query string", () => {
+    expect(isSelfReferrer("https://shrtnr.test/rhg?utm_source=x", "shrtnr.test")).toBe(true);
+  });
+
+  it("keeps reserved admin pages under the _ prefix (real internal pages)", () => {
+    expect(isSelfReferrer("https://shrtnr.test/_/admin/settings", "shrtnr.test")).toBe(false);
+  });
+
+  it("keeps reserved api pages under the _ prefix", () => {
+    expect(isSelfReferrer("https://shrtnr.test/_/api/links", "shrtnr.test")).toBe(false);
+  });
+
+  it("keeps the bare _ reserved route", () => {
+    expect(isSelfReferrer("https://shrtnr.test/_", "shrtnr.test")).toBe(false);
+  });
+
+  it("flags the bare-origin root with no query or fragment", () => {
+    expect(isSelfReferrer("https://shrtnr.test/", "shrtnr.test")).toBe(true);
+  });
+
+  it("does not flag the root when it carries a query string (possible campaign landing)", () => {
+    expect(isSelfReferrer("https://shrtnr.test/?utm=x", "shrtnr.test")).toBe(false);
+  });
+
+  it("treats www.same-host as the same host for a slug path", () => {
+    expect(isSelfReferrer("https://www.shrtnr.test/rhg", "shrtnr.test")).toBe(true);
+  });
+
+  it("does not flag a cross-origin slug-looking path", () => {
+    expect(isSelfReferrer("https://evil.test/rhg", "shrtnr.test")).toBe(false);
+  });
+
+  it("does not flag a same-host multi-segment endpoint (.well-known is a real route, not a slug)", () => {
+    expect(
+      isSelfReferrer("https://shrtnr.test/.well-known/oauth-authorization-server", "shrtnr.test"),
+    ).toBe(false);
+  });
+
+  it("does not flag a same-host cdn-cgi access path (real route, not a slug)", () => {
+    expect(isSelfReferrer("https://shrtnr.test/cdn-cgi/access/login", "shrtnr.test")).toBe(false);
+  });
+
+  it("normalizes requestHost defensively (caller need not pre-normalize)", () => {
+    expect(isSelfReferrer("https://shrtnr.test/rhg", "WWW.SHRTNR.TEST")).toBe(true);
+  });
+
+  it("returns false for a null referrer", () => {
+    expect(isSelfReferrer(null, "shrtnr.test")).toBe(false);
+  });
+
+  it("returns false for a malformed referrer", () => {
+    expect(isSelfReferrer("not a url", "shrtnr.test")).toBe(false);
   });
 });
