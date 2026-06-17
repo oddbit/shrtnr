@@ -76,15 +76,15 @@ export function isBareOriginSelfReferrer(rawReferrer: string | null, requestHost
   }
 }
 
-// A self-referrer is any Referer whose host matches the deployment's own host
-// and whose path is not a real page. Real pages live under the reserved `_`
-// prefix (admin, api, health); a visitor can sit on one and click through, so
-// those stay as meaningful internal referrers. Every other same-host path is a
-// slug, and a slug is never a page: it only 301s away. So a Referer pointing at
-// a slug can only be a self-referral artifact (a self-looping or cross-slug
-// crawler that stamps `Referer` with the URL it fetched), never a real source.
-// The host is passed in per-request, so no domain is hardcoded and every
-// deployment works.
+// A self-referrer is a Referer whose host matches the deployment's own host
+// and whose path is a slug rather than a real page. The redirect route is
+// `/:slug`: exactly one path segment, not in the reserved `_` namespace. A slug
+// is never a page, it only 301s away, so a Referer pointing at one can only be a
+// self-referral artifact (a self-looping or cross-slug crawler that stamps
+// `Referer` with the URL it fetched), never a real source. Multi-segment
+// same-host paths are real endpoints (`/.well-known/...`, `/cdn-cgi/...`,
+// `/_/admin/...`) and stay as meaningful referrers. The host is passed in
+// per-request, so no domain is hardcoded and every deployment works.
 export function isSelfReferrer(rawReferrer: string | null, requestHost: string): boolean {
   if (!rawReferrer) return false;
   let u: URL;
@@ -93,14 +93,15 @@ export function isSelfReferrer(rawReferrer: string | null, requestHost: string):
   } catch {
     return false;
   }
-  if (normalizeHost(u.hostname) !== requestHost) return false;
-
-  const firstSegment = u.pathname.replace(/^\/+/, "").split("/")[0];
-  if (firstSegment.startsWith("_")) return false;
+  const host = normalizeHost(requestHost);
+  if (normalizeHost(u.hostname) !== host) return false;
 
   // The root is noise only when bare. A query-bearing root may be a real
   // campaign landing, so defer to the stricter bare-origin rule there.
-  if (u.pathname === "/") return isBareOriginSelfReferrer(rawReferrer, requestHost);
+  if (u.pathname === "/") return isBareOriginSelfReferrer(rawReferrer, host);
 
-  return true;
+  // Slug shape: a single path segment outside the reserved `_` namespace.
+  const segments = u.pathname.split("/").filter(Boolean);
+  if (segments.length !== 1) return false;
+  return !segments[0].startsWith("_");
 }

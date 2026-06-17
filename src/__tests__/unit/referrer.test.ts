@@ -183,6 +183,20 @@ describe("isSelfReferrer", () => {
     expect(isSelfReferrer("https://evil.test/rhg", "shrtnr.test")).toBe(false);
   });
 
+  it("does not flag a same-host multi-segment endpoint (.well-known is a real route, not a slug)", () => {
+    expect(
+      isSelfReferrer("https://shrtnr.test/.well-known/oauth-authorization-server", "shrtnr.test"),
+    ).toBe(false);
+  });
+
+  it("does not flag a same-host cdn-cgi access path (real route, not a slug)", () => {
+    expect(isSelfReferrer("https://shrtnr.test/cdn-cgi/access/login", "shrtnr.test")).toBe(false);
+  });
+
+  it("normalizes requestHost defensively (caller need not pre-normalize)", () => {
+    expect(isSelfReferrer("https://shrtnr.test/rhg", "WWW.SHRTNR.TEST")).toBe(true);
+  });
+
   it("returns false for a null referrer", () => {
     expect(isSelfReferrer(null, "shrtnr.test")).toBe(false);
   });
