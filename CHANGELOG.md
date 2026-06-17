@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.35.5 (2026-06-17)
+
+Defect-review release (PR #15) fixing analytics "Sources" inflation. No new features.
+
+- Shortlinks no longer appear as referring sources for their own clicks. Self-referrer detection broadened from the bare-origin root to any same-host slug: a slug is never a page, it only 301s away, so a `Referer` pointing at one can only be a self-referral artifact (a self-looping or cross-slug crawler that stamps `Referer` with the URL it fetched). Such clicks now carry the `is_self_referrer` flag and drop out of the Sources breakdown and totals under the default filters.
+- The rule matches the actual slug route shape (a single path segment outside the reserved `_` namespace), so real same-host endpoints like `/.well-known/oauth-authorization-server` and `/cdn-cgi/access/*` stay as meaningful referrers. The own host is read per request, so no domain is hardcoded and every deployment works.
+- OpenAPI surface unchanged. The version bump refreshes the recorded spec hash in all three SDKs; no SDK code changes. Full suite: 50 files, 953 tests.
+
 ## 0.35.4 (2026-06-15)
 
 Defect-review release (PR #14) extending the 0.35.3 concurrency hardening to slug removal and disable. No new features.
