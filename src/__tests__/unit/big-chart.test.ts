@@ -36,6 +36,21 @@ describe("BigChart incomplete-period treatment", () => {
     expect(out).toContain(t("linkDetail.todayPartial"));
   });
 
+  it("omits the gradient area when only one period is complete", () => {
+    // n === 2: a single completed period plus the in-progress point. With one
+    // completed point there is no segment to fill under, so the area would be a
+    // zero-width degenerate path; render nothing and let the dashed connector
+    // carry the in-progress point.
+    const out = render([10, 20]);
+    expect(out).not.toContain("url(#test-grad)");
+    expect(out).toContain("stroke-dasharray");
+  });
+
+  it("fills the gradient area once at least two periods are complete", () => {
+    const out = render([10, 20, 30]);
+    expect(out).toContain("url(#test-grad)");
+  });
+
   it("renders the empty-state hint when there are no values", () => {
     const out = render([]);
     expect(out).toContain(t("linkDetail.noClickData"));

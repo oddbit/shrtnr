@@ -945,8 +945,11 @@ function renderTimeline(data) {
   for (var i = 0; i < n - 1; i++) {
     solidLine += (i === 0 ? 'M' : 'L') + pts[i][0].toFixed(1) + ',' + pts[i][1].toFixed(1) + ' ';
   }
+  // Fill the area only with at least two complete points (a real segment);
+  // a single completed point has nothing to fill under and would produce a
+  // zero-width degenerate path. Matches the solid-line guard below.
   var area = '';
-  if (n > 1) {
+  if (n > 2) {
     area = solidLine + 'L' + pts[n - 2][0].toFixed(1) + ',' + baseY + ' L' + pts[0][0].toFixed(1) + ',' + baseY + ' Z';
   }
   var dashLine = '';

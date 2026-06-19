@@ -76,7 +76,10 @@ export const BigChart: FC<BigChartProps> = ({ values, range, t, id }) => {
   const solidLine = solidPts
     .map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`)
     .join(" ");
-  const area = solidPts.length > 0
+  // Fill the area only when there are at least two complete points (a real
+  // segment); a single completed point has nothing to fill under and would
+  // produce a zero-width degenerate path. Matches the solid-line guard below.
+  const area = solidPts.length > 1
     ? `${solidLine} L${solidPts[solidPts.length - 1][0].toFixed(1)},${baseY} L${solidPts[0][0].toFixed(1)},${baseY} Z`
     : "";
   const dashLine = n > 1
