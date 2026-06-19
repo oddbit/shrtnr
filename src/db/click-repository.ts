@@ -735,7 +735,7 @@ export class ClickRepository {
       this.getClickedLinksPeriods(db, range, ts, filters),
     ]);
 
-    const withDeltas = await this.attachLinkDeltas(db, recentLinks, range, ts, filters);
+    const withDeltas = await this.attachLinkDeltasBulk(db, recentLinks, range, ts, filters);
     const linkById = new Map(withDeltas.map((l) => [l.id, l]));
     const topLinks = (topLinkRows.results ?? [])
       .map((r) => {
