@@ -38,6 +38,38 @@ export class LinkRepository {
     });
   }
 
+  /**
+   * The `limit` most recent links by created_at, with their slugs and total
+   * clicks. Two queries regardless of catalog size: one for the bounded link
+   * page, one for the slugs of only those ids. Slugs bucket into a Map keyed
+   * by link_id so assembly stays O(links + slugs), unlike `list()` which
+   * re-filters the full slug set per link. Use this for dashboard panels that
+   * need a small recent window without paying to load the whole catalog.
+   */
+  static async recent(db: D1Database, limit: number, opts?: LinkRepoOptions): Promise<LinkWithSlugs[]> {
+    const links = await db.prepare("SELECT * FROM links ORDER BY created_at DESC LIMIT ?").bind(limit).all<Link>();
+    const rows = links.results ?? [];
+    if (rows.length === 0) return [];
+
+    const ids = rows.map((l) => l.id);
+    const placeholders = ids.map(() => "?").join(",");
+    const slugs = await db
+      .prepare(
+        `SELECT ${slugSelect(opts)} FROM slugs s WHERE s.link_id IN (${placeholders}) ORDER BY is_custom ASC, created_at ASC`,
+      )
+      .bind(...ids)
+      .all<Slug>();
+
+    const byLink = new Map<number, Slug[]>();
+    for (const s of slugs.results ?? []) {
+      const arr = byLink.get(s.link_id);
+      if (arr) arr.push(s);
+      else byLink.set(s.link_id, [s]);
+    }
+
+    return rows.map((link) => assembleLink(link, byLink.get(link.id) ?? []));
+  }
+
   static async getById(db: D1Database, id: number, opts?: LinkRepoOptions): Promise<LinkWithSlugs | null> {
     const link = await db.prepare("SELECT * FROM links WHERE id = ?").bind(id).first<Link>();
     if (!link) return null;
