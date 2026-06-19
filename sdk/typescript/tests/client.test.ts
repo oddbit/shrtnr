@@ -337,6 +337,32 @@ describe("links.analytics", () => {
   });
 });
 
+describe("links.breakdown", () => {
+  const stubPage = { items: [{ name: "US", count: 5 }], total: 42 };
+
+  it("GETs /api/links/:id/breakdown with only dimension", async () => {
+    mockFetch(200, stubPage);
+    await client().links.breakdown(5, { dimension: "countries" });
+    expect(lastCall().url).toBe(`${BASE}/_/api/links/5/breakdown?dimension=countries`);
+  });
+
+  it("appends range, offset, and limit when provided", async () => {
+    mockFetch(200, stubPage);
+    await client().links.breakdown(5, { dimension: "countries", range: "7d", offset: 10, limit: 10 });
+    expect(lastCall().url).toBe(
+      `${BASE}/_/api/links/5/breakdown?dimension=countries&range=7d&offset=10&limit=10`,
+    );
+  });
+
+  it("parses items and total from the response", async () => {
+    mockFetch(200, stubPage);
+    const page = await client().links.breakdown(5, { dimension: "countries" });
+    expect(page.total).toBe(42);
+    expect(page.items[0].name).toBe("US");
+    expect(page.items[0].count).toBe(5);
+  });
+});
+
 describe("links.timeline", () => {
   const stubTimeline = {
     range: "7d",
@@ -595,6 +621,32 @@ describe("bundles.analytics", () => {
     mockFetch(200, stubStats);
     await client().bundles.analytics(42, { range: "all" });
     expect(lastCall().url).toBe(`${BASE}/_/api/bundles/42/analytics?range=all`);
+  });
+});
+
+describe("bundles.breakdown", () => {
+  const stubPage = { items: [{ name: "US", count: 5 }], total: 42 };
+
+  it("GETs /api/bundles/:id/breakdown with only dimension", async () => {
+    mockFetch(200, stubPage);
+    await client().bundles.breakdown(5, { dimension: "countries" });
+    expect(lastCall().url).toBe(`${BASE}/_/api/bundles/5/breakdown?dimension=countries`);
+  });
+
+  it("appends range, offset, and limit when provided", async () => {
+    mockFetch(200, stubPage);
+    await client().bundles.breakdown(5, { dimension: "countries", range: "7d", offset: 10, limit: 10 });
+    expect(lastCall().url).toBe(
+      `${BASE}/_/api/bundles/5/breakdown?dimension=countries&range=7d&offset=10&limit=10`,
+    );
+  });
+
+  it("parses items and total from the response", async () => {
+    mockFetch(200, stubPage);
+    const page = await client().bundles.breakdown(5, { dimension: "countries" });
+    expect(page.total).toBe(42);
+    expect(page.items[0].name).toBe("US");
+    expect(page.items[0].count).toBe(5);
   });
 });
 

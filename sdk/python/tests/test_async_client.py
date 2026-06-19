@@ -19,6 +19,7 @@ from shrtnr import AsyncShrtnr, ShrtnrError
 from .conftest import (
     API_KEY,
     BASE_URL,
+    make_breakdown_dict,
     make_bundle_dict,
     make_bundle_with_summary_dict,
     make_click_stats_dict,
@@ -165,6 +166,17 @@ async def test_async_links_analytics(client: AsyncShrtnr) -> None:
     )
     stats = await client.links.analytics(5)
     assert stats.total_clicks == 7
+
+
+@respx.mock
+async def test_async_links_breakdown(client: AsyncShrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/links/5/breakdown?dimension=countries").mock(
+        return_value=httpx.Response(200, json=make_breakdown_dict()),
+    )
+    page = await client.links.breakdown(5, dimension="countries")
+    assert page.total == 42
+    assert page.items[0].name == "US"
+    assert route.called
 
 
 @respx.mock
@@ -334,6 +346,17 @@ async def test_async_bundles_analytics(client: AsyncShrtnr) -> None:
     )
     stats = await client.bundles.analytics(42)
     assert stats.total_clicks == 5
+
+
+@respx.mock
+async def test_async_bundles_breakdown(client: AsyncShrtnr) -> None:
+    route = respx.get(
+        f"{BASE_URL}/_/api/bundles/5/breakdown?dimension=referrers&range=7d&offset=10&limit=25"
+    ).mock(return_value=httpx.Response(200, json=make_breakdown_dict()))
+    page = await client.bundles.breakdown(5, dimension="referrers", range="7d", offset=10, limit=25)
+    assert page.total == 42
+    assert page.items[0].name == "US"
+    assert route.called
 
 
 @respx.mock

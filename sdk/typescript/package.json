@@ -1,6 +1,6 @@
 {
   "name": "@oddbit/shrtnr",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "SDK for the shrtnr URL shortener API",
   "homepage": "https://oddb.it/shrtnr-website-npm",
   "license": "Apache-2.0",
@@ -51,5 +51,5 @@
     "click-analytics",
     "custom-slug"
   ],
-  "x-spec-hash": "sha256:4e654c38f6904081b95a50b8b61a120681c1ebb9534cdc76013f071ebea5a465"
+  "x-spec-hash": "sha256:ae00502ae27afdb0656e5badf8f00c119fcf8b52519da492cb67687a586120aa"
 }

@@ -7,6 +7,8 @@ export type TimelineRange = "24h" | "7d" | "30d" | "90d" | "1y" | "all";
 
 export type BundleAccent = "orange" | "red" | "green" | "blue" | "purple";
 
+export type BreakdownDimension = "countries" | "referrers" | "referrer_hosts";
+
 // ---- Core models ----
 
 export interface Slug {
@@ -64,6 +66,11 @@ export interface BundleWithSummary extends Bundle {
 export interface NameCount {
   name: string;
   count: number;
+}
+
+export interface BreakdownPage {
+  items: NameCount[];
+  total: number;
 }
 
 /// A date/count pair in a click timeline.

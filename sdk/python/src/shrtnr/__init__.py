@@ -15,6 +15,8 @@ from .client import AsyncShrtnr, Shrtnr
 from .errors import ShrtnrError
 from .models import (
     AddedResult,
+    BreakdownDimension,
+    BreakdownPage,
     Bundle,
     BundleAccent,
     BundleTopLink,
@@ -41,6 +43,8 @@ except PackageNotFoundError:
 __all__ = [
     "AddedResult",
     "AsyncShrtnr",
+    "BreakdownDimension",
+    "BreakdownPage",
     "Bundle",
     "BundleAccent",
     "BundleTopLink",

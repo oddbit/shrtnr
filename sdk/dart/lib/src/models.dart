@@ -132,6 +132,29 @@ enum BundleArchivedFilter {
   }
 }
 
+/// Dimension selector for the paginated breakdown endpoints.
+///
+/// The [wireValue] getter returns the string sent over the wire.
+enum BreakdownDimension {
+  /// Clicks grouped by country (wire: `"countries"`).
+  countries,
+
+  /// Clicks grouped by full HTTP Referer value (wire: `"referrers"`).
+  referrers,
+
+  /// Clicks grouped by referrer hostname (wire: `"referrer_hosts"`).
+  referrerHosts;
+
+  static const _wireValues = {
+    BreakdownDimension.countries: 'countries',
+    BreakdownDimension.referrers: 'referrers',
+    BreakdownDimension.referrerHosts: 'referrer_hosts',
+  };
+
+  /// The wire-format string for this dimension.
+  String get wireValue => _wireValues[this]!;
+}
+
 // ---- Helpers ----
 
 List<NameCount> _nameCountList(Object? raw) =>
@@ -519,6 +542,29 @@ class NameCount {
 
   /// The click count in this bucket.
   final int count;
+}
+
+/// A page of a single-dimension analytics breakdown.
+///
+/// Returned by the `breakdown` methods on links and bundles. [items] holds the
+/// rows for the requested page; [total] is the distinct bucket count across the
+/// whole dimension, for paging.
+@immutable
+class BreakdownPage {
+  /// Creates a breakdown page. Most callers should use [BreakdownPage.fromJson].
+  const BreakdownPage({required this.items, required this.total});
+
+  /// Parses a breakdown page from JSON.
+  factory BreakdownPage.fromJson(Map<String, dynamic> json) => BreakdownPage(
+        items: _nameCountList(json['items']),
+        total: ((json['total'] as num?) ?? 0).toInt(),
+      );
+
+  /// The name/count rows for this page.
+  final List<NameCount> items;
+
+  /// Total distinct buckets across the dimension.
+  final int total;
 }
 
 /// Per-link click analytics breakdown.

@@ -3,6 +3,8 @@
 
 import { HttpClient } from "../internal/http";
 import {
+  BreakdownDimension,
+  BreakdownPage,
   Bundle,
   ClickStats,
   CreateLinkBody,
@@ -59,6 +61,21 @@ export class LinksResource {
   analytics(id: number, options: { range?: TimelineRange } = {}): Promise<ClickStats> {
     return this.http.request("GET", `/_/api/links/${id}/analytics`, {
       query: { range: options.range },
+    });
+  }
+
+  /** Page through a single analytics dimension (countries, referrers, referrer hosts) for a link. */
+  breakdown(
+    id: number,
+    options: { dimension: BreakdownDimension; range?: TimelineRange; offset?: number; limit?: number },
+  ): Promise<BreakdownPage> {
+    return this.http.request("GET", `/_/api/links/${id}/breakdown`, {
+      query: {
+        dimension: options.dimension,
+        range: options.range,
+        offset: options.offset !== undefined ? String(options.offset) : undefined,
+        limit: options.limit !== undefined ? String(options.limit) : undefined,
+      },
     });
   }
 

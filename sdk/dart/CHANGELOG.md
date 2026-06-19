@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.0
+
+Add `links.breakdown` and `bundles.breakdown` for paging through the countries, sources and domains analytics panels (offset/limit, returns items + total).
+
 ## 2.0.0 (2026-05-07)
 
 **Breaking change to `update()` methods.** `LinksResource.update` and `BundlesResource.update` now take a `Link` / `Bundle` object instead of an id with optional named parameters. To edit a record, call `copyWith` on the value returned by `get()` (or any other read), then pass it to `update()`.

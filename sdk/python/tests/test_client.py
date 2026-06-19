@@ -20,6 +20,7 @@ from shrtnr.models import Bundle, BundleWithSummary
 from .conftest import (
     API_KEY,
     BASE_URL,
+    make_breakdown_dict,
     make_bundle_dict,
     make_bundle_with_summary_dict,
     make_click_stats_dict,
@@ -270,6 +271,29 @@ def test_links_analytics_with_range(client: Shrtnr) -> None:
         return_value=httpx.Response(200, json=make_click_stats_dict()),
     )
     client.links.analytics(5, range="7d")
+    assert route.called
+
+
+# ---- links.breakdown ----
+
+
+@respx.mock
+def test_links_breakdown(client: Shrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/links/5/breakdown?dimension=countries").mock(
+        return_value=httpx.Response(200, json=make_breakdown_dict()),
+    )
+    page = client.links.breakdown(5, dimension="countries")
+    assert page.total == 42
+    assert page.items[0].name == "US"
+    assert route.called
+
+
+@respx.mock
+def test_links_breakdown_with_range_offset_limit(client: Shrtnr) -> None:
+    route = respx.get(
+        f"{BASE_URL}/_/api/links/5/breakdown?dimension=referrers&range=7d&offset=10&limit=25"
+    ).mock(return_value=httpx.Response(200, json=make_breakdown_dict()))
+    client.links.breakdown(5, dimension="referrers", range="7d", offset=10, limit=25)
     assert route.called
 
 
@@ -565,6 +589,29 @@ def test_bundles_analytics_with_range(client: Shrtnr) -> None:
         return_value=httpx.Response(200, json=make_click_stats_dict()),
     )
     client.bundles.analytics(42, range="7d")
+    assert route.called
+
+
+# ---- bundles.breakdown ----
+
+
+@respx.mock
+def test_bundles_breakdown(client: Shrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/bundles/5/breakdown?dimension=countries").mock(
+        return_value=httpx.Response(200, json=make_breakdown_dict()),
+    )
+    page = client.bundles.breakdown(5, dimension="countries")
+    assert page.total == 42
+    assert page.items[0].name == "US"
+    assert route.called
+
+
+@respx.mock
+def test_bundles_breakdown_with_range_offset_limit(client: Shrtnr) -> None:
+    route = respx.get(
+        f"{BASE_URL}/_/api/bundles/5/breakdown?dimension=referrer_hosts&range=30d&offset=5&limit=50"
+    ).mock(return_value=httpx.Response(200, json=make_breakdown_dict()))
+    client.bundles.breakdown(5, dimension="referrer_hosts", range="30d", offset=5, limit=50)
     assert route.called
 
 
