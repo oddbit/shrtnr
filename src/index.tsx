@@ -97,6 +97,7 @@ import { KeysPage } from "./pages/keys";
 import { SettingsPage } from "./pages/settings";
 import { BundlesPage } from "./pages/bundles";
 import { BundleDetailPage } from "./pages/bundle-detail";
+import { handleWidget } from "./admin/widgets/route";
 
 // ---- App ----
 
@@ -360,6 +361,13 @@ app.get("/_/links", (c) => c.redirect("/_/admin/links", 301));
 app.get("/_/links/:id", (c) => c.redirect(`/_/admin/links/${c.req.param("id")}`, 301));
 app.get("/_/keys", (c) => c.redirect("/_/admin/keys", 301));
 app.get("/_/settings", (c) => c.redirect("/_/admin/settings", 301));
+
+// ---- Admin widget fragments ----
+
+// One generic route serves every registered widget. It sits under the
+// /_/admin/* auth middleware (c.var.identity is set) and the `w` segment
+// keeps it clear of the page routes above.
+app.get("/_/admin/w/:id", (c) => handleWidget(c));
 
 // ---- Admin API routes ----
 
