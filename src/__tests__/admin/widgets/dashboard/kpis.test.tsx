@@ -43,6 +43,9 @@ describe("dashboard.kpis widget", () => {
     const out = String(kpisWidget.render(data, ctx));
     expect(out).toContain("dash-kpi-links");
     expect(out).toContain("dash-total-clicks");
+    // The htmx placeholder already carries the kpi-strip shell, so the widget
+    // must render inner content only and not nest its own outer wrapper.
+    expect(out).not.toContain('class="kpi-strip"');
   });
 
   it("issues a query count that does not grow with the number of links", async () => {

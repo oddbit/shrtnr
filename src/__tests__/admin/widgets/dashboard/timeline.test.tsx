@@ -25,5 +25,8 @@ describe("dashboard.timeline widget", () => {
     const out = String(timelineWidget.render(data, ctx));
     expect(out).toContain("timeline-chart");
     expect(out).toContain("dash-bigchart");
+    // The htmx placeholder already carries the bento-card shell, so the widget
+    // must render inner content only and not nest its own outer wrapper.
+    expect(out).not.toContain("bento-card");
   });
 });

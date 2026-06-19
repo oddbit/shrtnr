@@ -34,7 +34,7 @@ export const timelineWidget: AdminWidget<{ range: TimelineRange }, TimelineData>
   render(d, ctx) {
     const t = ctx.t;
     return (
-      <div class="bento-card span-2 timeline-card" id="dash-timeline">
+      <>
         <div class="timeline-head">
           <div class="bento-label">{t("linkDetail.clicksOverTime")}</div>
           <span class="timeline-range-pill">{t(`range.long.${d.range}` as const)}</span>
@@ -42,7 +42,7 @@ export const timelineWidget: AdminWidget<{ range: TimelineRange }, TimelineData>
         <div class="timeline-chart">
           <BigChart values={d.values} range={d.range} t={t} id="dash-bigchart" />
         </div>
-      </div>
+      </>
     );
   },
 };

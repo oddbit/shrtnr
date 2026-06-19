@@ -64,7 +64,7 @@ export const kpisWidget: AdminWidget<{ range: TimelineRange }, KpiData> = {
     const lang = ctx.lang;
     const t = ctx.t;
     return (
-      <div class="kpi-strip" id="dashboard-kpi-strip">
+      <>
         <KpiCard
           id="dash-kpi-links"
           icon="link"
@@ -109,7 +109,7 @@ export const kpisWidget: AdminWidget<{ range: TimelineRange }, KpiData> = {
           lang={lang}
           sparkline={d.timeline}
         />
-      </div>
+      </>
     );
   },
 };
