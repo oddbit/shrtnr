@@ -3,9 +3,10 @@
 
 import { BundleRepository, ClickRepository, LinkRepository } from "../db";
 import type { ClickFilters } from "../db";
-import { Bundle, BundleAccent, BundleStats, BundleWithSummary, Env, LinkWithSlugs, TimelineRange } from "../types";
+import { BreakdownPage, Bundle, BundleAccent, BundleStats, BundleWithSummary, Env, LinkWithSlugs, TimelineRange } from "../types";
 import { ServiceResult, fail, ok } from "./result";
 import { resolveClickFilters } from "./admin-management";
+import { clampBreakdownLimit, clampBreakdownOffset, parsePaginatedDimension } from "./analytics";
 import { rangeToSinceTs } from "./trends";
 
 const VALID_ACCENTS: BundleAccent[] = ["orange", "red", "green", "blue", "purple"];
@@ -247,6 +248,25 @@ export async function getBundleAnalytics(
   if (!bundle) return fail(404, "Bundle not found");
   const stats = await ClickRepository.getBundleStats(env.DB, id, range, undefined, opts?.filters);
   return ok(stats!);
+}
+
+export async function getBundleBreakdownPage(
+  env: Env,
+  id: number,
+  dimension: string,
+  range: TimelineRange,
+  offset: number,
+  limit: number,
+  opts?: BundleAnalyticsOpts,
+): Promise<ServiceResult<BreakdownPage>> {
+  const dim = parsePaginatedDimension(dimension);
+  if (!dim) return fail(400, `Unknown breakdown dimension: ${dimension}`);
+  const bundle = await BundleRepository.getById(env.DB, id);
+  if (!bundle) return fail(404, "Bundle not found");
+  const page = await ClickRepository.getBundleBreakdownPage(
+    env.DB, id, dim, range, clampBreakdownOffset(offset), clampBreakdownLimit(limit), undefined, opts?.filters,
+  );
+  return ok(page);
 }
 
 export interface ListBundleLinksOpts {

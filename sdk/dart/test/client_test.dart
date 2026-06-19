@@ -141,6 +141,17 @@ Map<String, Object?> _clickStatsJson({int totalClicks = 42}) =>
       'num_browsers': 6,
     };
 
+Map<String, Object?> _breakdownPageJson({
+  List<Map<String, Object?>> items = const [
+    <String, Object?>{'name': 'US', 'count': 5},
+  ],
+  int total = 42,
+}) =>
+    <String, Object?>{
+      'items': items,
+      'total': total,
+    };
+
 Map<String, Object?> _timelineJson() => <String, Object?>{
       'range': '7d',
       'buckets': <Map<String, Object?>>[
@@ -457,6 +468,43 @@ void main() {
       expect(stats.numReferrerHosts, 2);
       expect(stats.numOs, 4);
       expect(stats.numBrowsers, 6);
+    });
+  });
+
+  // ---- 10a. links.breakdown ----
+
+  group('links.breakdown', () {
+    test('GETs /_/api/links/:id/breakdown with only dimension', () async {
+      final m = _mock(status: 200, body: _breakdownPageJson());
+      await m.client.links.breakdown(5, dimension: BreakdownDimension.countries);
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/links/5/breakdown?dimension=countries',
+      );
+    });
+
+    test('appends dimension, range, offset, and limit params', () async {
+      final m = _mock(status: 200, body: _breakdownPageJson());
+      await m.client.links.breakdown(
+        5,
+        dimension: BreakdownDimension.countries,
+        range: TimelineRange.last30d,
+        offset: 10,
+        limit: 10,
+      );
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/links/5/breakdown?dimension=countries&range=30d&offset=10&limit=10',
+      );
+    });
+
+    test('parses items and total', () async {
+      final m = _mock(status: 200, body: _breakdownPageJson());
+      final stats =
+          await m.client.links.breakdown(5, dimension: BreakdownDimension.countries);
+      expect(stats.total, 42);
+      expect(stats.items.first.name, 'US');
+      expect(stats.items.first.count, 5);
     });
   });
 
@@ -864,6 +912,44 @@ void main() {
         m.capture.request!.url.toString(),
         '$_base/_/api/bundles/42/analytics',
       );
+    });
+  });
+
+  // ---- 26a. bundles.breakdown ----
+
+  group('bundles.breakdown', () {
+    test('GETs /_/api/bundles/:id/breakdown with only dimension', () async {
+      final m = _mock(status: 200, body: _breakdownPageJson());
+      await m.client.bundles
+          .breakdown(42, dimension: BreakdownDimension.countries);
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/bundles/42/breakdown?dimension=countries',
+      );
+    });
+
+    test('appends dimension, range, offset, and limit params', () async {
+      final m = _mock(status: 200, body: _breakdownPageJson());
+      await m.client.bundles.breakdown(
+        42,
+        dimension: BreakdownDimension.countries,
+        range: TimelineRange.last30d,
+        offset: 10,
+        limit: 10,
+      );
+      expect(
+        m.capture.request!.url.toString(),
+        '$_base/_/api/bundles/42/breakdown?dimension=countries&range=30d&offset=10&limit=10',
+      );
+    });
+
+    test('parses items and total', () async {
+      final m = _mock(status: 200, body: _breakdownPageJson());
+      final stats = await m.client.bundles
+          .breakdown(42, dimension: BreakdownDimension.countries);
+      expect(stats.total, 42);
+      expect(stats.items.first.name, 'US');
+      expect(stats.items.first.count, 5);
     });
   });
 

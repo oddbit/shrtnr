@@ -53,6 +53,7 @@ The `fetch` option is useful for test mocking or custom TLS configurations.
 | `enable(id)` | Resume redirecting |
 | `delete(id)` | Permanently delete |
 | `analytics(id, {range?})` | Click breakdown by country, device, referrer, etc. |
+| `breakdown(id, {dimension, range?, offset?, limit?})` | Page through the countries, sources (referrers) or domains (referrer_hosts) breakdown |
 | `timeline(id, {range?})` | Click counts bucketed over time |
 | `qr(id, {slug?, size?})` | QR code as SVG string |
 | `bundles(id)` | Bundles this link belongs to |
@@ -102,6 +103,7 @@ Groups of related links with combined analytics.
 | `archive(id)` | Hide from default listing |
 | `unarchive(id)` | Restore an archived bundle |
 | `analytics(id, {range?})` | Combined click analytics |
+| `breakdown(id, {dimension, range?, offset?, limit?})` | Page through the countries, sources (referrers) or domains (referrer_hosts) breakdown |
 | `links(id)` | List links in the bundle |
 | `addLink(id, linkId)` | Add a link |
 | `removeLink(id, linkId)` | Remove a link |

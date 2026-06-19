@@ -3,7 +3,7 @@
 
 import type { Translations } from "./i18n/types";
 import { RANDOM_CHARSET } from "./slugs";
-import { MIN_SLUG_LENGTH } from "./constants";
+import { MIN_SLUG_LENGTH, BREAKDOWN_PAGE_SIZE } from "./constants";
 import { ACCESS_METHOD_OPTIONS } from "./analytics-fill";
 
 export function adminClientScript(version: string, translations: Translations): string {
@@ -16,6 +16,7 @@ var APP_VERSION = '${version}';
 var REPO_URL = 'https://oddb.it/github-shrtnr-app';
 var CHARSET_SIZE = ${RANDOM_CHARSET.length};
 var MIN_SLUG_LEN = ${MIN_SLUG_LENGTH};
+var STAT_PAGE_SIZE = ${BREAKDOWN_PAGE_SIZE};
 var T = ${tJson};
 var ACCESS_METHOD_OPTIONS = ${accessMethodOptionsJson};
 
@@ -759,7 +760,10 @@ function osIcon(name) {
   return 'devices';
 }
 
-function renderStatCard(containerId, items, color, opts) {
+// Renders the rows of a stat card body. When fixedMax is given (paginated
+// panels) it is used as the bar denominator so bars stay comparable across
+// pages; otherwise the denominator is the sum of the rows shown.
+function renderStatCard(containerId, items, color, opts, fixedMax) {
   opts = opts || {};
   var el = document.getElementById(containerId);
   if (!el) return;
@@ -769,8 +773,11 @@ function renderStatCard(containerId, items, color, opts) {
     body.innerHTML = '<div style="color:var(--color-text-muted);font-size:0.875rem">' + esc(t('linkDetail.noData')) + '</div>';
     return;
   }
-  var maxVal = 0;
-  for (var mi = 0; mi < items.length; mi++) maxVal += items[mi].count;
+  var maxVal = fixedMax;
+  if (!maxVal) {
+    maxVal = 0;
+    for (var mi = 0; mi < items.length; mi++) maxVal += items[mi].count;
+  }
   if (maxVal === 0) maxVal = 1;
   var html = '';
   for (var i = 0; i < items.length; i++) {
@@ -786,6 +793,95 @@ function renderStatCard(containerId, items, color, opts) {
     html += '</div>';
   }
   body.innerHTML = html;
+}
+
+// ---- Breakdown paginators (countries, sources, domains) ----
+// Each paginated card keeps state here keyed by its container id. Page one is
+// the server-rendered/loadAnalytics top entries; further pages are fetched from
+// the breakdown endpoint and rendered against the page-one denominator.
+var _statPagers = {};
+var STAT_DIMENSION_RENDER = {
+  countries: { color: 'orange', opts: { mapName: countryNameSafe, flagFromName: true } },
+  referrers: { color: 'mint', opts: { mono: true } },
+  referrer_hosts: { color: 'mint', opts: { mono: true } },
+};
+function countryNameSafe(code) {
+  return typeof countryName === 'function' ? countryName(code) : code;
+}
+
+// (Re)initialise a paginated card. total/denom come from the freshly rendered
+// page one; the footer appears only when there is more than one page.
+function setupStatPager(containerId, dimension, total, denom, kind, id, range) {
+  var card = document.getElementById(containerId);
+  if (!card) return;
+  var spec = STAT_DIMENSION_RENDER[dimension];
+  if (!spec) return;
+  _statPagers[containerId] = {
+    dimension: dimension, total: total, denom: denom || 1,
+    color: spec.color, opts: spec.opts, kind: kind, id: id, range: range,
+    page: 1, loading: false,
+  };
+  renderStatPagerFooter(containerId);
+}
+
+function renderStatPagerFooter(containerId) {
+  var st = _statPagers[containerId];
+  var card = document.getElementById(containerId);
+  if (!card || !st) return;
+  var footer = card.querySelector('.stat-pager');
+  var pages = Math.max(1, Math.ceil(st.total / STAT_PAGE_SIZE));
+  if (st.total <= STAT_PAGE_SIZE) {
+    if (footer) footer.parentNode.removeChild(footer);
+    return;
+  }
+  if (!footer) {
+    footer = document.createElement('div');
+    footer.className = 'stat-pager';
+    card.appendChild(footer);
+  }
+  var from = (st.page - 1) * STAT_PAGE_SIZE + 1;
+  var to = Math.min(st.page * STAT_PAGE_SIZE, st.total);
+  var prevDis = st.page <= 1 || st.loading;
+  var nextDis = st.page >= pages || st.loading;
+  footer.innerHTML =
+    '<button class="stat-pager-btn" aria-label="' + esc(t('linkDetail.prevPage')) + '"' +
+      (prevDis ? ' disabled' : '') + ' onclick="statPageGo(\\'' + containerId + '\\',-1)">' +
+      '<span class="icon">chevron_left</span></button>' +
+    '<span class="stat-pager-label">' +
+      esc(t('linkDetail.statPager', { from: fmtNum(from), to: fmtNum(to), total: fmtNum(st.total) })) +
+      '</span>' +
+    '<button class="stat-pager-btn" aria-label="' + esc(t('linkDetail.nextPage')) + '"' +
+      (nextDis ? ' disabled' : '') + ' onclick="statPageGo(\\'' + containerId + '\\',1)">' +
+      '<span class="icon">chevron_right</span></button>';
+}
+
+function statPageGo(containerId, delta) {
+  var st = _statPagers[containerId];
+  if (!st || st.loading) return;
+  var pages = Math.max(1, Math.ceil(st.total / STAT_PAGE_SIZE));
+  var target = st.page + delta;
+  if (target < 1 || target > pages) return;
+  st.loading = true;
+  renderStatPagerFooter(containerId);
+  var offset = (target - 1) * STAT_PAGE_SIZE;
+  var url = '/' + st.kind + '/' + st.id + '/breakdown?dimension=' + encodeURIComponent(st.dimension) +
+    '&range=' + encodeURIComponent(st.range) + '&offset=' + offset + '&limit=' + STAT_PAGE_SIZE;
+  api(url).then(function(r) { return r.json(); }).then(function(data) {
+    st.loading = false;
+    st.page = target;
+    if (typeof data.total === 'number') st.total = data.total;
+    renderStatCard(containerId, data.items, st.color, st.opts, st.denom);
+    renderStatPagerFooter(containerId);
+  }).catch(function() {
+    st.loading = false;
+    renderStatPagerFooter(containerId);
+  });
+}
+
+function sumCounts(items) {
+  var s = 0;
+  for (var i = 0; i < (items || []).length; i++) s += items[i].count;
+  return s;
 }
 
 function loadAnalytics(linkId, range) {
@@ -837,10 +933,19 @@ function loadAnalytics(linkId, range) {
     // Update timeline chart
     renderTimeline(tlData);
 
-    // Update all stat cards
-    renderStatCard('card-countries', stats.countries, 'orange', { mapName: countryName, flagFromName: true });
-    renderStatCard('card-domains', stats.referrer_hosts, 'mint', { mono: true });
-    renderStatCard('card-sources', stats.referrers, 'mint', { mono: true });
+    // Paginated panels: render page one against its own sum, then size the
+    // paginator from the distinct-count totals so later pages stay comparable.
+    var countryDenom = sumCounts(stats.countries) || 1;
+    var hostDenom = sumCounts(stats.referrer_hosts) || 1;
+    var srcDenom = sumCounts(stats.referrers) || 1;
+    renderStatCard('card-countries', stats.countries, 'orange', { mapName: countryName, flagFromName: true }, countryDenom);
+    renderStatCard('card-domains', stats.referrer_hosts, 'mint', { mono: true }, hostDenom);
+    renderStatCard('card-sources', stats.referrers, 'mint', { mono: true }, srcDenom);
+    setupStatPager('card-countries', 'countries', stats.num_countries, countryDenom, 'links', linkId, range);
+    setupStatPager('card-domains', 'referrer_hosts', stats.num_referrer_hosts, hostDenom, 'links', linkId, range);
+    setupStatPager('card-sources', 'referrers', stats.num_referrers, srcDenom, 'links', linkId, range);
+
+    // Fixed (top-entry) panels
     renderStatCard('card-link-modes', fillMissingOptions(stats.link_modes, ACCESS_METHOD_OPTIONS), 'orange', { iconFn: linkModeIcon });
     renderStatCard('card-devices', stats.devices, 'orange', { iconFn: deviceIcon });
     renderStatCard('card-os', stats.os, 'mint', { iconFn: osIcon });
@@ -1015,6 +1120,26 @@ if (analyticsRangeBar) {
   var linkId = parseInt(analyticsRangeBar.getAttribute('data-link-id'), 10);
   var initialRange = analyticsRangeBar.getAttribute('data-initial-range') || 'all';
   if (linkId) loadAnalytics(linkId, initialRange);
+}
+
+// Bundle detail renders its panels server-side (range changes reload the page),
+// so wire its paginators straight from the cards' data attributes.
+var statGrid = document.querySelector('.detail-analytics[data-resource-kind]');
+if (statGrid && !analyticsRangeBar) {
+  var statKind = statGrid.getAttribute('data-resource-kind');
+  var statResId = statGrid.getAttribute('data-resource-id');
+  var statRange = statGrid.getAttribute('data-range') || 'all';
+  var pagedCards = statGrid.querySelectorAll('.bento-card[data-stat-dimension]');
+  for (var pc = 0; pc < pagedCards.length; pc++) {
+    var pcard = pagedCards[pc];
+    setupStatPager(
+      pcard.id,
+      pcard.getAttribute('data-stat-dimension'),
+      parseInt(pcard.getAttribute('data-stat-total'), 10) || 0,
+      parseInt(pcard.getAttribute('data-stat-denom'), 10) || 1,
+      statKind, statResId, statRange,
+    );
+  }
 }
 
 // Poll for auto-label if label is empty (background title fetch may be in flight)

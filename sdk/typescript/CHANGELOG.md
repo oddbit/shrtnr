@@ -2,6 +2,10 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.1.0 (2026-06-19)
+
+- Add `links.breakdown` and `bundles.breakdown` for paging through the countries, sources and domains analytics panels (offset/limit, returns `{ items, total }`). Exports new types `BreakdownDimension` and `BreakdownPage`.
+
 ## 1.0.2 (2026-05-07)
 
 - `qr()` now accepts `size` as a `number` instead of a `string`. The API schema declares the parameter as an integer, so the previous string type forced callers to pre-stringify a number they already had. The method converts internally before appending to the query string.

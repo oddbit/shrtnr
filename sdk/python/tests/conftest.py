@@ -124,6 +124,17 @@ def make_click_stats_dict(*, total_clicks: int = 0) -> dict[str, Any]:
     }
 
 
+def make_breakdown_dict(
+    *,
+    items: list[dict[str, Any]] | None = None,
+    total: int = 42,
+) -> dict[str, Any]:
+    return {
+        "items": items if items is not None else [{"name": "US", "count": 5}],
+        "total": total,
+    }
+
+
 def make_timeline_dict(*, range: str = "7d") -> dict[str, Any]:
     return {
         "range": range,

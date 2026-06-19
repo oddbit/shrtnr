@@ -1,17 +1,58 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-import { BundleStats, BundleStatsPerLink, ClickData, ClickStats, DashboardStats, LinkWithSlugs, TimelineBucket, TimelineData, TimelineRange } from "../types";
+import { BreakdownPage, BundleStats, BundleStatsPerLink, ClickData, ClickStats, DashboardStats, LinkWithSlugs, TimelineBucket, TimelineData, TimelineRange } from "../types";
 import { LinkRepository } from "./link-repository";
 import { BundleRepository } from "./bundle-repository";
 import { RANGE_SECONDS, computeDelta } from "../services/trends";
 import { ClickFilters, clickFilterSql } from "./filters";
+import type { PaginatedDimension } from "../constants";
 
 export type BreakdownDimension = "country" | "referrer_host" | "device_type" | "os" | "browser" | "link_mode" | "channel";
 
 const VALID_DIMENSIONS = new Set<BreakdownDimension>([
   "country", "referrer_host", "device_type", "os", "browser", "link_mode", "channel",
 ]);
+
+// Column and extra WHERE fragment for each paginated panel. The Sources panel
+// hides app-scheme Referer values, mirroring getStats/getBundleStats.
+const PAGINATED_DIMENSION_SQL: Record<PaginatedDimension, { col: string; filter: string }> = {
+  countries: { col: "country", filter: "" },
+  referrers: { col: "referrer", filter: " AND referrer NOT LIKE 'android-app://%' AND referrer NOT LIKE 'ios-app://%'" },
+  referrer_hosts: { col: "referrer_host", filter: "" },
+};
+
+/**
+ * Run one breakdown page against an already-scoped WHERE clause. The dimension
+ * is whitelisted via PAGINATED_DIMENSION_SQL, so the interpolated column name is
+ * never caller-controlled.
+ */
+async function runBreakdownPage(
+  db: D1Database,
+  where: string,
+  binds: (string | number)[],
+  dimension: PaginatedDimension,
+  offset: number,
+  limit: number,
+): Promise<BreakdownPage> {
+  const spec = PAGINATED_DIMENSION_SQL[dimension];
+  if (!spec) return { items: [], total: 0 };
+  const scoped = `${where} AND ${spec.col} IS NOT NULL${spec.filter}`;
+  const [rows, totalRow] = await Promise.all([
+    db
+      .prepare(
+        `SELECT ${spec.col} as name, COUNT(*) as count FROM clicks WHERE ${scoped}
+         GROUP BY ${spec.col} ORDER BY count DESC, ${spec.col} ASC LIMIT ? OFFSET ?`,
+      )
+      .bind(...binds, limit, offset)
+      .all<{ name: string; count: number }>(),
+    db
+      .prepare(`SELECT COUNT(DISTINCT ${spec.col}) as cnt FROM clicks WHERE ${scoped}`)
+      .bind(...binds)
+      .first<{ cnt: number }>(),
+  ]);
+  return { items: rows.results ?? [], total: totalRow?.cnt ?? 0 };
+}
 
 export type { ClickFilters } from "./filters";
 
@@ -90,13 +131,13 @@ export class ClickRepository {
       numCountriesRow, numReferrersRow, numHostsRow, numOsRow, numBrowsersRow,
     ] = await Promise.all([
       db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where}`).bind(...binds).first<{ cnt: number }>(),
-      db.prepare(`SELECT country as name, COUNT(*) as count FROM clicks WHERE ${where} AND country IS NOT NULL GROUP BY country ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT country as name, COUNT(*) as count FROM clicks WHERE ${where} AND country IS NOT NULL GROUP BY country ORDER BY count DESC, country ASC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       // Sources panel: hide app-scheme Referer values like
       // `android-app://com.linkedin.android/` from the raw-URL breakdown. The
       // brand attribution lives in the Domains panel via referrer_host; the
       // raw row stays in the DB for forensics and future re-attribution.
-      db.prepare(`SELECT referrer as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer IS NOT NULL AND referrer NOT LIKE 'android-app://%' AND referrer NOT LIKE 'ios-app://%' GROUP BY referrer ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
-      db.prepare(`SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT referrer as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer IS NOT NULL AND referrer NOT LIKE 'android-app://%' AND referrer NOT LIKE 'ios-app://%' GROUP BY referrer ORDER BY count DESC, referrer ASC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY count DESC, referrer_host ASC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT device_type as name, COUNT(*) as count FROM clicks WHERE ${where} AND device_type IS NOT NULL GROUP BY device_type ORDER BY count DESC`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT os as name, COUNT(*) as count FROM clicks WHERE ${where} AND os IS NOT NULL GROUP BY os ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT browser as name, COUNT(*) as count FROM clicks WHERE ${where} AND browser IS NOT NULL GROUP BY browser ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
@@ -390,6 +431,75 @@ export class ClickRepository {
       .all<{ name: string; count: number }>();
 
     return rows.results ?? [];
+  }
+
+  /**
+   * Paginated breakdown for a single panel (countries, sources, domains) that
+   * mirrors the panel semantics on the detail pages: the Sources dimension
+   * hides app-scheme Referer values exactly as getStats does, and `total` is
+   * the full distinct count so the client can size its paginator. Page rows are
+   * returned ordered by count descending, matching page one (the top entries).
+   */
+  static async getLinkBreakdownPage(
+    db: D1Database,
+    linkId: number,
+    dimension: PaginatedDimension,
+    range: TimelineRange | undefined,
+    offset: number,
+    limit: number,
+    filters?: ClickFilters,
+  ): Promise<BreakdownPage> {
+    const slugRows = await db
+      .prepare("SELECT slug FROM slugs WHERE link_id = ?")
+      .bind(linkId)
+      .all<{ slug: string }>();
+    const slugs = (slugRows.results ?? []).map((r) => r.slug);
+    if (slugs.length === 0) return { items: [], total: 0 };
+
+    const placeholders = slugs.map(() => "?").join(",");
+    let where = `slug IN (${placeholders})`;
+    const binds: (string | number)[] = [...slugs];
+    if (range && range !== "all") {
+      where += " AND clicked_at >= ?";
+      binds.push(Math.floor(Date.now() / 1000) - (RANGE_SECONDS[range] ?? 0));
+    }
+    where += clickFilterSql(filters);
+
+    return runBreakdownPage(db, where, binds, dimension, offset, limit);
+  }
+
+  static async getBundleBreakdownPage(
+    db: D1Database,
+    bundleId: number,
+    dimension: PaginatedDimension,
+    range: TimelineRange,
+    offset: number,
+    limit: number,
+    now?: number,
+    filters?: ClickFilters,
+  ): Promise<BreakdownPage> {
+    const slugRows = await db
+      .prepare(
+        `SELECT s.slug as slug FROM bundle_links bl
+         JOIN slugs s ON s.link_id = bl.link_id
+         WHERE bl.bundle_id = ?`,
+      )
+      .bind(bundleId)
+      .all<{ slug: string }>();
+    const slugs = (slugRows.results ?? []).map((r) => r.slug);
+    if (slugs.length === 0) return { items: [], total: 0 };
+
+    const placeholders = slugs.map(() => "?").join(",");
+    let where = `slug IN (${placeholders})`;
+    const binds: (string | number)[] = [...slugs];
+    if (range !== "all") {
+      const ts = now ?? Math.floor(Date.now() / 1000);
+      where += " AND clicked_at >= ?";
+      binds.push(ts - RANGE_SECONDS[range]);
+    }
+    where += clickFilterSql(filters);
+
+    return runBreakdownPage(db, where, binds, dimension, offset, limit);
   }
 
   static async compareLinkStats(
@@ -983,11 +1093,11 @@ export class ClickRepository {
       numBrowsersRow,
     ] = await Promise.all([
       db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where}`).bind(...binds).first<{ cnt: number }>(),
-      db.prepare(`SELECT country as name, COUNT(*) as count FROM clicks WHERE ${where} AND country IS NOT NULL GROUP BY country ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT country as name, COUNT(*) as count FROM clicks WHERE ${where} AND country IS NOT NULL GROUP BY country ORDER BY count DESC, country ASC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT COUNT(DISTINCT country) as cnt FROM clicks WHERE ${where} AND country IS NOT NULL`).bind(...binds).first<{ cnt: number }>(),
-      db.prepare(`SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY count DESC, referrer_host ASC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       // Sources panel filter mirrors getStats: hide app-scheme Referer values.
-      db.prepare(`SELECT referrer as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer IS NOT NULL AND referrer NOT LIKE 'android-app://%' AND referrer NOT LIKE 'ios-app://%' GROUP BY referrer ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT referrer as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer IS NOT NULL AND referrer NOT LIKE 'android-app://%' AND referrer NOT LIKE 'ios-app://%' GROUP BY referrer ORDER BY count DESC, referrer ASC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT device_type as name, COUNT(*) as count FROM clicks WHERE ${where} AND device_type IS NOT NULL GROUP BY device_type ORDER BY count DESC`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT os as name, COUNT(*) as count FROM clicks WHERE ${where} AND os IS NOT NULL GROUP BY os ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT browser as name, COUNT(*) as count FROM clicks WHERE ${where} AND browser IS NOT NULL GROUP BY browser ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),

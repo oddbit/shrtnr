@@ -96,6 +96,31 @@ class LinksResource {
     return ClickStats.fromJson(json! as Map<String, dynamic>);
   }
 
+  /// Page through a single analytics [dimension] for a link.
+  ///
+  /// [dimension] selects the breakdown (countries, referrers, or referrer
+  /// hosts). Optional [range] scopes the window; [offset] and [limit] page the
+  /// results. Returns the page rows plus the dimension's total bucket count.
+  Future<BreakdownPage> breakdown(
+    int id, {
+    required BreakdownDimension dimension,
+    TimelineRange? range,
+    int? offset,
+    int? limit,
+  }) async {
+    final json = await _http.requestJson(
+      'GET',
+      '/_/api/links/$id/breakdown',
+      query: {
+        'dimension': dimension.wireValue,
+        'range': range?.wireValue,
+        'offset': offset?.toString(),
+        'limit': limit?.toString(),
+      },
+    );
+    return BreakdownPage.fromJson(json! as Map<String, dynamic>);
+  }
+
   /// Get click timeline for a link. Optional [range] scopes the window.
   Future<TimelineData> timeline(int id, {TimelineRange? range}) async {
     final json = await _http.requestJson(

@@ -70,6 +70,7 @@ with Shrtnr(base_url="...", api_key="sk_...") as client:
 | `enable(id)` | Resume redirecting |
 | `delete(id)` | Permanently delete |
 | `analytics(id, *, range=None)` | Click breakdown by country, device, referrer, etc. |
+| `breakdown(id, *, dimension, range=None, offset=None, limit=None)` | Page through the countries, sources (referrers) or domains (referrer_hosts) breakdown |
 | `timeline(id, *, range=None)` | Click counts bucketed over time |
 | `qr(id, *, slug=None, size=None)` | QR code as SVG string |
 | `bundles(id)` | Bundles this link belongs to |
@@ -119,6 +120,7 @@ Groups of related links with combined analytics.
 | `archive(id)` | Hide from default listing |
 | `unarchive(id)` | Restore an archived bundle |
 | `analytics(id, *, range=None)` | Combined click analytics |
+| `breakdown(id, *, dimension, range=None, offset=None, limit=None)` | Page through the countries, sources (referrers) or domains (referrer_hosts) breakdown |
 | `links(id)` | List links in the bundle |
 | `add_link(id, link_id)` | Add a link |
 | `remove_link(id, link_id)` | Remove a link |

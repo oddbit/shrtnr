@@ -22,6 +22,8 @@ export 'src/errors.dart' show ShrtnrError;
 export 'src/models.dart'
     show
         AddedResult,
+        BreakdownDimension,
+        BreakdownPage,
         Bundle,
         BundleAccent,
         BundleArchivedFilter,

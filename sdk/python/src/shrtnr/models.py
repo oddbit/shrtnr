@@ -17,6 +17,7 @@ from typing import Any, Literal
 
 TimelineRange = Literal["24h", "7d", "30d", "90d", "1y", "all"]
 BundleAccent = Literal["orange", "red", "green", "blue", "purple"]
+BreakdownDimension = Literal["countries", "referrers", "referrer_hosts"]
 
 
 # ---- Core models ----
@@ -169,6 +170,19 @@ class NameCount:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> NameCount:
         return cls(name=str(data["name"]), count=int(data["count"]))
+
+
+@dataclass(frozen=True)
+class BreakdownPage:
+    items: list[NameCount]
+    total: int
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> BreakdownPage:
+        return cls(
+            items=[NameCount.from_dict(x) for x in data.get("items", [])],
+            total=int(data.get("total", 0)),
+        )
 
 
 @dataclass(frozen=True)

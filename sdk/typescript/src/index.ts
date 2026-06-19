@@ -7,6 +7,8 @@ export { ShrtnrError } from "./errors";
 export type {
   TimelineRange,
   BundleAccent,
+  BreakdownDimension,
+  BreakdownPage,
   Slug,
   Link,
   Bundle,

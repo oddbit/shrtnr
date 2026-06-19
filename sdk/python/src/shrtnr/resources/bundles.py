@@ -23,6 +23,8 @@ from .._base import (
 from ..errors import ShrtnrError
 from ..models import (
     AddedResult,
+    BreakdownDimension,
+    BreakdownPage,
     Bundle,
     BundleAccent,
     BundleWithSummary,
@@ -138,6 +140,27 @@ class Bundles:
         """Get click analytics for a bundle."""
         url = self._url(f"/_/api/bundles/{id}/analytics", {"range": range})
         return ClickStats.from_dict(self._request("GET", url, headers=self._headers()))
+
+    def breakdown(
+        self,
+        id: int,
+        *,
+        dimension: BreakdownDimension,
+        range: TimelineRange | None = None,
+        offset: int | None = None,
+        limit: int | None = None,
+    ) -> BreakdownPage:
+        """Page through a countries, sources, or domains breakdown."""
+        url = self._url(
+            f"/_/api/bundles/{id}/breakdown",
+            {
+                "dimension": dimension,
+                "range": range,
+                "offset": str(offset) if offset is not None else None,
+                "limit": str(limit) if limit is not None else None,
+            },
+        )
+        return BreakdownPage.from_dict(self._request("GET", url, headers=self._headers()))
 
     def links(self, id: int) -> _list[Link]:
         """List links in a bundle."""
@@ -266,6 +289,27 @@ class AsyncBundles:
         """Get click analytics for a bundle."""
         url = self._url(f"/_/api/bundles/{id}/analytics", {"range": range})
         return ClickStats.from_dict(await self._request("GET", url, headers=self._headers()))
+
+    async def breakdown(
+        self,
+        id: int,
+        *,
+        dimension: BreakdownDimension,
+        range: TimelineRange | None = None,
+        offset: int | None = None,
+        limit: int | None = None,
+    ) -> BreakdownPage:
+        """Page through a countries, sources, or domains breakdown."""
+        url = self._url(
+            f"/_/api/bundles/{id}/breakdown",
+            {
+                "dimension": dimension,
+                "range": range,
+                "offset": str(offset) if offset is not None else None,
+                "limit": str(limit) if limit is not None else None,
+            },
+        )
+        return BreakdownPage.from_dict(await self._request("GET", url, headers=self._headers()))
 
     async def links(self, id: int) -> _list[Link]:
         """List links in a bundle."""

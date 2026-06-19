@@ -6,10 +6,11 @@ import type { ClickFilters } from "../db";
 import { SlugCache } from "../kv";
 import { DEFAULT_SLUG_LENGTH } from "../constants";
 import { generateUniqueSlug, validateSlugLength, validateCustomSlug } from "../slugs";
-import { ClickData, ClickStats, DashboardStats, Env, LinkWithSlugs, Slug, TimelineData, TimelineRange } from "../types";
+import { BreakdownPage, ClickData, ClickStats, DashboardStats, Env, LinkWithSlugs, Slug, TimelineData, TimelineRange } from "../types";
 import { normalizeUrl } from "../normalize-url";
 import { ServiceResult, ok, fail } from "./result";
 import { resolveClickFilters } from "./admin-management";
+import { clampBreakdownLimit, clampBreakdownOffset, parsePaginatedDimension } from "./analytics";
 import { rangeToSinceTs } from "./trends";
 
 export type { ServiceResult };
@@ -396,6 +397,25 @@ export async function getLinkAnalytics(env: Env, linkId: number, range: Timeline
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
   return ok(await ClickRepository.getStats(env.DB, linkId, range, filters));
+}
+
+export async function getLinkBreakdownPage(
+  env: Env,
+  linkId: number,
+  dimension: string,
+  range: TimelineRange | undefined,
+  offset: number,
+  limit: number,
+  filters?: ClickFilters,
+): Promise<ServiceResult<BreakdownPage>> {
+  const dim = parsePaginatedDimension(dimension);
+  if (!dim) return fail(400, `Unknown breakdown dimension: ${dimension}`);
+  const link = await LinkRepository.getById(env.DB, linkId);
+  if (!link) return fail(404, "Link not found");
+  const page = await ClickRepository.getLinkBreakdownPage(
+    env.DB, linkId, dim, range, clampBreakdownOffset(offset), clampBreakdownLimit(limit), filters,
+  );
+  return ok(page);
 }
 
 export async function getDashboardStats(
