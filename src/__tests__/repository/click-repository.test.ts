@@ -262,6 +262,46 @@ describe("ClickRepository.getDashboardStats", () => {
   });
 });
 
+describe("ClickRepository.getDashboardStats query scaling", () => {
+  // Wrap a D1Database so every .prepare() call increments a counter, while
+  // delegating all behavior to the real binding.
+  function countingDb(db: D1Database, counter: { n: number }): D1Database {
+    return new Proxy(db, {
+      get(target, prop, receiver) {
+        if (prop === "prepare") {
+          return (sql: string) => {
+            counter.n++;
+            return (target as unknown as D1Database).prepare(sql);
+          };
+        }
+        const v = Reflect.get(target, prop, receiver);
+        return typeof v === "function" ? v.bind(target) : v;
+      },
+    }) as unknown as D1Database;
+  }
+
+  async function seedLinks(n: number, offset: number) {
+    for (let i = offset; i < offset + n; i++) {
+      const link = await LinkRepository.create(env.DB, { url: `https://example.com/p${i}`, slug: `s${i}` });
+      await ClickRepository.record(env.DB, link.slugs[0].slug, { country: "US" });
+    }
+  }
+
+  it("issues a query count that does not grow with the number of links", async () => {
+    await seedLinks(10, 0);
+    const small = { n: 0 };
+    await ClickRepository.getDashboardStats(countingDb(env.DB, small), "30d");
+
+    await seedLinks(40, 10); // 50 links total
+    const large = { n: 0 };
+    await ClickRepository.getDashboardStats(countingDb(env.DB, large), "30d");
+
+    // Per-link delta fan-out makes the count scale with link count; the
+    // dashboard must enrich deltas in a bounded number of grouped queries.
+    expect(large.n).toBe(small.n);
+  });
+});
+
 describe("ClickRepository.getStats with range filter", () => {
   it("returns all clicks when range is undefined", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
