@@ -1273,4 +1273,34 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 @media (max-width: 540px) {
   .bundle-icon-picker { grid-template-columns: repeat(6, 1fr); }
 }
+
+/* Widget skeletons: reserve a widget's footprint and shimmer while htmx loads. */
+.widget-skeleton { display: flex; flex-direction: column; gap: .6rem; width: 100%; }
+.skel-row { height: 1.5rem; border-radius: .4rem; }
+.skel-kpi-value { height: 2.2rem; width: 60%; border-radius: .4rem; }
+.skel-chart-area { height: 180px; border-radius: .6rem; }
+.skel-hero-block { height: 120px; border-radius: .6rem; }
+.shimmer { position: relative; overflow: hidden; background: var(--color-surface-raised, #1b2330); }
+.shimmer::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .08), transparent);
+  animation: shimmer 1.2s infinite;
+}
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+/* Re-fetch overlay: htmx adds .htmx-request to a card during an in-flight swap. */
+.bento-card.htmx-request { position: relative; }
+.bento-card.htmx-request::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .06), transparent);
+  background-size: 200% 100%; animation: shimmer 1.2s infinite; pointer-events: none;
+}
+/* Reserved heights so a loading widget never collapses its row. */
+.skel-kpi { min-height: 96px; }
+.skel-chart { min-height: 220px; }
+.skel-list { min-height: 240px; }
+.skel-table { min-height: 280px; }
+.skel-hero { min-height: 160px; }
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after, .bento-card.htmx-request::after { animation: none; }
+}
 `;
