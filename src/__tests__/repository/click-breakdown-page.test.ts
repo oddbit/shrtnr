@@ -71,6 +71,29 @@ describe("ClickRepository.getLinkBreakdownPage", () => {
     expect(page.items.map((x) => x.name)).toEqual(["https://news.example/a", "https://blog.example/b"]);
   });
 
+  it("pages deterministically when many buckets share the same count", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "ties" });
+    const slug = link.slugs[0].slug;
+    // 15 countries, one click each: every count ties, so a stable tie-breaker
+    // is the only thing keeping pages from overlapping or dropping rows.
+    const codes = ["AA", "BB", "CC", "DD", "EE", "FF", "GG", "HH", "II", "JJ", "KK", "LL", "MM", "NN", "OO"];
+    for (const code of codes) await ClickRepository.record(env.DB, slug, { country: code });
+
+    const page1 = await ClickRepository.getLinkBreakdownPage(env.DB, link.id, "countries", "all", 0, 10);
+    const page2 = await ClickRepository.getLinkBreakdownPage(env.DB, link.id, "countries", "all", 10, 10);
+    expect(page1.items).toHaveLength(10);
+    expect(page2.items).toHaveLength(5);
+    const names = [...page1.items, ...page2.items].map((x) => x.name);
+    // No duplicates and every country covered exactly once.
+    expect(new Set(names).size).toBe(15);
+    expect([...names].sort()).toEqual([...codes].sort());
+
+    // Page one matches the top-10 the detail page renders from getStats, so the
+    // server-rendered page and the paginated path agree at the boundary.
+    const stats = await ClickRepository.getStats(env.DB, link.id, "all");
+    expect(stats.countries.map((c) => c.name)).toEqual(page1.items.map((i) => i.name));
+  });
+
   it("returns an empty page for a link with no clicks", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "emp" });
     const page = await ClickRepository.getLinkBreakdownPage(env.DB, link.id, "countries", "all", 0, 10);

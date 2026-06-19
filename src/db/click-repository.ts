@@ -42,7 +42,7 @@ async function runBreakdownPage(
     db
       .prepare(
         `SELECT ${spec.col} as name, COUNT(*) as count FROM clicks WHERE ${scoped}
-         GROUP BY ${spec.col} ORDER BY count DESC LIMIT ? OFFSET ?`,
+         GROUP BY ${spec.col} ORDER BY count DESC, ${spec.col} ASC LIMIT ? OFFSET ?`,
       )
       .bind(...binds, limit, offset)
       .all<{ name: string; count: number }>(),
@@ -131,13 +131,13 @@ export class ClickRepository {
       numCountriesRow, numReferrersRow, numHostsRow, numOsRow, numBrowsersRow,
     ] = await Promise.all([
       db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where}`).bind(...binds).first<{ cnt: number }>(),
-      db.prepare(`SELECT country as name, COUNT(*) as count FROM clicks WHERE ${where} AND country IS NOT NULL GROUP BY country ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT country as name, COUNT(*) as count FROM clicks WHERE ${where} AND country IS NOT NULL GROUP BY country ORDER BY count DESC, country ASC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       // Sources panel: hide app-scheme Referer values like
       // `android-app://com.linkedin.android/` from the raw-URL breakdown. The
       // brand attribution lives in the Domains panel via referrer_host; the
       // raw row stays in the DB for forensics and future re-attribution.
-      db.prepare(`SELECT referrer as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer IS NOT NULL AND referrer NOT LIKE 'android-app://%' AND referrer NOT LIKE 'ios-app://%' GROUP BY referrer ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
-      db.prepare(`SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT referrer as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer IS NOT NULL AND referrer NOT LIKE 'android-app://%' AND referrer NOT LIKE 'ios-app://%' GROUP BY referrer ORDER BY count DESC, referrer ASC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY count DESC, referrer_host ASC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT device_type as name, COUNT(*) as count FROM clicks WHERE ${where} AND device_type IS NOT NULL GROUP BY device_type ORDER BY count DESC`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT os as name, COUNT(*) as count FROM clicks WHERE ${where} AND os IS NOT NULL GROUP BY os ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT browser as name, COUNT(*) as count FROM clicks WHERE ${where} AND browser IS NOT NULL GROUP BY browser ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
@@ -1093,11 +1093,11 @@ export class ClickRepository {
       numBrowsersRow,
     ] = await Promise.all([
       db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where}`).bind(...binds).first<{ cnt: number }>(),
-      db.prepare(`SELECT country as name, COUNT(*) as count FROM clicks WHERE ${where} AND country IS NOT NULL GROUP BY country ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT country as name, COUNT(*) as count FROM clicks WHERE ${where} AND country IS NOT NULL GROUP BY country ORDER BY count DESC, country ASC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT COUNT(DISTINCT country) as cnt FROM clicks WHERE ${where} AND country IS NOT NULL`).bind(...binds).first<{ cnt: number }>(),
-      db.prepare(`SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT referrer_host as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer_host IS NOT NULL GROUP BY referrer_host ORDER BY count DESC, referrer_host ASC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       // Sources panel filter mirrors getStats: hide app-scheme Referer values.
-      db.prepare(`SELECT referrer as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer IS NOT NULL AND referrer NOT LIKE 'android-app://%' AND referrer NOT LIKE 'ios-app://%' GROUP BY referrer ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
+      db.prepare(`SELECT referrer as name, COUNT(*) as count FROM clicks WHERE ${where} AND referrer IS NOT NULL AND referrer NOT LIKE 'android-app://%' AND referrer NOT LIKE 'ios-app://%' GROUP BY referrer ORDER BY count DESC, referrer ASC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT device_type as name, COUNT(*) as count FROM clicks WHERE ${where} AND device_type IS NOT NULL GROUP BY device_type ORDER BY count DESC`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT os as name, COUNT(*) as count FROM clicks WHERE ${where} AND os IS NOT NULL GROUP BY os ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
       db.prepare(`SELECT browser as name, COUNT(*) as count FROM clicks WHERE ${where} AND browser IS NOT NULL GROUP BY browser ORDER BY count DESC LIMIT 10`).bind(...binds).all<{ name: string; count: number }>(),
