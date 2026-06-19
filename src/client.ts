@@ -937,13 +937,25 @@ function renderTimeline(data) {
     pts[i] = [x, y];
   }
 
-  var line = '';
-  for (var i = 0; i < n; i++) {
-    line += (i === 0 ? 'M' : 'L') + pts[i][0].toFixed(1) + ',' + pts[i][1].toFixed(1) + ' ';
-  }
-  var lastX = n > 1 ? pad.l + innerW : pts[0][0];
+  // The final bucket is the current, still-accumulating period; draw the complete
+  // periods solid and connect the in-progress point with a dashed segment so the
+  // chart does not always look like it is dropping at the end.
   var baseY = pad.t + innerH;
-  var area = line + 'L' + lastX.toFixed(1) + ',' + baseY + ' L' + pad.l + ',' + baseY + ' Z';
+  var solidLine = '';
+  for (var i = 0; i < n - 1; i++) {
+    solidLine += (i === 0 ? 'M' : 'L') + pts[i][0].toFixed(1) + ',' + pts[i][1].toFixed(1) + ' ';
+  }
+  // Fill the area only with at least two complete points (a real segment);
+  // a single completed point has nothing to fill under and would produce a
+  // zero-width degenerate path. Matches the solid-line guard below.
+  var area = '';
+  if (n > 2) {
+    area = solidLine + 'L' + pts[n - 2][0].toFixed(1) + ',' + baseY + ' L' + pts[0][0].toFixed(1) + ',' + baseY + ' Z';
+  }
+  var dashLine = '';
+  if (n > 1) {
+    dashLine = 'M' + pts[n - 2][0].toFixed(1) + ',' + pts[n - 2][1].toFixed(1) + ' L' + pts[n - 1][0].toFixed(1) + ',' + pts[n - 1][1].toFixed(1);
+  }
 
   var grid = [0, 0.25, 0.5, 0.75, 1];
   var parts = [];
@@ -960,13 +972,18 @@ function renderTimeline(data) {
     parts.push('<text x="' + (pad.l - 6) + '" y="' + (gy + 3) + '" font-size="9" fill="var(--color-text-subtle)" text-anchor="end" font-family="var(--font-family-mono)">' + fmtNum(val) + '</text>');
   }
 
-  parts.push('<path d="' + area + '" fill="url(#chartGrad)"/>');
-  parts.push('<path d="' + line + '" fill="none" stroke="var(--color-accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
+  if (area) parts.push('<path d="' + area + '" fill="url(#chartGrad)"/>');
+  if (n > 2) parts.push('<path d="' + solidLine + '" fill="none" stroke="var(--color-accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
+  if (dashLine) parts.push('<path d="' + dashLine + '" fill="none" stroke="var(--color-accent)" stroke-width="2" stroke-opacity="0.7" stroke-dasharray="4 4" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
 
   var dotInterval = n > 60 ? Math.ceil(n / 10) : (n > 30 ? 5 : (n > 14 ? 3 : 1));
   for (var i = 0; i < n; i++) {
     if (i % dotInterval === 0 || i === n - 1) {
-      parts.push('<circle cx="' + pts[i][0].toFixed(1) + '" cy="' + pts[i][1].toFixed(1) + '" r="2.5" fill="var(--color-accent)" stroke="var(--color-surface-raised)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>');
+      if (i === n - 1) {
+        parts.push('<circle cx="' + pts[i][0].toFixed(1) + '" cy="' + pts[i][1].toFixed(1) + '" r="2.5" fill="var(--color-surface-raised)" stroke="var(--color-accent)" stroke-width="1.5" vector-effect="non-scaling-stroke"><title>' + esc(t('linkDetail.todayPartial')) + '</title></circle>');
+      } else {
+        parts.push('<circle cx="' + pts[i][0].toFixed(1) + '" cy="' + pts[i][1].toFixed(1) + '" r="2.5" fill="var(--color-accent)" stroke="var(--color-surface-raised)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>');
+      }
     }
   }
 

@@ -67,10 +67,24 @@ export const BigChart: FC<BigChartProps> = ({ values, range, t, id }) => {
     pts.push([x, y]);
   }
 
-  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
-  const lastX = n > 1 ? PAD.l + innerW : pts[0][0];
+  // The final point is the current, still-accumulating period (today, or the
+  // current hour/week/month for other ranges). Drawing it solid makes every chart
+  // look like it is dropping at the end. Render the run of complete periods solid
+  // and connect the in-progress point with a dashed segment and a hollow marker.
   const baseY = PAD.t + innerH;
-  const area = `${line} L${lastX.toFixed(1)},${baseY} L${PAD.l},${baseY} Z`;
+  const solidPts = pts.slice(0, n - 1);
+  const solidLine = solidPts
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`)
+    .join(" ");
+  // Fill the area only when there are at least two complete points (a real
+  // segment); a single completed point has nothing to fill under and would
+  // produce a zero-width degenerate path. Matches the solid-line guard below.
+  const area = solidPts.length > 1
+    ? `${solidLine} L${solidPts[solidPts.length - 1][0].toFixed(1)},${baseY} L${solidPts[0][0].toFixed(1)},${baseY} Z`
+    : "";
+  const dashLine = n > 1
+    ? `M${pts[n - 2][0].toFixed(1)},${pts[n - 2][1].toFixed(1)} L${pts[n - 1][0].toFixed(1)},${pts[n - 1][1].toFixed(1)}`
+    : "";
 
   const grid = [0, 0.25, 0.5, 0.75, 1];
   const dotInterval = n > 60 ? Math.ceil(n / 10) : n > 30 ? 5 : n > 14 ? 3 : 1;
@@ -112,18 +126,48 @@ export const BigChart: FC<BigChartProps> = ({ values, range, t, id }) => {
           </g>
         );
       })}
-      <path d={area} fill={`url(#${gradId})`} />
-      <path
-        d={line}
-        fill="none"
-        stroke="var(--color-accent)"
-        stroke-width="2"
-        stroke-linejoin="round"
-        stroke-linecap="round"
-        vector-effect="non-scaling-stroke"
-      />
-      {pts.map((p, i) =>
-        i % dotInterval === 0 || i === n - 1 ? (
+      {area ? <path d={area} fill={`url(#${gradId})`} /> : null}
+      {solidPts.length > 1 ? (
+        <path
+          d={solidLine}
+          fill="none"
+          stroke="var(--color-accent)"
+          stroke-width="2"
+          stroke-linejoin="round"
+          stroke-linecap="round"
+          vector-effect="non-scaling-stroke"
+        />
+      ) : null}
+      {dashLine ? (
+        <path
+          d={dashLine}
+          fill="none"
+          stroke="var(--color-accent)"
+          stroke-width="2"
+          stroke-opacity="0.7"
+          stroke-dasharray="4 4"
+          stroke-linejoin="round"
+          stroke-linecap="round"
+          vector-effect="non-scaling-stroke"
+        />
+      ) : null}
+      {pts.map((p, i) => {
+        const isLast = i === n - 1;
+        if (!(i % dotInterval === 0 || isLast)) return null;
+        return isLast ? (
+          <circle
+            key={`dot-${i}`}
+            cx={p[0].toFixed(1)}
+            cy={p[1].toFixed(1)}
+            r="2.5"
+            fill="var(--color-surface-raised)"
+            stroke="var(--color-accent)"
+            stroke-width="1.5"
+            vector-effect="non-scaling-stroke"
+          >
+            <title>{t("linkDetail.todayPartial")}</title>
+          </circle>
+        ) : (
           <circle
             key={`dot-${i}`}
             cx={p[0].toFixed(1)}
@@ -134,8 +178,8 @@ export const BigChart: FC<BigChartProps> = ({ values, range, t, id }) => {
             stroke-width="1.5"
             vector-effect="non-scaling-stroke"
           />
-        ) : null,
-      )}
+        );
+      })}
       {pts.map((p, i) =>
         i % dotInterval === 0 || i === n - 1 ? (
           <text
