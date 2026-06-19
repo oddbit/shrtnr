@@ -98,6 +98,7 @@ const sv: Translations = {
   "linkDetail.totalClicks": "totalt antal klick",
   "linkDetail.clicksInRange": "klick i vald period",
   "linkDetail.today": "idag",
+  "linkDetail.todayPartial": "idag (pågår)",
   "linkDetail.avgPerDay": "Snitt / dag",
   "linkDetail.createdOn": "Skapad",
   "linkDetail.neverExpires": "Går aldrig ut",

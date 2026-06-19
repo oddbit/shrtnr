@@ -98,6 +98,7 @@ const id: Translations = {
   "linkDetail.totalClicks": "total klik",
   "linkDetail.clicksInRange": "klik dalam rentang terpilih",
   "linkDetail.today": "hari ini",
+  "linkDetail.todayPartial": "hari ini (berjalan)",
   "linkDetail.avgPerDay": "Rata-rata / hari",
   "linkDetail.createdOn": "Dibuat",
   "linkDetail.neverExpires": "Tidak pernah kedaluwarsa",

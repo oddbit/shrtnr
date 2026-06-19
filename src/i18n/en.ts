@@ -95,6 +95,7 @@ const en = {
   "linkDetail.totalClicks": "total clicks",
   "linkDetail.clicksInRange": "clicks in selected range",
   "linkDetail.today": "today",
+  "linkDetail.todayPartial": "today (in progress)",
   "linkDetail.avgPerDay": "Avg / day",
   "linkDetail.createdOn": "Created",
   "linkDetail.neverExpires": "Never expires",
