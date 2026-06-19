@@ -70,6 +70,24 @@ describe("expires_at flow", () => {
   });
 });
 
+describe("expires_at = now boundary", () => {
+  it("treats expires_at equal to the current second as expired (disable takes effect immediately)", async () => {
+    // LinkRepository.disable() sets expires_at = Math.floor(Date.now() / 1000).
+    // The redirect handler must treat that as expired rather than waiting an
+    // extra second before the strict-less-than check turns true.
+    const slug = "exact-now";
+    await LinkRepository.create(env.DB, {
+      url: "https://example.com/exact-now",
+      slug,
+      expiresAt: Math.floor(Date.now() / 1000),
+      createdBy: DEV_IDENTITY,
+    });
+    await SlugCache.delete(env.SLUG_KV, slug);
+    const res = await SELF.fetch(req(slug));
+    expect(res.status).toBe(404);
+  });
+});
+
 describe("expires_at = 0 boundary", () => {
   it("treats 0 as an epoch timestamp (expired), not as no expiry", async () => {
     // The Link schema documents "null means no expiry". A stored 0 is a real

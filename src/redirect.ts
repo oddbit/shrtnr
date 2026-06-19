@@ -40,7 +40,7 @@ export async function handleRedirect(
 
   // 4. Check expired. Null-aware, not truthy: null means no expiry, but a
   // stored 0 is a real epoch timestamp and must count as expired.
-  if (entry.expires_at != null && entry.expires_at < Math.floor(Date.now() / 1000)) {
+  if (entry.expires_at != null && entry.expires_at <= Math.floor(Date.now() / 1000)) {
     return notFoundResponse();
   }
 
