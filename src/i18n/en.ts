@@ -268,6 +268,10 @@ const en = {
     "Call the REST API directly. Browse endpoints, schemas, and try requests in the docs.",
   "settings.apiDocsLink": "API documentation",
 
+  // Widget
+  "widget.error": "Couldn't load this panel.",
+  "widget.retry": "Retry",
+
   // Months (short)
   "month.jan": "Jan",
   "month.feb": "Feb",

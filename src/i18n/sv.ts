@@ -271,6 +271,10 @@ const sv: Translations = {
     "Anropa REST-API:et direkt. Bläddra bland endpoints, scheman och testa förfrågningar i dokumentationen.",
   "settings.apiDocsLink": "API-dokumentation",
 
+  // Widget
+  "widget.error": "Kunde inte ladda panelen.",
+  "widget.retry": "Försök igen",
+
   // Months (short)
   "month.jan": "jan",
   "month.feb": "feb",
