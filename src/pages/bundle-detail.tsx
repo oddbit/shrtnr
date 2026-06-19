@@ -260,7 +260,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
       </div>
 
       {/* Analytics grid. Mirrors link-detail's layout exactly. */}
-      <div class="detail-analytics">
+      <div class="detail-analytics" data-resource-kind="bundles" data-resource-id={b.id} data-range={range}>
         <div class="detail-analytics-left">
           <div class="bento-card timeline-card">
             <div class="timeline-head">
@@ -281,7 +281,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
             </div>
           </div>
 
-          <div class="bento-card">
+          <div class="bento-card" id="card-countries" data-stat-dimension="countries" data-stat-total={stats.num_countries} data-stat-denom={countryTotal || 1}>
             <div class="bento-head">
               <div class="bento-label">{t("linkDetail.countries")}</div>
               {stats.num_countries > 0 && (
@@ -306,7 +306,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
             </div>
           </div>
 
-          <div class="bento-card">
+          <div class="bento-card" id="card-domains" data-stat-dimension="referrer_hosts" data-stat-total={stats.num_referrer_hosts} data-stat-denom={hostTotal || 1}>
             <div class="bento-head">
               <div class="bento-label">{t("linkDetail.domains")}</div>
               {stats.num_referrer_hosts > 0 && (
@@ -331,7 +331,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
             </div>
           </div>
 
-          <div class="bento-card">
+          <div class="bento-card" id="card-sources" data-stat-dimension="referrers" data-stat-total={stats.num_referrers} data-stat-denom={srcTotal || 1}>
             <div class="bento-head">
               <div class="bento-label">{t("linkDetail.sources")}</div>
               {stats.num_referrers > 0 && (

@@ -87,6 +87,12 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
 
   const maxSlugClicks = Math.max(1, link.slugs.reduce((s, slug) => s + slug.click_count, 0));
 
+  // Denominators for the paginated panels: the sum of page one (the top
+  // entries). The client reuses these so later pages' bars stay comparable.
+  const countryDenom = analytics.countries.reduce((s, i) => s + i.count, 0) || 1;
+  const hostDenom = analytics.referrer_hosts.reduce((s, i) => s + i.count, 0) || 1;
+  const srcDenom = analytics.referrers.reduce((s, i) => s + i.count, 0) || 1;
+
   return (
     <>
       <div class="detail-header">
@@ -391,7 +397,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
         </div>
       </div>
 
-      <div class="detail-analytics">
+      <div class="detail-analytics" data-resource-kind="links" data-resource-id={link.id} data-range={initialRange}>
         <div class="detail-analytics-left">
           <div class="bento-card timeline-card">
             <div class="timeline-head">
@@ -408,7 +414,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
             </div>
           </div>
 
-          <div class="bento-card" id="card-countries">
+          <div class="bento-card" id="card-countries" data-stat-dimension="countries" data-stat-total={analytics.num_countries} data-stat-denom={countryDenom}>
             <div class="bento-head">
               <div class="bento-label">{t("linkDetail.countries")}</div>
               {analytics.num_countries > 0 && (
@@ -422,7 +428,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                     name={countryName(c.name, lang)}
                     flag={c.name}
                     count={c.count}
-                    max={analytics.countries.reduce((s, i) => s + i.count, 0)}
+                    max={countryDenom}
                     color="orange"
                     lang={lang}
                   />
@@ -433,7 +439,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
             </div>
           </div>
 
-          <div class="bento-card" id="card-domains">
+          <div class="bento-card" id="card-domains" data-stat-dimension="referrer_hosts" data-stat-total={analytics.num_referrer_hosts} data-stat-denom={hostDenom}>
             <div class="bento-head">
               <div class="bento-label">{t("linkDetail.domains")}</div>
               {analytics.num_referrer_hosts > 0 && (
@@ -446,7 +452,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                   <StatBar
                     name={r.name}
                     count={r.count}
-                    max={analytics.referrer_hosts.reduce((s, i) => s + i.count, 0)}
+                    max={hostDenom}
                     color="mint"
                     mono
                     lang={lang}
@@ -458,7 +464,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
             </div>
           </div>
 
-          <div class="bento-card" id="card-sources">
+          <div class="bento-card" id="card-sources" data-stat-dimension="referrers" data-stat-total={analytics.num_referrers} data-stat-denom={srcDenom}>
             <div class="bento-head">
               <div class="bento-label">{t("linkDetail.sources")}</div>
               {analytics.num_referrers > 0 && (
@@ -471,7 +477,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                   <StatBar
                     name={r.name}
                     count={r.count}
-                    max={analytics.referrers.reduce((s, i) => s + i.count, 0)}
+                    max={srcDenom}
                     color="mint"
                     mono
                     lang={lang}

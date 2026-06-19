@@ -284,6 +284,14 @@ body { font-family: var(--font-family-body); background: var(--color-canvas); co
 .stat-row .bar .fill.orange { background: linear-gradient(135deg, var(--color-accent), var(--color-accent-active)); }
 .stat-row .bar .fill.mint { background: var(--color-success); }
 
+/* Breakdown paginator (countries, sources, domains cards) */
+.stat-pager { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem; margin-top: 0.75rem; padding-top: 0.6rem; border-top: 1px solid var(--color-border); }
+.stat-pager-label { font-size: 0.72rem; color: var(--color-text-subtle); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.stat-pager-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; }
+.stat-pager-btn:hover:not(:disabled) { background: var(--color-surface-interactive); border-color: var(--color-accent); color: var(--color-accent); }
+.stat-pager-btn:disabled { opacity: 0.4; cursor: default; }
+.stat-pager-btn .icon { font-size: 18px; }
+
 /* Links list */
 .link-item { background: var(--color-surface-raised); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; transition: background 0.2s; display: flex; align-items: center; gap: 1rem; cursor: pointer; text-decoration: none; color: inherit; }
 .link-item:hover { background: var(--color-surface-interactive); }
