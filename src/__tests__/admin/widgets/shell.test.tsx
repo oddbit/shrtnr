@@ -11,6 +11,7 @@ describe("Widget placeholder", () => {
     expect(out).toContain("widget-skeleton");
     expect(out).toContain("skel-chart"); // timeline is a chart shape
     expect(out).toContain("bento-card"); // non-kpi shapes use the bento-card container
+    expect(out).toContain("widget-slot"); // common marker the retry button targets
   });
 
   it("uses the kpi-strip container and adds the poll trigger for the kpi shape", () => {
@@ -21,5 +22,6 @@ describe("Widget placeholder", () => {
     expect(out).toContain("skel-kpi");
     expect(out).not.toContain("bento-card"); // kpi strip is a flex row, not a bento-card
     expect(out).toContain("every 30s");
+    expect(out).toContain("widget-slot"); // common marker the retry button targets
   });
 });

@@ -39,10 +39,14 @@ export const Widget: FC<{
     .filter(Boolean)
     .join(", ");
 
+  // Every placeholder carries widget-slot so the error card's Retry button can
+  // target "closest .widget-slot" regardless of shape. The kpi strip is a flex
+  // row (not a bento-card), so without this shared marker the kpi retry button
+  // would find no swap target and fail silently.
   const container =
     shape === "kpi"
-      ? "kpi-strip skel-kpi"
-      : `bento-card skel-${shape}${span ? ` span-${span}` : ""}`;
+      ? "widget-slot kpi-strip skel-kpi"
+      : `widget-slot bento-card skel-${shape}${span ? ` span-${span}` : ""}`;
 
   return (
     <div

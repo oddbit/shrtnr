@@ -2,9 +2,36 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Context } from "hono";
 import { raw } from "hono/html";
+import type { TranslateFn } from "../../i18n";
 import { getWidget } from "./registry";
 import { buildWidgetCtx } from "./ctx";
 import { cacheKey, getCacheVersion, serveCached } from "./cache";
+
+/**
+ * Build the swap-friendly error card htmx replaces a failed widget with. The
+ * Retry button re-fires the exact request that failed (same id + query) and
+ * targets the closest .widget-slot, the shared marker every placeholder shape
+ * carries (bento-card and kpi-strip alike), so the swap lands on the right
+ * container whatever the widget's shape.
+ *
+ * `query` is the raw query string without a leading "?" (e.g. "range=30d") and
+ * is empty when the request had none.
+ */
+export function widgetErrorFragment(
+  id: string,
+  query: string,
+  t: TranslateFn,
+): string {
+  const msg = t("widget.error");
+  const retry = t("widget.retry");
+  const url = `/_/admin/w/${id}${query ? `?${query}` : ""}`;
+  return String(
+    raw(
+      `<div class="widget-error"><p>${msg}</p>` +
+        `<button type="button" class="btn btn-sm" hx-get="${url}" hx-target="closest .widget-slot" hx-swap="innerHTML">${retry}</button></div>`,
+    ),
+  );
+}
 
 /**
  * One handler serves every registered widget. It resolves the widget by id,
@@ -40,19 +67,12 @@ export async function handleWidget(c: Context): Promise<Response> {
     }
     return c.html(body);
   } catch {
-    const msg = ctx.t("widget.error");
-    const retry = ctx.t("widget.retry");
     // Re-fire the exact same hx-get (path + query) so Retry repeats the
-    // request that failed. The error card swaps into the same bento shell.
-    const query = c.req.url.includes("?") ? "?" + c.req.url.split("?").slice(1).join("?") : "";
-    return c.html(
-      String(
-        raw(
-          `<div class="widget-error"><p>${msg}</p>` +
-            `<button type="button" class="btn btn-sm" hx-get="/_/admin/w/${id}${query}" hx-target="closest .bento-card" hx-swap="innerHTML">${retry}</button></div>`,
-        ),
-      ),
-      200,
-    );
+    // request that failed. Strip the leading "?" so the fragment owns the
+    // delimiter and emits no stray "?" when the request carried no query.
+    const query = c.req.url.includes("?")
+      ? c.req.url.split("?").slice(1).join("?")
+      : "";
+    return c.html(widgetErrorFragment(id, query, ctx.t), 200);
   }
 }
