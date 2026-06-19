@@ -613,27 +613,6 @@ export class ClickRepository {
 
 
   /**
-   * Enriches links with delta_pct for the selected range.
-   * Done in one query per link to keep the dashboard lightweight.
-   */
-  static async attachLinkDeltas(
-    db: D1Database,
-    links: LinkWithSlugs[],
-    range: TimelineRange,
-    now?: number,
-    filters?: ClickFilters,
-  ): Promise<LinkWithSlugs[]> {
-    if (range === "all") return links;
-    const results = await Promise.all(
-      links.map(async (link) => {
-        const { current, previous } = await this.getPeriodClicks(db, range, now, link.id, filters);
-        return { ...link, delta_pct: computeDelta(current, previous) };
-      }),
-    );
-    return results;
-  }
-
-  /**
    * Bulk-enriches links with delta_pct using two grouped queries regardless
    * of list size. Safe for the listings page where per-link queries would
    * exceed D1's subrequest limit.
