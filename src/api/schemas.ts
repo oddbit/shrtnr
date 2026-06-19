@@ -3,7 +3,7 @@
 
 import { z } from "@hono/zod-openapi";
 import type { Hook } from "@hono/zod-openapi";
-import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH, TIMELINE_RANGES } from "../constants";
+import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH, TIMELINE_RANGES, PAGINATED_DIMENSIONS, MAX_BREAKDOWN_LIMIT, BREAKDOWN_PAGE_SIZE } from "../constants";
 import { formatZodError } from "./response";
 
 // ---- Common ----
@@ -194,6 +194,28 @@ export const ClickStatsSchema = z
     num_browsers: z.number().int().nonnegative(),
   })
   .openapi("ClickStats", { description: "Per-link click analytics breakdown." });
+
+export const BreakdownQuerySchema = z
+  .object({
+    dimension: z.enum(PAGINATED_DIMENSIONS)
+      .openapi({ description: "Which panel to page through: countries, referrers (sources), or referrer_hosts (domains)." }),
+    range: z.enum(TIMELINE_RANGES).optional()
+      .openapi({ description: "Time range. Defaults to all-time." }),
+    offset: z.coerce.number().int().nonnegative().optional()
+      .openapi({ description: "Row offset into the ranked list. Defaults to 0." }),
+    limit: z.coerce.number().int().min(1).max(MAX_BREAKDOWN_LIMIT).optional()
+      .openapi({ description: `Page size, 1-${MAX_BREAKDOWN_LIMIT}. Defaults to ${BREAKDOWN_PAGE_SIZE}.` }),
+  })
+  .openapi("BreakdownQuery");
+
+export const BreakdownPageSchema = z
+  .object({
+    items: z.array(NameCountBucketSchema)
+      .openapi({ description: "Rows for this page, ordered by count descending." }),
+    total: z.number().int().nonnegative()
+      .openapi({ description: "Total distinct values across all pages for this dimension and range." }),
+  })
+  .openapi("BreakdownPage", { description: "One page of a paginated analytics breakdown." });
 
 export const TimelineBucketSchema = z
   .object({ label: z.string(), count: z.number().int().nonnegative() })

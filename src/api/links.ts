@@ -21,7 +21,7 @@ import {
 } from "../services/link-management";
 import { listBundlesForLink } from "../services/bundle-management";
 import { handleLinkQr } from "./qr";
-import { handlePublicLinkAnalytics, handlePublicLinkTimeline } from "./analytics";
+import { handlePublicLinkAnalytics, handlePublicLinkBreakdown, handlePublicLinkTimeline } from "./analytics";
 import { fetchPageTitle } from "../title-fetch";
 import { fromServiceResult, json } from "./response";
 import { requireScope } from "./scope";
@@ -29,6 +29,8 @@ import { DEFAULT_QR_SIZE, MAX_QR_SIZE, MIN_QR_SIZE } from "../constants";
 import type { Env, TimelineRange } from "../types";
 import {
   AddSlugBodySchema,
+  BreakdownPageSchema,
+  BreakdownQuerySchema,
   BundleSchema,
   ClickStatsSchema,
   CreateLinkBodySchema,
@@ -440,6 +442,33 @@ linksApp.openapi(linkTimelineRoute, async (c) => {
   const { id } = c.req.valid("param") as { id: number };
   const { range } = c.req.valid("query") as { range?: string };
   return (await handlePublicLinkTimeline(c.env, id, range)) as never;
+}, paramHook);
+
+// ---- GET /:id/breakdown ----
+
+const linkBreakdownRoute = createRoute({
+  method: "get",
+  path: "/{id}/breakdown",
+  tags: ["links", "analytics"],
+  summary: "Page through a link's countries, sources, or domains breakdown",
+  middleware: [requireScope("read")] as const,
+  request: { params: IdParamSchema, query: BreakdownQuerySchema },
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: BreakdownPageSchema } } },
+    400: errorResponses[400],
+    401: errorResponses[401],
+    403: errorResponses[403],
+    404: errorResponses[404],
+    500: errorResponses[500],
+  },
+});
+
+linksApp.openapi(linkBreakdownRoute, async (c) => {
+  const { id } = c.req.valid("param") as { id: number };
+  const { dimension, range, offset, limit } = c.req.valid("query") as {
+    dimension: string; range?: string; offset?: number; limit?: number;
+  };
+  return (await handlePublicLinkBreakdown(c.env, id, { dimension, range, offset, limit })) as never;
 }, paramHook);
 
 // ---- Named exports consumed by admin routes in index.tsx (pending migration in later tasks) ----

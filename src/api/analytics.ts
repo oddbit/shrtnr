@@ -6,10 +6,19 @@ import { DEFAULT_TIMELINE_RANGE, TIMELINE_RANGES } from "../constants";
 import {
   getDashboardStats,
   getLinkAnalytics,
+  getLinkBreakdownPage,
   getLinkTimeline,
 } from "../services/link-management";
+import { getBundleBreakdownPage } from "../services/bundle-management";
 import { resolveClickFilters } from "../services/admin-management";
 import { fromServiceResult } from "./response";
+
+export interface BreakdownParams {
+  dimension: string;
+  range?: string | null;
+  offset?: number;
+  limit?: number;
+}
 
 const VALID_RANGES = new Set<TimelineRange>(TIMELINE_RANGES);
 
@@ -52,4 +61,28 @@ export async function handleAdminLinkTimeline(env: Env, identity: string, linkId
 export async function handlePublicLinkTimeline(env: Env, linkId: number, rangeParam?: string | null): Promise<Response> {
   const range: TimelineRange = parseRange(rangeParam) ?? "all";
   return fromServiceResult(await getLinkTimeline(env, linkId, range));
+}
+
+// ---- Breakdown pagination (countries, referrers, referrer_hosts) ----
+
+export async function handlePublicLinkBreakdown(env: Env, linkId: number, p: BreakdownParams): Promise<Response> {
+  const range = parseRange(p.range) ?? "all";
+  return fromServiceResult(await getLinkBreakdownPage(env, linkId, p.dimension, range, p.offset ?? 0, p.limit ?? 0));
+}
+
+export async function handleAdminLinkBreakdown(env: Env, identity: string, linkId: number, p: BreakdownParams): Promise<Response> {
+  const range = parseRange(p.range) ?? "all";
+  const filters = await resolveClickFilters(env, identity);
+  return fromServiceResult(await getLinkBreakdownPage(env, linkId, p.dimension, range, p.offset ?? 0, p.limit ?? 0, filters));
+}
+
+export async function handlePublicBundleBreakdown(env: Env, bundleId: number, p: BreakdownParams): Promise<Response> {
+  const range = parseRange(p.range) ?? "all";
+  return fromServiceResult(await getBundleBreakdownPage(env, bundleId, p.dimension, range, p.offset ?? 0, p.limit ?? 0));
+}
+
+export async function handleAdminBundleBreakdown(env: Env, identity: string, bundleId: number, p: BreakdownParams): Promise<Response> {
+  const range = parseRange(p.range) ?? "all";
+  const filters = await resolveClickFilters(env, identity);
+  return fromServiceResult(await getBundleBreakdownPage(env, bundleId, p.dimension, range, p.offset ?? 0, p.limit ?? 0, { filters }));
 }

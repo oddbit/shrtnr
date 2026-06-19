@@ -17,6 +17,7 @@ import {
   updateBundle,
 } from "../services/bundle-management";
 import { resolveClickFilters } from "../services/admin-management";
+import { handlePublicBundleBreakdown } from "./analytics";
 import { fromServiceResult, json } from "./response";
 import { createRoute, z } from "@hono/zod-openapi";
 import { createApiSubApp } from "./sub-app";
@@ -24,6 +25,8 @@ import { requireScope } from "./scope";
 import {
   AddBundleLinkBodySchema,
   ArchivedQuerySchema,
+  BreakdownPageSchema,
+  BreakdownQuerySchema,
   BundleSchema,
   BundleWithSummarySchema,
   ClickStatsSchema,
@@ -331,6 +334,32 @@ bundlesApp.openapi(bundleAnalyticsRoute, async (c) => {
   const { range: rawRange } = c.req.valid("query") as { range?: TimelineRange };
   const range = parseRange(rawRange, "all");
   return fromServiceResult(await getBundleAnalytics(c.env, id, range, c.var.auth.identity)) as never;
+}, paramHook);
+
+// ---- GET /:id/breakdown ----
+
+const bundleBreakdownRoute = createRoute({
+  method: "get",
+  path: "/{id}/breakdown",
+  tags: ["bundles"],
+  summary: "Page through a bundle's countries, sources, or domains breakdown",
+  middleware: [requireScope("read")] as const,
+  request: { params: IdParamSchema, query: BreakdownQuerySchema },
+  responses: {
+    200: { description: "OK.", content: { "application/json": { schema: BreakdownPageSchema } } },
+    400: errorResponses[400],
+    401: errorResponses[401],
+    403: errorResponses[403],
+    404: errorResponses[404],
+  },
+});
+
+bundlesApp.openapi(bundleBreakdownRoute, async (c) => {
+  const { id } = c.req.valid("param") as { id: number };
+  const { dimension, range, offset, limit } = c.req.valid("query") as {
+    dimension: string; range?: string; offset?: number; limit?: number;
+  };
+  return (await handlePublicBundleBreakdown(c.env, id, { dimension, range, offset, limit })) as never;
 }, paramHook);
 
 // ---- GET /:id/links (list links in bundle) ----

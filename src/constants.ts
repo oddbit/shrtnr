@@ -8,6 +8,17 @@ export const DEFAULT_SLUG_LENGTH = MIN_SLUG_LENGTH;
 export const TIMELINE_RANGES = ["24h", "7d", "30d", "90d", "1y", "all"] as const;
 export const DEFAULT_TIMELINE_RANGE: (typeof TIMELINE_RANGES)[number] = "30d";
 
+// Analytics panels that support pagination (countries, sources, domains).
+// Browsers, OS, devices and access-method panels stay capped at the top entries.
+// Names match the ClickStats / BundleStats field they page through.
+export const PAGINATED_DIMENSIONS = ["countries", "referrers", "referrer_hosts"] as const;
+export type PaginatedDimension = (typeof PAGINATED_DIMENSIONS)[number];
+
+// Page size shared by the server (SQL LIMIT) and the admin client paginator.
+export const BREAKDOWN_PAGE_SIZE = 10;
+// Upper bound a single breakdown request may fetch.
+export const MAX_BREAKDOWN_LIMIT = 100;
+
 export const THEMES = ["oddbit", "dark", "light"] as const;
 export const DEFAULT_THEME: (typeof THEMES)[number] = "oddbit";
 

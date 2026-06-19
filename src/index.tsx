@@ -64,7 +64,9 @@ import { handleListKeys, handleCreateKey, handleDeleteKey } from "./api/keys";
 import {
   handleDashboardStats as handleDashboardStatsApi,
   handleAdminLinkAnalytics,
+  handleAdminLinkBreakdown,
   handleAdminLinkTimeline,
+  handleAdminBundleBreakdown,
 } from "./api/analytics";
 import {
   handleAddLinkToBundle,
@@ -393,6 +395,16 @@ app.get("/_/admin/api/links/:id/timeline", (c) => {
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
   return handleAdminLinkTimeline(c.env, c.var.identity, id, c.req.query("range"));
 });
+app.get("/_/admin/api/links/:id/breakdown", (c) => {
+  const id = parseInt(c.req.param("id"), 10);
+  if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
+  return handleAdminLinkBreakdown(c.env, c.var.identity, id, {
+    dimension: c.req.query("dimension") ?? "",
+    range: c.req.query("range"),
+    offset: parseInt(c.req.query("offset") ?? "0", 10),
+    limit: parseInt(c.req.query("limit") ?? "0", 10),
+  });
+});
 app.post("/_/admin/api/links/:id/disable", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
@@ -481,6 +493,16 @@ app.get("/_/admin/api/bundles/:id/analytics", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
   return handleAdminBundleAnalytics(c.env, id, c.req.query("range"), c.var.identity);
+});
+app.get("/_/admin/api/bundles/:id/breakdown", (c) => {
+  const id = parseInt(c.req.param("id"), 10);
+  if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
+  return handleAdminBundleBreakdown(c.env, c.var.identity, id, {
+    dimension: c.req.query("dimension") ?? "",
+    range: c.req.query("range"),
+    offset: parseInt(c.req.query("offset") ?? "0", 10),
+    limit: parseInt(c.req.query("limit") ?? "0", 10),
+  });
 });
 app.get("/_/admin/api/bundles/:id/links", (c) => {
   const id = parseInt(c.req.param("id"), 10);

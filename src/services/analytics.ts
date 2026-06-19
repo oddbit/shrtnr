@@ -6,8 +6,28 @@ import type { BreakdownDimension } from "../db/click-repository";
 import { Env, TimelineRange } from "../types";
 import { ServiceResult, ok, fail } from "./result";
 import { resolveClickFilters } from "./admin-management";
+import { BREAKDOWN_PAGE_SIZE, MAX_BREAKDOWN_LIMIT, PAGINATED_DIMENSIONS, type PaginatedDimension } from "../constants";
 
 export type { BreakdownDimension };
+
+const PAGINATED_SET = new Set<string>(PAGINATED_DIMENSIONS);
+
+/** Narrow a raw query value to a paginated panel dimension, or null. */
+export function parsePaginatedDimension(value: string | null | undefined): PaginatedDimension | null {
+  return value && PAGINATED_SET.has(value) ? (value as PaginatedDimension) : null;
+}
+
+/** Clamp a requested page size into [1, MAX_BREAKDOWN_LIMIT], default page size. */
+export function clampBreakdownLimit(limit: number | undefined): number {
+  if (!Number.isFinite(limit as number) || !limit || limit < 1) return BREAKDOWN_PAGE_SIZE;
+  return Math.min(Math.floor(limit), MAX_BREAKDOWN_LIMIT);
+}
+
+/** Clamp a requested offset to a non-negative integer. */
+export function clampBreakdownOffset(offset: number | undefined): number {
+  if (!Number.isFinite(offset as number) || !offset || offset < 0) return 0;
+  return Math.floor(offset);
+}
 
 export async function getTrendingLinks(
   env: Env,

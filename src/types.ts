@@ -104,6 +104,14 @@ export interface ClickStats {
   num_browsers: number;
 }
 
+/** One page of a paginated analytics breakdown (countries, sources, domains). */
+export interface BreakdownPage {
+  /** Rows for the requested page, ordered by count descending. */
+  items: { name: string; count: number }[];
+  /** Total distinct values across all pages for this dimension and range. */
+  total: number;
+}
+
 export type TimelineRange = (typeof TIMELINE_RANGES)[number];
 
 export interface TimelineBucket {
