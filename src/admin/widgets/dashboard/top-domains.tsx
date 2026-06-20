@@ -20,8 +20,8 @@ interface TopDomainsData {
  * so the panel runs a single grouped query that stays constant as the click
  * table grows. With a five-row cap that count tracks the page exactly until a
  * sixth distinct host appears, at which point it under-reports by design.
- * Markup mirrors the top-domains card in src/pages/dashboard.tsx and emits
- * inner content only; the htmx placeholder owns the surrounding bento-card.
+ * Emits the top-domains panel's inner content only; the htmx placeholder owns
+ * the surrounding bento-card.
  */
 export const topDomainsWidget: AdminWidget<{ range: TimelineRange }, TopDomainsData> = {
   id: "dashboard.top-domains",

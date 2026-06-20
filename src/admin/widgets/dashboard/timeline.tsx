@@ -15,7 +15,8 @@ interface TimelineData {
  * Timeline card widget: renders the dashboard "clicks over time" chart for the
  * selected range. The loader pulls the single range-bucketed sparkline series
  * from ClickRepository.getSparkline, so the query count stays constant as the
- * link table grows. Markup mirrors the timeline card in src/pages/dashboard.tsx.
+ * link table grows. Renders the timeline card's inner content only; the htmx
+ * placeholder owns the surrounding bento-card.
  */
 export const timelineWidget: AdminWidget<{ range: TimelineRange }, TimelineData> = {
   id: "dashboard.timeline",

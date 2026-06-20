@@ -17,8 +17,8 @@ interface TopLinksData {
  * single grouped query, so the query count stays constant as the click table
  * grows. getTrendingLinks does not return a slug, so each row names the link by
  * label || url rather than the primary slug shown on the full dashboard page.
- * Markup mirrors the most-clicked card in src/pages/dashboard.tsx and emits
- * inner content only; the htmx placeholder owns the surrounding bento-card.
+ * Emits the most-clicked panel's inner content only; the htmx placeholder owns
+ * the surrounding bento-card.
  */
 export const topLinksWidget: AdminWidget<{ range: TimelineRange }, TopLinksData> = {
   id: "dashboard.top-links",

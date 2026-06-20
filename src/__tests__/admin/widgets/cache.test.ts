@@ -1,3 +1,5 @@
+// Copyright 2026 Oddbit (https://oddbit.id)
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect, beforeEach } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../../setup";

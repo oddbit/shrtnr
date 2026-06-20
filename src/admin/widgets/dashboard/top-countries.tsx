@@ -18,9 +18,8 @@ interface TopCountriesData {
  * Top-countries panel widget: renders the dashboard country breakdown for the
  * selected range. The loader pulls the top five origins and the distinct
  * country count in two grouped queries, so the query count stays constant as
- * the click table grows. Markup mirrors the top-countries card in
- * src/pages/dashboard.tsx and emits inner content only; the htmx placeholder
- * owns the surrounding bento-card shell.
+ * the click table grows. Emits the top-countries panel's inner content only;
+ * the htmx placeholder owns the surrounding bento-card shell.
  */
 export const topCountriesWidget: AdminWidget<{ range: TimelineRange }, TopCountriesData> = {
   id: "dashboard.top-countries",

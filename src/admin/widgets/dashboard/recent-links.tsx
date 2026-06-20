@@ -25,9 +25,8 @@ function primarySlug(link: LinkWithSlugs): string {
  * showing the primary slug-chip (with the copy onclick), destination url, and
  * total clicks. The loader uses LinkRepository.recent, a bounded two-query
  * fetch, so the query count stays constant as the catalog grows rather than
- * loading the whole table the way list() does. Markup mirrors the recent-links
- * card in src/pages/dashboard.tsx and emits inner content only; the htmx
- * placeholder owns the surrounding bento-card.
+ * loading the whole table the way list() does. Emits the recent-links panel's
+ * inner content only; the htmx placeholder owns the surrounding bento-card.
  */
 export const recentLinksWidget: AdminWidget<{ range: TimelineRange }, RecentLinksData> = {
   id: "dashboard.recent-links",
