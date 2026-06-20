@@ -18,6 +18,13 @@ const ctx: WidgetCtx = {
 };
 
 describe("dashboard.recent-links widget", () => {
+  it("does not vary its cache by range (the loader ignores range)", () => {
+    // The loader always returns the five newest links regardless of range, so
+    // the cache must not fragment per range (one shared entry, no re-query on
+    // range switch).
+    expect(recentLinksWidget.cache?.varyByRange).toBe(false);
+  });
+
   it("renders the five most recent links as recent-row anchors", async () => {
     // Seed seven links with distinct, increasing created_at so "most recent"
     // is unambiguous. create() stamps all rows in the same wall-clock second,

@@ -32,7 +32,9 @@ function primarySlug(link: LinkWithSlugs): string {
 export const recentLinksWidget: AdminWidget<{ range: TimelineRange }, RecentLinksData> = {
   id: "dashboard.recent-links",
   shape: "list",
-  cache: { ttl: 60 },
+  // The loader ignores range (always the five newest links), so do not vary
+  // the cache by range: one shared entry, no re-query when the user switches.
+  cache: { ttl: 60, varyByRange: false },
   params: parseRangeParam,
   async load(env: Env, ctx, { range }): Promise<RecentLinksData> {
     const links = await LinkRepository.recent(env.DB, 5, { filters: ctx.filters });
