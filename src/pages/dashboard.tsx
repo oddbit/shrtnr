@@ -40,7 +40,7 @@ export const DashboardPage: FC<Props> = ({ t, range }) => {
 
       <Widget id="dashboard.kpis" range={range} poll />
 
-      <div class="bento" id="dashboard-bento">
+      <div class="bento">
         <Widget id="dashboard.timeline" range={range} span={2} poll />
         <Widget id="dashboard.top-countries" range={range} />
         <Widget id="dashboard.top-links" range={range} span={2} />
