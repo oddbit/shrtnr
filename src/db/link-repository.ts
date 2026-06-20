@@ -47,7 +47,15 @@ export class LinkRepository {
    * need a small recent window without paying to load the whole catalog.
    */
   static async recent(db: D1Database, limit: number, opts?: LinkRepoOptions): Promise<LinkWithSlugs[]> {
-    const links = await db.prepare("SELECT * FROM links ORDER BY created_at DESC LIMIT ?").bind(limit).all<Link>();
+    // SQLite treats a negative LIMIT as "no limit", so a non-positive value
+    // must short-circuit rather than reach SQL and return the whole table.
+    if (limit <= 0) return [];
+    // created_at is second-granularity, so tie-break on id to keep the recent
+    // window stable across calls when several links share a timestamp.
+    const links = await db
+      .prepare("SELECT * FROM links ORDER BY created_at DESC, id DESC LIMIT ?")
+      .bind(limit)
+      .all<Link>();
     const rows = links.results ?? [];
     if (rows.length === 0) return [];
 

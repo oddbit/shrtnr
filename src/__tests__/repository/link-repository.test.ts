@@ -453,3 +453,27 @@ describe("LinkRepository click_count options", () => {
     expect(await LinkRepository.exists(env.DB, 999999)).toBe(false);
   });
 });
+
+describe("LinkRepository.recent", () => {
+  it("returns an empty array for a non-positive limit", async () => {
+    await LinkRepository.create(env.DB, { url: "https://example.com", slug: "rg1" });
+    // A negative LIMIT means "no limit" in SQLite, so an unguarded negative
+    // value would return every row. Both 0 and negative must yield nothing.
+    expect(await LinkRepository.recent(env.DB, 0)).toEqual([]);
+    expect(await LinkRepository.recent(env.DB, -1)).toEqual([]);
+  });
+
+  it("breaks created_at ties deterministically by id descending", async () => {
+    const a = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "rta" });
+    const b = await LinkRepository.create(env.DB, { url: "https://b.com", slug: "rtb" });
+    const c = await LinkRepository.create(env.DB, { url: "https://c.com", slug: "rtc" });
+    // Force one shared second-granularity created_at so ordering must fall back
+    // to id to stay stable across calls.
+    await env.DB
+      .prepare("UPDATE links SET created_at = ? WHERE id IN (?, ?, ?)")
+      .bind(1700000000, a.id, b.id, c.id)
+      .run();
+    const top2 = await LinkRepository.recent(env.DB, 2);
+    expect(top2.map((l) => l.id)).toEqual([c.id, b.id]);
+  });
+});
