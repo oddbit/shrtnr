@@ -29,6 +29,23 @@ describe("widget cache", () => {
     expect(k1).not.toBe(k2);
   });
 
+  it("varies the key by language and filter settings (render-determining inputs)", () => {
+    const base = cacheKey("w", ctx, { range: "30d" }, { ttl: 1 }, 0);
+    const otherLang = cacheKey("w", { ...ctx, lang: "sv" }, { range: "30d" }, { ttl: 1 }, 0);
+    const otherFilters = cacheKey(
+      "w",
+      { ...ctx, filters: { excludeBots: false, excludeSelfReferrers: true } },
+      { range: "30d" },
+      { ttl: 1 },
+      0,
+    );
+    // Fragments are rendered in the viewer's language and with their filter
+    // settings, so two viewers (or one viewer after changing either) must not
+    // share a cache entry.
+    expect(base).not.toBe(otherLang);
+    expect(base).not.toBe(otherFilters);
+  });
+
   it("serves the produced value on miss and the cached value on hit", async () => {
     let calls = 0;
     const produce = async () => { calls++; return `<p>${calls}</p>`; };

@@ -20,7 +20,14 @@ export function cacheKey(
   const range = encodeURIComponent(policy?.varyByRange === false ? "" : (p.range ?? ""));
   const entity = encodeURIComponent(policy?.varyByEntity ? String(p.id ?? "") : "");
   const u = encodeURIComponent(ctx.identity);
-  return `https://widget.cache/${encodeURIComponent(id)}?u=${u}&r=${range}&e=${entity}&v=${version}`;
+  // The rendered fragment depends on the viewer's language (translations +
+  // locale number formatting) and their click filters, and lang can come from
+  // a cookie that identity alone does not capture. Key on both so two viewers
+  // never share a fragment, and so a settings change lands on a fresh key
+  // without waiting on version invalidation.
+  const l = encodeURIComponent(ctx.lang);
+  const f = `${ctx.filters.excludeBots ? 1 : 0}${ctx.filters.excludeSelfReferrers ? 1 : 0}`;
+  return `https://widget.cache/${encodeURIComponent(id)}?u=${u}&l=${l}&f=${f}&r=${range}&e=${entity}&v=${version}`;
 }
 
 export async function getCacheVersion(env: Env, identity: string): Promise<number> {
