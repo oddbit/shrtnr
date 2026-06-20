@@ -44,6 +44,35 @@ describe("buildWidgetCtx", () => {
     expect(body.identity).toBe(TEST_IDENTITY);
   });
 
+  it("reads settings only once per request (no redundant filters lookup)", async () => {
+    let settingsReads = 0;
+    const countingDb = new Proxy(env.DB, {
+      get(target, prop, receiver) {
+        if (prop === "prepare") {
+          return (sql: string) => {
+            if (/from settings/i.test(sql)) settingsReads++;
+            return (target as unknown as D1Database).prepare(sql);
+          };
+        }
+        const v = Reflect.get(target, prop, receiver);
+        return typeof v === "function" ? v.bind(target) : v;
+      },
+    });
+    const app = new Hono<HonoEnv>();
+    app.use("*", async (c, next) => {
+      c.set("identity", TEST_IDENTITY);
+      await next();
+    });
+    app.get("/probe", async (c) => {
+      await buildWidgetCtx(c);
+      return c.json({ ok: true });
+    });
+    await app.request("/probe", undefined, { ...env, DB: countingDb } as never);
+    // getAppSettings issues 6 settings reads. A redundant resolveClickFilters
+    // call would double that to 12; building filters from one fetch keeps it 6.
+    expect(settingsReads).toBe(6);
+  });
+
   it("falls back to the default language when no setting or cookie is present", async () => {
     const res = await makeApp()("/probe");
     const body = (await res.json()) as { lang: string };
