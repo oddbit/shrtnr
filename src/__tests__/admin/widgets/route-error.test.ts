@@ -26,4 +26,18 @@ describe("widgetErrorFragment", () => {
     expect(html).toContain('hx-get="/_/admin/w/dashboard.kpis"');
     expect(html).not.toContain("?");
   });
+
+  it("escapes the query so a crafted value cannot break out of the hx-get attribute", () => {
+    const html = widgetErrorFragment(
+      "dashboard.kpis",
+      'range=30d"><script>alert(1)</script>',
+      echo,
+    );
+    // The breakout sequence must never appear verbatim in the markup.
+    expect(html).not.toContain('"><script>');
+    expect(html).not.toContain("<script>");
+    // The dangerous characters are entity-escaped instead.
+    expect(html).toContain("&quot;");
+    expect(html).toContain("&lt;script&gt;");
+  });
 });

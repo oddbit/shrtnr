@@ -3,6 +3,7 @@
 import type { Context } from "hono";
 import { raw } from "hono/html";
 import type { TranslateFn } from "../../i18n";
+import { escHtml } from "../../escape";
 import { getWidget } from "./registry";
 import { buildWidgetCtx } from "./ctx";
 import { cacheKey, getCacheVersion, serveCached } from "./cache";
@@ -22,9 +23,14 @@ export function widgetErrorFragment(
   query: string,
   t: TranslateFn,
 ): string {
-  const msg = t("widget.error");
-  const retry = t("widget.retry");
-  const url = `/_/admin/w/${id}${query ? `?${query}` : ""}`;
+  // Everything interpolated into this raw() string must be escaped: `query`
+  // comes straight from the request URL and `id`/translations flow in too, so
+  // an unescaped `"`, `<`, `>` or `&` would break out of the attribute or the
+  // element content (reflected XSS on the error path). escHtml covers the
+  // double-quoted attribute and text contexts used here.
+  const msg = escHtml(t("widget.error"));
+  const retry = escHtml(t("widget.retry"));
+  const url = escHtml(`/_/admin/w/${id}${query ? `?${query}` : ""}`);
   return String(
     raw(
       `<div class="widget-error"><p>${msg}</p>` +
