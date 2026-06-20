@@ -17,6 +17,18 @@ describe("widget cache", () => {
     expect(new Set([k1, k2, k3, k4]).size).toBe(4);
   });
 
+  it("encodes dynamic key parts so special characters cannot inject separators or collide", () => {
+    const policy = { ttl: 1, varyByEntity: true };
+    const k1 = cacheKey("dashboard.x", ctx, { id: "a&v=9" }, policy, 0);
+    const k2 = cacheKey("dashboard.x", ctx, { id: "a" }, policy, 0);
+    // A raw entity value would inject a fake "v=" segment and make the key
+    // ambiguous; it must be percent-encoded instead.
+    expect(k1).not.toContain("e=a&v=9");
+    expect(k1).toContain("a%26v%3D9");
+    // Distinct entity ids must produce distinct keys.
+    expect(k1).not.toBe(k2);
+  });
+
   it("serves the produced value on miss and the cached value on hit", async () => {
     let calls = 0;
     const produce = async () => { calls++; return `<p>${calls}</p>`; };

@@ -12,10 +12,15 @@ export function cacheKey(
   policy: CachePolicy | undefined,
   version: number,
 ): string {
-  const range = policy?.varyByRange === false ? "" : (p.range ?? "");
-  const entity = policy?.varyByEntity ? String(p.id ?? "") : "";
+  // Encode every dynamic part. The identity, range and entity are user- or
+  // setting-derived; without encoding a value containing `&`, `=` or `%`
+  // could inject a fake segment and make two different inputs collide on one
+  // key (incorrect fragment reuse). Validated ranges encode to themselves, so
+  // this is a no-op for current widgets and pure hardening for future ones.
+  const range = encodeURIComponent(policy?.varyByRange === false ? "" : (p.range ?? ""));
+  const entity = encodeURIComponent(policy?.varyByEntity ? String(p.id ?? "") : "");
   const u = encodeURIComponent(ctx.identity);
-  return `https://widget.cache/${id}?u=${u}&r=${range}&e=${entity}&v=${version}`;
+  return `https://widget.cache/${encodeURIComponent(id)}?u=${u}&r=${range}&e=${entity}&v=${version}`;
 }
 
 export async function getCacheVersion(env: Env, identity: string): Promise<number> {
