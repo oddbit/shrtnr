@@ -22,7 +22,9 @@ function req(slug: string): Request {
 // turns the case into expires_at < now, which the pre-fix strict-`<` code
 // also 404s, making the regression test pass against the bug it guards.
 async function alignToSecondStart(): Promise<void> {
-  await new Promise((r) => setTimeout(r, 1000 - (Date.now() % 1000)));
+  // The outer % 1000 collapses the delay to 0 when Date.now() already sits on a
+  // boundary, sidestepping a needless full-second sleep (1000 - 0 = 1000).
+  await new Promise((r) => setTimeout(r, (1000 - (Date.now() % 1000)) % 1000));
 }
 
 beforeAll(applyMigrations);
