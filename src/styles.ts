@@ -1287,9 +1287,11 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   animation: shimmer 1.2s infinite;
 }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
-/* Re-fetch overlay: htmx adds .htmx-request to a card during an in-flight swap. */
-.bento-card.htmx-request { position: relative; }
-.bento-card.htmx-request::after {
+/* Re-fetch overlay: htmx adds .htmx-request to a widget slot during an in-flight
+   swap. Keyed on .widget-slot (the marker every placeholder shape carries) so the
+   overlay shows for the kpi-strip too, not just bento-card shapes. */
+.widget-slot.htmx-request { position: relative; }
+.widget-slot.htmx-request::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .06), transparent);
   background-size: 200% 100%; animation: shimmer 1.2s infinite; pointer-events: none;
@@ -1301,6 +1303,6 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 .skel-table { min-height: 280px; }
 .skel-hero { min-height: 160px; }
 @media (prefers-reduced-motion: reduce) {
-  .shimmer::after, .bento-card.htmx-request::after { animation: none; }
+  .shimmer::after, .widget-slot.htmx-request::after { animation: none; }
 }
 `;
