@@ -13,6 +13,20 @@ function req(slug: string): Request {
   return new Request(`https://shrtnr.test/${slug}`, { redirect: "manual" });
 }
 
+// Park execution just after a fresh Unix-second boundary so the create/fetch
+// that follow land inside the same second as the captured timestamp. The
+// redirect handler computes its own Math.floor(Date.now() / 1000) in the
+// Worker isolate, a clock the test process can not freeze, so the boundary
+// case (expires_at === handler's now) is only reliably exercised when both
+// readings fall in the same second. Without the alignment a mid-test tick
+// turns the case into expires_at < now, which the pre-fix strict-`<` code
+// also 404s, making the regression test pass against the bug it guards.
+async function alignToSecondStart(): Promise<void> {
+  // The outer % 1000 collapses the delay to 0 when Date.now() already sits on a
+  // boundary, sidestepping a needless full-second sleep (1000 - 0 = 1000).
+  await new Promise((r) => setTimeout(r, (1000 - (Date.now() % 1000)) % 1000));
+}
+
 beforeAll(applyMigrations);
 beforeEach(resetData);
 
@@ -67,6 +81,28 @@ describe("expires_at flow", () => {
       expect(res.status).toBe(301);
       expect(res.headers.get("Location")).toBe("https://example.com/expflow");
     }
+  });
+});
+
+describe("expires_at = now boundary", () => {
+  it("treats expires_at equal to the current second as expired (disable takes effect immediately)", async () => {
+    // LinkRepository.disable() sets expires_at = Math.floor(Date.now() / 1000).
+    // The redirect handler must treat that as expired rather than waiting an
+    // extra second before the strict-less-than check turns true.
+    const slug = "exact-now";
+    // Capture the second at the top of a fresh tick, then create + evict + fetch
+    // inside that same second so the handler reads expires_at === its own now.
+    await alignToSecondStart();
+    const nowSec = Math.floor(Date.now() / 1000);
+    await LinkRepository.create(env.DB, {
+      url: "https://example.com/exact-now",
+      slug,
+      expiresAt: nowSec,
+      createdBy: DEV_IDENTITY,
+    });
+    await SlugCache.delete(env.SLUG_KV, slug);
+    const res = await SELF.fetch(req(slug));
+    expect(res.status).toBe(404);
   });
 });
 
