@@ -1343,7 +1343,7 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   background-size: 200% 100%; animation: shimmer 1.2s infinite; pointer-events: none;
 }
 /* Reserved heights so a loading widget never collapses its row. */
-.skel-kpi { min-height: 96px; }
+.skel-kpi { min-height: 144px; }
 .skel-chart { min-height: 220px; }
 .skel-list { min-height: 240px; }
 .skel-table { min-height: 280px; }
