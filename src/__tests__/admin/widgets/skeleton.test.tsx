@@ -12,7 +12,6 @@ describe("Skeleton", () => {
     const out = html(Skeleton({ shape: "chart" }));
     expect(out).toContain("widget-skeleton");
     expect(out).toContain("shimmer");
-    expect(out).toContain('aria-busy="true"');
   });
 
   it("renders multiple rows for the list shape", () => {

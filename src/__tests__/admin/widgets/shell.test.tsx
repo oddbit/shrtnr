@@ -12,6 +12,7 @@ describe("Widget placeholder", () => {
     expect(out).toContain("skel-chart"); // timeline is a chart shape
     expect(out).toContain("bento-card"); // non-kpi shapes use the bento-card container
     expect(out).toContain("widget-slot"); // common marker the retry button targets
+    expect(out).toContain('aria-busy="true"'); // busy-state lives on the persistent slot
   });
 
   it("uses the kpi-strip container and adds the poll trigger for the kpi shape", () => {

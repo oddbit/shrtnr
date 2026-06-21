@@ -54,6 +54,7 @@ export const Widget: FC<{
       hx-target="this"
       hx-swap="innerHTML"
       hx-indicator="this"
+      aria-busy="true"
     >
       <Skeleton shape={shape} />
     </div>

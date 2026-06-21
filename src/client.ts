@@ -1556,5 +1556,17 @@ document.addEventListener('click', function(ev) {
   else if (action === 'unarchive') unarchiveBundle(id);
   else if (action === 'delete') deleteBundleAction(id, name);
 });
+
+// Toggle aria-busy on the persistent widget slot across htmx swaps so screen
+// readers get a clean true->false "done loading" transition. The skeleton node
+// no longer carries aria-busy (htmx removes it on swap, which is not announced).
+document.body.addEventListener('htmx:beforeRequest', function(ev) {
+  var slot = ev.target && ev.target.closest ? ev.target.closest('.widget-slot') : null;
+  if (slot) slot.setAttribute('aria-busy', 'true');
+});
+document.body.addEventListener('htmx:afterSwap', function(ev) {
+  var slot = ev.target && ev.target.closest ? ev.target.closest('.widget-slot') : null;
+  if (slot) slot.setAttribute('aria-busy', 'false');
+});
 `;
 }
