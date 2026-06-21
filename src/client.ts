@@ -1560,14 +1560,22 @@ document.addEventListener('click', function(ev) {
 // Toggle aria-busy on the persistent widget slot across htmx swaps so screen
 // readers get a clean true->false "done loading" transition. The skeleton node
 // no longer carries aria-busy (htmx removes it on swap, which is not announced).
+function widgetSlotFromEvent(ev) {
+  return ev.target && ev.target.closest ? ev.target.closest('.widget-slot') : null;
+}
 document.body.addEventListener('htmx:beforeRequest', function(ev) {
-  var slot = ev.target && ev.target.closest ? ev.target.closest('.widget-slot') : null;
+  var slot = widgetSlotFromEvent(ev);
   if (slot) slot.setAttribute('aria-busy', 'true');
 });
-document.body.addEventListener('htmx:afterSwap', function(ev) {
-  var slot = ev.target && ev.target.closest ? ev.target.closest('.widget-slot') : null;
+// Clear on swap (success) and on request end. htmx:afterRequest fires for every
+// request including errors, timeouts, and aborts that never swap, so the slot
+// never stays stuck announcing busy after a failed load.
+function clearWidgetBusy(ev) {
+  var slot = widgetSlotFromEvent(ev);
   if (slot) slot.setAttribute('aria-busy', 'false');
-});
+}
+document.body.addEventListener('htmx:afterSwap', clearWidgetBusy);
+document.body.addEventListener('htmx:afterRequest', clearWidgetBusy);
 
 // Copy a link's short URL when any element tagged data-copy-slug is clicked.
 // Reading from dataset avoids interpolating the slug into an inline onclick
