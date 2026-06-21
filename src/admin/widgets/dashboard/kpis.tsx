@@ -66,46 +66,34 @@ export const kpisWidget: AdminWidget<{ range: TimelineRange }, KpiData> = {
     return (
       <>
         <KpiCard
-          id="dash-kpi-links"
           icon="link"
           label={t("dashboard.totalLinks")}
           value={fmtNumber(d.total_links, lang)}
-          valueId="dash-total-links"
           deltaPct={d.new_links_delta}
-          deltaId="dash-links-delta"
           lang={lang}
           sparkline={d.timeline_links}
         />
         <KpiCard
-          id="dash-kpi-clicked-links"
           icon="ads_click"
           label={t("dashboard.clickedLinks")}
           value={fmtNumber(d.clicked_links, lang)}
-          valueId="dash-clicked-links"
           deltaPct={d.clicked_links_delta}
-          deltaId="dash-clicked-links-delta"
           lang={lang}
           sparkline={d.timeline_clicked_links}
         />
         <KpiCard
-          id="dash-kpi-clicks"
           icon="mouse"
           label={t("dashboard.totalClicks")}
           value={fmtNumber(d.total_clicks, lang)}
-          valueId="dash-total-clicks"
           deltaPct={d.total_clicks_delta}
-          deltaId="dash-clicks-delta"
           lang={lang}
           sparkline={d.timeline}
         />
         <KpiCard
-          id="dash-kpi-clicks-per-day"
           icon="speed"
           label={t("dashboard.clicksPerDay")}
           value={fmtNumber(d.clicks_per_day, lang)}
-          valueId="dash-clicks-per-day"
           deltaPct={d.clicks_per_day_delta}
-          deltaId="dash-clicks-per-day-delta"
           lang={lang}
           sparkline={d.timeline}
         />
