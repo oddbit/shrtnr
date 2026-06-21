@@ -7,7 +7,7 @@ describe("Widget placeholder", () => {
   it("emits hx-get with the range and a chart-shape skeleton", () => {
     const out = String(Widget({ id: "dashboard.timeline", range: "30d" }));
     expect(out).toContain('hx-get="/_/admin/w/dashboard.timeline?range=30d"');
-    expect(out).toContain("range:changed from:body");
+    expect(out).not.toContain("range:changed");
     expect(out).toContain("widget-skeleton");
     expect(out).toContain("skel-chart"); // timeline is a chart shape
     expect(out).toContain("bento-card"); // non-kpi shapes use the bento-card container

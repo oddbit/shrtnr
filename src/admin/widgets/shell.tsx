@@ -15,9 +15,9 @@ import { Skeleton } from "./skeleton";
  * not a bento-card, so the kpi shape renders the strip wrapper while every other
  * shape renders a bento-card (with an optional span-<n> grid hint).
  *
- * The hx-trigger fires on load and on the body-level range:changed event. Range
- * value propagation (hx-vals) is wired separately; this shell emits only the
- * static trigger. A poll prop adds a 30s refresh for live shapes.
+ * The hx-trigger fires on load. A poll prop adds a 30s refresh for live shapes.
+ * Range switching reloads the whole dashboard via RangePicker, so no body-level
+ * range event is wired here.
  */
 export const Widget: FC<{
   id: string;
@@ -35,9 +35,7 @@ export const Widget: FC<{
   const query = qs.toString();
   const url = `/_/admin/w/${id}${query ? `?${query}` : ""}`;
 
-  const triggers = ["load", "range:changed from:body", poll ? "every 30s" : ""]
-    .filter(Boolean)
-    .join(", ");
+  const triggers = ["load", poll ? "every 30s" : ""].filter(Boolean).join(", ");
 
   // Every placeholder carries widget-slot so the error card's Retry button can
   // target "closest .widget-slot" regardless of shape. The kpi strip is a flex
