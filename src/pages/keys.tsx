@@ -35,9 +35,13 @@ type Props = {
 };
 
 export const KeysPage: FC<Props> = ({ keys, t, lang, origin }) => {
-  // Split the banner copy around the {header} token so "Authorization" renders
-  // as an inline code element while word order stays translator-controlled.
-  const [bannerBefore, bannerAfter = ""] = t("keys.authBanner").split("{header}");
+  // Render "Authorization" as inline code by splitting the banner copy around
+  // the {header} token, keeping word order translator-controlled. Only split
+  // when the token is present so a locale that drops it still reads cleanly.
+  const authBanner = t("keys.authBanner");
+  const authParts = authBanner.includes("{header}")
+    ? authBanner.split("{header}")
+    : null;
   const curl = `curl ${origin}/_/api/links \\\n  -H "Authorization: Bearer sk_..."`;
 
   return (
@@ -56,9 +60,15 @@ export const KeysPage: FC<Props> = ({ keys, t, lang, origin }) => {
         <span class="auth-banner-text">
           <span class="icon">info</span>
           <span>
-            {bannerBefore}
-            <code>Authorization</code>
-            {bannerAfter}
+            {authParts ? (
+              <>
+                {authParts[0]}
+                <code>Authorization</code>
+                {authParts.slice(1).join("{header}")}
+              </>
+            ) : (
+              authBanner
+            )}
           </span>
         </span>
         <a class="auth-banner-link" href="/_/api/docs" target="_blank" rel="noopener">
