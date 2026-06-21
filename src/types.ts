@@ -152,9 +152,9 @@ export interface BundleWithSummary extends Bundle {
   delta_pct?: number;
   sparkline: number[];
   top_links: { slug: string; click_count: number }[];
-  // Admin-card-only extras, absent from the public API surface. Populated
+  // Admin-card-only extra, absent from the public API surface. Populated
   // solely when listBundles is asked for cardExtras (the admin overview).
-  avg_per_day?: number;
+  // (avg/day is derived in the page via formatAvgPerDay, not stored here.)
   clicked_links?: number;
 }
 

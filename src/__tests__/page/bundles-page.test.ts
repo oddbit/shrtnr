@@ -88,6 +88,20 @@ describe("Bundles list card onboarding stats", () => {
     expect(statValues.length).toBe(3);
   });
 
+  it("computes avg/day with the shared formatAvgPerDay helper, matching the detail page", async () => {
+    const a = await LinkRepository.create(env.DB, { url: "https://a.example", slug: "aaa", createdBy: "dev@local" });
+    const bundle = await BundleRepository.create(env.DB, { name: "Demo", createdBy: "dev@local" });
+    await BundleRepository.addLink(env.DB, bundle.id, a.id);
+    await ClickRepository.record(env.DB, a.slugs[0].slug, { isBot: 0 });
+
+    const res = await SELF.fetch(req("/_/admin/bundles?range=7d"));
+    const html = await res.text();
+    // 1 click over the fixed 7-day window is 1/7 ≈ 0.14, formatted to two
+    // decimals by formatAvgPerDay (the same helper the detail page uses), not
+    // rounded to an integer. This is deterministic for a bounded range.
+    expect(html).toContain(">0.14<");
+  });
+
   it("renders a links-with-traffic footer reflecting only links that got clicks", async () => {
     await seedBundleWithTraffic();
     const res = await SELF.fetch(req("/_/admin/bundles?range=all"));

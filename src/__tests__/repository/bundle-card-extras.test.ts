@@ -14,15 +14,14 @@ beforeEach(async () => {
 });
 
 describe("getBundleSummariesBulk card extras", () => {
-  it("omits avg_per_day and clicked_links unless card extras are requested", async () => {
+  it("omits clicked_links unless card extras are requested", async () => {
     const bundle = await BundleRepository.create(env.DB, { name: "B", createdBy: "dev@local" });
     const map = await ClickRepository.getBundleSummariesBulk(env.DB, [bundle.id], undefined, undefined, "all");
     const s = map.get(bundle.id)!;
-    expect(s.avg_per_day).toBeUndefined();
     expect(s.clicked_links).toBeUndefined();
   });
 
-  it("counts only links with traffic and averages clicks per day when requested", async () => {
+  it("counts only the links with traffic when requested", async () => {
     const a = await LinkRepository.create(env.DB, { url: "https://a.example", slug: "aaa", createdBy: "dev@local" });
     const b = await LinkRepository.create(env.DB, { url: "https://b.example", slug: "bbb", createdBy: "dev@local" });
     const bundle = await BundleRepository.create(env.DB, { name: "B", createdBy: "dev@local" });
@@ -47,8 +46,5 @@ describe("getBundleSummariesBulk card extras", () => {
     expect(s.total_clicks).toBe(3);
     // Only link a saw traffic, so 1 of the 2 bundle links is "clicked".
     expect(s.clicked_links).toBe(1);
-    // range "all" with every click at "now" collapses the span to a single
-    // day, so avg/day equals the total.
-    expect(s.avg_per_day).toBe(3);
   });
 });

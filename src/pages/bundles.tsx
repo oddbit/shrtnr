@@ -8,6 +8,7 @@ import { Sparkline } from "../components/sparkline";
 import { Delta } from "../components/delta";
 import { RangePicker } from "../components/range-picker";
 import { fmtNumber } from "../i18n/format";
+import { formatAvgPerDay } from "../services/trends";
 
 type Props = {
   bundles: BundleWithSummary[];
@@ -18,6 +19,9 @@ type Props = {
 };
 
 export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter, range }) => {
+  // Match the bundle detail page: avg/day divides range-scoped clicks by the
+  // window (bounded ranges) or the bundle's lifetime (range "all").
+  const now = Math.floor(Date.now() / 1000);
   const filterLinks = [
     { id: "active", label: t("bundles.filterActive") },
     { id: "archived", label: t("bundles.filterArchived") },
@@ -91,7 +95,7 @@ export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter, range }) => {
                   <div class="bundle-card-stat-label">{t("bundles.links")}</div>
                 </div>
                 <div class="bundle-card-stat">
-                  <div class="bundle-card-stat-value">{fmtNumber(b.avg_per_day ?? 0, lang)}</div>
+                  <div class="bundle-card-stat-value">{formatAvgPerDay(b.total_clicks, range, b.created_at, now)}</div>
                   <div class="bundle-card-stat-label">{t("linkDetail.avgPerDay")}</div>
                 </div>
               </div>

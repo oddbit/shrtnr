@@ -107,7 +107,6 @@ export async function listBundles(
       delta_pct: s?.delta_pct,
       sparkline: s?.sparkline ?? [],
       top_links: s?.top_links ?? [],
-      avg_per_day: s?.avg_per_day,
       clicked_links: s?.clicked_links,
     };
   });
