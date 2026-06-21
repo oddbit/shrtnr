@@ -29,7 +29,7 @@ describe("admin-api write cache invalidation", () => {
     });
     expect(res.ok).toBe(true);
     const after = await getCacheVersion(env as never, IDENTITY);
-    expect(after).toBe(before + 1);
+    expect(after).not.toBe(before); // a fresh token, so old cache keys are abandoned
   });
 
   it("does not bump on a failed write", async () => {
