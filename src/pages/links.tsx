@@ -6,7 +6,6 @@ import type { LinkWithSlugs, TimelineRange } from "../types";
 import type { TranslateFn } from "../i18n";
 import { Delta } from "../components/delta";
 import { RangePicker } from "../components/range-picker";
-import { escHtml } from "../escape";
 import { fmtNumber } from "../i18n/format";
 
 function formatDate(ts: number, lang: string): string {
@@ -229,7 +228,7 @@ export const LinksPage: FC<Props> = ({
                           {mainSlug && (
                             <span
                               class={`col-short-chip no-row-nav${(mainSlug.disabled_at || disabled) ? " slug-chip-disabled" : ""}`}
-                              onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(mainSlug.slug)}')`}
+                              data-copy-slug={mainSlug.slug}
                               title={t("links.clickToCopy")}
                             >
                               <span class="col-short-chip-dot" aria-hidden="true" />

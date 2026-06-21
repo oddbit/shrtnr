@@ -202,13 +202,13 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
           <div class="short-url-row">
             <span
               class={`short-url${isExpired ? " dimmed" : ""}`}
-              onclick={`copyUrl('${escHtml(displaySlug)}')`}
+              data-copy-slug={displaySlug}
             >
               <span class="icon">link</span>{displaySlug}
             </span>
             <button
               class="btn-icon"
-              onclick={`copyUrl('${escHtml(displaySlug)}')`}
+              data-copy-slug={displaySlug}
               title={t("linkDetail.copy")}
             >
               <span class="icon">content_copy</span>
@@ -322,7 +322,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                     <>
                       <button
                         class="btn-icon"
-                        onclick={`copyUrl('${escHtml(s.slug)}')`}
+                        data-copy-slug={s.slug}
                         title={t("linkDetail.copy")}
                       >
                         <span class="icon icon-md">content_copy</span>

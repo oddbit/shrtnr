@@ -1568,5 +1568,17 @@ document.body.addEventListener('htmx:afterSwap', function(ev) {
   var slot = ev.target && ev.target.closest ? ev.target.closest('.widget-slot') : null;
   if (slot) slot.setAttribute('aria-busy', 'false');
 });
+
+// Copy a link's short URL when any element tagged data-copy-slug is clicked.
+// Reading from dataset avoids interpolating the slug into an inline onclick
+// JS-string (insufficiently escaped per src/escape.ts). preventDefault +
+// stopPropagation keep a chip click inside a row anchor from also navigating.
+document.addEventListener('click', function(ev) {
+  var el = ev.target && ev.target.closest ? ev.target.closest('[data-copy-slug]') : null;
+  if (!el) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  copyUrl(el.getAttribute('data-copy-slug'));
+});
 `;
 }
