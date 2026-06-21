@@ -8,6 +8,7 @@ import { SUPPORTED_LANGUAGES } from "../i18n";
 import { fmtNumber } from "../i18n/format";
 import { RANDOM_CHARSET } from "../slugs";
 import { MIN_SLUG_LENGTH } from "../constants";
+import { SdkList } from "./sdk-list";
 
 const RANGE_OPTIONS: TimelineRange[] = ["24h", "7d", "30d", "90d", "1y", "all"];
 
@@ -206,44 +207,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
               <span class="integration-card-title">{t("settings.sdksTitle")}</span>
             </div>
             <div class="integration-card-desc">{t("settings.sdksDesc")}</div>
-            <ul class="integration-sdk-list">
-              <li>
-                <a
-                  href="https://oddb.it/shrtnr-npm-app"
-                  target="_blank"
-                  rel="noopener"
-                  class="integration-sdk-link"
-                >
-                  <span class="integration-sdk-lang">{t("settings.sdkTsLang")}</span>
-                  <span class="integration-sdk-pkg">{t("settings.sdkTsPkg")}</span>
-                  <span class="icon">open_in_new</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://oddb.it/shrtnr-pypi-app"
-                  target="_blank"
-                  rel="noopener"
-                  class="integration-sdk-link"
-                >
-                  <span class="integration-sdk-lang">{t("settings.sdkPythonLang")}</span>
-                  <span class="integration-sdk-pkg">{t("settings.sdkPythonPkg")}</span>
-                  <span class="icon">open_in_new</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://oddb.it/shrtnr-pub-app"
-                  target="_blank"
-                  rel="noopener"
-                  class="integration-sdk-link"
-                >
-                  <span class="integration-sdk-lang">{t("settings.sdkDartLang")}</span>
-                  <span class="integration-sdk-pkg">{t("settings.sdkDartPkg")}</span>
-                  <span class="icon">open_in_new</span>
-                </a>
-              </li>
-            </ul>
+            <SdkList t={t} />
           </div>
           <a
             href="/_/api/docs#tag/links"

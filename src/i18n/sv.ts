@@ -210,10 +210,12 @@ const sv: Translations = {
   // API Keys
   "keys.title": "API-nycklar",
   "keys.subtitle": "Hantera programmatisk åtkomst till förkortnings-API:et",
-  "keys.docsNote": "Använd API-nycklar för att autentisera API-förfrågningar:",
   "keys.docsLink": "API-dokumentation",
-  "keys.count": "{count} nyckel",
-  "keys.countPlural": "{count} nycklar",
+  "keys.authBanner": "Autentisera förfrågningar med en nyckel i {header}-huvudet.",
+  "keys.quickStartTitle": "Kom igång",
+  "keys.quickStartHint": "Lista dina länkar med en Bearer-nyckel.",
+  "keys.sdkCardTitle": "Eller använd ett SDK",
+  "keys.copyCommand": "Kopiera kommando",
   "keys.newKey": "Ny nyckel",
   "keys.empty":
     "Inga API-nycklar ännu. Använd knappen + Ny nyckel ovan för att aktivera programmatisk åtkomst.",
@@ -346,6 +348,7 @@ const sv: Translations = {
   "client.copy": "Kopiera",
   "client.done": "Klar",
   "client.apiKeyCopied": "API-nyckel kopierad",
+  "client.codeCopied": "Kommando kopierat",
   "client.confirmDeleteKey":
     'Ta bort API-nyckel "{title}"? Detta kan inte ångras.',
   "client.keyDeleted": "Nyckel borttagen",
