@@ -274,6 +274,7 @@ app.get("/_/admin/bundles", async (c) => {
     includeArchived: filter === "all",
     archivedOnly: filter === "archived",
     range,
+    cardExtras: true,
   });
   const bundles = listResult.ok ? listResult.data : [];
   return c.html(

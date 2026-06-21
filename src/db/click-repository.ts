@@ -1385,8 +1385,15 @@ export class ClickRepository {
     now?: number,
     filters?: ClickFilters,
     range: TimelineRange = "all",
-  ): Promise<Map<number, { total_clicks: number; delta_pct?: number; sparkline: number[]; top_links: { slug: string; click_count: number }[] }>> {
-    const out = new Map<number, { total_clicks: number; delta_pct?: number; sparkline: number[]; top_links: { slug: string; click_count: number }[] }>();
+    // Admin bundle cards show how many bundle links saw traffic in the range,
+    // a figure the public API omits. It costs an extra count query, so it is
+    // gated and only populated when the admin page asks for it. (avg/day is
+    // computed in the page via formatAvgPerDay, off the bundle's own
+    // created_at, so it matches the bundle detail page rather than a
+    // dataset-wide day span.)
+    includeCardExtras = false,
+  ): Promise<Map<number, { total_clicks: number; delta_pct?: number; sparkline: number[]; top_links: { slug: string; click_count: number }[]; clicked_links?: number }>> {
+    const out = new Map<number, { total_clicks: number; delta_pct?: number; sparkline: number[]; top_links: { slug: string; click_count: number }[]; clicked_links?: number }>();
     for (const id of bundleIds) {
       out.set(id, { total_clicks: 0, sparkline: [], top_links: [] });
     }
@@ -1507,6 +1514,26 @@ export class ClickRepository {
       // A link without any slug row cannot be represented on the card, skip it.
       if (!r.primary_slug) continue;
       entry.top_links.push({ slug: r.primary_slug, click_count: r.cnt });
+    }
+
+    if (includeCardExtras) {
+      // Links with at least one click in the range, per bundle.
+      const trafficRows = await db
+        .prepare(
+          `SELECT bl.bundle_id as bundle_id, COUNT(DISTINCT s.link_id) as cnt
+           FROM clicks c
+           JOIN slugs s ON s.slug = c.slug
+           JOIN bundle_links bl ON bl.link_id = s.link_id
+           WHERE bl.bundle_id IN (${phBundles})${filterFrag}${rangeFilter}
+           GROUP BY bl.bundle_id`,
+        )
+        .bind(...bundleIds, ...rangeBinds)
+        .all<{ bundle_id: number; cnt: number }>();
+      const trafficMap = new Map((trafficRows.results ?? []).map((r) => [r.bundle_id, r.cnt]));
+
+      for (const [bundleId, entry] of out) {
+        entry.clicked_links = trafficMap.get(bundleId) ?? 0;
+      }
     }
 
     return out;

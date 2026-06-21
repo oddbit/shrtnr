@@ -30,6 +30,12 @@ export interface ListBundlesOpts {
   archivedOnly?: boolean;
   /** Time range that scopes total_clicks, sparkline, delta and top_links on each card. */
   range?: TimelineRange;
+  /**
+   * Populate the admin-overview-only `clicked_links` count. Off by default so
+   * the public API response shape stays unchanged. (avg/day is derived in the
+   * page via formatAvgPerDay, not in this service.)
+   */
+  cardExtras?: boolean;
 }
 
 function validateAccent(a?: BundleAccent): string | null {
@@ -88,7 +94,7 @@ export async function listBundles(
       )
       .bind(...bundleIds)
       .all<{ bundle_id: number; cnt: number }>(),
-    ClickRepository.getBundleSummariesBulk(env.DB, bundleIds, undefined, filters, range),
+    ClickRepository.getBundleSummariesBulk(env.DB, bundleIds, undefined, filters, range, opts.cardExtras),
   ]);
 
   const linkCountMap = new Map((linkCounts.results ?? []).map((r) => [r.bundle_id, r.cnt]));
@@ -102,6 +108,7 @@ export async function listBundles(
       delta_pct: s?.delta_pct,
       sparkline: s?.sparkline ?? [],
       top_links: s?.top_links ?? [],
+      clicked_links: s?.clicked_links,
     };
   });
   return ok(enriched);
