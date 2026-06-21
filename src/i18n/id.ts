@@ -271,6 +271,10 @@ const id: Translations = {
     "Panggil REST API secara langsung. Telusuri endpoint, skema, dan coba permintaan di dokumentasi.",
   "settings.apiDocsLink": "Dokumentasi API",
 
+  // Widget
+  "widget.error": "Tidak dapat memuat panel ini.",
+  "widget.retry": "Coba lagi",
+
   // Months (short)
   "month.jan": "Jan",
   "month.feb": "Feb",

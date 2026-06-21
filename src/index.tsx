@@ -28,7 +28,6 @@ import {
   authenticateApiKey,
   getAppSettings,
   resolveClickFilters,
-  getDashboardStats,
   getLinkAnalytics,
   listLinks,
   getLink,
@@ -97,6 +96,7 @@ import { KeysPage } from "./pages/keys";
 import { SettingsPage } from "./pages/settings";
 import { BundlesPage } from "./pages/bundles";
 import { BundleDetailPage } from "./pages/bundle-detail";
+import { handleWidget } from "./admin/widgets/route";
 
 // ---- App ----
 
@@ -189,34 +189,9 @@ app.get("/_/admin/dashboard", async (c) => {
   const rangeParam = c.req.query("range");
   const validRanges = new Set(["24h", "7d", "30d", "90d", "1y", "all"]);
   const range = (validRanges.has(rangeParam || "") ? rangeParam : defaultRange) as TimelineRange;
-  const statsResult = await getDashboardStats(c.env, range, identity);
-  const stats = statsResult.ok
-    ? statsResult.data
-    : {
-        range,
-        total_links: 0,
-        total_clicks: 0,
-        total_clicks_previous: 0,
-        total_clicks_delta: undefined,
-        new_links_delta: undefined,
-        clicks_per_day: 0,
-        clicks_per_day_delta: undefined,
-        num_domains: 0,
-        num_countries: 0,
-        clicked_links: 0,
-        clicked_links_delta: undefined,
-        timeline: [],
-        timeline_links: [],
-        timeline_clicked_links: [],
-        recent_links: [],
-        top_links: [],
-        top_countries: [],
-        top_referrers: [],
-        num_referrers: 0,
-      };
   return c.html(
     <Layout active="dashboard" theme={theme} t={t} lang={lang} translations={translations}>
-      <DashboardPage stats={stats} t={t} lang={lang} range={range} />
+      <DashboardPage t={t} lang={lang} range={range} />
     </Layout>,
   );
 });
@@ -360,6 +335,13 @@ app.get("/_/links", (c) => c.redirect("/_/admin/links", 301));
 app.get("/_/links/:id", (c) => c.redirect(`/_/admin/links/${c.req.param("id")}`, 301));
 app.get("/_/keys", (c) => c.redirect("/_/admin/keys", 301));
 app.get("/_/settings", (c) => c.redirect("/_/admin/settings", 301));
+
+// ---- Admin widget fragments ----
+
+// One generic route serves every registered widget. It sits under the
+// /_/admin/* auth middleware (c.var.identity is set) and the `w` segment
+// keeps it clear of the page routes above.
+app.get("/_/admin/w/:id", (c) => handleWidget(c));
 
 // ---- Admin API routes ----
 

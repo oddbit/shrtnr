@@ -71,6 +71,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
           rel="stylesheet"
         />
         <style>{raw(adminStyles)}</style>
+        <script src="/htmx.min.js" defer></script>
       </head>
       <body>
         <nav class="sidebar">
