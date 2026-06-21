@@ -90,10 +90,22 @@ export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter, range }) => {
                   <div class="bundle-card-stat-value">{b.link_count}</div>
                   <div class="bundle-card-stat-label">{t("bundles.links")}</div>
                 </div>
+                <div class="bundle-card-stat">
+                  <div class="bundle-card-stat-value">{fmtNumber(b.avg_per_day ?? 0, lang)}</div>
+                  <div class="bundle-card-stat-label">{t("linkDetail.avgPerDay")}</div>
+                </div>
               </div>
               {b.sparkline.length > 0 && (
                 <div class="bundle-card-spark">
                   <Sparkline values={b.sparkline} />
+                </div>
+              )}
+              {b.clicked_links !== undefined && b.link_count > 0 && (
+                <div class="bundle-card-foot">
+                  <span class="bundle-card-traffic">
+                    <span class="icon icon-xs">monitoring</span>
+                    {t("bundles.clickedLinksHint", { count: b.clicked_links, total: b.link_count })}
+                  </span>
                 </div>
               )}
             </a>

@@ -927,16 +927,20 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 
 .bundle-card-stats {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem;
-  padding: 0.5rem 0;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
-.bundle-card-stat { display: flex; flex-direction: column; gap: 0.15rem; }
+.bundle-card-stat { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
 .bundle-card-stat-value {
   font-family: var(--font-family-display);
   font-weight: 700;
   font-size: 1.35rem;
   color: var(--color-text);
+  font-variant-numeric: tabular-nums;
 }
 .bundle-card-stat-value.muted { color: var(--color-text-subtle); }
 .bundle-card-stat-label {
@@ -948,6 +952,24 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 
 .bundle-card-spark { height: 34px; }
 .bundle-card-spark svg { width: 100%; height: 100%; display: block; }
+
+/* Footer line: how many bundle links saw traffic in the selected range. */
+.bundle-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+.bundle-card-traffic {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--color-text-subtle);
+}
+.bundle-card-traffic .icon { color: var(--color-text-subtle); }
 
 /* "+ New bundle" tile at the end of the grid. */
 .bundle-card-new {

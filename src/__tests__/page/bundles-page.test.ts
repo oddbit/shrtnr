@@ -66,3 +66,43 @@ describe("Bundles list page range selector", () => {
     expect(chipHrefs.some((h) => h.includes("range=7d"))).toBe(true);
   });
 });
+
+describe("Bundles list card onboarding stats", () => {
+  async function seedBundleWithTraffic() {
+    const a = await LinkRepository.create(env.DB, { url: "https://a.example", slug: "aaa", createdBy: "dev@local" });
+    const b = await LinkRepository.create(env.DB, { url: "https://b.example", slug: "bbb", createdBy: "dev@local" });
+    const bundle = await BundleRepository.create(env.DB, { name: "Demo", createdBy: "dev@local" });
+    await BundleRepository.addLink(env.DB, bundle.id, a.id);
+    await BundleRepository.addLink(env.DB, bundle.id, b.id);
+    await ClickRepository.record(env.DB, a.slugs[0].slug, { isBot: 0 });
+    return bundle;
+  }
+
+  it("renders an avg/day stat alongside total clicks and links", async () => {
+    await seedBundleWithTraffic();
+    const res = await SELF.fetch(req("/_/admin/bundles?range=all"));
+    const html = await res.text();
+    expect(html).toContain("Avg / day");
+    // Three stat values now render per card (total clicks, links, avg/day).
+    const statValues = [...html.matchAll(/class="bundle-card-stat-value">/g)];
+    expect(statValues.length).toBe(3);
+  });
+
+  it("renders a links-with-traffic footer reflecting only links that got clicks", async () => {
+    await seedBundleWithTraffic();
+    const res = await SELF.fetch(req("/_/admin/bundles?range=all"));
+    const html = await res.text();
+    // Only link a saw traffic, so 1 of the 2 bundle links is counted.
+    expect(html).toMatch(/1 of 2 bundle links got traffic/);
+    // Assert the rendered element, not the bare class name (which also
+    // appears in the embedded stylesheet).
+    expect(html).toContain('class="bundle-card-foot"');
+  });
+
+  it("omits the traffic footer for a bundle with no links", async () => {
+    await BundleRepository.create(env.DB, { name: "Empty", createdBy: "dev@local" });
+    const res = await SELF.fetch(req("/_/admin/bundles?range=all"));
+    const html = await res.text();
+    expect(html).not.toContain('class="bundle-card-foot"');
+  });
+});
