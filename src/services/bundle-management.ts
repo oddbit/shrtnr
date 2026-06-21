@@ -31,8 +31,9 @@ export interface ListBundlesOpts {
   /** Time range that scopes total_clicks, sparkline, delta and top_links on each card. */
   range?: TimelineRange;
   /**
-   * Populate the admin-overview-only card extras (avg_per_day, clicked_links).
-   * Off by default so the public API response shape stays unchanged.
+   * Populate the admin-overview-only `clicked_links` count. Off by default so
+   * the public API response shape stays unchanged. (avg/day is derived in the
+   * page via formatAvgPerDay, not in this service.)
    */
   cardExtras?: boolean;
 }
