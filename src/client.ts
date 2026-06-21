@@ -90,7 +90,7 @@ function copyUrl(slug) {
 function copyCodeBlock(id) {
   var el = document.getElementById(id);
   if (!el || !navigator.clipboard) return;
-  navigator.clipboard.writeText(el.textContent).then(function() {
+  navigator.clipboard.writeText(el.textContent || '').then(function() {
     toast(t('client.codeCopied'));
   }, function() {});
 }
