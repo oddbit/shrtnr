@@ -1576,9 +1576,11 @@ document.body.addEventListener('htmx:afterSwap', function(ev) {
 document.addEventListener('click', function(ev) {
   var el = ev.target && ev.target.closest ? ev.target.closest('[data-copy-slug]') : null;
   if (!el) return;
+  var slug = el.getAttribute('data-copy-slug');
+  if (!slug) return; // empty slug: let the click fall through, copy nothing
   ev.preventDefault();
   ev.stopPropagation();
-  copyUrl(el.getAttribute('data-copy-slug'));
+  copyUrl(slug);
 });
 `;
 }
