@@ -148,7 +148,15 @@ app.use("/_/admin/*", async (c, next) => {
 app.use("/_/admin/api/*", async (c, next) => {
   await next();
   if (!["POST", "PUT", "PATCH", "DELETE"].includes(c.req.method)) return;
-  if (c.res.ok) await bumpCacheVersion(c.env, c.var.identity);
+  if (!c.res.ok) return;
+  // Best-effort: the mutation already succeeded, so a KV hiccup here must not
+  // turn a successful write into a 5xx. Worst case the writer rides the 30-60s
+  // TTL with stale widgets until the next bump lands.
+  try {
+    await bumpCacheVersion(c.env, c.var.identity);
+  } catch {
+    // swallow: stale-until-TTL beats failing a completed write
+  }
 });
 
 // ---- Admin logout ----
