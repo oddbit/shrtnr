@@ -15,13 +15,11 @@ interface TopDomainsData {
 
 /**
  * Top-domains panel widget: renders the dashboard referrer-host breakdown for
- * the selected range. The loader pulls the top five referrer hosts; the header
- * count uses the returned row count rather than the page's distinct-host query,
- * so the panel runs a single grouped query that stays constant as the click
- * table grows. With a five-row cap that count tracks the page exactly until a
- * sixth distinct host appears, at which point it under-reports by design.
- * Emits the top-domains panel's inner content only; the htmx placeholder owns
- * the surrounding bento-card.
+ * the selected range. Lists the top five hosts and shows the exact distinct
+ * host count in the header (a dedicated COUNT(DISTINCT) query), so the count
+ * stays accurate past the five-row cap. Two grouped queries, both constant as
+ * the click table grows. Emits the panel's inner content only; the htmx
+ * placeholder owns the surrounding bento-card.
  */
 export const topDomainsWidget: AdminWidget<{ range: TimelineRange }, TopDomainsData> = {
   id: "dashboard.top-domains",
@@ -29,8 +27,11 @@ export const topDomainsWidget: AdminWidget<{ range: TimelineRange }, TopDomainsD
   cache: { ttl: 60 },
   params: parseRangeParam,
   async load(env: Env, ctx, { range }): Promise<TopDomainsData> {
-    const rows = await ClickRepository.getGlobalBreakdown(env.DB, "referrer_host", range, 5, ctx.filters);
-    return { range, rows, num: rows.length };
+    const [rows, num] = await Promise.all([
+      ClickRepository.getGlobalBreakdown(env.DB, "referrer_host", range, 5, ctx.filters),
+      ClickRepository.getBreakdownDistinctCount(env.DB, "referrer_host", range, ctx.filters),
+    ]);
+    return { range, rows, num };
   },
   render(d, ctx) {
     const t = ctx.t;

@@ -7,11 +7,12 @@ describe("Widget placeholder", () => {
   it("emits hx-get with the range and a chart-shape skeleton", () => {
     const out = String(Widget({ id: "dashboard.timeline", range: "30d" }));
     expect(out).toContain('hx-get="/_/admin/w/dashboard.timeline?range=30d"');
-    expect(out).toContain("range:changed from:body");
+    expect(out).not.toContain("range:changed");
     expect(out).toContain("widget-skeleton");
     expect(out).toContain("skel-chart"); // timeline is a chart shape
     expect(out).toContain("bento-card"); // non-kpi shapes use the bento-card container
     expect(out).toContain("widget-slot"); // common marker the retry button targets
+    expect(out).toContain('aria-busy="true"'); // busy-state lives on the persistent slot
   });
 
   it("uses the kpi-strip container and adds the poll trigger for the kpi shape", () => {

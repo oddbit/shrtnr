@@ -97,6 +97,7 @@ import { SettingsPage } from "./pages/settings";
 import { BundlesPage } from "./pages/bundles";
 import { BundleDetailPage } from "./pages/bundle-detail";
 import { handleWidget } from "./admin/widgets/route";
+import { bumpCacheVersion } from "./admin/widgets/cache";
 
 // ---- App ----
 
@@ -134,6 +135,27 @@ app.use("/_/admin/*", async (c, next) => {
   const contentType = c.res.headers.get("Content-Type") || "";
   if (contentType.includes("text/html")) {
     c.res.headers.set("Cache-Control", "private, no-cache, must-revalidate");
+  }
+});
+
+// After a successful admin-api write, invalidate the writer's widget read
+// cache so dashboard fragments reflect the change immediately instead of
+// riding out the 30-60s TTL. Only the write verbs bump; reads (GET/HEAD),
+// preflight (OPTIONS), and failures (status >= 400) skip it. Awaited (not
+// waitUntil) so the version is current before the client's follow-up dashboard
+// fetch. Covers every current and future admin write route, including keys
+// (harmless: keys feed no widget).
+app.use("/_/admin/api/*", async (c, next) => {
+  await next();
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(c.req.method)) return;
+  if (!c.res.ok) return;
+  // Best-effort: the mutation already succeeded, so a KV hiccup here must not
+  // turn a successful write into a 5xx. Worst case the writer rides the 30-60s
+  // TTL with stale widgets until the next bump lands.
+  try {
+    await bumpCacheVersion(c.env, c.var.identity);
+  } catch {
+    // swallow: stale-until-TTL beats failing a completed write
   }
 });
 

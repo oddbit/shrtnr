@@ -3,7 +3,6 @@
 import type { AdminWidget } from "../types";
 import type { Env, TimelineRange, LinkWithSlugs } from "../../../types";
 import { LinkRepository } from "../../../db";
-import { escHtml } from "../../../escape";
 import { parseRangeParam } from "./_range";
 
 interface RecentLinksData {
@@ -22,7 +21,8 @@ function primarySlug(link: LinkWithSlugs): string {
 
 /**
  * Recent-links panel widget: the five newest links by created_at, each row
- * showing the primary slug-chip (with the copy onclick), destination url, and
+ * showing the primary slug-chip (data-copy-slug, copied by a delegated
+ * handler), destination url, and
  * total clicks. The loader uses LinkRepository.recent, a bounded two-query
  * fetch, so the query count stays constant as the catalog grows rather than
  * loading the whole table the way list() does. Emits the recent-links panel's
@@ -53,7 +53,7 @@ export const recentLinksWidget: AdminWidget<{ range: TimelineRange }, RecentLink
               <a href={`/_/admin/links/${link.id}`} class="recent-row">
                 <span
                   class="slug-chip"
-                  onclick={`event.preventDefault();event.stopPropagation();copyUrl('${escHtml(slug)}')`}
+                  data-copy-slug={slug}
                   title={t("dashboard.clickToCopy")}
                 >
                   {slug}{" "}

@@ -39,4 +39,16 @@ describe("dashboard.top-domains widget", () => {
     expect(out).not.toContain("stat-row");
     expect(out).not.toContain("bento-card");
   });
+
+  it("counts distinct hosts exactly while listing only the top five", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://e.com", slug: "abc" });
+    for (let i = 0; i < 7; i++) {
+      await ClickRepository.record(env.DB, link.slugs[0].slug, { referrerHost: `h${i}.com` });
+    }
+    const data = await topDomainsWidget.load(env, ctx, { range: "all" });
+    expect(data.num).toBe(7); // exact distinct count, not the 5-row cap
+    expect(data.rows.length).toBe(5);
+    const out = String(topDomainsWidget.render(data, ctx));
+    expect((out.match(/stat-row/g) ?? []).length).toBe(5);
+  });
 });

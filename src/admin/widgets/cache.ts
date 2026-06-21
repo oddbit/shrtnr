@@ -10,7 +10,7 @@ export function cacheKey(
   ctx: WidgetCtx,
   p: { range?: string; id?: string | number },
   policy: CachePolicy | undefined,
-  version: number,
+  version: string,
 ): string {
   // Encode every dynamic part. The identity, range and entity are user- or
   // setting-derived; without encoding a value containing `&`, `=` or `%`
@@ -27,19 +27,24 @@ export function cacheKey(
   // without waiting on version invalidation.
   const l = encodeURIComponent(ctx.lang);
   const f = `${ctx.filters.excludeBots ? 1 : 0}${ctx.filters.excludeSelfReferrers ? 1 : 0}`;
-  return `https://widget.cache/${encodeURIComponent(id)}?u=${u}&l=${l}&f=${f}&r=${range}&e=${entity}&v=${version}`;
+  // `version` is an opaque token (see bumpCacheVersion), not a counter, so
+  // encode it like every other dynamic part.
+  return `https://widget.cache/${encodeURIComponent(id)}?u=${u}&l=${l}&f=${f}&r=${range}&e=${entity}&v=${encodeURIComponent(version)}`;
 }
 
-export async function getCacheVersion(env: Env, identity: string): Promise<number> {
-  if (!env.SLUG_KV) return 0;
-  const raw = await env.SLUG_KV.get(VER_PREFIX + identity);
-  return raw ? parseInt(raw, 10) || 0 : 0;
+export async function getCacheVersion(env: Env, identity: string): Promise<string> {
+  if (!env.SLUG_KV) return "0";
+  return (await env.SLUG_KV.get(VER_PREFIX + identity)) ?? "0";
 }
 
 export async function bumpCacheVersion(env: Env, identity: string): Promise<void> {
   if (!env.SLUG_KV) return;
-  const next = (await getCacheVersion(env, identity)) + 1;
-  await env.SLUG_KV.put(VER_PREFIX + identity, String(next));
+  // Write a fresh unique token rather than a read-modify-write increment: two
+  // concurrent writes for the same identity would both read version N and both
+  // write N+1, collapsing to one bump and risking a fragment cached under the
+  // unchanged value. A random token guarantees the key changes on every write
+  // (KV stays eventually consistent, so this narrows the race, not eliminates).
+  await env.SLUG_KV.put(VER_PREFIX + identity, crypto.randomUUID());
 }
 
 export async function serveCached(

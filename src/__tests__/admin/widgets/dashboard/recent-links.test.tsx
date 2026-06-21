@@ -52,6 +52,15 @@ describe("dashboard.recent-links widget", () => {
     expect(out).not.toContain("bento-card");
   });
 
+  it("exposes the copy chip via data-copy-slug, not an inline onclick", async () => {
+    await LinkRepository.create(env.DB, { url: "https://e.com", slug: "abc" });
+    const data = await recentLinksWidget.load(env, ctx, { range: "all" });
+    const out = String(recentLinksWidget.render(data, ctx));
+    expect(out).toContain('data-copy-slug="abc"');
+    expect(out).not.toContain("copyUrl(");
+    expect(out).not.toContain("onclick");
+  });
+
   it("issues a bounded query count regardless of catalog size", async () => {
     const make = (n0: number, n: number) =>
       Array.from({ length: n }, (_, i) =>

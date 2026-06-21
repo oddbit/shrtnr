@@ -41,8 +41,12 @@ describe("dashboard.kpis widget", () => {
     await ClickRepository.record(env.DB, link.slugs[0].slug, { country: "US" });
     const data = await kpisWidget.load(env, ctx, { range: "30d" });
     const out = String(kpisWidget.render(data, ctx));
-    expect(out).toContain("dash-kpi-links");
-    expect(out).toContain("dash-total-clicks");
+    // The dash-* ids were hooks for the removed pollDashboard and are gone.
+    // Assert the cards rendered via stable markers instead.
+    expect(out).toContain("dashboard.totalLinks");
+    expect(out).toContain("dashboard.totalClicks");
+    expect((out.match(/class="bento-card kpi/g) ?? []).length).toBe(4);
+    expect(out).not.toContain("dash-");
     // The htmx placeholder already carries the kpi-strip shell, so the widget
     // must render inner content only and not nest its own outer wrapper.
     expect(out).not.toContain('class="kpi-strip"');

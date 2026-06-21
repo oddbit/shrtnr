@@ -477,3 +477,23 @@ describe("LinkRepository.recent", () => {
     expect(top2.map((l) => l.id)).toEqual([c.id, b.id]);
   });
 });
+
+describe("LinkRepository.primarySlugByIds", () => {
+  it("primarySlugByIds picks the auto slug over a custom one, batched", async () => {
+    const a = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "auto-a" });
+    await env.DB
+      .prepare("INSERT INTO slugs (link_id, slug, is_custom, is_primary, created_at) VALUES (?, ?, 1, 0, ?)")
+      .bind(a.id, "custom-a", 2000)
+      .run();
+    const b = await LinkRepository.create(env.DB, { url: "https://b.com", slug: "auto-b" });
+
+    const map = await LinkRepository.primarySlugByIds(env.DB, [a.id, b.id]);
+    expect(map.get(a.id)).toBe("auto-a"); // non-custom wins
+    expect(map.get(b.id)).toBe("auto-b");
+  });
+
+  it("primarySlugByIds returns an empty map for no ids", async () => {
+    const map = await LinkRepository.primarySlugByIds(env.DB, []);
+    expect(map.size).toBe(0);
+  });
+});

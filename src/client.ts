@@ -1556,5 +1556,39 @@ document.addEventListener('click', function(ev) {
   else if (action === 'unarchive') unarchiveBundle(id);
   else if (action === 'delete') deleteBundleAction(id, name);
 });
+
+// Toggle aria-busy on the persistent widget slot across htmx swaps so screen
+// readers get a clean true->false "done loading" transition. The skeleton node
+// no longer carries aria-busy (htmx removes it on swap, which is not announced).
+function widgetSlotFromEvent(ev) {
+  return ev.target && ev.target.closest ? ev.target.closest('.widget-slot') : null;
+}
+document.body.addEventListener('htmx:beforeRequest', function(ev) {
+  var slot = widgetSlotFromEvent(ev);
+  if (slot) slot.setAttribute('aria-busy', 'true');
+});
+// Clear on swap (success) and on request end. htmx:afterRequest fires for every
+// request including errors, timeouts, and aborts that never swap, so the slot
+// never stays stuck announcing busy after a failed load.
+function clearWidgetBusy(ev) {
+  var slot = widgetSlotFromEvent(ev);
+  if (slot) slot.setAttribute('aria-busy', 'false');
+}
+document.body.addEventListener('htmx:afterSwap', clearWidgetBusy);
+document.body.addEventListener('htmx:afterRequest', clearWidgetBusy);
+
+// Copy a link's short URL when any element tagged data-copy-slug is clicked.
+// Reading from dataset avoids interpolating the slug into an inline onclick
+// JS-string (insufficiently escaped per src/escape.ts). preventDefault +
+// stopPropagation keep a chip click inside a row anchor from also navigating.
+document.addEventListener('click', function(ev) {
+  var el = ev.target && ev.target.closest ? ev.target.closest('[data-copy-slug]') : null;
+  if (!el) return;
+  var slug = el.getAttribute('data-copy-slug');
+  if (!slug) return; // empty slug: let the click fall through, copy nothing
+  ev.preventDefault();
+  ev.stopPropagation();
+  copyUrl(slug);
+});
 `;
 }

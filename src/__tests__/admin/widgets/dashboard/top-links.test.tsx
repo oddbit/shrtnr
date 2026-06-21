@@ -39,4 +39,13 @@ describe("dashboard.top-links widget", () => {
     expect(out).not.toContain("top-link-row");
     expect(out).not.toContain("bento-card");
   });
+
+  it("names each row by its primary slug, not label or url", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://e.com", slug: "primo", label: "My Label" });
+    await ClickRepository.record(env.DB, link.slugs[0].slug, {});
+    const data = await topLinksWidget.load(env, ctx, { range: "all" });
+    expect(data.rows[0].slug).toBe("primo");
+    const out = String(topLinksWidget.render(data, ctx));
+    expect(out).toContain("primo"); // primary slug shown, matching the page
+  });
 });

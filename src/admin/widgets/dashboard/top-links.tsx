@@ -2,22 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { AdminWidget } from "../types";
 import type { Env, TimelineRange } from "../../../types";
-import { ClickRepository } from "../../../db";
+import { ClickRepository, LinkRepository } from "../../../db";
 import { fmtNumber } from "../../../i18n/format";
 import { parseRangeParam } from "./_range";
 
 interface TopLinksData {
   range: TimelineRange;
-  rows: { link_id: number; clicks: number; url: string; label: string | null }[];
+  rows: { link_id: number; clicks: number; url: string; label: string | null; slug: string }[];
 }
 
 /**
  * Most-clicked panel widget: renders the top five links by clicks for the
- * selected range. The loader leans on ClickRepository.getTrendingLinks, a
- * single grouped query, so the query count stays constant as the click table
- * grows. getTrendingLinks does not return a slug, so each row names the link by
- * label || url rather than the primary slug shown on the full dashboard page.
- * Emits the most-clicked panel's inner content only; the htmx placeholder owns
+ * selected range. getTrendingLinks (one grouped query) returns no slug, so the
+ * loader batch-fetches the primary slug for those link ids in a second bounded
+ * query (LinkRepository.primarySlugByIds) and names each row by its slug, the
+ * way the full dashboard page does. Two queries, both constant as the click
+ * table grows. Emits the panel's inner content only; the htmx placeholder owns
  * the surrounding bento-card.
  */
 export const topLinksWidget: AdminWidget<{ range: TimelineRange }, TopLinksData> = {
@@ -26,7 +26,9 @@ export const topLinksWidget: AdminWidget<{ range: TimelineRange }, TopLinksData>
   cache: { ttl: 60 },
   params: parseRangeParam,
   async load(env: Env, ctx, { range }): Promise<TopLinksData> {
-    const rows = await ClickRepository.getTrendingLinks(env.DB, range, 5, ctx.filters);
+    const trending = await ClickRepository.getTrendingLinks(env.DB, range, 5, ctx.filters);
+    const slugs = await LinkRepository.primarySlugByIds(env.DB, trending.map((r) => r.link_id));
+    const rows = trending.map((r) => ({ ...r, slug: slugs.get(r.link_id) ?? "" }));
     return { range, rows };
   },
   render(d, ctx) {
@@ -44,7 +46,7 @@ export const topLinksWidget: AdminWidget<{ range: TimelineRange }, TopLinksData>
               <a href={`/_/admin/links/${link.link_id}`} class="top-link-row">
                 <div class="stat-row">
                   <div class="name mono">
-                    <span class="label">{link.label || link.url}</span>
+                    <span class="label">{link.slug || link.label || link.url}</span>
                   </div>
                   <div class="right">
                     <span class="count">{fmtNumber(link.clicks, ctx.lang)}</span>

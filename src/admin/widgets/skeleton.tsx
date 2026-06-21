@@ -14,12 +14,12 @@ const ROWS: Record<WidgetShape, number> = {
 };
 
 // Reserves a widget's footprint and shimmers while htmx swaps in the real
-// markup. The wrapper announces aria-busy so assistive tech knows the region
-// is loading.
+// markup. The persistent .widget-slot owns aria-busy (toggled across htmx
+// events in client.ts); this node only reserves space and shimmers.
 export const Skeleton: FC<{ shape: WidgetShape }> = ({ shape }) => {
   const rows = ROWS[shape];
   return (
-    <div class={`widget-skeleton skel-${shape}`} aria-busy="true" aria-live="polite">
+    <div class={`widget-skeleton skel-${shape}`} aria-live="polite">
       {shape === "kpi" && <div class="shimmer skel-kpi-value" />}
       {shape === "chart" && <div class="shimmer skel-chart-area" />}
       {shape === "hero" && <div class="shimmer skel-hero-block" />}

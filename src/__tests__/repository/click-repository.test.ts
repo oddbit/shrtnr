@@ -614,3 +614,14 @@ describe("ClickRepository.getBundleSummariesBulk", () => {
     expect(last30.get(bundle.id)?.delta_pct).toBe(-50);
   });
 });
+
+describe("ClickRepository.getBreakdownDistinctCount", () => {
+  it("getBreakdownDistinctCount counts distinct values past any list cap", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://e.com", slug: "abc" });
+    for (let i = 0; i < 7; i++) {
+      await ClickRepository.record(env.DB, link.slugs[0].slug, { referrerHost: `h${i}.com` });
+    }
+    const n = await ClickRepository.getBreakdownDistinctCount(env.DB, "referrer_host", "all");
+    expect(n).toBe(7);
+  });
+});

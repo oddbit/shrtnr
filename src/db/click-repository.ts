@@ -363,6 +363,34 @@ export class ClickRepository {
     return rows.results ?? [];
   }
 
+  static async getBreakdownDistinctCount(
+    db: D1Database,
+    dimension: BreakdownDimension,
+    range: TimelineRange,
+    filters?: ClickFilters,
+  ): Promise<number> {
+    if (!VALID_DIMENSIONS.has(dimension)) return 0;
+
+    let where = `${dimension} IS NOT NULL`;
+    const binds: number[] = [];
+
+    if (range && range !== "all") {
+      const now = Math.floor(Date.now() / 1000);
+      const seconds: Record<string, number> = { "24h": 86400, "7d": 7 * 86400, "30d": 30 * 86400, "90d": 90 * 86400, "1y": 365 * 86400 };
+      where += " AND clicked_at >= ?";
+      binds.push(now - (seconds[range] ?? 0));
+    }
+
+    where += clickFilterSql(filters);
+
+    const row = await db
+      .prepare(`SELECT COUNT(DISTINCT ${dimension}) as n FROM clicks WHERE ${where}`)
+      .bind(...binds)
+      .first<{ n: number }>();
+
+    return row?.n ?? 0;
+  }
+
   static async getTotalClicks(
     db: D1Database,
     range: TimelineRange,
