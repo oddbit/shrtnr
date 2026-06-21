@@ -210,13 +210,15 @@ const id: Translations = {
   // API Keys
   "keys.title": "Kunci API",
   "keys.subtitle": "Kelola akses programatik ke API pemerpendek",
-  "keys.docsNote": "Gunakan kunci API untuk mengautentikasi permintaan API:",
   "keys.docsLink": "Dokumentasi API",
-  "keys.count": "{count} kunci",
-  "keys.countPlural": "{count} kunci",
-  "keys.newKey": "Kunci Baru",
+  "keys.authBanner": "Autentikasi permintaan dengan kunci di header {header}.",
+  "keys.quickStartTitle": "Mulai cepat",
+  "keys.quickStartHint": "Cantumkan tautan Anda dengan kunci Bearer.",
+  "keys.sdkCardTitle": "Atau gunakan SDK",
+  "keys.copyCommand": "Salin perintah",
+  "keys.newKey": "Kunci baru",
   "keys.empty":
-    "Belum ada kunci API. Gunakan tombol + Kunci Baru di atas untuk mengaktifkan akses programatik.",
+    "Belum ada kunci API. Gunakan tombol + Kunci baru di atas untuk mengaktifkan akses programatik.",
   "keys.colTitle": "Judul",
   "keys.colKey": "Kunci",
   "keys.colScope": "Cakupan",
@@ -346,6 +348,7 @@ const id: Translations = {
   "client.copy": "Salin",
   "client.done": "Selesai",
   "client.apiKeyCopied": "Kunci API disalin",
+  "client.codeCopied": "Perintah disalin",
   "client.confirmDeleteKey":
     'Hapus kunci API "{title}"? Tindakan ini tidak dapat dibatalkan.',
   "client.keyDeleted": "Kunci dihapus",

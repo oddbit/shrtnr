@@ -87,6 +87,13 @@ function copyUrl(slug) {
   toast(t('client.copied', {url: url}));
 }
 
+function copyCodeBlock(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent);
+  toast(t('client.codeCopied'));
+}
+
 // ---- Mobile drawer ----
 function toggleDrawer() {
   var s = document.querySelector('.sidebar');

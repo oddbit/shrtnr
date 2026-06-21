@@ -306,9 +306,10 @@ app.get("/_/admin/keys", async (c) => {
   const { theme, t, lang, translations } = await getPageData(c, identity);
   const keysResult = await listAllApiKeys(c.env, identity);
   const keys = keysResult.ok ? keysResult.data : [];
+  const origin = new URL(c.req.url).origin;
   return c.html(
     <Layout active="keys" theme={theme} t={t} lang={lang} translations={translations}>
-      <KeysPage keys={keys as any} t={t} lang={lang} />
+      <KeysPage keys={keys as any} t={t} lang={lang} origin={origin} />
     </Layout>,
   );
 });

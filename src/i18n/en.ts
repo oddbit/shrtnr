@@ -205,15 +205,17 @@ const en = {
   "bundles.accent.purple": "Purple",
 
   // API Keys
-  "keys.title": "API Keys",
+  "keys.title": "API keys",
   "keys.subtitle": "Manage programmatic access to the shortener API",
-  "keys.docsNote": "Use API keys to authenticate API requests:",
   "keys.docsLink": "API documentation",
-  "keys.count": "{count} key",
-  "keys.countPlural": "{count} keys",
-  "keys.newKey": "New Key",
+  "keys.authBanner": "Authenticate requests with a key in the {header} header.",
+  "keys.quickStartTitle": "Quick start",
+  "keys.quickStartHint": "List your links with a Bearer key.",
+  "keys.sdkCardTitle": "Or use an SDK",
+  "keys.copyCommand": "Copy command",
+  "keys.newKey": "New key",
   "keys.empty":
-    "No API keys yet. Use the + New Key button above to enable programmatic access.",
+    "No API keys yet. Use the + New key button above to enable programmatic access.",
   "keys.colTitle": "Title",
   "keys.colKey": "Key",
   "keys.colScope": "Scope",
@@ -342,6 +344,7 @@ const en = {
   "client.copy": "Copy",
   "client.done": "Done",
   "client.apiKeyCopied": "API key copied",
+  "client.codeCopied": "Command copied",
   "client.confirmDeleteKey":
     'Delete API key "{title}"? This cannot be undone.',
   "client.keyDeleted": "Key deleted",
