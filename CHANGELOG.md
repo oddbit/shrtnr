@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.36.0 (2026-06-24)
+
+Feature release. Rebuilds the admin dashboard on htmx widget islands, redesigns the API keys page, enriches bundle overview cards, and adds a paginated analytics breakdown endpoint. PRs #16, #18, #19, #21, #22, #24, #25, #26.
+
+- **Widget-island dashboard.** The dashboard renders as a shell of placeholders and loads each panel (KPIs, timeline, top links, top countries, top domains, recent links) as an independent widget over htmx (vendored 2.0.4). A generic admin widget route serves each fragment with per-widget Cache API caching keyed by range, language, and filters, invalidated by a KV version token. Admin writes bump that token best-effort so panels refresh after an edit. The widget context builds from a single settings fetch per request.
+- **API keys page redesigned for onboarding.** The keys page walks a developer from key creation to first call and lists the published SDKs through a shared `SdkList` component.
+- **Bundle overview cards** show average clicks per day and traffic coverage, aligned with the bundle detail page.
+- **Paginated breakdown.** `links` and `bundles` expose a `breakdown` endpoint for the countries, sources, and domains panels (offset/limit, returns items plus total) with a deterministic tie-break in the ordering, and the admin detail pages paginate those panels. The client method shipped earlier in the SDKs (npm/py 1.1.0, Dart 2.1.0).
+- **Fixes.** The dashboard counts distinct referrer hosts exactly and shows the primary slug in the most-clicked panel. Dashboard link deltas enrich in bulk to cut per-request CPU. The widget error fragment escapes interpolated values, cache-key parts are url-encoded, and disabled links stay resolvable for up to one second after disabling. Slug copy moved to a delegated `data-*` handler that skips empty targets.
+- OpenAPI paths and schemas are unchanged from 0.35.5 (the breakdown endpoint was already in the recorded spec); only `info.version` changes. The bump refreshes the recorded spec hash in all three SDKs, with no SDK code changes. Full suite: 72 files, 1042 tests.
+
 ## 0.35.5 (2026-06-17)
 
 Defect-review release (PR #15) fixing analytics "Sources" inflation. No new features.
