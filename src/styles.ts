@@ -755,6 +755,7 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 .keys-table td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--color-border); font-size: 0.875rem; vertical-align: middle; }
 .keys-table tr:last-child td { border-bottom: none; }
 .keys-table tr:hover td { background: var(--color-surface-interactive); }
+.scope-badges { display: inline-flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 .scope-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: var(--radius-md); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
 .scope-badge.create { background: var(--color-selection); color: var(--color-accent); border: 1px solid var(--color-accent); }
 .scope-badge.read { background: rgba(181,242,175,0.1); color: var(--color-success); border: 1px solid var(--color-success); }
