@@ -131,9 +131,11 @@ export const KeysPage: FC<Props> = ({ keys, t, lang, origin }) => {
                         <span class="col-key-mask">{k.key_prefix}{KEY_MASK}</span>
                       </td>
                       <td data-label={t("keys.colScope")}>
-                        {scopes.map((s) => (
-                          <span class={`scope-badge ${s}`}>{s} </span>
-                        ))}
+                        <span class="scope-badges">
+                          {scopes.map((s) => (
+                            <span class={`scope-badge ${s}`}>{s}</span>
+                          ))}
+                        </span>
                       </td>
                       <td data-label={t("keys.colCreated")} class="col-date">
                         {formatDate(k.created_at, lang)}
