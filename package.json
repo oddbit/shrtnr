@@ -19,22 +19,22 @@
     "emit-spec": "tsx scripts/emit-spec.ts"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.16.10",
-    "@cloudflare/workers-types": "^4.20260528.1",
-    "@vitest/runner": "^4.1.7",
-    "@vitest/snapshot": "^4.1.7",
-    "tsx": "^4.22.3",
+    "@cloudflare/vitest-pool-workers": "^0.16.20",
+    "@cloudflare/workers-types": "^4.20260628.1",
+    "@vitest/runner": "^4.1.9",
+    "@vitest/snapshot": "^4.1.9",
+    "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.7",
-    "wrangler": "^4.95.0"
+    "vitest": "^4.1.9",
+    "wrangler": "^4.105.0"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "^0.7.0",
+    "@cloudflare/workers-oauth-provider": "^0.8.1",
     "@hono/zod-openapi": "^1.4.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "agents": "^0.13.3",
-    "hono": "^4.12.23",
+    "agents": "^0.17.1",
+    "hono": "^4.12.27",
     "jose": "^6.2.3",
     "zod": "^4.4.3"
   }
