@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.36.1 (2026-06-30)
+
+Maintenance release (PRs #27, #28). No new endpoints or schema changes.
+
+- **Dependency refresh.** Upgrades all app and tooling dependencies to their latest versions and pins the build to Node >=22.18.0.
+- **Type-narrowed background handlers.** Handlers that only schedule deferred work now accept a `WaitUntilContext` (`Pick<ExecutionContext, "waitUntil">`) instead of the full `ExecutionContext`, so Hono's `c.executionCtx` passes directly and the prior unsafe casts drop out.
+- **UI fixes.** Bundle overview cards clamp titles to two lines and reserve that height so cards stay aligned. The API keys page corrects scope-pill spacing.
+- OpenAPI paths and schemas are unchanged from 0.36.0; only `info.version` changes. The bump refreshes the recorded spec hash in all three SDKs, with no SDK code changes. Full suite: 72 files, 1042 tests.
+
 ## 0.36.0 (2026-06-24)
 
 Feature release. Rebuilds the admin dashboard on htmx widget islands, redesigns the API keys page, enriches bundle overview cards, and adds a paginated analytics breakdown endpoint. PRs #16, #18, #19, #21, #22, #24, #25, #26.
