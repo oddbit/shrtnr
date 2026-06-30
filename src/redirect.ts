@@ -6,7 +6,7 @@ import { SlugCache } from "./kv";
 import { SlugRepository } from "./db";
 import { parseDeviceType, parseBrowser, parseOS, isBot } from "./ua";
 import { notFoundResponse } from "./404";
-import { ClickData, Env } from "./types";
+import type { ClickData, Env, WaitUntilContext } from "./types";
 import { computeVisitorFingerprint } from "./fingerprint";
 import { isSelfReferrer, normalizeHost, parseReferrerHost } from "./referrer";
 
@@ -14,7 +14,7 @@ export async function handleRedirect(
   slug: string,
   request: Request,
   env: Env,
-  ctx: ExecutionContext,
+  ctx: WaitUntilContext,
 ): Promise<Response> {
   const normalizedSlug = slug.toLowerCase();
 

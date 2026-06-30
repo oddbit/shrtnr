@@ -18,8 +18,8 @@ environment:
 
 dependencies:
   http: ^1.6.0
-  meta: ^1.18.2
+  meta: ^1.18.3
 
 dev_dependencies:
   lints: ^6.1.0
-  test: ^1.31.1
+  test: ^1.31.2

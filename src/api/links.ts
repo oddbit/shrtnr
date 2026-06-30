@@ -26,7 +26,7 @@ import { fetchPageTitle } from "../title-fetch";
 import { fromServiceResult, json } from "./response";
 import { requireScope } from "./scope";
 import { DEFAULT_QR_SIZE, MAX_QR_SIZE, MIN_QR_SIZE } from "../constants";
-import type { Env, TimelineRange } from "../types";
+import type { Env, TimelineRange, WaitUntilContext } from "../types";
 import {
   AddSlugBodySchema,
   BreakdownPageSchema,
@@ -486,7 +486,7 @@ export async function handleGetLink(env: Env, id: number): Promise<Response> {
   return fromServiceResult(await getLink(env, id));
 }
 
-export async function handleCreateLink(request: Request, env: Env, createdVia?: string, createdBy?: string, ctx?: ExecutionContext): Promise<Response> {
+export async function handleCreateLink(request: Request, env: Env, createdVia?: string, createdBy?: string, ctx?: WaitUntilContext): Promise<Response> {
   let body: {
     url?: string;
     label?: string;
