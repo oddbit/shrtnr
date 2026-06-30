@@ -24,6 +24,14 @@ export interface Env {
   FP_SALT?: string;
 }
 
+/**
+ * Execution context narrowed to just the background-work scheduler.
+ * Handlers that only schedule deferred work accept this instead of the full
+ * `ExecutionContext`, so Hono's `c.executionCtx` passes directly: it omits
+ * fields the full Cloudflare type requires (e.g. `tracing`).
+ */
+export type WaitUntilContext = Pick<ExecutionContext, "waitUntil">;
+
 export interface Link {
   id: number;
   url: string;

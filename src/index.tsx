@@ -379,7 +379,7 @@ app.delete("/_/admin/api/keys/:id", (c) => {
 });
 
 // Links (admin path: no scope checks, full access)
-app.post("/_/admin/api/links", (c) => handleCreateLink(c.req.raw, c.env, "app", c.var.identity, c.executionCtx as unknown as ExecutionContext));
+app.post("/_/admin/api/links", (c) => handleCreateLink(c.req.raw, c.env, "app", c.var.identity, c.executionCtx));
 app.get("/_/admin/api/links", (c) => handleListLinks(c.env));
 app.get("/_/admin/api/links/:id", (c) => {
   const id = parseInt(c.req.param("id"), 10);
@@ -563,7 +563,7 @@ app.get("/_", async (c) => {
 app.get("/:slug", (c) => {
   const slug = c.req.param("slug");
   if (!slug || slug.startsWith("_")) return notFoundResponse();
-  return handleRedirect(slug, c.req.raw, c.env, c.executionCtx as unknown as ExecutionContext);
+  return handleRedirect(slug, c.req.raw, c.env, c.executionCtx);
 });
 
 // ---- 404 fallback ----
