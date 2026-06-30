@@ -914,6 +914,7 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-height: calc(1.1rem * 1.3 * 2);
 }
 .bundle-icon-badge {
   display: inline-flex;
@@ -929,7 +930,12 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   font-family: var(--font-family-display);
   font-weight: 600;
   font-size: 1.1rem;
+  line-height: 1.3;
   color: var(--color-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .bundle-archived-badge {
   margin-left: auto;
