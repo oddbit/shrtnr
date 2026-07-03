@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
 import { BundleRepository, LinkRepository } from "../../db";
@@ -277,6 +277,49 @@ describe("getBundleAnalytics", () => {
     const res = await svc.getBundleAnalytics(e, bundle.id, "30d", "x@x");
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.data.bundle.id).toBe(bundle.id);
+  });
+});
+
+describe("bundle concurrent-delete: null return propagates as 404", () => {
+  it("deleteBundle returns 404 when repository delete returns false (concurrent deletion)", async () => {
+    const b = await BundleRepository.create(env.DB, { name: "Raced", createdBy: "a@b" });
+
+    const spy = vi.spyOn(BundleRepository, "delete").mockResolvedValueOnce(false);
+    const res = await svc.deleteBundle(e, b.id, "a@b").finally(() => spy.mockRestore());
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.status).toBe(404);
+  });
+
+  it("updateBundle returns 404 when repository update returns null (concurrent deletion)", async () => {
+    const b = await BundleRepository.create(env.DB, { name: "Raced", createdBy: "a@b" });
+
+    const spy = vi.spyOn(BundleRepository, "update").mockResolvedValueOnce(null);
+    const res = await svc.updateBundle(e, b.id, { name: "New name" }, "a@b").finally(() => spy.mockRestore());
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.status).toBe(404);
+  });
+
+  it("archiveBundle returns 404 when repository archive returns null (concurrent deletion)", async () => {
+    const b = await BundleRepository.create(env.DB, { name: "Raced", createdBy: "a@b" });
+
+    const spy = vi.spyOn(BundleRepository, "archive").mockResolvedValueOnce(null);
+    const res = await svc.archiveBundle(e, b.id, "a@b").finally(() => spy.mockRestore());
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.status).toBe(404);
+  });
+
+  it("unarchiveBundle returns 404 when repository unarchive returns null (concurrent deletion)", async () => {
+    const b = await BundleRepository.create(env.DB, { name: "Raced", createdBy: "a@b" });
+    await BundleRepository.archive(env.DB, b.id);
+
+    const spy = vi.spyOn(BundleRepository, "unarchive").mockResolvedValueOnce(null);
+    const res = await svc.unarchiveBundle(e, b.id, "a@b").finally(() => spy.mockRestore());
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.status).toBe(404);
   });
 });
 

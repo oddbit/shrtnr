@@ -169,7 +169,8 @@ export async function updateBundle(
   if (accentErr) return fail(400, accentErr);
 
   const updated = await BundleRepository.update(env.DB, id, patch);
-  return ok(updated!);
+  if (!updated) return fail(404, "Bundle not found");
+  return ok(updated);
 }
 
 export async function archiveBundle(
@@ -180,7 +181,9 @@ export async function archiveBundle(
   const bundle = await BundleRepository.getById(env.DB, id);
   if (!bundle) return fail(404, "Bundle not found");
   if (bundle.created_by !== identity) return fail(403, "Only the bundle owner can archive this bundle");
-  return ok((await BundleRepository.archive(env.DB, id))!);
+  const archived = await BundleRepository.archive(env.DB, id);
+  if (!archived) return fail(404, "Bundle not found");
+  return ok(archived);
 }
 
 export async function unarchiveBundle(
@@ -191,7 +194,9 @@ export async function unarchiveBundle(
   const bundle = await BundleRepository.getById(env.DB, id);
   if (!bundle) return fail(404, "Bundle not found");
   if (bundle.created_by !== identity) return fail(403, "Only the bundle owner can unarchive this bundle");
-  return ok((await BundleRepository.unarchive(env.DB, id))!);
+  const unarchived = await BundleRepository.unarchive(env.DB, id);
+  if (!unarchived) return fail(404, "Bundle not found");
+  return ok(unarchived);
 }
 
 export async function deleteBundle(
@@ -202,7 +207,8 @@ export async function deleteBundle(
   const bundle = await BundleRepository.getById(env.DB, id);
   if (!bundle) return fail(404, "Bundle not found");
   if (bundle.created_by !== identity) return fail(403, "Only the bundle owner can delete this bundle");
-  await BundleRepository.delete(env.DB, id);
+  const deleted = await BundleRepository.delete(env.DB, id);
+  if (!deleted) return fail(404, "Bundle not found");
   return ok({ deleted: true });
 }
 

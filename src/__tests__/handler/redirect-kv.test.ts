@@ -291,6 +291,21 @@ describe("redirect status by link state", () => {
     expect(res.status).toBe(404);
   });
 
+  it("malformed URL in KV cache returns 404 instead of 500", async () => {
+    // A corrupted or legacy KV entry with a non-parseable URL must not crash
+    // the redirect handler with an uncaught TypeError from new URL(). The
+    // handler must return 404 gracefully.
+    await LinkRepository.create(env.DB, { url: "https://example.com/real", slug: "badurl", createdBy: DEV_IDENTITY });
+    await SlugCache.put(env.SLUG_KV, "badurl", {
+      url: "not-a-valid-url",
+      disabled_at: null,
+      expires_at: null,
+    });
+
+    const res = await SELF.fetch(req("badurl"));
+    expect(res.status).toBe(404);
+  });
+
   it("custom slug pointing at deleted link -> 404", async () => {
     const link = await LinkRepository.create(env.DB, {
       url: "https://example.com/orphan",

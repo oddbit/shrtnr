@@ -171,13 +171,13 @@ class Links:
         url = self._url(f"/_/api/links/{id}/timeline", {"range": range})
         return TimelineData.from_dict(self._request("GET", url, headers=self._headers()))
 
-    def qr(self, id: int, *, slug: str | None = None, size: str | None = None) -> str:
+    def qr(self, id: int, *, slug: str | None = None, size: int | None = None) -> str:
         """Get the QR code SVG for a link. Returns the SVG string."""
         query: dict[str, str | None] = {}
         if slug is not None:
             query["slug"] = slug
         if size is not None:
-            query["size"] = size
+            query["size"] = str(size)
         url = self._url(f"/_/api/links/{id}/qr", query or None)
         return self._request_text("GET", url, headers=self._headers())
 
@@ -327,13 +327,13 @@ class AsyncLinks:
         url = self._url(f"/_/api/links/{id}/timeline", {"range": range})
         return TimelineData.from_dict(await self._request("GET", url, headers=self._headers()))
 
-    async def qr(self, id: int, *, slug: str | None = None, size: str | None = None) -> str:
+    async def qr(self, id: int, *, slug: str | None = None, size: int | None = None) -> str:
         """Get the QR code SVG for a link. Returns the SVG string."""
         query: dict[str, str | None] = {}
         if slug is not None:
             query["slug"] = slug
         if size is not None:
-            query["size"] = size
+            query["size"] = str(size)
         url = self._url(f"/_/api/links/{id}/qr", query or None)
         return await self._request_text("GET", url, headers=self._headers())
 
