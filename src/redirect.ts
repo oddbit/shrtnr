@@ -95,10 +95,17 @@ export async function handleRedirect(
   // and their repeat clicks would go unrecorded. The short private max-age
   // forces revalidation within seconds (same approach Bitly uses).
   // new URL(...).href mirrors Response.redirect's Location serialization.
+  let location: string;
+  try {
+    location = new URL(entry.url).href;
+  } catch {
+    return notFoundResponse();
+  }
+
   return new Response(null, {
     status: 301,
     headers: {
-      Location: new URL(entry.url).href,
+      Location: location,
       "Cache-Control": "private, max-age=90",
     },
   });
