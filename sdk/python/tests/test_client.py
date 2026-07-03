@@ -706,3 +706,42 @@ def test_bundle_with_summary_from_dict_raises_on_missing_accent() -> None:
     }
     with pytest.raises(KeyError):
         BundleWithSummary.from_dict(data)
+
+
+# ---- parse_json_response: non-JSON 2xx wraps as ShrtnrError ----
+
+
+@respx.mock
+def test_non_json_2xx_raises_shrtnr_error(client: Shrtnr) -> None:
+    """A 2xx response with a non-JSON body must raise ShrtnrError, not JSONDecodeError."""
+    respx.get(f"{BASE_URL}/_/api/links").mock(
+        return_value=httpx.Response(200, text="<html>Bad Gateway</html>"),
+    )
+    with pytest.raises(ShrtnrError) as exc_info:
+        client.links.list()
+    assert exc_info.value.status == 200
+
+
+# ---- links.qr: size accepts int ----
+
+
+@respx.mock
+def test_links_qr_size_accepts_int(client: Shrtnr) -> None:
+    """qr(id, size=200) must send size=200 as a query parameter string."""
+    route = respx.get(f"{BASE_URL}/_/api/links/5/qr").mock(
+        return_value=httpx.Response(200, text="<svg/>"),
+    )
+    client.links.qr(5, size=200)
+    assert route.called
+    assert route.calls[0].request.url.params["size"] == "200"
+
+
+@respx.mock
+def test_links_qr_size_omitted_when_none(client: Shrtnr) -> None:
+    """qr(id) without size must not include a size query parameter."""
+    route = respx.get(f"{BASE_URL}/_/api/links/5/qr").mock(
+        return_value=httpx.Response(200, text="<svg/>"),
+    )
+    client.links.qr(5)
+    assert route.called
+    assert "size" not in route.calls[0].request.url.params

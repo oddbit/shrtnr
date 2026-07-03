@@ -71,7 +71,10 @@ def parse_json_response(response: httpx.Response) -> Any:
         _raise_from_response(response)
     if response.status_code == 204 or not response.content:
         return None
-    return response.json()
+    try:
+        return response.json()
+    except Exception as exc:
+        raise ShrtnrError(response.status_code, f"Invalid JSON response: {exc}") from exc
 
 
 def parse_text_response(response: httpx.Response) -> str:
