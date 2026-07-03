@@ -3,7 +3,6 @@
 
 import type { FC } from "hono/jsx";
 import type { TranslateFn } from "../i18n";
-import { escHtml } from "../escape";
 import { SdkList } from "./sdk-list";
 
 // Bullets that stand in for the redacted tail of a key prefix, e.g. sk_84cc••••••.
@@ -153,7 +152,8 @@ export const KeysPage: FC<Props> = ({ keys, t, lang, origin }) => {
                       <td>
                         <button
                           class="btn btn-danger btn-sm"
-                          onclick={`deleteKey(${k.id},'${escHtml(k.title).replace(/'/g, "\\'")}')`}
+                          data-delete-key={k.id}
+                          data-delete-key-title={k.title}
                         >
                           <span class="icon icon-sm">delete</span>
                         </button>
