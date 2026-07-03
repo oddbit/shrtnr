@@ -1104,7 +1104,7 @@ void main() {
       expect(() => BundleAccent.fromWire('neon'), throwsA(isA<ArgumentError>()));
     });
 
-    test('Bundle.fromJson throws when accent is absent', () {
+    test('Bundle.fromJson defaults accent to orange when absent', () {
       final json = <String, Object?>{
         'id': 1,
         'name': 'test',
@@ -1116,7 +1116,7 @@ void main() {
         'created_at': 1000000,
         'updated_at': 1000000,
       };
-      expect(() => Bundle.fromJson(json), throwsA(isA<TypeError>()));
+      expect(Bundle.fromJson(json).accent, BundleAccent.orange);
     });
   });
 
