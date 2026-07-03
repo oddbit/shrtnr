@@ -12,6 +12,8 @@ import {
   enableSlug,
   removeSlug,
   addCustomSlugToLink,
+  updateLink,
+  setSlugPrimary,
   searchLinks,
   listLinksByOwner,
 } from "../../services/link-management";
@@ -84,6 +86,48 @@ describe("Link ownership: delete", () => {
   it("non-owner cannot delete another user's link", async () => {
     const link = await createOwnedLink();
     const result = await deleteLink(env as any, link.id, OTHER);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(403);
+    }
+  });
+});
+
+describe("Link ownership: update", () => {
+  it("owner can update their link", async () => {
+    const link = await createOwnedLink();
+    const result = await updateLink(env as any, link.id, { url: "https://example.com/moved" }, OWNER);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.url).toBe("https://example.com/moved");
+    }
+  });
+
+  it("non-owner cannot update another user's link", async () => {
+    const link = await createOwnedLink();
+    const result = await updateLink(env as any, link.id, { url: "https://evil.example" }, OTHER);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(403);
+    }
+    // The destination must be untouched after a rejected update.
+    const after = await LinkRepository.getById(env.DB, link.id);
+    expect(after!.url).toBe("https://example.com");
+  });
+});
+
+describe("Slug ownership: set primary", () => {
+  it("link owner can change the primary slug", async () => {
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "primary-pick" });
+    const result = await setSlugPrimary(env as any, link.id, "primary-pick", OWNER);
+    expect(result.ok).toBe(true);
+  });
+
+  it("non-owner cannot change the primary slug on another user's link", async () => {
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "primary-pick" });
+    const result = await setSlugPrimary(env as any, link.id, "primary-pick", OTHER);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(403);

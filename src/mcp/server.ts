@@ -268,7 +268,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         annotations: { title: "Update link", ...WRITE_IDEMPOTENT },
       },
       async ({ link_id, ...opts }) => {
-        const result = await updateLink(this.env, link_id, opts);
+        const result = await updateLink(this.env, link_id, opts, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },

@@ -389,7 +389,7 @@ app.get("/_/admin/api/links/:id", (c) => {
 app.put("/_/admin/api/links/:id", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  return handleUpdateLink(c.req.raw, c.env, id);
+  return handleUpdateLink(c.req.raw, c.env, id, c.var.identity);
 });
 app.get("/_/admin/api/links/:id/analytics", (c) => {
   const id = parseInt(c.req.param("id"), 10);
@@ -434,7 +434,7 @@ app.post("/_/admin/api/links/:id/slugs", (c) => {
 app.put("/_/admin/api/links/:id/slugs/primary", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  return handleSetPrimarySlug(c.req.raw, c.env, id);
+  return handleSetPrimarySlug(c.req.raw, c.env, id, c.var.identity);
 });
 app.post("/_/admin/api/links/:id/slugs/:slug/disable", (c) => {
   const id = parseInt(c.req.param("id"), 10);

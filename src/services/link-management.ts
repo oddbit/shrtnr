@@ -147,7 +147,12 @@ export async function updateLink(
   env: Env,
   id: number,
   body: { url?: string; label?: string | null; expires_at?: number | null },
+  identity: string,
 ): Promise<ServiceResult<LinkWithSlugs>> {
+  const existing = await LinkRepository.getById(env.DB, id);
+  if (!existing) return fail(404, "Link not found");
+  if (existing.created_by !== identity) return fail(403, "Only the link owner can update this link");
+
   if (body.url !== undefined) {
     try {
       const parsed = new URL(body.url);
@@ -290,9 +295,11 @@ export async function setSlugPrimary(
   env: Env,
   linkId: number,
   slug: string,
+  identity: string,
 ): Promise<ServiceResult<LinkWithSlugs>> {
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
+  if (link.created_by !== identity) return fail(403, "Only the link owner can change the primary slug");
 
   const slugObj = link.slugs.find((s) => s.slug === slug);
   if (!slugObj) return fail(404, "Slug not found on this link");
