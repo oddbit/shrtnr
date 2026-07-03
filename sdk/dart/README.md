@@ -50,7 +50,7 @@ closed by `client.close()`.
 | `get(id, {range?})` | Get a link with click count |
 | `list({owner?, range?})` | List all links |
 | `create({url, label?, slugLength?, expiresAt?, allowDuplicate?})` | Create a short link |
-| `update(id, {url?, label?, expiresAt?})` | Update URL, label, or expiry |
+| `update(link)` | Update URL, label, or expiry (pass a `Link` from `copyWith`) |
 | `disable(id)` | Stop redirecting |
 | `enable(id)` | Resume redirecting |
 | `delete(id)` | Permanently delete |
@@ -65,10 +65,10 @@ closed by `client.close()`.
 final link = await client.links.create(url: 'https://example.com', label: 'Landing page');
 
 // Get a 7-day click count
-final fresh = await client.links.get(link.id, range: '7d');
+final fresh = await client.links.get(link.id, range: TimelineRange.last7d);
 
 // Full analytics for the last 30 days
-final stats = await client.links.analytics(link.id, range: '30d');
+final stats = await client.links.analytics(link.id, range: TimelineRange.last30d);
 print('${stats.totalClicks} clicks, ${stats.numCountries} countries');
 ```
 
@@ -100,7 +100,7 @@ Groups of related links with combined analytics.
 | `get(id, {range?})` | Get a bundle with click summary |
 | `list({archived?, range?})` | List bundles |
 | `create({name, description?, icon?, accent?})` | Create a bundle |
-| `update(id, {name?, description?, icon?, accent?})` | Update metadata |
+| `update(bundle)` | Update metadata (pass a `Bundle` from `copyWith`) |
 | `delete(id)` | Permanently delete |
 | `archive(id)` | Hide from default listing |
 | `unarchive(id)` | Restore an archived bundle |
@@ -112,12 +112,12 @@ Groups of related links with combined analytics.
 
 ```dart
 // Create a bundle and add links to it
-final bundle = await client.bundles.create(name: 'Spring 2026', accent: 'green');
+final bundle = await client.bundles.create(name: 'Spring 2026', accent: BundleAccent.green);
 await client.bundles.addLink(bundle.id, linkA.id);
 await client.bundles.addLink(bundle.id, linkB.id);
 
 // Combined analytics for the last 7 days
-final stats = await client.bundles.analytics(bundle.id, range: '7d');
+final stats = await client.bundles.analytics(bundle.id, range: TimelineRange.last7d);
 print(stats.totalClicks);
 ```
 
@@ -130,8 +130,9 @@ Key types exported from `package:shrtnr/shrtnr.dart`:
 
 - `Link`, `Slug`, `Bundle`, `BundleWithSummary`, `BundleTopLink`
 - `ClickStats`, `TimelineData`, `TimelineBucket`, `TimelineSummary`, `NameCount`
-- `DateClickCount`, `SlugClickCount`
+- `DateCount`, `SlugCount`
 - `DeletedResult`, `AddedResult`, `RemovedResult`
+- Enums: `TimelineRange`, `BundleAccent`, `BreakdownDimension`, `BundleArchivedFilter`
 
 Timestamp fields (`createdAt`, `expiresAt`, `disabledAt`, `archivedAt`, `updatedAt`) are
 plain `int` Unix seconds, matching the wire format exactly.

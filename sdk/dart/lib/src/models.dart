@@ -102,14 +102,17 @@ enum TimelineRange {
 /// uses [trueValue] and [activeOnly]. The wire value `"1"` is omitted because
 /// it is a semantic alias for `"true"`; use [trueValue] for both.
 enum BundleArchivedFilter {
-  /// Include archived bundles alongside active ones (wire: `"true"`). Also
-  /// covers the `"1"` alias from the spec; prefer this member for both.
+  /// Return only archived bundles (wire: `"true"`). Also covers the `"1"`
+  /// alias from the spec; prefer this member for both.
   trueValue,
 
-  /// Return only archived bundles (wire: `"only"`).
+  /// Return only archived bundles (wire: `"only"`). Despite the name, the
+  /// server's `"only"` value returns archived bundles only, the same result
+  /// as [trueValue]. The name is misleading and is kept for wire
+  /// compatibility; a rename awaits the next major version.
   activeOnly,
 
-  /// Return all bundles regardless of archived status (wire: `"all"`).
+  /// Include archived bundles alongside active ones (wire: `"all"`).
   all;
 
   static const _wireValues = {
