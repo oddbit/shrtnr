@@ -43,7 +43,11 @@ export async function handleLinkQr(request: Request, env: Env, linkId: number): 
   return new Response(svg, {
     headers: {
       "Content-Type": "image/svg+xml",
-      "Cache-Control": "public, max-age=86400",
+      // private, not public: this endpoint sits behind a bearer token, and
+      // public would let a shared cache store the authenticated response and
+      // serve the link-id to slug mapping to unauthenticated clients. private
+      // keeps the same browser caching without the shared-cache waiver.
+      "Cache-Control": "private, max-age=86400",
     },
   });
 }
