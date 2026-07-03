@@ -2,6 +2,10 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.1.1
+
+- `links.qr()` now takes `size` as an `int` instead of a `str`, matching the API schema (which validates an integer) and the TypeScript and Dart SDKs. Callers who passed an int already got the correct behavior; the annotation was the only thing out of step.
+
 ## 1.1.0 (2026-06-19)
 
 - Add `links.breakdown` and `bundles.breakdown` (sync and async) for paging through the countries, sources and domains analytics panels (offset/limit, returns items + total).

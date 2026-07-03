@@ -341,7 +341,7 @@ def test_links_qr_with_slug_and_size(client: Shrtnr) -> None:
     route = respx.get(url__regex=rf"^{BASE_URL}/_/api/links/5/qr\?").mock(
         return_value=httpx.Response(200, text="<svg/>"),
     )
-    client.links.qr(5, slug="promo", size="200")
+    client.links.qr(5, slug="promo", size=200)
     url = str(route.calls[0].request.url)
     assert "slug=promo" in url
     assert "size=200" in url
