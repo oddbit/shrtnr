@@ -1166,4 +1166,88 @@ void main() {
       );
     });
   });
+
+  // ---- 35. Bundle.fromJson null accent ----
+
+  group('Bundle.fromJson null accent', () {
+    test('defaults to orange when accent is absent', () {
+      final json = <String, Object?>{
+        'id': 1,
+        'name': 'Test',
+        'description': null,
+        'icon': null,
+        // 'accent' key absent
+        'archived_at': null,
+        'created_via': null,
+        'created_by': 'user@example.com',
+        'created_at': 1000000,
+        'updated_at': 1000000,
+      };
+      final bundle = Bundle.fromJson(json);
+      expect(bundle.accent, BundleAccent.orange);
+    });
+
+    test('defaults to orange when accent is null', () {
+      final json = <String, Object?>{
+        'id': 1,
+        'name': 'Test',
+        'description': null,
+        'icon': null,
+        'accent': null,
+        'archived_at': null,
+        'created_via': null,
+        'created_by': 'user@example.com',
+        'created_at': 1000000,
+        'updated_at': 1000000,
+      };
+      final bundle = Bundle.fromJson(json);
+      expect(bundle.accent, BundleAccent.orange);
+    });
+  });
+
+  // ---- 36. BundleWithSummary.fromJson null accent ----
+
+  group('BundleWithSummary.fromJson null accent', () {
+    test('defaults to orange when accent is absent', () {
+      final json = <String, Object?>{
+        'id': 1,
+        'name': 'Test',
+        'description': null,
+        'icon': null,
+        // 'accent' key absent
+        'archived_at': null,
+        'created_via': null,
+        'created_by': 'user@example.com',
+        'created_at': 1000000,
+        'updated_at': 1000000,
+        'link_count': 0,
+        'total_clicks': 0,
+        'sparkline': <int>[],
+        'top_links': <dynamic>[],
+      };
+      final bundle = BundleWithSummary.fromJson(json);
+      expect(bundle.accent, BundleAccent.orange);
+    });
+
+    test('defaults to orange when accent is null', () {
+      final json = <String, Object?>{
+        'id': 1,
+        'name': 'Test',
+        'description': null,
+        'icon': null,
+        'accent': null,
+        'archived_at': null,
+        'created_via': null,
+        'created_by': 'user@example.com',
+        'created_at': 1000000,
+        'updated_at': 1000000,
+        'link_count': 0,
+        'total_clicks': 0,
+        'sparkline': <int>[],
+        'top_links': <dynamic>[],
+      };
+      final bundle = BundleWithSummary.fromJson(json);
+      expect(bundle.accent, BundleAccent.orange);
+    });
+  });
 }
