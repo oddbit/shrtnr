@@ -63,4 +63,22 @@ describe("normalizeUrl", () => {
       "https://example.com#section",
     );
   });
+
+  it("preserves a trailing slash inside a query value", () => {
+    expect(normalizeUrl("https://example.com/search?q=cats/")).toBe(
+      "https://example.com/search?q=cats/",
+    );
+  });
+
+  it("preserves a trailing slash inside an embedded URL parameter", () => {
+    expect(normalizeUrl("https://example.com/a?next=https://b.com/")).toBe(
+      "https://example.com/a?next=https://b.com/",
+    );
+  });
+
+  it("preserves a hash-router route that ends in a slash", () => {
+    expect(normalizeUrl("https://example.com/#/spa/route/")).toBe(
+      "https://example.com/#/spa/route/",
+    );
+  });
 });
