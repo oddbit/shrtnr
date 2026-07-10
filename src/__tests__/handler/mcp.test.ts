@@ -527,6 +527,40 @@ describe("MCP get_link_qr", () => {
     // (api/qr.ts), so redirect.ts records the scan with link_mode = "qr".
     expect(text).toContain(`https://shrtnr.test/${slug}?utm_medium=qr`);
   });
+
+  it("matches an explicit slug argument regardless of case, since stored slugs are always lowercase", async () => {
+    const created = await createLink(env as any, { url: "https://example.com/qr-case" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const slug = created.data.slugs[0].slug;
+
+    const sessionId = await initSession();
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/mcp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "mcp-session-id": sessionId,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 5,
+          method: "tools/call",
+          params: {
+            name: "get_link_qr",
+            arguments: { link_id: created.data.id, slug: slug.toUpperCase(), base_url: "https://shrtnr.test" },
+          },
+        }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    const message = await readFirstSseMessage(res);
+    const result = message!.result as { isError?: boolean; content?: { type: string; text?: string }[] } | undefined;
+    expect(result?.isError).toBeFalsy();
+    const text = result?.content?.find((c) => c.type === "text")?.text ?? "";
+    expect(text).toContain(`https://shrtnr.test/${slug}?utm_medium=qr`);
+  });
 });
 
 describe("MCP error surface", () => {

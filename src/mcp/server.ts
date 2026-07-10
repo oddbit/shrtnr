@@ -479,7 +479,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         const link = result.data;
 
         const target = requestedSlug
-          ? link.slugs.find((s) => s.slug === requestedSlug)
+          ? link.slugs.find((s) => s.slug === requestedSlug.toLowerCase())
           : (link.slugs.find((s) => s.is_primary) ?? link.slugs[0]);
 
         if (!target) return fail("Slug not found");

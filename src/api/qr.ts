@@ -30,7 +30,7 @@ export async function handleLinkQr(request: Request, env: Env, linkId: number): 
 
   const link = result.data;
   const slug = requestedSlug
-    ? link.slugs.find((s) => s.slug === requestedSlug)
+    ? link.slugs.find((s) => s.slug === requestedSlug.toLowerCase())
     : link.slugs.find((s) => s.is_primary) ?? link.slugs[0];
 
   if (!slug) return json({ error: "Slug not found" }, 404);
