@@ -109,6 +109,43 @@ describe("Error handling", () => {
       expect((e as ShrtnrError).status).toBe(0);
     }
   });
+
+  it("wraps a malformed JSON body on a 2xx response in ShrtnrError instead of throwing a raw SyntaxError", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response("<html>not json</html>", { status: 200, headers: { "Content-Type": "application/json" } }),
+    );
+    try {
+      await client().links.list();
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(ShrtnrError);
+      expect((e as ShrtnrError).status).toBe(200);
+      expect((e as ShrtnrError).serverMessage).toMatch(/Invalid JSON response/);
+    }
+  });
+
+  it("binds fetch to globalThis instead of capturing an unbound method reference", async () => {
+    // Browsers brand-check fetch's receiver (must be Window). Extracting
+    // `globalThis.fetch` as a bare reference and calling it as `this.fetchFn(...)`
+    // changes the implicit receiver to the HttpClient instance, which real
+    // browsers reject with "Illegal invocation". Binding to globalThis fixes it.
+    const realFetch = globalThis.fetch;
+    function brandCheckedFetch(this: unknown) {
+      if (this !== globalThis) {
+        throw new TypeError("Illegal invocation");
+      }
+      return Promise.resolve(
+        new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } }),
+      );
+    }
+    globalThis.fetch = brandCheckedFetch as typeof fetch;
+    try {
+      const unconfiguredClient = new ShrtnrClient({ baseUrl: BASE, apiKey: API_KEY });
+      await expect(unconfiguredClient.links.list()).resolves.toEqual([]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
 });
 
 // ============================================================

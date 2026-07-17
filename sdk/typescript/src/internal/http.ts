@@ -18,7 +18,7 @@ export class HttpClient {
   constructor(config: HttpClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, "");
     this.authHeader = `Bearer ${config.apiKey}`;
-    this.fetchFn = config.fetch ?? globalThis.fetch;
+    this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
   async request<T>(
@@ -59,7 +59,13 @@ export class HttpClient {
 
     if (res.status === 204) return undefined as T;
 
-    const json: unknown = await res.json();
+    let json: unknown;
+    try {
+      json = await res.json();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new ShrtnrError(res.status, `Invalid JSON response: ${msg}`);
+    }
     return keysToCamel(json) as T;
   }
 
