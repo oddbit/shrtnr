@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
 import { BundleRepository, LinkRepository } from "../../db";
@@ -171,6 +171,22 @@ describe("BundleRepository.delete", () => {
 
   it("returns false for unknown id", async () => {
     expect(await BundleRepository.delete(env.DB, 99999)).toBe(false);
+  });
+
+  it("returns false when a concurrent request deletes the row between the pre-read and the DELETE", async () => {
+    // The pre-read existence check can pass, then a concurrent delete wins the
+    // race before this call's own DELETE runs. Without checking meta.changes,
+    // the DELETE (which matches zero rows because the row is already gone)
+    // would still report success.
+    const bundle = await BundleRepository.create(env.DB, { name: "Raced", createdBy: "a@b" });
+
+    const spy = vi.spyOn(BundleRepository, "getById").mockImplementationOnce(async (db, id) => {
+      await db.prepare("DELETE FROM bundles WHERE id = ?").bind(id).run();
+      return bundle;
+    });
+    const result = await BundleRepository.delete(env.DB, bundle.id).finally(() => spy.mockRestore());
+
+    expect(result).toBe(false);
   });
 });
 

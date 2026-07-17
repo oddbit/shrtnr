@@ -303,7 +303,10 @@ export async function setSlugPrimary(
   if (!slugObj) return fail(404, "Slug not found on this link");
 
   await SlugRepository.setPrimary(env.DB, linkId, slug);
-  return ok((await LinkRepository.getById(env.DB, linkId))!);
+  const refreshed = await LinkRepository.getById(env.DB, linkId);
+  // null on race: link deleted between the existence check above and here.
+  if (!refreshed) return fail(404, "Link not found");
+  return ok(refreshed);
 }
 
 export async function disableSlug(

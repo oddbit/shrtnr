@@ -321,6 +321,17 @@ describe("bundle concurrent-delete: null return propagates as 404", () => {
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.status).toBe(404);
   });
+
+  it("getBundleAnalytics returns 404 rather than ok(null) when the bundle is deleted between the existence check and getBundleStats", async () => {
+    const b = await BundleRepository.create(env.DB, { name: "Raced", createdBy: "a@b" });
+
+    const { ClickRepository } = await import("../../db");
+    const spy = vi.spyOn(ClickRepository, "getBundleStats").mockResolvedValueOnce(null);
+    const res = await svc.getBundleAnalytics(e, b.id, "30d", "a@b").finally(() => spy.mockRestore());
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.status).toBe(404);
+  });
 });
 
 describe("listBundlesForLink", () => {

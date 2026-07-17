@@ -133,8 +133,9 @@ export class BundleRepository {
   static async delete(db: D1Database, id: number): Promise<boolean> {
     const current = await BundleRepository.getById(db, id);
     if (!current) return false;
-    await db.prepare("DELETE FROM bundles WHERE id = ?").bind(id).run();
-    return true;
+    const result = await db.prepare("DELETE FROM bundles WHERE id = ?").bind(id).run();
+    // changes === 0 on race: a concurrent request already deleted this row.
+    return (result.meta.changes ?? 0) > 0;
   }
 
   static async addLink(db: D1Database, bundleId: number, linkId: number): Promise<void> {
