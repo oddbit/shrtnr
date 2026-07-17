@@ -165,7 +165,7 @@ const updateLinkRoute = createRoute({
 linksApp.openapi(updateLinkRoute, async (c) => {
   const { id } = c.req.valid("param") as { id: number };
   const body = c.req.valid("json") as { url?: string; label?: string | null; expires_at?: number | null };
-  return fromServiceResult(await updateLink(c.env, id, body)) as never;
+  return fromServiceResult(await updateLink(c.env, id, body, c.var.auth.identity)) as never;
 }, paramHook);
 
 // ---- POST /:id/disable ----
@@ -510,7 +510,7 @@ export async function handleCreateLink(request: Request, env: Env, createdVia?: 
   return fromServiceResult(result);
 }
 
-export async function handleUpdateLink(request: Request, env: Env, id: number): Promise<Response> {
+export async function handleUpdateLink(request: Request, env: Env, id: number, identity: string): Promise<Response> {
   let body: { url?: string; label?: string | null; expires_at?: number | null };
 
   try {
@@ -519,7 +519,7 @@ export async function handleUpdateLink(request: Request, env: Env, id: number): 
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  return fromServiceResult(await updateLink(env, id, body));
+  return fromServiceResult(await updateLink(env, id, body, identity));
 }
 
 export async function handleDisableLink(env: Env, id: number, identity: string): Promise<Response> {

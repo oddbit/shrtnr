@@ -120,7 +120,7 @@ describe("link-management service", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const result = await updateLink(env as any, created.data.id, { url: "javascript:alert(1)" });
+    const result = await updateLink(env as any, created.data.id, { url: "javascript:alert(1)" }, created.data.created_by);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(400);
@@ -135,7 +135,7 @@ describe("link-management service", () => {
     const fetched = await getLink(env as any, created.data.id);
     expect(fetched.ok).toBe(true);
 
-    const updated = await updateLink(env as any, created.data.id, { label: "Updated" });
+    const updated = await updateLink(env as any, created.data.id, { label: "Updated" }, created.data.created_by);
     expect(updated.ok).toBe(true);
     if (updated.ok) {
       expect(updated.data.label).toBe("Updated");
@@ -307,7 +307,7 @@ describe("URL normalization in updateLink", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const updated = await updateLink(env as any, created.data.id, { url: "https://example.com/new-path/" });
+    const updated = await updateLink(env as any, created.data.id, { url: "https://example.com/new-path/" }, created.data.created_by);
     expect(updated.ok).toBe(true);
     if (updated.ok) {
       expect(updated.data.url).toBe("https://example.com/new-path");
@@ -319,7 +319,7 @@ describe("URL normalization in updateLink", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const updated = await updateLink(env as any, created.data.id, { url: "https://example.com/page?" });
+    const updated = await updateLink(env as any, created.data.id, { url: "https://example.com/page?" }, created.data.created_by);
     expect(updated.ok).toBe(true);
     if (updated.ok) {
       expect(updated.data.url).toBe("https://example.com/page");
@@ -331,7 +331,7 @@ describe("URL normalization in updateLink", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const updated = await updateLink(env as any, created.data.id, { label: null });
+    const updated = await updateLink(env as any, created.data.id, { label: null }, created.data.created_by);
     expect(updated.ok).toBe(true);
     if (updated.ok) {
       expect(updated.data.label).toBeNull();
@@ -389,7 +389,7 @@ describe("field type validation in updateLink", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const updated = await updateLink(env as any, created.data.id, { expires_at: "never" as any });
+    const updated = await updateLink(env as any, created.data.id, { expires_at: "never" as any }, created.data.created_by);
     expect(updated.ok).toBe(false);
     if (!updated.ok) expect(updated.status).toBe(400);
   });
@@ -399,7 +399,7 @@ describe("field type validation in updateLink", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const updated = await updateLink(env as any, created.data.id, { label: 42 as any });
+    const updated = await updateLink(env as any, created.data.id, { label: 42 as any }, created.data.created_by);
     expect(updated.ok).toBe(false);
     if (!updated.ok) expect(updated.status).toBe(400);
   });
@@ -409,7 +409,7 @@ describe("field type validation in updateLink", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const updated = await updateLink(env as any, created.data.id, { expires_at: null });
+    const updated = await updateLink(env as any, created.data.id, { expires_at: null }, created.data.created_by);
     expect(updated.ok).toBe(true);
     if (updated.ok) expect(updated.data.expires_at).toBeNull();
   });

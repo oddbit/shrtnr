@@ -14,6 +14,7 @@ import {
   addCustomSlugToLink,
   searchLinks,
   listLinksByOwner,
+  updateLink,
 } from "../../services/link-management";
 
 beforeAll(applyMigrations);
@@ -48,6 +49,39 @@ describe("Link ownership: disable", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(403);
+    }
+  });
+});
+
+describe("Link ownership: update", () => {
+  it("owner can update their link", async () => {
+    const link = await createOwnedLink();
+    const result = await updateLink(env as any, link.id, { url: "https://example.com/new" }, OWNER);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.url).toBe("https://example.com/new");
+    }
+  });
+
+  it("non-owner cannot rewrite another user's link", async () => {
+    // Without an ownership check, any authenticated caller with create scope
+    // could redirect-hijack a link they don't own by changing its URL.
+    const link = await createOwnedLink();
+    const result = await updateLink(env as any, link.id, { url: "https://evil.example/phish" }, OTHER);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(403);
+    }
+
+    const unchanged = await LinkRepository.getById(env.DB, link.id);
+    expect(unchanged!.url).toBe("https://example.com");
+  });
+
+  it("returns 404 when the link does not exist", async () => {
+    const result = await updateLink(env as any, 99999, { url: "https://example.com/new" }, OWNER);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(404);
     }
   });
 });
