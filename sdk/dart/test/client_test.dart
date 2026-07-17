@@ -227,6 +227,23 @@ void main() {
         expect(e.serverMessage, contains('connection refused'));
       }
     });
+
+    test('throws ShrtnrError instead of FormatException on a non-JSON 2xx body', () async {
+      // A 2xx response with a non-JSON body (HTML error page from a proxy,
+      // truncated response) must raise ShrtnrError, not a raw FormatException.
+      final m = _mock(
+        status: 200,
+        body: '<html>Bad Gateway</html>',
+        contentType: 'text/html',
+      );
+      try {
+        await m.client.links.list();
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 200);
+        expect(e.serverMessage, contains('Invalid JSON response'));
+      }
+    });
   });
 
   // ---- 3. links.get ----
