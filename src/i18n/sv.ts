@@ -304,6 +304,7 @@ const sv: Translations = {
   "range.long.90d": "90 dagar",
   "range.long.1y": "12 månader",
   "range.long.all": "all tid",
+  "range.ariaLabel": "Välj tidsperiod",
 
   // 404
   "notFound.label": "Hittades inte",

@@ -301,6 +301,7 @@ const en = {
   "range.long.90d": "90 days",
   "range.long.1y": "12 months",
   "range.long.all": "all time",
+  "range.ariaLabel": "Select time range",
 
   // 404
   "notFound.label": "Not found",

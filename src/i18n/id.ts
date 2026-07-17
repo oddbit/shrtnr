@@ -304,6 +304,7 @@ const id: Translations = {
   "range.long.90d": "90 hari",
   "range.long.1y": "12 bulan",
   "range.long.all": "seluruh waktu",
+  "range.ariaLabel": "Pilih rentang waktu",
 
   // 404
   "notFound.label": "Tidak ditemukan",

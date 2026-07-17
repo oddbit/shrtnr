@@ -112,7 +112,7 @@ export const LinksPage: FC<Props> = ({
           <div class="page-subtitle">{t("links.subtitle")}</div>
         </div>
         <div class="topbar-actions">
-          <RangePicker current={range} basePath="/_/admin/links" preserveParams={preserveParams} />
+          <RangePicker current={range} basePath="/_/admin/links" t={t} preserveParams={preserveParams} />
         </div>
       </div>
 
