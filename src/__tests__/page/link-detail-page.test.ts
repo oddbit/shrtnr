@@ -71,4 +71,27 @@ describe("Link detail page server render", () => {
     const html = await res.text();
     expect(html).toMatch(/class="timeline-range-btn active"\s+data-range="30d"/);
   });
+
+  it("escapes an apostrophe in the URL so it cannot break out of the duplicate-modal onclick string", async () => {
+    // A URL containing an apostrophe must not terminate the single-quoted JS
+    // string literal inside the onclick attribute; escHtml alone doesn't
+    // escape apostrophes, so the quote itself must also be backslash-escaped.
+    const link = await LinkRepository.create(env.DB, {
+      url: "https://example.com/a'-alert(document.cookie)-'",
+      slug: "abc",
+    });
+    const res = await SELF.fetch(req(`/_/admin/links/${link.id}`));
+    const html = await res.text();
+
+    // The framework HTML-entity-encodes the whole attribute (' -> &#39;), which
+    // the browser decodes back to ' before running the onclick JS. A literal
+    // apostrophe from the URL must therefore reach the decoded JS string as a
+    // backslash-escaped \' , not a bare &#39; that decodes to an unescaped '.
+    expect(html).toContain(
+      `showDuplicateModal(${link.id}, &#39;https://example.com/a\\&#39;-alert(document.cookie)-\\&#39;&#39;)`,
+    );
+    expect(html).not.toContain(
+      `showDuplicateModal(${link.id}, &#39;https://example.com/a&#39;-alert(document.cookie)-&#39;&#39;)`,
+    );
+  });
 });

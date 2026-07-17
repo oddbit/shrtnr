@@ -131,7 +131,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                 <span class="icon">star</span> {t("linkDetail.changePrimary")}
               </button>
             )}
-            <button class="detail-menu-item" onclick={`showDuplicateModal(${link.id}, '${escHtml(link.url)}')`}>
+            <button class="detail-menu-item" onclick={`showDuplicateModal(${link.id}, '${escHtml(link.url).replace(/'/g, "\\'")}')`}>
               <span class="icon">content_copy</span> {t("linkDetail.duplicate")}
             </button>
             {isOwner && (
