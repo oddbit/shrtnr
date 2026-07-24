@@ -71,4 +71,23 @@ describe("Link detail page server render", () => {
     const html = await res.text();
     expect(html).toMatch(/class="timeline-range-btn active"\s+data-range="30d"/);
   });
+
+  it("escapes an apostrophe in the link URL for the Duplicate menu item (XSS guard)", async () => {
+    // A single quote in the destination URL must not be able to close the
+    // single-quoted JS string in the Duplicate button's onclick attribute.
+    const evilUrl = "https://example.com/x');alert(1);//";
+    const link = await LinkRepository.create(env.DB, { url: evilUrl, slug: "abc" });
+
+    const res = await SELF.fetch(req(`/_/admin/links/${link.id}`));
+    const html = await res.text();
+
+    // The renderer HTML-entity-escapes every apostrophe (&#39;) in the onclick
+    // attribute, including the JS-string delimiters. The browser decodes those
+    // entities back to literal quotes before handing the code to the JS engine,
+    // so entity-escaping alone can't stop the string from closing early — the
+    // fix must keep a literal backslash in front of the URL's apostrophe so it
+    // still reads as an escaped quote (not a string terminator) after decoding.
+    expect(html).toContain(`showDuplicateModal(${link.id}, &#39;https://example.com/x\\&#39;);alert(1);//&#39;)`);
+    expect(html).not.toContain(`showDuplicateModal(${link.id}, &#39;https://example.com/x&#39;);alert(1);//&#39;)`);
+  });
 });
