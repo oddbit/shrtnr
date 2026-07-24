@@ -72,7 +72,11 @@ class ShrtnrBaseClient {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.statusCode == 204 || response.body.isEmpty) return null;
-      return jsonDecode(response.body);
+      try {
+        return jsonDecode(response.body);
+      } catch (e) {
+        throw ShrtnrError(response.statusCode, 'Invalid JSON response: $e');
+      }
     }
 
     String serverMessage = 'HTTP ${response.statusCode}';

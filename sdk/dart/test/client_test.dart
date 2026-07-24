@@ -211,6 +211,20 @@ void main() {
       expect(() => m.client.links.list(), throwsA(isA<ShrtnrError>()));
     });
 
+    test('throws ShrtnrError, not FormatException, on a non-JSON 2xx body', () async {
+      final m = _mock(
+        status: 200,
+        body: '<html>Bad Gateway</html>',
+        contentType: 'text/html',
+      );
+      try {
+        await m.client.links.list();
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 200);
+      }
+    });
+
     test('throws ShrtnrError with status 0 on network error', () async {
       final capture = _Capture();
       final mock = MockClient((request) async {
