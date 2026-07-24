@@ -73,6 +73,36 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
   async function handleTest() {
     if (!formValid) return;
     setTestState({ kind: "running" });
+
+    let normalizedOrigin: string;
+    try {
+      normalizedOrigin = new URL(baseUrl.trim()).origin;
+    } catch {
+      setTestState({
+        kind: "error",
+        messageKey: "error.validation",
+        params: { message: "Invalid URL" },
+      });
+      return;
+    }
+
+    let granted = false;
+    try {
+      granted = await chrome.permissions.request({
+        origins: [`${normalizedOrigin}/*`],
+      });
+    } catch {
+      granted = false;
+    }
+    if (!granted) {
+      setTestState({
+        kind: "error",
+        messageKey: "error.testPermissionDenied",
+        params: { host: hostFromBaseUrl(normalizedOrigin) },
+      });
+      return;
+    }
+
     try {
       await testConnection({ baseUrl: baseUrl.trim(), apiKey: trimmedKey });
       setTestState({ kind: "ok" });

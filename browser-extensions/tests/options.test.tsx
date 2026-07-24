@@ -62,6 +62,44 @@ describe("Options — Test connection", () => {
     });
   });
 
+  it("requests host permission before testing the connection", async () => {
+    chrome.permissions.request = vi.fn(async () => true);
+    await renderOptions();
+    await waitFor(() => screen.getByLabelText(/server url/i));
+    fireEvent.input(screen.getByLabelText(/server url/i), {
+      target: { value: "https://x.com/admin" },
+    });
+    fireEvent.input(screen.getByLabelText(/api key/i), {
+      target: { value: "sk_abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /test/i }));
+    await waitFor(() => {
+      expect(chrome.permissions.request).toHaveBeenCalledWith({
+        origins: ["https://x.com/*"],
+      });
+    });
+    await waitFor(() => {
+      expect(mockedTest).toHaveBeenCalledWith({ baseUrl: "https://x.com/admin", apiKey: "sk_abc" });
+    });
+  });
+
+  it("shows a permission error and never calls testConnection when permission is denied", async () => {
+    chrome.permissions.request = vi.fn(async () => false);
+    await renderOptions();
+    await waitFor(() => screen.getByLabelText(/server url/i));
+    fireEvent.input(screen.getByLabelText(/server url/i), {
+      target: { value: "https://x.com" },
+    });
+    fireEvent.input(screen.getByLabelText(/api key/i), {
+      target: { value: "sk_abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /test/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/needs permission/i)).toBeTruthy();
+    });
+    expect(mockedTest).not.toHaveBeenCalled();
+  });
+
   it("shows the auth error message on 401", async () => {
     mockedTest.mockRejectedValue(new ExtensionError("unauthorized", "bad", 401));
     await renderOptions();
