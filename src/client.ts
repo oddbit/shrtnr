@@ -67,7 +67,7 @@ function openModal(html) {
 }
 
 // ---- Escape ----
-function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 // ---- API helper ----
 function api(path, opts) {
@@ -1233,7 +1233,7 @@ function renderIconPicker(selected) {
   var html = '<div class="bundle-icon-picker" id="bundle-icon-picker">';
   list.forEach(function(name) {
     var cls = 'bundle-icon-option' + (name === chosen ? ' selected' : '');
-    html += '<button type="button" class="' + cls + '" data-icon="' + esc(name) + '" onclick="selectBundleIcon(\\'' + name + '\\')" aria-label="' + esc(name) + '"><span class="icon">' + esc(name) + '</span></button>';
+    html += '<button type="button" class="' + cls + '" data-icon="' + esc(name) + '" aria-label="' + esc(name) + '"><span class="icon">' + esc(name) + '</span></button>';
   });
   html += '</div>';
   html += '<input type="hidden" id="bundle-icon" value="' + esc(chosen) + '">';
@@ -1589,6 +1589,19 @@ document.addEventListener('click', function(ev) {
   ev.preventDefault();
   ev.stopPropagation();
   copyUrl(slug);
+});
+
+// Select a bundle icon when a .bundle-icon-option button is clicked. Reading
+// the icon name from data-icon (instead of an inline onclick) avoids
+// interpolating an attacker-controlled bundle icon into a JS-string: HTML
+// entity-escaping alone can't protect an inline onclick because the browser
+// decodes entities before the JS engine parses the handler.
+document.addEventListener('click', function(ev) {
+  var el = ev.target && ev.target.closest ? ev.target.closest('.bundle-icon-option') : null;
+  if (!el) return;
+  var name = el.getAttribute('data-icon');
+  if (!name) return;
+  selectBundleIcon(name);
 });
 `;
 }
