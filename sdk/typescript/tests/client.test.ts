@@ -109,6 +109,17 @@ describe("Error handling", () => {
       expect((e as ShrtnrError).status).toBe(0);
     }
   });
+
+  it("throws ShrtnrError, not a raw parse error, on a non-JSON 2xx body", async () => {
+    mockFetch(200, "<html>Bad Gateway</html>", "text/html");
+    try {
+      await client().links.list();
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(ShrtnrError);
+      expect((e as ShrtnrError).status).toBe(200);
+    }
+  });
 });
 
 // ============================================================
