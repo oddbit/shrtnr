@@ -141,6 +141,42 @@ describe("Popup — QR toggle", () => {
     await waitFor(() => screen.getByRole("button", { name: /hide qr/i }));
     expect(mockedQr).toHaveBeenCalledTimes(1);
   });
+
+  it("does not revert an in-flight QR toggle when a slower Copy again resolves later", async () => {
+    const clipboard = getClipboardMock();
+
+    // The initial auto-copy fails, so copyStatus starts as "failed" (distinct
+    // from "fresh"). That gives a clean signal later for exactly when the
+    // second (copyAgain) call resolves, instead of racing against it.
+    let callCount = 0;
+    let resolveCopy!: () => void;
+    clipboard.writeText.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return Promise.reject(new Error("boom"));
+      return new Promise<void>((resolve) => { resolveCopy = resolve; });
+    });
+
+    await renderPopup();
+    await waitFor(() => screen.getByRole("alert"));
+
+    const findCopyButton = () =>
+      screen.getAllByRole("button").find((b) => /^copy$/i.test(b.textContent?.trim() ?? ""));
+    fireEvent.click(findCopyButton()!); // copyAgain: pending on the controlled promise
+
+    // While copyAgain is still pending, open the QR panel. This sets
+    // qr.visible synchronously, before copyAgain's stale closure resolves.
+    await waitFor(() => screen.getByRole("button", { name: /show qr/i }));
+    fireEvent.click(screen.getByRole("button", { name: /show qr/i }));
+    await waitFor(() => screen.getByRole("button", { name: /hide qr/i }));
+
+    // Now let copyAgain resolve. Before the fix, its
+    // setState({ ...state, copyStatus: "fresh" }) used a pre-QR-toggle
+    // snapshot of state and clobbered qr back to { visible: false }.
+    resolveCopy();
+    await waitFor(() => screen.getByRole("status")); // copyStatus flips to "fresh" (the ✓ copied toast)
+
+    expect(screen.getByRole("button", { name: /hide qr/i })).toBeTruthy();
+  });
 });
 
 describe("Popup — error states", () => {

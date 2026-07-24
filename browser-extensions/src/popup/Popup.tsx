@@ -143,9 +143,9 @@ export function Popup() {
     if (state.kind !== "success") return;
     try {
       await copyText(state.link.shortUrl);
-      setState({ ...state, copyStatus: "fresh" });
+      setState((prev) => (prev.kind === "success" ? { ...prev, copyStatus: "fresh" } : prev));
     } catch {
-      setState({ ...state, copyStatus: "failed" });
+      setState((prev) => (prev.kind === "success" ? { ...prev, copyStatus: "failed" } : prev));
     }
   }
 
