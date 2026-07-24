@@ -235,7 +235,7 @@ describe("MCP tool behavior (service layer)", () => {
 
     const result = await updateLink(env as never, created.data.id, {
       url: "https://example.com/updated",
-    });
+    }, created.data.created_by);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.url).toBe("https://example.com/updated");

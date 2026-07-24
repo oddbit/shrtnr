@@ -964,6 +964,33 @@ describe("cross-owner link isolation", () => {
     }));
     expect(disable.status).toBe(403);
   });
+
+  it("owner A's API key cannot update owner B's link's URL (403)", async () => {
+    const keyA = await seedApiKey(env.DB, "create,read", "ownerA@test");
+    const keyB = await seedApiKey(env.DB, "create,read", "ownerB@test");
+
+    const create = await SELF.fetch(new Request("https://shrtnr.test/_/api/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${keyB}` },
+      body: JSON.stringify({ url: "https://example.com/owner-b-only-update" }),
+    }));
+    expect(create.status).toBe(201);
+    const { id } = await create.json() as { id: number };
+
+    const update = await SELF.fetch(new Request(`https://shrtnr.test/_/api/links/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${keyA}` },
+      body: JSON.stringify({ url: "https://evil.example.com/hijacked" }),
+    }));
+    expect(update.status).toBe(403);
+
+    // The link must be unchanged: not hijacked to owner A's URL.
+    const get = await SELF.fetch(new Request(`https://shrtnr.test/_/api/links/${id}`, {
+      headers: { Authorization: `Bearer ${keyB}` },
+    }));
+    const body = await get.json() as { url: string };
+    expect(body.url).toBe("https://example.com/owner-b-only-update");
+  });
 });
 
 // ---- Open read access (design): anyone can read anything ----

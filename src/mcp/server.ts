@@ -258,7 +258,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "update_link",
       {
         title: "Update link",
-        description: "Update the destination URL, label, or expiry of an existing short link.",
+        description: "Update the destination URL, label, or expiry of an existing short link. Only the link owner can update it.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link to update"),
           url: z.string().url().optional().describe("New destination URL"),
@@ -268,7 +268,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         annotations: { title: "Update link", ...WRITE_IDEMPOTENT },
       },
       async ({ link_id, ...opts }) => {
-        const result = await updateLink(this.env, link_id, opts);
+        const result = await updateLink(this.env, link_id, opts, this.identity);
         if (!result.ok) return fail(result.error);
         return ok(result.data);
       },
