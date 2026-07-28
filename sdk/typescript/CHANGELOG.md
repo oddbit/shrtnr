@@ -2,6 +2,14 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.1.1 (2026-07-28)
+
+Error-handling fixes. No public surface changes.
+
+- A 2xx response whose body is not valid JSON now raises `ShrtnrError(status, "Invalid JSON response: ...")`. Previously `res.json()` threw a bare `SyntaxError`, so an HTML error page or a truncated body served with a 200 escaped the SDK's error type and bypassed any `catch (err) { if (err instanceof ShrtnrError) ... }` handling.
+- The default fetch binds to `globalThis`. Browsers brand-check the receiver of `fetch`, so calling the unbound reference stored on the client threw an `Illegal invocation`.
+- An environment with no global fetch (Node 17 and older, legacy browsers) raises `ShrtnrError` naming the client's `fetch` option instead of failing later with a `TypeError` from an undefined call.
+
 ## 1.1.0 (2026-06-19)
 
 - Add `links.breakdown` and `bundles.breakdown` for paging through the countries, sources and domains analytics panels (offset/limit, returns `{ items, total }`). Exports new types `BreakdownDimension` and `BreakdownPage`.
