@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.1 (2026-07-28)
+
+Error-handling and deserialization fixes. No public surface changes.
+
+- A 2xx response whose body is not valid JSON now throws `ShrtnrError(statusCode, 'Invalid JSON response: ...')`. Previously `jsonDecode` threw a `FormatException` past the SDK's error type, so an HTML error page or a truncated body served with a 200 skipped `on ShrtnrError` handlers.
+- `Bundle.fromJson` and `BundleWithSummary.fromJson` tolerate an absent or null `accent` and fall back to `BundleAccent.orange`. The unconditional `as String` cast threw a `TypeError` on any payload that omitted the field.
+- `BundleArchivedFilter` doc comments describe what the server actually returns. `trueValue` and `activeOnly` both return archived bundles only, and `all` returns archived alongside active. The comments previously described `trueValue` and `all` the other way around. `activeOnly` is misnamed for what it does; the rename waits for the next major version, since the wire value is correct.
+- README corrections: the `update()` rows show the current object-taking signature, the examples pass `TimelineRange` and `BundleAccent` values instead of raw strings, and the type list names `DateCount` and `SlugCount` and the four exported enums.
+- The `meta` constraint moves to `^1.19.0`. `http` stays at `^1.6.0`.
+
 ## 2.1.0
 
 Add `links.breakdown` and `bundles.breakdown` for paging through the countries, sources and domains analytics panels (offset/limit, returns items + total).
