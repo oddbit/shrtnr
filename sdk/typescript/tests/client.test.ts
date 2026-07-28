@@ -146,6 +146,42 @@ describe("Error handling", () => {
       globalThis.fetch = realFetch;
     }
   });
+
+  it("throws ShrtnrError naming the fetch option when the environment has no global fetch", () => {
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = undefined as unknown as typeof fetch;
+    try {
+      new ShrtnrClient({ baseUrl: BASE, apiKey: API_KEY });
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(ShrtnrError);
+      expect((e as ShrtnrError).status).toBe(0);
+      expect((e as ShrtnrError).serverMessage).toMatch(/fetch/);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  it("throws ShrtnrError when the global fetch is not callable", () => {
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = {} as unknown as typeof fetch;
+    try {
+      expect(() => new ShrtnrClient({ baseUrl: BASE, apiKey: API_KEY })).toThrow(ShrtnrError);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  it("uses an injected fetch even when the environment has no global fetch", async () => {
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = undefined as unknown as typeof fetch;
+    try {
+      mockFetch(200, []);
+      await expect(client().links.list()).resolves.toEqual([]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
 });
 
 // ============================================================
