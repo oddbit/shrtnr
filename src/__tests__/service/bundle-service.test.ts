@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
-import { BundleRepository, LinkRepository } from "../../db";
+import { BundleRepository, ClickRepository, LinkRepository } from "../../db";
 import * as svc from "../../services/bundle-management";
 import type { Env } from "../../types";
 
@@ -317,6 +317,18 @@ describe("bundle concurrent-delete: null return propagates as 404", () => {
 
     const spy = vi.spyOn(BundleRepository, "unarchive").mockResolvedValueOnce(null);
     const res = await svc.unarchiveBundle(e, b.id, "a@b").finally(() => spy.mockRestore());
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.status).toBe(404);
+  });
+
+  it("getBundleAnalytics returns 404 when getBundleStats returns null (concurrent deletion)", async () => {
+    const b = await BundleRepository.create(env.DB, { name: "Raced", createdBy: "a@b" });
+
+    // getBundleAnalytics's own getById check passes, but getBundleStats does
+    // an independent getById internally and can see the bundle gone by then.
+    const spy = vi.spyOn(ClickRepository, "getBundleStats").mockResolvedValueOnce(null);
+    const res = await svc.getBundleAnalytics(e, b.id, "30d", "a@b").finally(() => spy.mockRestore());
 
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.status).toBe(404);

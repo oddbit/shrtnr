@@ -6,9 +6,10 @@ import {
   createLink,
   getLink,
   getLinkBySlug,
+  setSlugPrimary,
   updateLink,
 } from "../../services/link-management";
-import { SettingRepository, SlugRepository } from "../../db";
+import { LinkRepository, SettingRepository, SlugRepository } from "../../db";
 
 beforeAll(applyMigrations);
 beforeEach(resetData);
@@ -435,6 +436,28 @@ describe("custom slug uniqueness under race conditions", () => {
         expect(result.status).toBe(409);
         expect(result.error).toBe("Slug already exists");
       }
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("setSlugPrimary concurrent-delete: null return propagates as 404", () => {
+  it("returns 404 when the link is deleted between the membership check and the final read", async () => {
+    const created = await createLink(env as any, { url: "https://example.com/raced" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const slug = created.data.slugs[0].slug;
+
+    // Simulate a concurrent delete landing after setSlugPrimary's initial
+    // membership check but before its final getById re-read.
+    const spy = vi.spyOn(LinkRepository, "getById")
+      .mockResolvedValueOnce(created.data)
+      .mockResolvedValueOnce(null);
+    try {
+      const result = await setSlugPrimary(env as any, created.data.id, slug);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.status).toBe(404);
     } finally {
       spy.mockRestore();
     }

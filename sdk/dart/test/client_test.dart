@@ -227,6 +227,22 @@ void main() {
         expect(e.serverMessage, contains('connection refused'));
       }
     });
+
+    test(
+        'wraps a non-JSON 2xx body in ShrtnrError instead of throwing a raw FormatException',
+        () async {
+      final m = _mock(
+        status: 200,
+        body: '<html>Bad Gateway</html>',
+        contentType: 'text/html',
+      );
+      try {
+        await m.client.links.list();
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 200);
+      }
+    });
   });
 
   // ---- 3. links.get ----
