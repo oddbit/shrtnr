@@ -10,6 +10,21 @@ export interface HttpClientConfig {
   fetch?: typeof fetch;
 }
 
+// Browsers brand-check fetch's receiver, so the global implementation stays
+// bound to globalThis. Environments without one (Node 17 and older, legacy
+// browsers) get a ShrtnrError pointing at the `fetch` config option rather than
+// a raw TypeError from `.bind`.
+function resolveGlobalFetch(): typeof fetch {
+  const globalFetch = globalThis.fetch;
+  if (typeof globalFetch !== "function") {
+    throw new ShrtnrError(
+      0,
+      "This environment has no global fetch; pass a fetch implementation via the client's `fetch` option",
+    );
+  }
+  return globalFetch.bind(globalThis);
+}
+
 export class HttpClient {
   private readonly baseUrl: string;
   private readonly authHeader: string;
@@ -18,7 +33,7 @@ export class HttpClient {
   constructor(config: HttpClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, "");
     this.authHeader = `Bearer ${config.apiKey}`;
-    this.fetchFn = config.fetch ?? globalThis.fetch;
+    this.fetchFn = config.fetch ?? resolveGlobalFetch();
   }
 
   async request<T>(

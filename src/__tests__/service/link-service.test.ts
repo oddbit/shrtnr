@@ -455,7 +455,7 @@ describe("setSlugPrimary concurrent-delete: null return propagates as 404", () =
       .mockResolvedValueOnce(created.data)
       .mockResolvedValueOnce(null);
     try {
-      const result = await setSlugPrimary(env as any, created.data.id, slug);
+      const result = await setSlugPrimary(env as any, created.data.id, slug, "anonymous");
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.status).toBe(404);
     } finally {

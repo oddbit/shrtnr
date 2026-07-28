@@ -114,6 +114,14 @@ describe("Link ownership: update", () => {
     const after = await LinkRepository.getById(env.DB, link.id);
     expect(after!.url).toBe("https://example.com");
   });
+
+  it("returns 404 when the link does not exist", async () => {
+    const result = await updateLink(env as any, 99999, { url: "https://example.com/new" }, OWNER);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(404);
+    }
+  });
 });
 
 describe("Slug ownership: set primary", () => {
@@ -527,6 +535,29 @@ describe("disableSlug: null return from repository does not crash", () => {
 
     const spy = vi.spyOn(SlugRepository, "disable").mockResolvedValueOnce(null);
     const result = await disableSlug(env as any, link.id, "concurrent-slug", OWNER).finally(() => spy.mockRestore());
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(404);
+    }
+  });
+});
+
+describe("setSlugPrimary: null return from repository returns 404", () => {
+  it("returns 404 rather than ok(null) when the link is concurrently deleted before the re-fetch", async () => {
+    // Simulate the race: the link and slug exist at the initial getById, but
+    // the link vanishes before the final re-fetch after setPrimary(). Without
+    // a null guard the service would return ok(null!) as a 200 with an empty
+    // body instead of a 404.
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "custom-slug" });
+
+    const realGetById = LinkRepository.getById;
+    const spy = vi
+      .spyOn(LinkRepository, "getById")
+      .mockImplementationOnce((db, id) => realGetById(db, id))
+      .mockResolvedValueOnce(null);
+    const result = await setSlugPrimary(env as any, link.id, "custom-slug", OWNER).finally(() => spy.mockRestore());
 
     expect(result.ok).toBe(false);
     if (!result.ok) {

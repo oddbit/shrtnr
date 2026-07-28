@@ -39,6 +39,7 @@ export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter, range }) => {
           <RangePicker
             current={range}
             basePath="/_/admin/bundles"
+            t={t}
             preserveParams={filter === "active" ? {} : { filter }}
           />
         </div>

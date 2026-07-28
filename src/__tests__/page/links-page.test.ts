@@ -68,6 +68,14 @@ describe("Links listing page", () => {
     expect(html).toMatch(/href="\/_\/admin\/links\?[^"]*range=all/);
   });
 
+  it("localizes the range picker's aria-label and option labels instead of hardcoding English", async () => {
+    const res = await SELF.fetch(req("/_/admin/links", { headers: { Cookie: "lang=id" } }));
+    const html = await res.text();
+    expect(html).toContain('aria-label="Pilih rentang waktu"');
+    expect(html).toMatch(/data-range="all"[^>]*>SEMUA</);
+    expect(html).not.toContain('aria-label="Select time range"');
+  });
+
   it("the range query param overrides the default and updates the column header", async () => {
     await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     const res = await SELF.fetch(req("/_/admin/links?range=7d"));

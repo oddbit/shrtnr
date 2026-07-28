@@ -22,7 +22,7 @@ export const DashboardPage: FC<Props> = ({ t, range }) => {
           <div class="page-subtitle">{t("dashboard.subtitle")}</div>
         </div>
         <div class="topbar-actions">
-          <RangePicker current={range} basePath="/_/admin/dashboard" />
+          <RangePicker current={range} basePath="/_/admin/dashboard" t={t} />
         </div>
       </div>
 

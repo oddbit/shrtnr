@@ -92,7 +92,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
           <span class="icon icon-lg">arrow_back</span>
         </a>
         <div class="page-title">{t("bundles.detailTitle")}</div>
-        <RangePicker current={range} basePath={`/_/admin/bundles/${b.id}`} />
+        <RangePicker current={range} basePath={`/_/admin/bundles/${b.id}`} t={t} />
         {isOwner && (
           <div class="detail-menu-anchor">
             <button
