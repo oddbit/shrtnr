@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.36.2 (2026-07-28)
+
+Defect-fix and maintenance release (PRs #29 through #33). No new endpoints or schema changes.
+
+- **Link writes check ownership.** `PUT /links/{id}`, the MCP `update_link` tool, and the admin set-primary-slug route accepted any authenticated key, so a caller could rewrite the destination URL of a link owned by someone else. Both operations now return 403 unless the caller created the link, matching the gate already enforced on disable, enable, delete, and the slug routes. Reads stay open across owners by design.
+- **Concurrent-delete races return 404 instead of 200.** Bundle update, archive, unarchive, delete, and analytics, plus set-primary-slug, re-read the row after writing and reported success with a null payload when a parallel request had deleted it. Each now propagates 404. `BundleRepository.delete` reads the D1 `changes` count instead of assuming its `DELETE` matched a row.
+- **URL normalization preserves query and fragment content.** Stripping trailing `/`, `?`, and `#` ran as one greedy character-class replace, so `https://example.com/search?q=cats/` lost its trailing slash and a hash-router path like `/#/spa/route/` was truncated. An empty `?` or `#` still drops, and trailing path slashes drop only when no query or fragment follows.
+- **A malformed stored URL redirects to 404, not 500.** A KV entry holding an unparseable URL threw inside `new URL()` and surfaced as a 500. The redirect handler returns the 404 page instead.
+- **QR fixes.** Slug lookup matches case-insensitively, so `?slug=MyLink` resolves the stored lowercase slug rather than returning 404 (API route and MCP tool both). The QR response now carries `Cache-Control: private`, so a shared cache cannot store a bearer-authenticated response and serve the link-id to slug mapping to unauthenticated clients.
+- **Admin UI hardening.** The duplicate-link and delete-key buttons carry their URL and title on `data-*` attributes read by a delegated listener, replacing inline `onclick` arguments that HTML-escaping could not make safe: `esc()` leaves `'` alone, so an apostrophe in a URL or key title broke out of the JS string.
+- **Range picker translated.** The time-range buttons and their group `aria-label` render through `t()` instead of hardcoded English.
+- **Dependency refresh (PR #33).** Upgrades the runtime stack (`hono`, `@hono/zod-openapi`, `agents`, `jose`, `@cloudflare/workers-oauth-provider`) and the toolchain (`wrangler`, `@cloudflare/workers-types` to v5, `@cloudflare/vitest-pool-workers`, `vitest`, `tsx`), pins `@modelcontextprotocol/sdk` to an exact 1.29.0, and moves the GitHub Actions to their current majors.
+- OpenAPI paths and schemas are unchanged from 0.36.1; only `info.version` changes. The emitted document stayed byte-identical across the `@hono/zod-openapi` upgrade, so the spec hash moves for the version string alone. The bump refreshes the recorded hash in all three SDKs. Full suite: 72 files, 1063 tests.
+
 ## 0.36.1 (2026-06-30)
 
 Maintenance release (PRs #27, #28). No new endpoints or schema changes.
