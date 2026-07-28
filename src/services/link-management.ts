@@ -295,18 +295,19 @@ export async function setSlugPrimary(
   env: Env,
   linkId: number,
   slug: string,
+  identity: string,
 ): Promise<ServiceResult<LinkWithSlugs>> {
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
+  if (link.created_by !== identity) return fail(403, "Only the link owner can change the primary slug");
 
   const slugObj = link.slugs.find((s) => s.slug === slug);
   if (!slugObj) return fail(404, "Slug not found on this link");
 
   await SlugRepository.setPrimary(env.DB, linkId, slug);
-  const refreshed = await LinkRepository.getById(env.DB, linkId);
-  // null on race: link deleted between the existence check above and here.
-  if (!refreshed) return fail(404, "Link not found");
-  return ok(refreshed);
+  const updated = await LinkRepository.getById(env.DB, linkId);
+  if (!updated) return fail(404, "Link not found");
+  return ok(updated);
 }
 
 export async function disableSlug(

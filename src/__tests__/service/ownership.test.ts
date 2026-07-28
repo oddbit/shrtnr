@@ -12,10 +12,10 @@ import {
   enableSlug,
   removeSlug,
   addCustomSlugToLink,
-  searchLinks,
-  listLinksByOwner,
   updateLink,
   setSlugPrimary,
+  searchLinks,
+  listLinksByOwner,
 } from "../../services/link-management";
 
 beforeAll(applyMigrations);
@@ -54,39 +54,6 @@ describe("Link ownership: disable", () => {
   });
 });
 
-describe("Link ownership: update", () => {
-  it("owner can update their link", async () => {
-    const link = await createOwnedLink();
-    const result = await updateLink(env as any, link.id, { url: "https://example.com/new" }, OWNER);
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.data.url).toBe("https://example.com/new");
-    }
-  });
-
-  it("non-owner cannot rewrite another user's link", async () => {
-    // Without an ownership check, any authenticated caller with create scope
-    // could redirect-hijack a link they don't own by changing its URL.
-    const link = await createOwnedLink();
-    const result = await updateLink(env as any, link.id, { url: "https://evil.example/phish" }, OTHER);
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.status).toBe(403);
-    }
-
-    const unchanged = await LinkRepository.getById(env.DB, link.id);
-    expect(unchanged!.url).toBe("https://example.com");
-  });
-
-  it("returns 404 when the link does not exist", async () => {
-    const result = await updateLink(env as any, 99999, { url: "https://example.com/new" }, OWNER);
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.status).toBe(404);
-    }
-  });
-});
-
 describe("Link ownership: enable", () => {
   it("owner can enable their disabled link", async () => {
     const link = await createOwnedLink();
@@ -119,6 +86,56 @@ describe("Link ownership: delete", () => {
   it("non-owner cannot delete another user's link", async () => {
     const link = await createOwnedLink();
     const result = await deleteLink(env as any, link.id, OTHER);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(403);
+    }
+  });
+});
+
+describe("Link ownership: update", () => {
+  it("owner can update their link", async () => {
+    const link = await createOwnedLink();
+    const result = await updateLink(env as any, link.id, { url: "https://example.com/moved" }, OWNER);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.url).toBe("https://example.com/moved");
+    }
+  });
+
+  it("non-owner cannot update another user's link", async () => {
+    const link = await createOwnedLink();
+    const result = await updateLink(env as any, link.id, { url: "https://evil.example" }, OTHER);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(403);
+    }
+    // The destination must be untouched after a rejected update.
+    const after = await LinkRepository.getById(env.DB, link.id);
+    expect(after!.url).toBe("https://example.com");
+  });
+
+  it("returns 404 when the link does not exist", async () => {
+    const result = await updateLink(env as any, 99999, { url: "https://example.com/new" }, OWNER);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(404);
+    }
+  });
+});
+
+describe("Slug ownership: set primary", () => {
+  it("link owner can change the primary slug", async () => {
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "primary-pick" });
+    const result = await setSlugPrimary(env as any, link.id, "primary-pick", OWNER);
+    expect(result.ok).toBe(true);
+  });
+
+  it("non-owner cannot change the primary slug on another user's link", async () => {
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "primary-pick" });
+    const result = await setSlugPrimary(env as any, link.id, "primary-pick", OTHER);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(403);
@@ -540,7 +557,7 @@ describe("setSlugPrimary: null return from repository returns 404", () => {
       .spyOn(LinkRepository, "getById")
       .mockImplementationOnce((db, id) => realGetById(db, id))
       .mockResolvedValueOnce(null);
-    const result = await setSlugPrimary(env as any, link.id, "custom-slug").finally(() => spy.mockRestore());
+    const result = await setSlugPrimary(env as any, link.id, "custom-slug", OWNER).finally(() => spy.mockRestore());
 
     expect(result.ok).toBe(false);
     if (!result.ok) {

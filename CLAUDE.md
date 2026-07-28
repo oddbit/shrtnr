@@ -42,7 +42,7 @@ Each SDK records the SHA-256 of the OpenAPI spec it was last regenerated against
 | Python | `sdk/python/pyproject.toml` | `[tool.shrtnr]` `spec_hash` |
 | Dart | `sdk/dart/pubspec.yaml` | leading comment `# x-spec-hash:` (top-level keys would draw a pana warning) |
 
-Spec changes (edits to `src/api/router.ts`, `src/api/schemas.ts`, or any resource sub-app affecting the generated doc) stale all three hashes. A root `package.json` version bump also drifts the hash because the spec embeds `info.version`. CI enforces via `.github/workflows/sdk-spec-drift.yml`.
+Spec changes (edits to `src/api/router.ts`, `src/api/schemas.ts`, or any resource sub-app affecting the generated doc) stale all three hashes. A root `package.json` version bump also drifts the hash because the spec embeds `info.version`. CI enforces via the `sdk-spec-drift` job in `.github/workflows/ci.yml`.
 
 Workflow on API change:
 

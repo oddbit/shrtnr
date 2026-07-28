@@ -44,6 +44,27 @@ describe("Link detail page server render", () => {
     expect(slugCount![1].trim()).toBe("2");
   });
 
+  it("renders the duplicate action without interpolating the URL into an inline handler", async () => {
+    // A URL with a literal single quote must not break out of the duplicate
+    // button. The URL rides on a data-* attribute (HTML-escaped by JSX) and a
+    // delegated handler reads it, so no inline onclick carries the raw URL.
+    const link = await LinkRepository.create(env.DB, {
+      url: "https://example.com/'-alert(document.cookie)-'",
+      slug: "abc",
+    });
+
+    const res = await SELF.fetch(req(`/_/admin/links/${link.id}`));
+    const html = await res.text();
+
+    expect(html).toContain("data-duplicate-url=");
+    // The client script still defines showDuplicateModal(); the fix is that no
+    // inline onclick attribute carries the raw URL.
+    expect(html).not.toContain('onclick="showDuplicateModal(');
+    // The quote survives only in escaped form, never as a raw breakout.
+    expect(html).not.toContain("'-alert(document.cookie)-'");
+    expect(html).toContain("&#39;-alert(document.cookie)-&#39;");
+  });
+
   it("hero total_clicks honors a user's default_range setting", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     const slug = link.slugs[0].slug;
@@ -70,28 +91,5 @@ describe("Link detail page server render", () => {
     const res = await SELF.fetch(req(`/_/admin/links/${link.id}`));
     const html = await res.text();
     expect(html).toMatch(/class="timeline-range-btn active"\s+data-range="30d"/);
-  });
-
-  it("escapes an apostrophe in the URL so it cannot break out of the duplicate-modal onclick string", async () => {
-    // A URL containing an apostrophe must not terminate the single-quoted JS
-    // string literal inside the onclick attribute; escHtml alone doesn't
-    // escape apostrophes, so the quote itself must also be backslash-escaped.
-    const link = await LinkRepository.create(env.DB, {
-      url: "https://example.com/a'-alert(document.cookie)-'",
-      slug: "abc",
-    });
-    const res = await SELF.fetch(req(`/_/admin/links/${link.id}`));
-    const html = await res.text();
-
-    // The framework HTML-entity-encodes the whole attribute (' -> &#39;), which
-    // the browser decodes back to ' before running the onclick JS. A literal
-    // apostrophe from the URL must therefore reach the decoded JS string as a
-    // backslash-escaped \' , not a bare &#39; that decodes to an unescaped '.
-    expect(html).toContain(
-      `showDuplicateModal(${link.id}, &#39;https://example.com/a\\&#39;-alert(document.cookie)-\\&#39;&#39;)`,
-    );
-    expect(html).not.toContain(
-      `showDuplicateModal(${link.id}, &#39;https://example.com/a&#39;-alert(document.cookie)-&#39;&#39;)`,
-    );
   });
 });

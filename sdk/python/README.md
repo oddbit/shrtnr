@@ -65,7 +65,7 @@ with Shrtnr(base_url="...", api_key="sk_...") as client:
 | `get(id, *, range=None)` | Get a link with click count |
 | `list(*, owner=None, range=None)` | List all links |
 | `create(*, url, label=None, slug_length=None, expires_at=None, allow_duplicate=None)` | Create a short link |
-| `update(id, *, url=None, label=None, expires_at=None)` | Update URL, label, or expiry |
+| `update(id, *, url=None, label=UNSET, expires_at=UNSET)` | Update URL, label, or expiry. Omit a field to leave it unchanged; pass `None` to clear it |
 | `disable(id)` | Stop redirecting |
 | `enable(id)` | Resume redirecting |
 | `delete(id)` | Permanently delete |
@@ -115,7 +115,7 @@ Groups of related links with combined analytics.
 | `get(id, *, range=None)` | Get a bundle with click summary |
 | `list(*, archived=None, range=None)` | List bundles |
 | `create(*, name, description=None, icon=None, accent=None)` | Create a bundle |
-| `update(id, *, name=None, description=None, icon=None, accent=None)` | Update metadata |
+| `update(id, *, name=None, description=UNSET, icon=UNSET, accent=None)` | Update metadata. Omit a field to leave it unchanged; pass `None` to clear `description` or `icon` |
 | `delete(id)` | Permanently delete |
 | `archive(id)` | Hide from default listing |
 | `unarchive(id)` | Restore an archived bundle |

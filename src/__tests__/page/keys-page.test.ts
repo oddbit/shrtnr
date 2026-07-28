@@ -113,6 +113,13 @@ describe("Keys page table", () => {
   it("keeps the delete action for each key", async () => {
     await seedApiKey();
     const html = await fetchKeysHtml();
-    expect(html).toContain("deleteKey(");
+    // The delete action rides on data-* attributes read by a delegated handler
+    // rather than an inline onclick, so a key title cannot break out into
+    // executable script. The title is carried verbatim on data-delete-key-title.
+    expect(html).toMatch(/data-delete-key="\d+"/);
+    expect(html).toContain('data-delete-key-title=');
+    // The vulnerable inline onclick handler must be gone from the markup. The
+    // client script still defines deleteKey(), so target the attribute form.
+    expect(html).not.toContain('onclick="deleteKey(');
   });
 });

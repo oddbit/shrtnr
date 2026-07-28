@@ -6,9 +6,10 @@ import {
   createLink,
   getLink,
   getLinkBySlug,
+  setSlugPrimary,
   updateLink,
 } from "../../services/link-management";
-import { SettingRepository, SlugRepository } from "../../db";
+import { LinkRepository, SettingRepository, SlugRepository } from "../../db";
 
 beforeAll(applyMigrations);
 beforeEach(resetData);
@@ -120,7 +121,7 @@ describe("link-management service", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const result = await updateLink(env as any, created.data.id, { url: "javascript:alert(1)" }, created.data.created_by);
+    const result = await updateLink(env as any, created.data.id, { url: "javascript:alert(1)" }, "anonymous");
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(400);
@@ -135,7 +136,7 @@ describe("link-management service", () => {
     const fetched = await getLink(env as any, created.data.id);
     expect(fetched.ok).toBe(true);
 
-    const updated = await updateLink(env as any, created.data.id, { label: "Updated" }, created.data.created_by);
+    const updated = await updateLink(env as any, created.data.id, { label: "Updated" }, "anonymous");
     expect(updated.ok).toBe(true);
     if (updated.ok) {
       expect(updated.data.label).toBe("Updated");
@@ -307,7 +308,7 @@ describe("URL normalization in updateLink", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const updated = await updateLink(env as any, created.data.id, { url: "https://example.com/new-path/" }, created.data.created_by);
+    const updated = await updateLink(env as any, created.data.id, { url: "https://example.com/new-path/" }, "anonymous");
     expect(updated.ok).toBe(true);
     if (updated.ok) {
       expect(updated.data.url).toBe("https://example.com/new-path");
@@ -319,7 +320,7 @@ describe("URL normalization in updateLink", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const updated = await updateLink(env as any, created.data.id, { url: "https://example.com/page?" }, created.data.created_by);
+    const updated = await updateLink(env as any, created.data.id, { url: "https://example.com/page?" }, "anonymous");
     expect(updated.ok).toBe(true);
     if (updated.ok) {
       expect(updated.data.url).toBe("https://example.com/page");
@@ -331,7 +332,7 @@ describe("URL normalization in updateLink", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const updated = await updateLink(env as any, created.data.id, { label: null }, created.data.created_by);
+    const updated = await updateLink(env as any, created.data.id, { label: null }, "anonymous");
     expect(updated.ok).toBe(true);
     if (updated.ok) {
       expect(updated.data.label).toBeNull();
@@ -389,7 +390,7 @@ describe("field type validation in updateLink", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const updated = await updateLink(env as any, created.data.id, { expires_at: "never" as any }, created.data.created_by);
+    const updated = await updateLink(env as any, created.data.id, { expires_at: "never" as any }, "anonymous");
     expect(updated.ok).toBe(false);
     if (!updated.ok) expect(updated.status).toBe(400);
   });
@@ -399,7 +400,7 @@ describe("field type validation in updateLink", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const updated = await updateLink(env as any, created.data.id, { label: 42 as any }, created.data.created_by);
+    const updated = await updateLink(env as any, created.data.id, { label: 42 as any }, "anonymous");
     expect(updated.ok).toBe(false);
     if (!updated.ok) expect(updated.status).toBe(400);
   });
@@ -409,7 +410,7 @@ describe("field type validation in updateLink", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const updated = await updateLink(env as any, created.data.id, { expires_at: null }, created.data.created_by);
+    const updated = await updateLink(env as any, created.data.id, { expires_at: null }, "anonymous");
     expect(updated.ok).toBe(true);
     if (updated.ok) expect(updated.data.expires_at).toBeNull();
   });
@@ -435,6 +436,28 @@ describe("custom slug uniqueness under race conditions", () => {
         expect(result.status).toBe(409);
         expect(result.error).toBe("Slug already exists");
       }
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("setSlugPrimary concurrent-delete: null return propagates as 404", () => {
+  it("returns 404 when the link is deleted between the membership check and the final read", async () => {
+    const created = await createLink(env as any, { url: "https://example.com/raced" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const slug = created.data.slugs[0].slug;
+
+    // Simulate a concurrent delete landing after setSlugPrimary's initial
+    // membership check but before its final getById re-read.
+    const spy = vi.spyOn(LinkRepository, "getById")
+      .mockResolvedValueOnce(created.data)
+      .mockResolvedValueOnce(null);
+    try {
+      const result = await setSlugPrimary(env as any, created.data.id, slug, "anonymous");
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.status).toBe(404);
     } finally {
       spy.mockRestore();
     }

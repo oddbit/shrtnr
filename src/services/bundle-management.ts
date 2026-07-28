@@ -260,7 +260,6 @@ export async function getBundleAnalytics(
   const bundle = await BundleRepository.getById(env.DB, id);
   if (!bundle) return fail(404, "Bundle not found");
   const stats = await ClickRepository.getBundleStats(env.DB, id, range, undefined, opts?.filters);
-  // null on race: bundle deleted between the getById check above and here.
   if (!stats) return fail(404, "Bundle not found");
   return ok(stats);
 }

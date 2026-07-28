@@ -1287,4 +1287,23 @@ describe("GET /_/api/links/:id/qr size validation", () => {
     expect(explicitPrimary.status).toBe(200);
     expect(await noSlug.text()).toBe(await explicitPrimary.text());
   });
+
+  it("matches an explicit slug regardless of case, since stored slugs are always lowercase", async () => {
+    const createRes = await SELF.fetch(
+      authed("/_/admin/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com/qr-case" }),
+      })
+    );
+    expect(createRes.status).toBe(201);
+    const created = await createRes.json() as { id: number; slugs: { slug: string }[] };
+    const slug = created.slugs[0].slug;
+
+    const lower = await SELF.fetch(authed(`/_/admin/api/links/${created.id}/qr?slug=${slug}`));
+    const upper = await SELF.fetch(authed(`/_/admin/api/links/${created.id}/qr?slug=${slug.toUpperCase()}`));
+    expect(lower.status).toBe(200);
+    expect(upper.status).toBe(200);
+    expect(await upper.text()).toBe(await lower.text());
+  });
 });

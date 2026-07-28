@@ -434,7 +434,7 @@ app.post("/_/admin/api/links/:id/slugs", (c) => {
 app.put("/_/admin/api/links/:id/slugs/primary", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.json({ error: "Not Found" }, 404);
-  return handleSetPrimarySlug(c.req.raw, c.env, id);
+  return handleSetPrimarySlug(c.req.raw, c.env, id, c.var.identity);
 });
 app.post("/_/admin/api/links/:id/slugs/:slug/disable", (c) => {
   const id = parseInt(c.req.param("id"), 10);

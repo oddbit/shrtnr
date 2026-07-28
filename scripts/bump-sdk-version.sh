@@ -170,8 +170,9 @@ echo "  1. edit $CHANGELOG and replace the TODO placeholder"
 echo "  2. git add $MANIFEST $CHANGELOG"
 echo "  3. git commit -m \"Release $SDK $NEW_VERSION: <short summary>\""
 if [ "$SDK" = "pub" ]; then
-  echo "  4. git tag ${TAG_PREFIX}${NEW_VERSION}"
-  echo "  5. git push origin main ${TAG_PREFIX}${NEW_VERSION}"
+  echo "  4. git tag ${TAG_PREFIX}${NEW_VERSION}   (create locally, do not push yet)"
+  echo "     pub.dev publishes on tag push, so push the tag only when you are"
+  echo "     ready to release: git push origin ${TAG_PREFIX}${NEW_VERSION}"
 else
   echo "  4. gh pr create  (or push to main — CI tags after publish)"
 fi

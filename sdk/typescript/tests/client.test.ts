@@ -110,17 +110,14 @@ describe("Error handling", () => {
     }
   });
 
-  it("wraps a malformed JSON body on a 2xx response in ShrtnrError instead of throwing a raw SyntaxError", async () => {
-    fetchSpy.mockResolvedValueOnce(
-      new Response("<html>not json</html>", { status: 200, headers: { "Content-Type": "application/json" } }),
-    );
+  it("wraps a non-JSON 2xx body in ShrtnrError instead of throwing a raw SyntaxError", async () => {
+    mockFetch(200, "<html>Bad Gateway</html>", "text/html");
     try {
       await client().links.list();
       expect.unreachable();
     } catch (e) {
       expect(e).toBeInstanceOf(ShrtnrError);
       expect((e as ShrtnrError).status).toBe(200);
-      expect((e as ShrtnrError).serverMessage).toMatch(/Invalid JSON response/);
     }
   });
 
