@@ -2,8 +2,9 @@
 
 All notable changes to the SDK are documented in this file.
 
-## 1.1.1
+## 1.1.1 (2026-07-28)
 
+- A 2xx response whose body is not valid JSON now raises `ShrtnrError(status)`. Previously `response.json()` raised a bare `JSONDecodeError`, so an HTML error page or a truncated body served with a 200 escaped the SDK's error type. The TypeScript and Dart SDKs carry the same fix in 1.1.1 and 2.1.1.
 - `links.qr()` now takes `size` as an `int` instead of a `str`, matching the API schema (which validates an integer) and the TypeScript and Dart SDKs. Callers who passed an int already got the correct behavior; the annotation was the only thing out of step.
 
 ## 1.1.0 (2026-06-19)
