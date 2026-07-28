@@ -19,5 +19,5 @@ class ShrtnrError implements Exception {
   final String serverMessage;
 
   @override
-  String toString() => 'shrtnr API error (HTTP $status): $serverMessage';
+  String toString() => 'ShrtnrError(HTTP $status): $serverMessage';
 }
