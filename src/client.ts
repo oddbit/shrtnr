@@ -450,9 +450,9 @@ function doSetPrimary(linkId, slug) {
 }
 
 // ---- Duplicate link modal ----
-// Holds the URL to duplicate while the confirm modal is open. Keeping it in a
-// closure variable avoids interpolating a user-controlled URL into an inline
-// onclick JS-string, which esc() cannot make safe (it does not escape ').
+// Holds the URL to duplicate while the confirm modal is open. Parking it in a
+// script-scope variable avoids interpolating a user-controlled URL into an
+// inline onclick JS-string, which esc() cannot make safe (it does not escape ').
 var pendingDuplicateUrl = null;
 function showDuplicateModal(linkId, url) {
   pendingDuplicateUrl = url;
