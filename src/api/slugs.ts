@@ -37,6 +37,7 @@ export async function handleSetPrimarySlug(
   request: Request,
   env: Env,
   linkId: number,
+  identity: string,
 ): Promise<Response> {
   let body: { slug?: string };
   try {
@@ -45,7 +46,7 @@ export async function handleSetPrimarySlug(
     return json({ error: "Invalid JSON body" }, 400);
   }
   if (!body.slug) return json({ error: "slug is required" }, 400);
-  return fromServiceResult(await setSlugPrimary(env, linkId, body.slug));
+  return fromServiceResult(await setSlugPrimary(env, linkId, body.slug, identity));
 }
 
 export async function handleDisableSlug(

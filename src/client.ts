@@ -450,17 +450,23 @@ function doSetPrimary(linkId, slug) {
 }
 
 // ---- Duplicate link modal ----
+// Holds the URL to duplicate while the confirm modal is open. Parking it in a
+// script-scope variable avoids interpolating a user-controlled URL into an
+// inline onclick JS-string, which esc() cannot make safe (it does not escape ').
+var pendingDuplicateUrl = null;
 function showDuplicateModal(linkId, url) {
+  pendingDuplicateUrl = url;
   document.getElementById('detail-menu').style.display = 'none';
   openModal(
     '<div class="modal-title">' + esc(t('linkDetail.duplicateTitle')) + '</div>' +
     '<p style="font-size:0.875rem;color:var(--color-text-muted);margin-bottom:0.75rem">' + esc(t('linkDetail.duplicateBody')) + '</p>' +
     '<p style="font-size:0.8rem;color:var(--color-text-muted);margin-bottom:1.5rem;opacity:0.7">' + esc(t('linkDetail.duplicateHelper')) + '</p>' +
-    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="doDuplicate(\\'' + esc(url).replace(/'/g, "\\\\'") + '\\')">' + esc(t('linkDetail.duplicate')) + '</button></div>'
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="doDuplicate()">' + esc(t('linkDetail.duplicate')) + '</button></div>'
   );
 }
-function doDuplicate(url) {
-  createDuplicate(url);
+function doDuplicate() {
+  if (pendingDuplicateUrl != null) createDuplicate(pendingDuplicateUrl);
+  pendingDuplicateUrl = null;
   closeModal();
 }
 
@@ -1589,6 +1595,28 @@ document.addEventListener('click', function(ev) {
   ev.preventDefault();
   ev.stopPropagation();
   copyUrl(slug);
+});
+
+// Open the duplicate-link modal from a data-* button. The link URL rides on a
+// data attribute rather than an inline onclick argument so a URL containing a
+// quote cannot break out into executable script.
+document.addEventListener('click', function(ev) {
+  var el = ev.target && ev.target.closest ? ev.target.closest('[data-duplicate-url]') : null;
+  if (!el) return;
+  ev.preventDefault();
+  var linkId = parseInt(el.getAttribute('data-duplicate-link'), 10);
+  showDuplicateModal(linkId, el.getAttribute('data-duplicate-url'));
+});
+
+// Delete an API key from a data-* button. The key title rides on a data
+// attribute so a title containing a quote or backslash cannot break out of an
+// inline onclick argument.
+document.addEventListener('click', function(ev) {
+  var el = ev.target && ev.target.closest ? ev.target.closest('[data-delete-key]') : null;
+  if (!el) return;
+  ev.preventDefault();
+  var keyId = parseInt(el.getAttribute('data-delete-key'), 10);
+  deleteKey(keyId, el.getAttribute('data-delete-key-title') || '');
 });
 `;
 }

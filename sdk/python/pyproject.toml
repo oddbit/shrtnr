@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "shrtnr"
-version = "1.1.0"
+version = "1.1.1"
 description = "SDK for the shrtnr URL shortener API"
 readme = "README.md"
 license = "Apache-2.0"
@@ -76,6 +76,12 @@ include = [
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.format]
+# ruff 0.16 formats Python blocks inside Markdown. README samples align their
+# trailing comments to match the Dart and TypeScript READMEs, so leave them
+# alone. `ruff check` still lints those blocks.
+exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B", "SIM", "RUF"]
