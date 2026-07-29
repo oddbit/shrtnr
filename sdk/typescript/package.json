@@ -25,7 +25,7 @@
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "yarn build"
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "tsup": "^8.5.1",
