@@ -96,6 +96,15 @@ jobs:
       - name: Install + build + test
         if: steps.version.outputs.should_run == 'true'
         working-directory: sdk/typescript
+        # setup-node exports NPM_CONFIG_USERCONFIG at an .npmrc holding
+        # `_authToken=${NODE_AUTH_TOKEN}`. Trusted publishing mints its
+        # credential over OIDC, so that variable is never set, and yarn 1
+        # aborts on the unresolved placeholder instead of ignoring it the way
+        # npm does. Defining it empty satisfies the substitution; installing
+        # from the public registry needs no credential, and the publish step
+        # below gets its own token from OIDC.
+        env:
+          NODE_AUTH_TOKEN: ''
         run: |
           yarn install --frozen-lockfile
           yarn build
