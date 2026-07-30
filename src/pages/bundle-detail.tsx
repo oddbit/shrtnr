@@ -73,6 +73,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
   const now = Math.floor(Date.now() / 1000);
 
   const timelineValues = stats.timeline.buckets.map((x) => x.count);
+  const timelineLabels = stats.timeline.buckets.map((x) => x.label);
 
   const countryTotal = stats.countries.reduce((s, c) => s + c.count, 0);
   const devTotal = stats.devices.reduce((s, c) => s + c.count, 0);
@@ -274,7 +275,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
             </div>
             <div class="timeline-chart">
               {timelineValues.length > 0 ? (
-                <BigChart values={timelineValues} range={range} t={t} id="bundle-bigchart" />
+                <BigChart values={timelineValues} range={range} t={t} id="bundle-bigchart" dates={timelineLabels} lang={lang} />
               ) : (
                 <div class="empty-card-hint">{t("linkDetail.noClickData")}</div>
               )}

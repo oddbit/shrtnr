@@ -1669,6 +1669,21 @@ function fillSparkline(
   return out;
 }
 
+/**
+ * Canonical bucket labels for a getSparkline series, in the same order as the
+ * values it returns (oldest first, current period last). Callers pair these
+ * with the values to attach a per-point date to the chart; the label format
+ * matches sparkLabelAt (`YYYY-MM`, `YYYY-MM-DD`, or `YYYY-MM-DD HH`).
+ */
+export function sparklineBucketLabels(range: TimelineRange, ts: number): string[] {
+  const spec = getBucketSpec(range, ts);
+  const out: string[] = [];
+  for (let i = spec.buckets - 1; i >= 0; i--) {
+    out.push(sparkLabelAt(range, ts - i * spec.stepSec));
+  }
+  return out;
+}
+
 function fillBuckets(
   range: TimelineRange,
   dataMap: Map<string, number>,
