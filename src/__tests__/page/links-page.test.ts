@@ -173,4 +173,28 @@ describe("Links listing page", () => {
     const html = await res.text();
     expect(html).toMatch(/1\s*[–-]\s*25\s+of\s+30/);
   });
+
+  it("clamps a negative page param instead of producing an empty, out-of-range slice", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links?page=-3"));
+    const html = await res.text();
+    expect(html).toMatch(/1\s*[–-]\s*25\s+of\s+30/);
+  });
+
+  it("clamps a negative per_page param instead of an inverted slice range", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links?per_page=-5"));
+    const html = await res.text();
+    expect(html).toMatch(/1\s*[–-]\s*1\s+of\s+30/);
+  });
 });
