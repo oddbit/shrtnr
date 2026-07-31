@@ -172,6 +172,23 @@ describe("addLinkToBundle / removeLinkFromBundle", () => {
     if (!res.ok) expect(res.status).toBe(404);
   });
 
+  it("returns 404 rather than 500 when a concurrent delete removes the bundle between the existence check and the insert", async () => {
+    // The pre-read getById() can pass, then a concurrent DELETE wins the race
+    // before this call's own INSERT runs. INSERT OR IGNORE does not suppress
+    // FK violations, so without a try/catch the D1 error would propagate as
+    // an unhandled 500 instead of the 404 every other race in this codebase returns.
+    const link = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "aaa", createdBy: "a@b" });
+    const b = await BundleRepository.create(env.DB, { name: "B", createdBy: "a@b" });
+
+    const spy = vi.spyOn(BundleRepository, "addLink").mockRejectedValueOnce(
+      new Error("D1_ERROR: FOREIGN KEY constraint failed"),
+    );
+    const res = await svc.addLinkToBundle(e, b.id, link.id, "a@b").finally(() => spy.mockRestore());
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.status).toBe(404);
+  });
+
   it("removes a link from a bundle", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "aaa", createdBy: "a@b" });
     const b = await BundleRepository.create(env.DB, { name: "B", createdBy: "a@b" });

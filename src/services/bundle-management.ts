@@ -226,7 +226,18 @@ export async function addLinkToBundle(
   if (!bundle) return fail(404, "Bundle not found");
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
-  await BundleRepository.addLink(env.DB, bundleId, linkId);
+  try {
+    await BundleRepository.addLink(env.DB, bundleId, linkId);
+  } catch (e) {
+    // A concurrent delete of the bundle or link between the existence checks
+    // above and the INSERT trips the bundle_links FK constraint. INSERT OR
+    // IGNORE does not suppress FK violations, so surface it as 404 rather
+    // than letting the D1 error propagate as a 500.
+    if (e instanceof Error && e.message.includes("FOREIGN KEY constraint failed")) {
+      return fail(404, "Bundle or link not found");
+    }
+    throw e;
+  }
   return ok({ added: true });
 }
 
