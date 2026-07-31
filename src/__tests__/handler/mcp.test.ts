@@ -15,6 +15,7 @@ import {
   searchLinks,
 } from "../../services/link-management";
 import { ShrtnrMCP } from "../../mcp/server";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 beforeAll(applyMigrations);
 beforeEach(resetData);
@@ -647,5 +648,25 @@ describe("MCP error surface", () => {
     // The validation error mentions the tool name and the failing field.
     expect(result?.content?.[0]?.text).toMatch(/create_link/);
     expect(result?.content?.[0]?.text?.toLowerCase()).toMatch(/url|required|invalid/);
+  });
+});
+
+// ---- MCP tool description accuracy ----
+// Regression: list_bundles' description claimed bundles are "owned by the
+// caller", but listBundles() is deliberately open-read across owners (see
+// bundle-management.ts). A tool description that overstates privacy could
+// mislead an agent into disclosing another user's bundles while believing
+// the results were caller-scoped.
+
+describe("MCP tool descriptions", () => {
+  it("list_bundles does not claim caller-owned scoping", async () => {
+    const agent = Object.create(ShrtnrMCP.prototype) as ShrtnrMCP;
+    agent.server = new McpServer({ name: "shrtnr", version: "test" });
+    await agent.init();
+    const tools = (agent.server as unknown as {
+      _registeredTools: Record<string, { description?: string }>;
+    })._registeredTools;
+    expect(tools.list_bundles.description).not.toMatch(/owned by the caller/i);
+    expect(tools.list_bundles.description).toMatch(/visible to any authenticated caller/i);
   });
 });

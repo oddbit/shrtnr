@@ -724,7 +724,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "List bundles",
         description:
-          "List bundles owned by the caller. Bundles group related links so you can see combined click stats across them. Totals, sparklines, and `delta_pct` are scoped to the requested range; reuse the same range across follow-ups to keep numbers comparable. Defaults to the user's `default_range` setting (or 30d). Response includes `range_used`. Use `filter` to control which archival state is returned.",
+          "List all bundles visible to any authenticated caller. Bundles group related links so you can see combined click stats across them. Totals, sparklines, and `delta_pct` are scoped to the requested range; reuse the same range across follow-ups to keep numbers comparable. Defaults to the user's `default_range` setting (or 30d). Response includes `range_used`. Use `filter` to control which archival state is returned.",
         inputSchema: {
           filter: z
             .enum(["active", "archived", "all"])
