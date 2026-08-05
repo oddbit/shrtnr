@@ -16,6 +16,8 @@ import {
 } from "../../services/link-management";
 import { ShrtnrMCP } from "../../mcp/server";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
 beforeAll(applyMigrations);
 beforeEach(resetData);
@@ -663,10 +665,25 @@ describe("MCP tool descriptions", () => {
     const agent = Object.create(ShrtnrMCP.prototype) as ShrtnrMCP;
     agent.server = new McpServer({ name: "shrtnr", version: "test" });
     await agent.init();
-    const tools = (agent.server as unknown as {
-      _registeredTools: Record<string, { description?: string }>;
-    })._registeredTools;
-    expect(tools.list_bundles.description).not.toMatch(/owned by the caller/i);
-    expect(tools.list_bundles.description).toMatch(/visible to any authenticated caller/i);
+
+    // Read the descriptions back over the wire protocol (tools/list) rather
+    // than off the server's internals, so the test depends only on the
+    // contract an MCP client actually sees.
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test-client", version: "test" });
+    await Promise.all([
+      client.connect(clientTransport),
+      agent.server.connect(serverTransport),
+    ]);
+
+    try {
+      const { tools } = await client.listTools();
+      const listBundles = tools.find((t) => t.name === "list_bundles");
+      expect(listBundles).toBeDefined();
+      expect(listBundles?.description).not.toMatch(/owned by the caller/i);
+      expect(listBundles?.description).toMatch(/visible to any authenticated caller/i);
+    } finally {
+      await client.close();
+    }
   });
 });
