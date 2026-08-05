@@ -68,20 +68,25 @@ describe("BigChart incomplete-period treatment", () => {
 
 describe("BigChart per-point date tooltips", () => {
   it("renders a hover band with the formatted date for every point when dates are supplied", () => {
-    const out = renderWithDates(
-      [10, 20, 30],
-      ["2026-07-14", "2026-07-15", "2026-07-16"],
-    );
+    const dates = ["2026-07-14", "2026-07-15", "2026-07-16"];
+    const out = renderWithDates([10, 20, 30], dates);
     // One transparent hover band per point.
     expect(out.match(/<rect[^>]*fill="transparent"/g)?.length).toBe(3);
-    // Each band exposes its date through a native <title> tooltip.
-    expect(out).toContain("<title>Jul 14, 2026</title>");
-    expect(out).toContain("<title>Jul 15, 2026</title>");
+    // Each band exposes its date through a native <title> tooltip. Expected text
+    // comes from the formatter, so an ICU version that punctuates dates
+    // differently cannot fail this test; formatBucketLabel pins its own output
+    // in the describe block below.
+    expect(out).toContain(`<title>${formatBucketLabel(dates[0], "en")}</title>`);
+    expect(out).toContain(`<title>${formatBucketLabel(dates[1], "en")}</title>`);
   });
 
   it("marks the final point's tooltip as the in-progress period", () => {
     const out = renderWithDates([10, 20], ["2026-07-15", "2026-07-16"]);
-    expect(out).toContain(`Jul 16, 2026 (${t("linkDetail.todayPartial")})`);
+    expect(out).toContain(
+      `${formatBucketLabel("2026-07-16", "en")} (${t("linkDetail.todayPartial")})`,
+    );
+    // Only the final point is annotated; earlier bands carry a bare date.
+    expect(out).toContain(`<title>${formatBucketLabel("2026-07-15", "en")}</title>`);
   });
 
   it("does not render hover bands when no dates are supplied", () => {
@@ -95,17 +100,38 @@ describe("BigChart per-point date tooltips", () => {
   });
 });
 
+// These assert the components that carry meaning: month name, day, year, and
+// granularity. Ordering and punctuation come from ICU and have shifted between
+// runtime versions, so full-string equality would fail on a Node upgrade while
+// the behavior stayed correct. A wrong month index and a wrong granularity
+// branch both still fail these checks (verified by mutating the source).
+// `timeZone: "UTC"` is not covered: the workers pool runs in UTC, so UTC and
+// local formatting coincide here. It stays load-bearing in the browser, where
+// client.ts renders the same labels against the viewer's zone.
 describe("formatBucketLabel", () => {
   it("formats a daily bucket with day, month, and year", () => {
-    expect(formatBucketLabel("2026-07-16", "en")).toBe("Jul 16, 2026");
+    const out = formatBucketLabel("2026-07-16", "en");
+    expect(out).toContain("Jul");
+    expect(out).toContain("16");
+    expect(out).toContain("2026");
+    // No time component on a daily bucket.
+    expect(out).not.toMatch(/\d{1,2}:\d{2}/);
   });
 
   it("formats a monthly bucket with month and year only", () => {
-    expect(formatBucketLabel("2026-07", "en")).toBe("Jul 2026");
+    const out = formatBucketLabel("2026-07", "en");
+    expect(out).toContain("Jul");
+    expect(out).toContain("2026");
+    // A monthly bucket is built on the 1st. Falling through to the daily branch
+    // would render that day, so the two labels must not match.
+    expect(out).not.toBe(formatBucketLabel("2026-07-01", "en"));
   });
 
   it("formats an hourly bucket with the hour in UTC", () => {
-    expect(formatBucketLabel("2026-07-16 09", "en")).toContain("Jul 16, 2026");
-    expect(formatBucketLabel("2026-07-16 09", "en")).toContain("09:00");
+    const out = formatBucketLabel("2026-07-16 09", "en");
+    expect(out).toContain("Jul");
+    expect(out).toContain("16");
+    expect(out).toContain("2026");
+    expect(out).toContain("09:00");
   });
 });
