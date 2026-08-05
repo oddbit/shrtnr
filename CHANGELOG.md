@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.37.0 (2026-08-05)
+
+Feature and defect release (PRs #34, #35). Adds per-point dates to the clicks-over-time chart and closes three defects from the weekly review.
+
+- **Chart points name their date on hover.** All three clicks-over-time charts (dashboard timeline widget, bundle detail, link detail) show the bucket a point covers. Each point carries a full-height invisible hover band, so the cursor does not have to land on the dot to read the tooltip. Buckets are UTC and format in UTC to line up with the axis offsets, localized to the viewer's language; the trailing point stays marked as partial. `src/db` exports `sparklineBucketLabels` to pair canonical bucket labels with a `getSparkline` series.
+- **`addLinkToBundle` returns 404 under a concurrent-delete race.** `INSERT OR IGNORE` suppresses UNIQUE, NOT NULL, and CHECK violations, not foreign-key ones. A bundle or link deleted between the existence checks and the insert tripped the `bundle_links` FK constraint and surfaced as an unhandled 500. The violation now maps to 404, matching every other concurrent-delete race in the service layer.
+- **Negative pagination params clamp to 1.** `parseInt(...) || fallback` catches `0` and `NaN` but not negative integers, so `?page=-3` on the admin links listing rendered an empty table under a negative-range summary, and a negative `per_page` inverted the slice bounds. Both clamp at the parsing site.
+- **MCP `list_bundles` description matches its behavior.** The tool described bundles as owned by the caller while `listBundles()` reads openly across owners, so an agent could relay another user's bundle names, descriptions, and click stats believing the results were caller-scoped. Documentation correction, no behavior change.
+- OpenAPI paths and schemas are unchanged from 0.36.2; only `info.version` changes. The bump refreshes the recorded spec hash in all three SDKs. The TypeScript SDK ships a separate fix in 1.1.2; Python and Dart take the hash refresh alone. Full suite: 72 files, 1067 tests.
+
 ## 0.36.2 (2026-07-28)
 
 Defect-fix and maintenance release (PRs #29 through #33). No new endpoints or schema changes.
