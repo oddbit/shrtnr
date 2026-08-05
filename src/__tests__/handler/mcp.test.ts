@@ -15,6 +15,9 @@ import {
   searchLinks,
 } from "../../services/link-management";
 import { ShrtnrMCP } from "../../mcp/server";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
 beforeAll(applyMigrations);
 beforeEach(resetData);
@@ -647,5 +650,40 @@ describe("MCP error surface", () => {
     // The validation error mentions the tool name and the failing field.
     expect(result?.content?.[0]?.text).toMatch(/create_link/);
     expect(result?.content?.[0]?.text?.toLowerCase()).toMatch(/url|required|invalid/);
+  });
+});
+
+// ---- MCP tool description accuracy ----
+// Regression: list_bundles' description claimed bundles are "owned by the
+// caller", but listBundles() is deliberately open-read across owners (see
+// bundle-management.ts). A tool description that overstates privacy could
+// mislead an agent into disclosing another user's bundles while believing
+// the results were caller-scoped.
+
+describe("MCP tool descriptions", () => {
+  it("list_bundles does not claim caller-owned scoping", async () => {
+    const agent = Object.create(ShrtnrMCP.prototype) as ShrtnrMCP;
+    agent.server = new McpServer({ name: "shrtnr", version: "test" });
+    await agent.init();
+
+    // Read the descriptions back over the wire protocol (tools/list) rather
+    // than off the server's internals, so the test depends only on the
+    // contract an MCP client actually sees.
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test-client", version: "test" });
+    await Promise.all([
+      client.connect(clientTransport),
+      agent.server.connect(serverTransport),
+    ]);
+
+    try {
+      const { tools } = await client.listTools();
+      const listBundles = tools.find((t) => t.name === "list_bundles");
+      expect(listBundles).toBeDefined();
+      expect(listBundles?.description).not.toMatch(/owned by the caller/i);
+      expect(listBundles?.description).toMatch(/visible to any authenticated caller/i);
+    } finally {
+      await client.close();
+    }
   });
 });

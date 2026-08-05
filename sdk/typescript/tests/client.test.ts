@@ -249,6 +249,17 @@ describe("Case transformation", () => {
     expect(body["link_id"]).toBe(99);
     expect(body["linkId"]).toBeUndefined();
   });
+
+  it("does not flatten a non-plain-object value (e.g. Date) into {}", async () => {
+    mockFetch(201, { id: 1, url: "https://example.com", label: null, created_at: 1000, expires_at: null, created_via: null, created_by: "u", total_clicks: 0, slugs: [] });
+    const expiresAt = new Date("2030-01-01T00:00:00Z");
+    // expiresAt is typed as number (a unix timestamp); this cast simulates a
+    // plain-JS caller passing a Date, which used to be silently flattened to {}.
+    await client().links.create({ url: "https://example.com", expiresAt: expiresAt as unknown as number });
+    const { init } = lastCall();
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body["expires_at"]).toBe(expiresAt.toISOString());
+  });
 });
 
 // ============================================================

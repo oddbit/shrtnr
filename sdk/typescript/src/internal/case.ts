@@ -14,14 +14,21 @@ export function toSnake(s: string): string {
   return s.replace(/([A-Z])/g, (c) => `_${c.toLowerCase()}`);
 }
 
+/** True for plain `{}`/`Object.create(null)` objects, false for Date, Map, and other class instances. */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== "object") return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
 /** Recursively transform all object keys from snake_case to camelCase. */
 export function keysToCamel(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(keysToCamel);
   }
-  if (value !== null && typeof value === "object") {
+  if (isPlainObject(value)) {
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    for (const [k, v] of Object.entries(value)) {
       out[toCamel(k)] = keysToCamel(v);
     }
     return out;
@@ -34,9 +41,9 @@ export function keysToSnake(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(keysToSnake);
   }
-  if (value !== null && typeof value === "object") {
+  if (isPlainObject(value)) {
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    for (const [k, v] of Object.entries(value)) {
       out[toSnake(k)] = keysToSnake(v);
     }
     return out;

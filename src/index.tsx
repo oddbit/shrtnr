@@ -231,8 +231,8 @@ app.get("/_/admin/links", async (c) => {
     : await listLinks(c.env, { withDeltaRange: range, filters, range });
   const links = linksResult.ok ? linksResult.data : [];
   const sort = c.req.query("sort") || "recent";
-  const page = parseInt(c.req.query("page") || "1", 10) || 1;
-  const perPage = parseInt(c.req.query("per_page") || "25", 10) || 25;
+  const page = Math.max(1, parseInt(c.req.query("page") || "1", 10) || 1);
+  const perPage = Math.max(1, parseInt(c.req.query("per_page") || "25", 10) || 25);
   const filterParam = c.req.query("filter");
   const legacyShowDisabled = c.req.query("show_disabled") === "1";
   const filter = filterParam === "disabled" || filterParam === "all" || filterParam === "active"
