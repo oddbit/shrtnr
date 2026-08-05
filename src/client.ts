@@ -1024,6 +1024,26 @@ function fmtLabel(label, range) {
   return monthName(parseInt(parts[1], 10)) + ' ' + parts[0].slice(2);
 }
 
+// Humanizes a canonical bucket label ("YYYY-MM", "YYYY-MM-DD", or
+// "YYYY-MM-DD HH") into a full, locale-aware date for point tooltips. Buckets
+// are UTC, so format in UTC to match the axis offsets.
+function fmtBucketDate(label) {
+  var split = label.split(' ');
+  var d = split[0].split('-');
+  var y = parseInt(d[0], 10), mo = parseInt(d[1], 10);
+  if (d.length < 3) {
+    var dtM = new Date(Date.UTC(y, mo - 1, 1));
+    return dtM.toLocaleDateString(UI_LANG, { year: 'numeric', month: 'short', timeZone: 'UTC' });
+  }
+  var day = parseInt(d[2], 10);
+  if (split.length > 1) {
+    var dtH = new Date(Date.UTC(y, mo - 1, day, parseInt(split[1], 10)));
+    return dtH.toLocaleString(UI_LANG, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+  }
+  var dtD = new Date(Date.UTC(y, mo - 1, day));
+  return dtD.toLocaleDateString(UI_LANG, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
 function renderTimeline(data) {
   var container = document.getElementById('timeline-chart');
   if (!data.buckets || data.buckets.length === 0) {
@@ -1111,6 +1131,20 @@ function renderTimeline(data) {
       var label = i === n - 1 ? t('linkDetail.today') : fmtLabel(buckets[i].label, data.range);
       parts.push('<text x="' + pts[i][0].toFixed(1) + '" y="' + (h - 6) + '" font-size="9" fill="var(--color-text-subtle)" text-anchor="middle" font-family="var(--font-family-mono)">' + esc(label) + '</text>');
     }
+  }
+
+  // Invisible per-point hover bands. Each spans its column full-height so the
+  // cursor need not hit the tiny dot; the native <title> shows the point's
+  // date. Rendered last so they sit on top and win the hover.
+  var bandW = n > 1 ? stepX : innerW;
+  for (var i = 0; i < n; i++) {
+    var x0 = pts[i][0] - bandW / 2;
+    var x1 = pts[i][0] + bandW / 2;
+    if (x0 < pad.l) x0 = pad.l;
+    if (x1 > w - pad.r) x1 = w - pad.r;
+    var date = fmtBucketDate(buckets[i].label);
+    var title = i === n - 1 ? date + ' (' + t('linkDetail.todayPartial') + ')' : date;
+    parts.push('<rect x="' + x0.toFixed(1) + '" y="' + pad.t + '" width="' + (x1 - x0).toFixed(1) + '" height="' + innerH + '" fill="transparent" pointer-events="all"><title>' + esc(title) + '</title></rect>');
   }
 
   parts.push('</svg>');

@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { AdminWidget } from "../types";
 import type { Env, TimelineRange } from "../../../types";
-import { ClickRepository } from "../../../db";
+import { ClickRepository, sparklineBucketLabels } from "../../../db";
 import { BigChart } from "../../../components/big-chart";
 import { parseRangeParam } from "./_range";
 
 interface TimelineData {
   range: TimelineRange;
   values: number[];
+  labels: string[];
 }
 
 /**
@@ -24,13 +25,9 @@ export const timelineWidget: AdminWidget<{ range: TimelineRange }, TimelineData>
   cache: { ttl: 30 },
   params: parseRangeParam,
   async load(env: Env, ctx, { range }): Promise<TimelineData> {
-    const values = await ClickRepository.getSparkline(
-      env.DB,
-      range,
-      Math.floor(Date.now() / 1000),
-      ctx.filters,
-    );
-    return { range, values };
+    const ts = Math.floor(Date.now() / 1000);
+    const values = await ClickRepository.getSparkline(env.DB, range, ts, ctx.filters);
+    return { range, values, labels: sparklineBucketLabels(range, ts) };
   },
   render(d, ctx) {
     const t = ctx.t;
@@ -41,7 +38,14 @@ export const timelineWidget: AdminWidget<{ range: TimelineRange }, TimelineData>
           <span class="timeline-range-pill">{t(`range.long.${d.range}` as const)}</span>
         </div>
         <div class="timeline-chart">
-          <BigChart values={d.values} range={d.range} t={t} id="dash-bigchart" />
+          <BigChart
+            values={d.values}
+            range={d.range}
+            t={t}
+            id="dash-bigchart"
+            dates={d.labels}
+            lang={ctx.lang}
+          />
         </div>
       </>
     );

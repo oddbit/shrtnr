@@ -10,7 +10,45 @@ type BigChartProps = {
   range: TimelineRange;
   t: TranslateFn;
   id?: string;
+  /**
+   * Canonical bucket labels aligned to `values` (see sparklineBucketLabels).
+   * When present, each point gets a hover band with the date as a tooltip.
+   */
+  dates?: string[];
+  /** BCP-47 locale for date formatting; defaults to "en". */
+  lang?: string;
 };
+
+/**
+ * Humanizes a canonical bucket label (`YYYY-MM`, `YYYY-MM-DD`, or
+ * `YYYY-MM-DD HH`) into a locale-aware date string. Buckets are UTC, so the
+ * output is formatted in UTC to line up with the axis offsets.
+ */
+export function formatBucketLabel(label: string, lang: string): string {
+  const [datePart, hourPart] = label.split(" ");
+  const parts = datePart.split("-").map(Number);
+  const [y, m, d] = parts;
+  if (d === undefined) {
+    // Monthly bucket: "YYYY-MM".
+    const dt = new Date(Date.UTC(y, m - 1, 1));
+    return dt.toLocaleDateString(lang, { year: "numeric", month: "short", timeZone: "UTC" });
+  }
+  if (hourPart !== undefined) {
+    // Hourly bucket: "YYYY-MM-DD HH".
+    const dt = new Date(Date.UTC(y, m - 1, d, Number(hourPart)));
+    return dt.toLocaleString(lang, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "UTC",
+    });
+  }
+  // Daily (or weekly) bucket: "YYYY-MM-DD".
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+}
 
 const W = 800;
 const H = 220;
@@ -40,7 +78,7 @@ function offsetLabel(range: TimelineRange, i: number, n: number): string {
   return `-${fromEnd}d`;
 }
 
-export const BigChart: FC<BigChartProps> = ({ values, range, t, id }) => {
+export const BigChart: FC<BigChartProps> = ({ values, range, t, id, dates, lang }) => {
   const n = values.length;
   if (n === 0) {
     return <div class="empty-card-hint">{t("linkDetail.noClickData")}</div>;
@@ -195,6 +233,36 @@ export const BigChart: FC<BigChartProps> = ({ values, range, t, id }) => {
           </text>
         ) : null,
       )}
+      {/*
+        Invisible per-point hover bands. Each spans its column full-height so
+        the cursor need not land on the tiny dot; the native SVG <title> shows
+        the date the point represents. Rendered last so they sit on top of the
+        line and dots and win the hover. Only emitted when dates are supplied.
+      */}
+      {dates && dates.length === n
+        ? pts.map((p, i) => {
+            const bandW = n > 1 ? stepX : innerW;
+            let x0 = p[0] - bandW / 2;
+            let x1 = p[0] + bandW / 2;
+            if (x0 < PAD.l) x0 = PAD.l;
+            if (x1 > W - PAD.r) x1 = W - PAD.r;
+            const label = formatBucketLabel(dates[i], lang ?? "en");
+            const title = i === n - 1 ? `${label} (${t("linkDetail.todayPartial")})` : label;
+            return (
+              <rect
+                key={`hit-${i}`}
+                x={x0.toFixed(1)}
+                y={PAD.t}
+                width={(x1 - x0).toFixed(1)}
+                height={innerH}
+                fill="transparent"
+                pointer-events="all"
+              >
+                <title>{title}</title>
+              </rect>
+            );
+          })
+        : null}
     </svg>
   );
 };

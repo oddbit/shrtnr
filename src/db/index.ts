@@ -3,7 +3,7 @@
 
 export { LinkRepository } from "./link-repository";
 export { SlugRepository } from "./slug-repository";
-export { ClickRepository } from "./click-repository";
+export { ClickRepository, sparklineBucketLabels } from "./click-repository";
 export type { BreakdownDimension } from "./click-repository";
 export type { ClickFilters, SlugClickCountOptions } from "./filters";
 export { clickFilterSql, slugClickCountSql } from "./filters";
