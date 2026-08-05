@@ -2,6 +2,12 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.1.2 (2026-08-05)
+
+Serialization fix. No public surface changes.
+
+- Key case conversion no longer recurses into class instances. `keysToSnake` and `keysToCamel` treated any `typeof value === "object"` as a map to walk, and `Object.entries()` on a `Date`, `Map`, or `URL` yields no own enumerable properties, so such a value passed for a body field serialized to `{}` on the wire with no error. Recursion is now limited to plain objects (`Object.prototype` or a null prototype); anything else passes through for `JSON.stringify` to handle, so a `Date` sends its ISO string.
+
 ## 1.1.1 (2026-07-28)
 
 Error-handling fixes. No public surface changes.
