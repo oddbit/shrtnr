@@ -412,7 +412,7 @@ function showAddSlugModal(linkId) {
   document.getElementById('detail-menu').style.display = 'none';
   openModal(
     '<div class="modal-title">' + esc(t('linkDetail.addCustomSlug')) + '</div>' +
-    '<div class="form-group"><label class="form-label">Slug</label><input class="form-input" id="m-new-slug" placeholder="my-custom-slug"></div>' +
+    '<div class="form-group"><label class="form-label">' + esc(t('linkDetail.slugFieldLabel')) + '</label><input class="form-input" id="m-new-slug" placeholder="my-custom-slug"></div>' +
     '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="doAddSlug(' + linkId + ')">' + esc(t('linkDetail.add')) + '</button></div>'
   );
   setTimeout(function() { document.getElementById('m-new-slug').focus(); }, 100);
@@ -451,7 +451,7 @@ function showChangePrimaryModal(linkId) {
 function doSetPrimary(linkId, slug) {
   api('/links/' + linkId + '/slugs/primary', { method: 'PUT', body: JSON.stringify({ slug: slug }) }).then(function(res) {
     if (res.ok) { closeModal(); toast(t('client.labelUpdated')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || 'Error', 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.setPrimaryError'), 'error'); });
   });
 }
 
@@ -487,7 +487,7 @@ function confirmDeleteSlug(linkId, slug) {
 function doDeleteSlug(linkId, slug) {
   api('/links/' + linkId + '/slugs/' + slug, { method: 'DELETE' }).then(function(res) {
     if (res.ok) { closeModal(); toast(t('client.customAdded')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || 'Error', 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.deleteSlugError'), 'error'); });
   });
 }
 
@@ -501,7 +501,7 @@ function confirmDisableSlug(linkId, slug) {
 function doDisableSlug(linkId, slug) {
   api('/links/' + linkId + '/slugs/' + slug + '/disable', { method: 'POST' }).then(function(res) {
     if (res.ok) { closeModal(); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || 'Error', 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.disableSlugError'), 'error'); });
   });
 }
 
@@ -515,7 +515,7 @@ function confirmEnableSlug(linkId, slug) {
 function doEnableSlug(linkId, slug) {
   api('/links/' + linkId + '/slugs/' + slug + '/enable', { method: 'POST' }).then(function(res) {
     if (res.ok) { closeModal(); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || 'Error', 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.enableSlugError'), 'error'); });
   });
 }
 
