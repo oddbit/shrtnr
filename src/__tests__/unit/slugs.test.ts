@@ -103,6 +103,16 @@ describe("validateCustomSlug", () => {
   it("should reject empty slugs", () => {
     expect(validateCustomSlug("")).toBe("Custom slug must not be empty");
   });
+
+  it("should reject slugs longer than 128 characters", () => {
+    expect(validateCustomSlug("a".repeat(129))).toBe(
+      "Custom slug must be at most 128 characters"
+    );
+  });
+
+  it("should accept a slug at the 128 character limit", () => {
+    expect(validateCustomSlug("a".repeat(128))).toBeNull();
+  });
 });
 
 describe("validateSlugLength", () => {
