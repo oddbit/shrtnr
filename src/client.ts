@@ -67,7 +67,13 @@ function openModal(html) {
 }
 
 // ---- Escape ----
-function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+// document.textContent -> innerHTML escapes &, <, > but not ": a text node
+// carries a literal quote as-is, so on its own this is unsafe for a value
+// placed inside a double-quoted HTML attribute. Escape " explicitly too.
+// Still not sufficient inside an inline onclick JS-string (entities decode
+// before the script engine sees them) -- see the comment near
+// pendingDuplicateUrl for that case.
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML.replace(/"/g, '&quot;'); }
 
 // ---- API helper ----
 function api(path, opts) {
@@ -1273,7 +1279,11 @@ function renderIconPicker(selected) {
   var html = '<div class="bundle-icon-picker" id="bundle-icon-picker">';
   list.forEach(function(name) {
     var cls = 'bundle-icon-option' + (name === chosen ? ' selected' : '');
-    html += '<button type="button" class="' + cls + '" data-icon="' + esc(name) + '" onclick="selectBundleIcon(\\'' + name + '\\')" aria-label="' + esc(name) + '"><span class="icon">' + esc(name) + '</span></button>';
+    // The icon name rides on the data-icon attribute rather than an inline
+    // onclick argument: a bundle's icon is a free-text field (no charset
+    // restriction like slugs have), so interpolating it into a JS string
+    // literal would let a quote in the value break out into executable script.
+    html += '<button type="button" class="' + cls + '" data-icon="' + esc(name) + '" onclick="selectBundleIcon(this.dataset.icon)" aria-label="' + esc(name) + '"><span class="icon">' + esc(name) + '</span></button>';
   });
   html += '</div>';
   html += '<input type="hidden" id="bundle-icon" value="' + esc(chosen) + '">';
