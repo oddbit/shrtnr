@@ -68,7 +68,16 @@ class ShrtnrBaseClient {
       throw ShrtnrError(0, e.toString());
     }
 
-    final response = await http.Response.fromStream(streamed);
+    // send() only yields headers/status; the body is read lazily here, so a
+    // connection drop mid-transfer surfaces as a raw stream error at this
+    // call, not at send() above. Wrap it too, or it escapes the documented
+    // "network failures throw ShrtnrError(status: 0)" guarantee.
+    http.Response response;
+    try {
+      response = await http.Response.fromStream(streamed);
+    } catch (e) {
+      throw ShrtnrError(0, e.toString());
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.statusCode == 204 || response.body.isEmpty) return null;
@@ -112,7 +121,12 @@ class ShrtnrBaseClient {
       throw ShrtnrError(0, e.toString());
     }
 
-    final response = await http.Response.fromStream(streamed);
+    http.Response response;
+    try {
+      response = await http.Response.fromStream(streamed);
+    } catch (e) {
+      throw ShrtnrError(0, e.toString());
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return response.body;
