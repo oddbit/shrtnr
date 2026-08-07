@@ -364,6 +364,7 @@ const id: Translations = {
   "client.linkEnabled": "Tautan diaktifkan",
   "client.enableError": "Gagal mengaktifkan",
   "client.customAdded": "Slug kustom ditambahkan",
+  "client.slugDeleted": "Slug dihapus",
   "client.customError": "Gagal menambahkan slug kustom",
   "client.setPrimaryError": "Gagal mengatur slug utama",
   "client.deleteSlugError": "Gagal menghapus slug",

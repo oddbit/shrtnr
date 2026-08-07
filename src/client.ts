@@ -486,7 +486,7 @@ function confirmDeleteSlug(linkId, slug) {
 }
 function doDeleteSlug(linkId, slug) {
   api('/links/' + linkId + '/slugs/' + slug, { method: 'DELETE' }).then(function(res) {
-    if (res.ok) { closeModal(); toast(t('client.customAdded')); window.location.reload(); }
+    if (res.ok) { closeModal(); toast(t('client.slugDeleted')); window.location.reload(); }
     else res.json().then(function(data) { toast(data.error || t('client.deleteSlugError'), 'error'); });
   });
 }

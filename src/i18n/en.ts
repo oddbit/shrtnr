@@ -360,6 +360,7 @@ const en = {
   "client.linkEnabled": "Link enabled",
   "client.enableError": "Failed to enable",
   "client.customAdded": "Custom slug added",
+  "client.slugDeleted": "Slug deleted",
   "client.customError": "Failed to add custom slug",
   "client.setPrimaryError": "Failed to set primary slug",
   "client.deleteSlugError": "Failed to delete slug",

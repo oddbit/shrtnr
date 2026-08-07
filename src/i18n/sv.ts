@@ -364,6 +364,7 @@ const sv: Translations = {
   "client.linkEnabled": "Länk aktiverad",
   "client.enableError": "Kunde inte aktivera",
   "client.customAdded": "Anpassad slug tillagd",
+  "client.slugDeleted": "Slug raderad",
   "client.customError": "Kunde inte lägga till anpassad slug",
   "client.setPrimaryError": "Kunde inte ange primär slug",
   "client.deleteSlugError": "Kunde inte radera slug",

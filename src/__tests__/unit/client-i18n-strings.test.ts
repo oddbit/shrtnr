@@ -25,4 +25,15 @@ describe("adminClientScript i18n coverage", () => {
     expect(script).not.toContain('form-label">Slug</label>');
     expect(script).toContain("t('linkDetail.slugFieldLabel')");
   });
+
+  it("shows a 'slug deleted' toast on successful slug deletion, not the add-slug message", () => {
+    const script = adminClientScript("1.0.0", {} as unknown as Translations);
+    const doDeleteSlug = script.slice(
+      script.indexOf("function doDeleteSlug("),
+      script.indexOf("\n}\n", script.indexOf("function doDeleteSlug(")),
+    );
+
+    expect(doDeleteSlug).toContain("t('client.slugDeleted')");
+    expect(doDeleteSlug).not.toContain("t('client.customAdded')");
+  });
 });
