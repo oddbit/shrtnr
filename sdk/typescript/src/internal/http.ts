@@ -33,7 +33,12 @@ export class HttpClient {
   constructor(config: HttpClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, "");
     this.authHeader = `Bearer ${config.apiKey}`;
-    this.fetchFn = config.fetch ?? resolveGlobalFetch();
+    // A caller-supplied fetch needs the same globalThis binding as the
+    // default: it's typically a bare reference like `window.fetch` (see the
+    // README's custom-fetch example), and Function.prototype.bind on an
+    // already-bound function ignores the new receiver, so this is a no-op
+    // for implementations that don't care about `this`.
+    this.fetchFn = config.fetch ? config.fetch.bind(globalThis) : resolveGlobalFetch();
   }
 
   async request<T>(
