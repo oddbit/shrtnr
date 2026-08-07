@@ -81,4 +81,10 @@ describe("normalizeUrl", () => {
       "https://example.com/#/spa/route/",
     );
   });
+
+  it("preserves a fragment whose content ends in a question mark", () => {
+    expect(normalizeUrl("https://example.com/#section?")).toBe(
+      "https://example.com/#section?",
+    );
+  });
 });
