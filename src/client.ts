@@ -310,7 +310,7 @@ function createKey() {
 
   api('/keys', { method: 'POST', body: JSON.stringify({ title: title, scope: scope }) }).then(function(res) {
     if (!res.ok) {
-      return res.json().then(function(data) { toast(data.error || t('client.createKeyError'), 'error'); });
+      return res.json().then(function(data) { toast(data.error || t('client.createKeyError'), 'error'); }).catch(function() { toast(t('client.createKeyError'), 'error'); });
     }
     return res.json().then(function(data) { showKeyRevealModal(data.raw_key); });
   });
@@ -423,7 +423,7 @@ function doAddSlug(linkId) {
   if (!slug) { toast(t('client.urlRequired'), 'error'); return; }
   api('/links/' + linkId + '/slugs', { method: 'POST', body: JSON.stringify({ slug: slug }) }).then(function(res) {
     if (res.ok) { closeModal(); toast(t('client.customAdded')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.customError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.customError'), 'error'); }).catch(function() { toast(t('client.customError'), 'error'); });
   });
 }
 
@@ -539,7 +539,7 @@ function saveDetailLabel(linkId) {
   var body = { label: val || null };
   api('/links/' + linkId, { method: 'PUT', body: JSON.stringify(body) }).then(function(res) {
     if (res.ok) { toast(t('client.labelUpdated')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.labelError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.labelError'), 'error'); }).catch(function() { toast(t('client.labelError'), 'error'); });
   });
 }
 
@@ -560,7 +560,7 @@ function saveDetailExpiry(linkId) {
   var body = { expires_at: exp ? Math.floor(new Date(exp).getTime() / 1000) : null };
   api('/links/' + linkId, { method: 'PUT', body: JSON.stringify(body) }).then(function(res) {
     if (res.ok) { toast(t('client.expiryUpdated')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.expiryError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.expiryError'), 'error'); }).catch(function() { toast(t('client.expiryError'), 'error'); });
   });
 }
 
@@ -1366,7 +1366,7 @@ function doCreateBundle() {
         }
       });
     } else {
-      res.json().then(function(data) { toast(data.error || t('client.bundles.createError'), 'error'); });
+      res.json().then(function(data) { toast(data.error || t('client.bundles.createError'), 'error'); }).catch(function() { toast(t('client.bundles.createError'), 'error'); });
     }
   });
 }
@@ -1404,7 +1404,7 @@ function doUpdateBundle(bundleId) {
   };
   api('/bundles/' + bundleId, { method: 'PUT', body: JSON.stringify(body) }).then(function(res) {
     if (res.ok) { closeModal(); toast(t('client.bundles.updated')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.bundles.saveError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.bundles.saveError'), 'error'); }).catch(function() { toast(t('client.bundles.saveError'), 'error'); });
   });
 }
 
@@ -1589,7 +1589,7 @@ function doAddLinkToBundle(bundleId, linkId) {
     body: JSON.stringify({ link_id: linkId }),
   }).then(function(res) {
     if (res.ok) { closeModal(); toast(t('client.bundles.updated')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.bundles.saveError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.bundles.saveError'), 'error'); }).catch(function() { toast(t('client.bundles.saveError'), 'error'); });
   });
 }
 

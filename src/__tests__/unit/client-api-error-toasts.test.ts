@@ -1,7 +1,7 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-// The slug-action handlers report API failures by reading `error` off a JSON
+// The admin action handlers report API failures by reading `error` off a JSON
 // error body. Not every failure carries one: an edge-level 502/524 serves an
 // HTML page and a bare 500 can serve nothing at all, and res.json() rejects on
 // both. Without a fallback the rejection goes unhandled and the user sees no
@@ -27,24 +27,44 @@ function extractTopLevelChunk(source: string, startPattern: RegExp): string {
 }
 
 type ToastCall = { message: string; level?: string };
-type SlugAction = (linkId: number, slug: string) => void;
+type Handlers = Record<string, (...args: unknown[]) => void>;
 
-const ACTIONS = [
-  "doSetPrimary",
-  "doDeleteSlug",
-  "doDisableSlug",
-  "doEnableSlug",
-] as const;
+// Every handler whose failure path parses a JSON error body. `invoke` supplies
+// whatever arguments the handler takes; the stubbed api() ignores them.
+const HANDLERS: Array<{ name: string; invoke: (h: Handlers) => void }> = [
+  { name: "createKey", invoke: (h) => h.createKey() },
+  { name: "doAddSlug", invoke: (h) => h.doAddSlug(1) },
+  { name: "doSetPrimary", invoke: (h) => h.doSetPrimary(1, "my-slug") },
+  { name: "doDeleteSlug", invoke: (h) => h.doDeleteSlug(1, "my-slug") },
+  { name: "doDisableSlug", invoke: (h) => h.doDisableSlug(1, "my-slug") },
+  { name: "doEnableSlug", invoke: (h) => h.doEnableSlug(1, "my-slug") },
+  { name: "saveDetailLabel", invoke: (h) => h.saveDetailLabel(1) },
+  { name: "saveDetailExpiry", invoke: (h) => h.saveDetailExpiry(1) },
+  { name: "doCreateBundle", invoke: (h) => h.doCreateBundle() },
+  { name: "doUpdateBundle", invoke: (h) => h.doUpdateBundle(1) },
+  { name: "doAddLinkToBundle", invoke: (h) => h.doAddLinkToBundle(1, 2) },
+];
 
-// Loads the four handlers with `api` stubbed to a non-ok response whose json()
-// rejects, the way a real Response does when the body is empty or HTML.
-function loadSlugActions(json: () => Promise<unknown>) {
+// Enough of a DOM for the handlers that read form fields before calling the
+// API. Every field reads as non-empty so none of them bail out early.
+function fakeDocument() {
+  const field = { value: "x", focus() {}, style: {} };
+  return {
+    getElementById: () => field,
+    querySelector: () => field,
+    querySelectorAll: () => [],
+  };
+}
+
+// Loads every handler with `api` stubbed to a non-ok response whose json()
+// behaves as the test dictates.
+function loadHandlers(json: () => Promise<unknown>) {
   const script = adminClientScript("1.0.0", {} as unknown as Translations);
   const code = [
-    ...ACTIONS.map((name) =>
-      extractTopLevelChunk(script, new RegExp(`^function ${name}\\(`)),
+    ...HANDLERS.map((h) =>
+      extractTopLevelChunk(script, new RegExp(`^function ${h.name}\\(`)),
     ),
-    `return { ${ACTIONS.map((n) => `${n}: ${n}`).join(", ")} };`,
+    `return { ${HANDLERS.map((h) => `${h.name}: ${h.name}`).join(", ")} };`,
   ].join("\n");
 
   const toasts: ToastCall[] = [];
@@ -53,26 +73,26 @@ function loadSlugActions(json: () => Promise<unknown>) {
     "toast",
     "t",
     "closeModal",
+    "openModal",
+    "showKeyRevealModal",
     "window",
+    "document",
     code,
-  ) as (
-    api: () => Promise<unknown>,
-    toast: (message: string, level?: string) => void,
-    t: (key: string) => string,
-    closeModal: () => void,
-    win: unknown,
-  ) => Record<(typeof ACTIONS)[number], SlugAction>;
+  ) as (...args: unknown[]) => Handlers;
 
-  const fns = factory(
+  const handlers = factory(
     () => Promise.resolve({ ok: false, status: 502, json }),
-    (message, level) => {
+    (message: string, level?: string) => {
       toasts.push({ message, level });
     },
-    (key) => key,
+    (key: string) => key,
     () => {},
-    { location: { reload() {}, href: "" } },
+    () => {},
+    () => {},
+    { location: { reload() {}, href: "" }, __bundleOnCreated: null },
+    fakeDocument(),
   );
-  return { fns, toasts };
+  return { handlers, toasts };
 }
 
 // The handlers do not return their promise chain, so there is nothing to await.
@@ -84,7 +104,7 @@ async function waitForToast(toasts: ToastCall[]) {
   }
 }
 
-describe("admin slug-action error toasts", () => {
+describe("admin action error toasts", () => {
   it("res.json() really does reject on the bodies this guards against", async () => {
     await expect(new Response("", { status: 502 }).json()).rejects.toThrow();
     await expect(
@@ -92,13 +112,27 @@ describe("admin slug-action error toasts", () => {
     ).rejects.toThrow();
   });
 
-  for (const name of ACTIONS) {
+  it("leaves no failure path parsing a JSON error body without a fallback", () => {
+    const script = adminClientScript("1.0.0", {} as unknown as Translations);
+    const unguarded = script
+      .split("\n")
+      .filter(
+        (line) =>
+          /res\.json\(\)\.then\(/.test(line) &&
+          /toast\(/.test(line) &&
+          !/\.catch\(/.test(line),
+      );
+
+    expect(unguarded).toEqual([]);
+  });
+
+  for (const { name, invoke } of HANDLERS) {
     it(`${name} toasts an error when the failure body is empty`, async () => {
-      const { fns, toasts } = loadSlugActions(() =>
+      const { handlers, toasts } = loadHandlers(() =>
         new Response("", { status: 502 }).json(),
       );
 
-      fns[name](1, "my-slug");
+      invoke(handlers);
       await waitForToast(toasts);
 
       expect(toasts).toHaveLength(1);
@@ -107,11 +141,11 @@ describe("admin slug-action error toasts", () => {
     });
 
     it(`${name} toasts an error when the failure body is HTML`, async () => {
-      const { fns, toasts } = loadSlugActions(() =>
+      const { handlers, toasts } = loadHandlers(() =>
         new Response("<html>Bad gateway</html>", { status: 502 }).json(),
       );
 
-      fns[name](1, "my-slug");
+      invoke(handlers);
       await waitForToast(toasts);
 
       expect(toasts).toHaveLength(1);
@@ -119,14 +153,14 @@ describe("admin slug-action error toasts", () => {
     });
 
     it(`${name} still prefers the API's error message when one is present`, async () => {
-      const { fns, toasts } = loadSlugActions(() =>
-        Promise.resolve({ error: "slug is in use" }),
+      const { handlers, toasts } = loadHandlers(() =>
+        Promise.resolve({ error: "upstream said no" }),
       );
 
-      fns[name](1, "my-slug");
+      invoke(handlers);
       await waitForToast(toasts);
 
-      expect(toasts).toEqual([{ message: "slug is in use", level: "error" }]);
+      expect(toasts).toEqual([{ message: "upstream said no", level: "error" }]);
     });
   }
 });
