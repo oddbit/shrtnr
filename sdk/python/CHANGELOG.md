@@ -2,6 +2,14 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.1.2 (2026-08-10)
+
+Error-handling fix. No public surface changes.
+
+- An empty body served with a non-204 2xx raises `ShrtnrError(status, "Empty response body")`. This is the same "truncated body served with a 200" case the invalid-JSON guard covers, for instance a proxy that strips the body off some 2xx responses. Returning `None` only deferred the failure to the resource method's `SomeModel.from_dict(...)`, which reported it as a bare `AttributeError` and slipped past `except ShrtnrError` handling. A 204 still returns `None`. The Dart SDK carries the same fix in 2.1.2; TypeScript reaches the same outcome through its JSON-parse guard.
+- Documentation: the `Key types` list names the types added since it was written (`BundleTopLink`, `DateCount`, `SlugCount`, `BreakdownDimension`, `BreakdownPage`).
+- Records the spec hash for app 0.37.1. Paths and schemas are unchanged; only `info.version` moved.
+
 ## 1.1.1 (2026-07-28)
 
 - A 2xx response whose body is not valid JSON now raises `ShrtnrError(status)`. Previously `response.json()` raised a bare `JSONDecodeError`, so an HTML error page or a truncated body served with a 200 escaped the SDK's error type. The TypeScript and Dart SDKs carry the same fix in 1.1.1 and 2.1.1.
