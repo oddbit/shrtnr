@@ -54,6 +54,23 @@ async function runBreakdownPage(
   return { items: rows.results ?? [], total: totalRow?.cnt ?? 0 };
 }
 
+/**
+ * WHERE fragment matching every click on a slug that belongs to a bundle,
+ * costing exactly one bound parameter (the bundle id).
+ *
+ * D1 caps a prepared statement at 100 bound parameters. Expanding the member
+ * slugs into an `IN (?,?,...)` list blew that cap once a bundle grew past ~99
+ * slugs and failed the whole analytics page with SQLITE_ERROR. Resolving the
+ * membership inside SQLite keeps the bind count flat at any bundle size, and
+ * the planner still drives the lookup off idx_clicks_slug.
+ *
+ * Pass `column` when the clicks table is joined under an alias. The subquery
+ * aliases (bl_/s_) stay distinct from the aliases callers use outside it.
+ */
+function bundleSlugScope(column = "slug"): string {
+  return `${column} IN (SELECT s_.slug FROM bundle_links bl_ JOIN slugs s_ ON s_.link_id = bl_.link_id WHERE bl_.bundle_id = ?)`;
+}
+
 export type { ClickFilters } from "./filters";
 
 export class ClickRepository {
@@ -506,20 +523,8 @@ export class ClickRepository {
     now?: number,
     filters?: ClickFilters,
   ): Promise<BreakdownPage> {
-    const slugRows = await db
-      .prepare(
-        `SELECT s.slug as slug FROM bundle_links bl
-         JOIN slugs s ON s.link_id = bl.link_id
-         WHERE bl.bundle_id = ?`,
-      )
-      .bind(bundleId)
-      .all<{ slug: string }>();
-    const slugs = (slugRows.results ?? []).map((r) => r.slug);
-    if (slugs.length === 0) return { items: [], total: 0 };
-
-    const placeholders = slugs.map(() => "?").join(",");
-    let where = `slug IN (${placeholders})`;
-    const binds: (string | number)[] = [...slugs];
+    let where = bundleSlugScope();
+    const binds: (string | number)[] = [bundleId];
     if (range !== "all") {
       const ts = now ?? Math.floor(Date.now() / 1000);
       where += " AND clicked_at >= ?";
@@ -1071,9 +1076,8 @@ export class ClickRepository {
 
     if (slugs.length === 0) return empty;
 
-    const placeholders = slugs.map(() => "?").join(",");
-    let where = `slug IN (${placeholders})`;
-    const binds: (string | number)[] = [...slugs];
+    let where = bundleSlugScope();
+    const binds: (string | number)[] = [bundleId];
     if (range !== "all") {
       const sinceTs = ts - RANGE_SECONDS[range];
       where += " AND clicked_at >= ?";
@@ -1111,7 +1115,7 @@ export class ClickRepository {
       db.prepare(`SELECT link_mode as name, COUNT(*) as count FROM clicks WHERE ${where} GROUP BY link_mode ORDER BY count DESC`).bind(...binds).all<{ name: string; count: number }>(),
       (() => {
         const filterFragC = clickFilterSql(filters, "c");
-        let perLinkWhere = `c.slug IN (${placeholders})`;
+        let perLinkWhere = bundleSlugScope("c.slug");
         if (range !== "all") perLinkWhere += " AND c.clicked_at >= ?";
         perLinkWhere += filterFragC;
         return db.prepare(
@@ -1122,8 +1126,8 @@ export class ClickRepository {
            ORDER BY cnt DESC`,
         ).bind(...binds).all<{ link_id: number; cnt: number }>();
       })(),
-      this.getBundleTimeline(db, slugs, range, ts, filters),
-      this.getBundlePeriodClicks(db, slugs, range, ts, filters),
+      this.getBundleTimeline(db, bundleId, range, ts, filters),
+      this.getBundlePeriodClicks(db, bundleId, range, ts, filters),
       db.prepare(`SELECT COUNT(DISTINCT referrer) as cnt FROM clicks WHERE ${where} AND referrer IS NOT NULL AND referrer NOT LIKE 'android-app://%' AND referrer NOT LIKE 'ios-app://%'`).bind(...binds).first<{ cnt: number }>(),
       db.prepare(`SELECT COUNT(DISTINCT referrer_host) as cnt FROM clicks WHERE ${where} AND referrer_host IS NOT NULL`).bind(...binds).first<{ cnt: number }>(),
       db.prepare(`SELECT COUNT(DISTINCT os) as cnt FROM clicks WHERE ${where} AND os IS NOT NULL`).bind(...binds).first<{ cnt: number }>(),
@@ -1136,7 +1140,7 @@ export class ClickRepository {
     // Attach per-link deltas in two more grouped queries (scoped to bundle slugs).
     const perLinkDeltas = range === "all"
       ? new Map<number, number | undefined>()
-      : await this.getBundlePerLinkDeltas(db, slugs, range, ts, filters);
+      : await this.getBundlePerLinkDeltas(db, bundleId, range, ts, filters);
 
     const perLink: BundleStatsPerLink[] = [];
     for (const row of perLinkRows.results ?? []) {
@@ -1207,23 +1211,18 @@ export class ClickRepository {
     };
   }
 
-  /** Timeline (range-bucketed) scoped to an explicit slug list. */
+  /**
+   * Timeline (range-bucketed) scoped to a bundle's member slugs. Callers reach
+   * this only after confirming the bundle has members.
+   */
   private static async getBundleTimeline(
     db: D1Database,
-    slugs: string[],
+    bundleId: number,
     range: TimelineRange,
     ts: number,
     filters?: ClickFilters,
   ): Promise<TimelineData> {
-    const empty: TimelineData = {
-      range,
-      buckets: [],
-      summary: { last_24h: 0, last_7d: 0, last_30d: 0, last_90d: 0, last_1y: 0 },
-    };
-    if (slugs.length === 0) return empty;
-
-    const placeholders = slugs.map(() => "?").join(",");
-    const where = `slug IN (${placeholders})${clickFilterSql(filters)}`;
+    const where = `${bundleSlugScope()}${clickFilterSql(filters)}`;
 
     const t24h = ts - 86400;
     const t7d = ts - 7 * 86400;
@@ -1231,11 +1230,11 @@ export class ClickRepository {
     const t90d = ts - 90 * 86400;
     const t1y = ts - 365 * 86400;
     const [last24h, last7d, last30d, last90d, last1y] = await Promise.all([
-      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t24h).first<{ cnt: number }>(),
-      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t7d).first<{ cnt: number }>(),
-      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t30d).first<{ cnt: number }>(),
-      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t90d).first<{ cnt: number }>(),
-      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t1y).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(bundleId, t24h).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(bundleId, t7d).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(bundleId, t30d).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(bundleId, t90d).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(bundleId, t1y).first<{ cnt: number }>(),
     ]);
 
     const summary = {
@@ -1275,7 +1274,7 @@ export class ClickRepository {
       case "all": {
         const earliestRow = await db
           .prepare(`SELECT MIN(clicked_at) as t FROM clicks WHERE ${where}`)
-          .bind(...slugs)
+          .bind(bundleId)
           .first<{ t: number | null }>();
         allEarliest = earliestRow?.t ?? ts;
         const spanDays = Math.max(1, Math.floor((ts - allEarliest) / 86400));
@@ -1295,7 +1294,7 @@ export class ClickRepository {
     }
 
     const timeFilter = sinceTs !== null ? " AND clicked_at >= ?" : "";
-    const binds = sinceTs !== null ? [...slugs, sinceTs] : [...slugs];
+    const binds = sinceTs !== null ? [bundleId, sinceTs] : [bundleId];
 
     const rows = await db
       .prepare(
@@ -1314,22 +1313,20 @@ export class ClickRepository {
     return { range, buckets, summary };
   }
 
-  /** Current vs previous period click counts scoped to an explicit slug list. */
+  /** Current vs previous period click counts scoped to a bundle's member slugs. */
   private static async getBundlePeriodClicks(
     db: D1Database,
-    slugs: string[],
+    bundleId: number,
     range: TimelineRange,
     ts: number,
     filters?: ClickFilters,
   ): Promise<{ current: number; previous: number }> {
-    if (slugs.length === 0) return { current: 0, previous: 0 };
-    const placeholders = slugs.map(() => "?").join(",");
-    const where = `slug IN (${placeholders})${clickFilterSql(filters)}`;
+    const where = `${bundleSlugScope()}${clickFilterSql(filters)}`;
 
     if (range === "all") {
       const row = await db
         .prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where}`)
-        .bind(...slugs)
+        .bind(bundleId)
         .first<{ cnt: number }>();
       return { current: row?.cnt ?? 0, previous: 0 };
     }
@@ -1339,23 +1336,23 @@ export class ClickRepository {
     const prevStart = ts - 2 * span;
 
     const [cur, prev] = await Promise.all([
-      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, currStart).first<{ cnt: number }>(),
-      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ? AND clicked_at < ?`).bind(...slugs, prevStart, currStart).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(bundleId, currStart).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ? AND clicked_at < ?`).bind(bundleId, prevStart, currStart).first<{ cnt: number }>(),
     ]);
     return { current: cur?.cnt ?? 0, previous: prev?.cnt ?? 0 };
   }
 
   private static async getBundlePerLinkDeltas(
     db: D1Database,
-    slugs: string[],
+    bundleId: number,
     range: TimelineRange,
     ts: number,
     filters?: ClickFilters,
   ): Promise<Map<number, number | undefined>> {
     const out = new Map<number, number | undefined>();
-    if (slugs.length === 0 || range === "all") return out;
+    if (range === "all") return out;
 
-    const placeholders = slugs.map(() => "?").join(",");
+    const scope = bundleSlugScope("c.slug");
     const filterFrag = clickFilterSql(filters, "c");
     const span = RANGE_SECONDS[range];
     const currStart = ts - span;
@@ -1366,19 +1363,19 @@ export class ClickRepository {
         .prepare(
           `SELECT s.link_id as link_id, COUNT(*) as cnt
            FROM clicks c JOIN slugs s ON s.slug = c.slug
-           WHERE c.slug IN (${placeholders}) AND c.clicked_at >= ?${filterFrag}
+           WHERE ${scope} AND c.clicked_at >= ?${filterFrag}
            GROUP BY s.link_id`,
         )
-        .bind(...slugs, currStart)
+        .bind(bundleId, currStart)
         .all<{ link_id: number; cnt: number }>(),
       db
         .prepare(
           `SELECT s.link_id as link_id, COUNT(*) as cnt
            FROM clicks c JOIN slugs s ON s.slug = c.slug
-           WHERE c.slug IN (${placeholders}) AND c.clicked_at >= ? AND c.clicked_at < ?${filterFrag}
+           WHERE ${scope} AND c.clicked_at >= ? AND c.clicked_at < ?${filterFrag}
            GROUP BY s.link_id`,
         )
-        .bind(...slugs, prevStart, currStart)
+        .bind(bundleId, prevStart, currStart)
         .all<{ link_id: number; cnt: number }>(),
     ]);
 

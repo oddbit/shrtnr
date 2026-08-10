@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
 import { BundleRepository, ClickRepository, LinkRepository, SlugRepository } from "../../db";
+import { computeDelta } from "../../services/trends";
 
 beforeAll(applyMigrations);
 beforeEach(resetData);
@@ -552,6 +553,83 @@ describe("ClickRepository.getBundleStats", () => {
     expect(stats.clicked_links).toBe(1);
     // link2 appears with 0 clicks
     expect(stats.per_link.find((p) => p.link_id === link2.id)?.click_count).toBe(0);
+  });
+});
+
+// D1 caps a prepared statement at 100 bound parameters. Scoping bundle
+// analytics by binding one parameter per member slug blew that cap on real
+// bundles (bundle 3 in production carries 99 slugs), so every query here uses
+// a slug count past the limit.
+describe("ClickRepository bundle analytics past the D1 bind cap", () => {
+  const LINKS = 51; // 2 slugs per link => 102 slugs, past D1's 100-parameter cap
+
+  async function bigBundle() {
+    const bundle = await BundleRepository.create(env.DB, { name: "Wide", createdBy: "a@b" });
+    const linkIds: number[] = [];
+    const slugs: string[] = [];
+    for (let i = 0; i < LINKS; i++) {
+      const link = await LinkRepository.create(env.DB, { url: `https://a.com/${i}`, slug: `wide-${i}`, createdBy: "a@b" });
+      await SlugRepository.addCustom(env.DB, link.id, `wide-${i}-alt`);
+      await BundleRepository.addLink(env.DB, bundle.id, link.id);
+      linkIds.push(link.id);
+      slugs.push(`wide-${i}`, `wide-${i}-alt`);
+    }
+    return { bundle, linkIds, slugs };
+  }
+
+  it("getBundleStats aggregates a bundle whose slug count exceeds the cap", async () => {
+    const { bundle, linkIds, slugs } = await bigBundle();
+    expect(slugs.length).toBeGreaterThan(100);
+
+    const now = Math.floor(Date.now() / 1000);
+    // Current 30d window: one click on the first slug of every link, plus an
+    // extra on the last link's alternate slug.
+    for (const slug of slugs.filter((_, i) => i % 2 === 0)) {
+      await recordClick(slug, now - 3600, { country: "US" });
+    }
+    await recordClick(slugs[slugs.length - 1], now - 3600, { country: "ID" });
+    // Previous 30d window: two clicks, so the delta is computable.
+    await recordClick(slugs[0], now - 40 * 86400);
+    await recordClick(slugs[1], now - 40 * 86400);
+
+    const stats = (await ClickRepository.getBundleStats(env.DB, bundle.id, "30d", now))!;
+    expect(stats.link_count).toBe(LINKS);
+    expect(stats.total_clicks).toBe(LINKS + 1);
+    expect(stats.clicked_links).toBe(LINKS);
+    expect(stats.countries_reached).toBe(2);
+    expect(stats.per_link).toHaveLength(LINKS);
+    expect(stats.per_link.find((p) => p.link_id === linkIds[LINKS - 1])?.click_count).toBe(2);
+    expect(stats.delta_pct).toBe(computeDelta(LINKS + 1, 2));
+    expect(stats.timeline.summary.last_24h).toBe(LINKS + 1);
+    expect(stats.timeline.summary.last_90d).toBe(LINKS + 3);
+    expect(stats.timeline.buckets.some((b) => b.count > 0)).toBe(true);
+  });
+
+  it("getBundleStats aggregates an over-cap bundle over the all range", async () => {
+    const { bundle, slugs } = await bigBundle();
+    const now = Math.floor(Date.now() / 1000);
+    await recordClick(slugs[0], now - 400 * 86400, { country: "US" });
+    await recordClick(slugs[1], now - 60, { country: "US" });
+
+    const stats = (await ClickRepository.getBundleStats(env.DB, bundle.id, "all", now))!;
+    expect(stats.total_clicks).toBe(2);
+    expect(stats.delta_pct).toBeUndefined();
+    expect(stats.timeline.buckets.length).toBeGreaterThan(0);
+  });
+
+  it("getBundleBreakdownPage pages an over-cap bundle", async () => {
+    const { bundle, slugs } = await bigBundle();
+    const now = Math.floor(Date.now() / 1000);
+    await recordClick(slugs[0], now - 60, { country: "US" });
+    await recordClick(slugs[1], now - 60, { country: "US" });
+    await recordClick(slugs[2], now - 60, { country: "ID" });
+
+    const page = await ClickRepository.getBundleBreakdownPage(env.DB, bundle.id, "countries", "30d", 0, 10, now);
+    expect(page.total).toBe(2);
+    expect(page.items).toEqual([
+      { name: "US", count: 2 },
+      { name: "ID", count: 1 },
+    ]);
   });
 });
 
