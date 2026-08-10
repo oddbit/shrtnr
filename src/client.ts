@@ -451,7 +451,7 @@ function showChangePrimaryModal(linkId) {
 function doSetPrimary(linkId, slug) {
   api('/links/' + linkId + '/slugs/primary', { method: 'PUT', body: JSON.stringify({ slug: slug }) }).then(function(res) {
     if (res.ok) { closeModal(); toast(t('client.labelUpdated')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.setPrimaryError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.setPrimaryError'), 'error'); }).catch(function() { toast(t('client.setPrimaryError'), 'error'); });
   });
 }
 
@@ -487,7 +487,7 @@ function confirmDeleteSlug(linkId, slug) {
 function doDeleteSlug(linkId, slug) {
   api('/links/' + linkId + '/slugs/' + slug, { method: 'DELETE' }).then(function(res) {
     if (res.ok) { closeModal(); toast(t('client.slugDeleted')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.deleteSlugError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.deleteSlugError'), 'error'); }).catch(function() { toast(t('client.deleteSlugError'), 'error'); });
   });
 }
 
@@ -501,7 +501,7 @@ function confirmDisableSlug(linkId, slug) {
 function doDisableSlug(linkId, slug) {
   api('/links/' + linkId + '/slugs/' + slug + '/disable', { method: 'POST' }).then(function(res) {
     if (res.ok) { closeModal(); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.disableSlugError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.disableSlugError'), 'error'); }).catch(function() { toast(t('client.disableSlugError'), 'error'); });
   });
 }
 
@@ -515,7 +515,7 @@ function confirmEnableSlug(linkId, slug) {
 function doEnableSlug(linkId, slug) {
   api('/links/' + linkId + '/slugs/' + slug + '/enable', { method: 'POST' }).then(function(res) {
     if (res.ok) { closeModal(); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.enableSlugError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.enableSlugError'), 'error'); }).catch(function() { toast(t('client.enableSlugError'), 'error'); });
   });
 }
 
