@@ -142,10 +142,12 @@ All model fields use snake_case, matching the wire format. Types are frozen data
 
 Key types exported from `shrtnr`:
 
-- `Link`, `Slug`, `Bundle`, `BundleWithSummary`
-- `ClickStats`, `TimelineData`, `NameCount`, `TimelineBucket`, `TimelineSummary`
+- `Link`, `Slug`, `Bundle`, `BundleWithSummary`, `BundleTopLink`
+- `ClickStats`, `TimelineData`, `TimelineBucket`, `NameCount`, `TimelineSummary`
+- `DateCount`, `SlugCount`
 - `DeletedResult`, `AddedResult`, `RemovedResult`
 - `TimelineRange` (`Literal["24h", "7d", "30d", "90d", "1y", "all"]`)
+- `BreakdownDimension`, `BreakdownPage`
 - `BundleAccent` (`Literal["orange", "red", "green", "blue", "purple"]`)
 
 ## Errors

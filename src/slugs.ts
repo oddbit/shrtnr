@@ -34,6 +34,7 @@ export function validateRandomSlug(slug: string): string | null {
 
 export function validateCustomSlug(slug: string): string | null {
   if (slug.length < 1) return "Custom slug must not be empty";
+  if (slug.length > MAX_SLUG_LENGTH) return `Custom slug must be at most ${MAX_SLUG_LENGTH} characters`;
   if (slug.startsWith("_")) return "Slug must not start with underscore";
   if (slug.startsWith("-") || slug.endsWith("-")) return "Custom slug must not start or end with a hyphen";
   if (!CUSTOM_SLUG_REGEX.test(slug)) return "Custom slug must contain only alphanumeric characters and hyphens";

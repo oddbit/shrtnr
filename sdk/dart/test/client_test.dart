@@ -7,6 +7,7 @@
 // same order, same test count, same intent. When adding a public
 // method, add a matching test here AND in the other two SDKs.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -19,6 +20,25 @@ const _apiKey = 'sk_abc';
 
 class _Capture {
   http.Request? request;
+}
+
+// Returns headers/status successfully, then errors while the body is still
+// streaming, unlike MockClient's throws-before-any-response failure mode.
+class _StreamErrorClient extends http.BaseClient {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final controller = StreamController<List<int>>();
+    controller.add(utf8.encode('['));
+    scheduleMicrotask(() {
+      controller.addError(Exception('connection reset'));
+      controller.close();
+    });
+    return http.StreamedResponse(
+      controller.stream,
+      200,
+      headers: <String, String>{'content-type': 'application/json'},
+    );
+  }
 }
 
 ({ShrtnrClient client, _Capture capture}) _mock({
@@ -241,6 +261,28 @@ void main() {
         fail('expected ShrtnrError');
       } on ShrtnrError catch (e) {
         expect(e.status, 200);
+      }
+    });
+
+    test(
+        'throws ShrtnrError with status 0 when the connection drops mid-body, not just before headers',
+        () async {
+      // send() only yields headers/status; http.Response.fromStream reads
+      // the body afterward. A stream that errors after headers arrive
+      // simulates a connection reset partway through, which the
+      // MockClient-throws-immediately test above (send() itself failing)
+      // does not exercise.
+      final httpClient = _StreamErrorClient();
+      final client = ShrtnrClient(
+        baseUrl: _base,
+        apiKey: _apiKey,
+        httpClient: httpClient,
+      );
+      try {
+        await client.links.list();
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 0);
       }
     });
   });

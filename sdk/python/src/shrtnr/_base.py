@@ -69,8 +69,16 @@ def parse_json_response(response: httpx.Response) -> Any:
     """Parse a JSON response or raise ShrtnrError on non-2xx."""
     if not response.is_success:
         _raise_from_response(response)
-    if response.status_code == 204 or not response.content:
+    if response.status_code == 204:
         return None
+    # An empty body on a non-204 2xx is the same "truncated body served with
+    # a 200" case the non-JSON branch below covers (e.g. a CDN/proxy that
+    # strips the body on some 2xx responses): treat it as invalid rather
+    # than silently returning None, which every resource method's
+    # `SomeModel.from_dict(...)` call would otherwise crash on with a bare
+    # AttributeError instead of the documented ShrtnrError.
+    if not response.content:
+        raise ShrtnrError(response.status_code, "Empty response body")
     try:
         return response.json()
     except Exception as exc:

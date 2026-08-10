@@ -144,6 +144,29 @@ describe("Error handling", () => {
     }
   });
 
+  it("binds a caller-supplied fetch option to globalThis too, not just the default", async () => {
+    // The same brand-check bug can hit a caller-provided `fetch` (e.g.
+    // `fetch: window.fetch`, exactly what the README's custom-fetch example
+    // shows): only the resolveGlobalFetch() fallback branch was ever bound
+    // to globalThis, so a bare receiver-sensitive function passed via the
+    // `fetch` config option was invoked as `this.fetchFn(...)` and failed
+    // the same brand check a real browser's Window.fetch performs.
+    function brandCheckedFetch(this: unknown) {
+      if (this !== globalThis) {
+        throw new TypeError("Illegal invocation");
+      }
+      return Promise.resolve(
+        new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } }),
+      );
+    }
+    const customClient = new ShrtnrClient({
+      baseUrl: BASE,
+      apiKey: API_KEY,
+      fetch: brandCheckedFetch as typeof fetch,
+    });
+    await expect(customClient.links.list()).resolves.toEqual([]);
+  });
+
   it("throws ShrtnrError naming the fetch option when the environment has no global fetch", () => {
     const realFetch = globalThis.fetch;
     globalThis.fetch = undefined as unknown as typeof fetch;

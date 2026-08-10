@@ -67,7 +67,14 @@ function openModal(html) {
 }
 
 // ---- Escape ----
-function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+// Setting textContent and reading back innerHTML escapes &, < and >, but it
+// leaves the double-quote character untouched: a text node carries a literal
+// quote as-is. On its own that is unsafe for a value placed inside a
+// double-quoted HTML attribute, so the quote is escaped explicitly below.
+// Still not sufficient inside an inline onclick JS-string (entities decode
+// before the script engine sees them) -- see the comment near
+// pendingDuplicateUrl for that case.
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML.replace(/"/g, '&quot;'); }
 
 // ---- API helper ----
 function api(path, opts) {
@@ -303,7 +310,7 @@ function createKey() {
 
   api('/keys', { method: 'POST', body: JSON.stringify({ title: title, scope: scope }) }).then(function(res) {
     if (!res.ok) {
-      return res.json().then(function(data) { toast(data.error || t('client.createKeyError'), 'error'); });
+      return res.json().then(function(data) { toast(data.error || t('client.createKeyError'), 'error'); }).catch(function() { toast(t('client.createKeyError'), 'error'); });
     }
     return res.json().then(function(data) { showKeyRevealModal(data.raw_key); });
   });
@@ -406,7 +413,7 @@ function showAddSlugModal(linkId) {
   document.getElementById('detail-menu').style.display = 'none';
   openModal(
     '<div class="modal-title">' + esc(t('linkDetail.addCustomSlug')) + '</div>' +
-    '<div class="form-group"><label class="form-label">Slug</label><input class="form-input" id="m-new-slug" placeholder="my-custom-slug"></div>' +
+    '<div class="form-group"><label class="form-label">' + esc(t('linkDetail.slugFieldLabel')) + '</label><input class="form-input" id="m-new-slug" placeholder="my-custom-slug"></div>' +
     '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="doAddSlug(' + linkId + ')">' + esc(t('linkDetail.add')) + '</button></div>'
   );
   setTimeout(function() { document.getElementById('m-new-slug').focus(); }, 100);
@@ -416,7 +423,7 @@ function doAddSlug(linkId) {
   if (!slug) { toast(t('client.urlRequired'), 'error'); return; }
   api('/links/' + linkId + '/slugs', { method: 'POST', body: JSON.stringify({ slug: slug }) }).then(function(res) {
     if (res.ok) { closeModal(); toast(t('client.customAdded')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.customError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.customError'), 'error'); }).catch(function() { toast(t('client.customError'), 'error'); });
   });
 }
 
@@ -445,7 +452,7 @@ function showChangePrimaryModal(linkId) {
 function doSetPrimary(linkId, slug) {
   api('/links/' + linkId + '/slugs/primary', { method: 'PUT', body: JSON.stringify({ slug: slug }) }).then(function(res) {
     if (res.ok) { closeModal(); toast(t('client.labelUpdated')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || 'Error', 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.setPrimaryError'), 'error'); }).catch(function() { toast(t('client.setPrimaryError'), 'error'); });
   });
 }
 
@@ -480,8 +487,8 @@ function confirmDeleteSlug(linkId, slug) {
 }
 function doDeleteSlug(linkId, slug) {
   api('/links/' + linkId + '/slugs/' + slug, { method: 'DELETE' }).then(function(res) {
-    if (res.ok) { closeModal(); toast(t('client.customAdded')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || 'Error', 'error'); });
+    if (res.ok) { closeModal(); toast(t('client.slugDeleted')); window.location.reload(); }
+    else res.json().then(function(data) { toast(data.error || t('client.deleteSlugError'), 'error'); }).catch(function() { toast(t('client.deleteSlugError'), 'error'); });
   });
 }
 
@@ -495,7 +502,7 @@ function confirmDisableSlug(linkId, slug) {
 function doDisableSlug(linkId, slug) {
   api('/links/' + linkId + '/slugs/' + slug + '/disable', { method: 'POST' }).then(function(res) {
     if (res.ok) { closeModal(); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || 'Error', 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.disableSlugError'), 'error'); }).catch(function() { toast(t('client.disableSlugError'), 'error'); });
   });
 }
 
@@ -509,7 +516,7 @@ function confirmEnableSlug(linkId, slug) {
 function doEnableSlug(linkId, slug) {
   api('/links/' + linkId + '/slugs/' + slug + '/enable', { method: 'POST' }).then(function(res) {
     if (res.ok) { closeModal(); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || 'Error', 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.enableSlugError'), 'error'); }).catch(function() { toast(t('client.enableSlugError'), 'error'); });
   });
 }
 
@@ -532,7 +539,7 @@ function saveDetailLabel(linkId) {
   var body = { label: val || null };
   api('/links/' + linkId, { method: 'PUT', body: JSON.stringify(body) }).then(function(res) {
     if (res.ok) { toast(t('client.labelUpdated')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.labelError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.labelError'), 'error'); }).catch(function() { toast(t('client.labelError'), 'error'); });
   });
 }
 
@@ -553,7 +560,7 @@ function saveDetailExpiry(linkId) {
   var body = { expires_at: exp ? Math.floor(new Date(exp).getTime() / 1000) : null };
   api('/links/' + linkId, { method: 'PUT', body: JSON.stringify(body) }).then(function(res) {
     if (res.ok) { toast(t('client.expiryUpdated')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.expiryError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.expiryError'), 'error'); }).catch(function() { toast(t('client.expiryError'), 'error'); });
   });
 }
 
@@ -1273,7 +1280,11 @@ function renderIconPicker(selected) {
   var html = '<div class="bundle-icon-picker" id="bundle-icon-picker">';
   list.forEach(function(name) {
     var cls = 'bundle-icon-option' + (name === chosen ? ' selected' : '');
-    html += '<button type="button" class="' + cls + '" data-icon="' + esc(name) + '" onclick="selectBundleIcon(\\'' + name + '\\')" aria-label="' + esc(name) + '"><span class="icon">' + esc(name) + '</span></button>';
+    // The icon name rides on the data-icon attribute rather than an inline
+    // onclick argument: a bundle's icon is a free-text field (no charset
+    // restriction like slugs have), so interpolating it into a JS string
+    // literal would let a quote in the value break out into executable script.
+    html += '<button type="button" class="' + cls + '" data-icon="' + esc(name) + '" onclick="selectBundleIcon(this.dataset.icon)" aria-label="' + esc(name) + '"><span class="icon">' + esc(name) + '</span></button>';
   });
   html += '</div>';
   html += '<input type="hidden" id="bundle-icon" value="' + esc(chosen) + '">';
@@ -1355,7 +1366,7 @@ function doCreateBundle() {
         }
       });
     } else {
-      res.json().then(function(data) { toast(data.error || t('client.bundles.createError'), 'error'); });
+      res.json().then(function(data) { toast(data.error || t('client.bundles.createError'), 'error'); }).catch(function() { toast(t('client.bundles.createError'), 'error'); });
     }
   });
 }
@@ -1393,7 +1404,7 @@ function doUpdateBundle(bundleId) {
   };
   api('/bundles/' + bundleId, { method: 'PUT', body: JSON.stringify(body) }).then(function(res) {
     if (res.ok) { closeModal(); toast(t('client.bundles.updated')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.bundles.saveError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.bundles.saveError'), 'error'); }).catch(function() { toast(t('client.bundles.saveError'), 'error'); });
   });
 }
 
@@ -1578,7 +1589,7 @@ function doAddLinkToBundle(bundleId, linkId) {
     body: JSON.stringify({ link_id: linkId }),
   }).then(function(res) {
     if (res.ok) { closeModal(); toast(t('client.bundles.updated')); window.location.reload(); }
-    else res.json().then(function(data) { toast(data.error || t('client.bundles.saveError'), 'error'); });
+    else res.json().then(function(data) { toast(data.error || t('client.bundles.saveError'), 'error'); }).catch(function() { toast(t('client.bundles.saveError'), 'error'); });
   });
 }
 

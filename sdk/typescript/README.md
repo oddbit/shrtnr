@@ -125,10 +125,13 @@ All model fields use camelCase. The SDK converts snake_case JSON from the wire a
 
 Key types exported from `@oddbit/shrtnr`:
 
-- `Link`, `Slug`, `Bundle`, `BundleWithSummary`
-- `ClickStats`, `TimelineData`, `NameCount`, `TimelineBucket`
+- `Link`, `Slug`, `Bundle`, `BundleWithSummary`, `BundleTopLink`
+- `ClickStats`, `TimelineData`, `TimelineBucket`, `NameCount`
+- `DateCount`, `SlugCount`
+- `DeletedResult`, `AddedResult`, `RemovedResult`
 - `TimelineRange` (`"24h" | "7d" | "30d" | "90d" | "1y" | "all"`)
 - `BundleAccent` (`"orange" | "red" | "green" | "blue" | "purple"`)
+- `BreakdownDimension`, `BreakdownPage`
 - Request body types: `CreateLinkBody`, `UpdateLinkBody`, `AddSlugBody`, `CreateBundleBody`, `UpdateBundleBody`
 
 ## Errors

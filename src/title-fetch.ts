@@ -15,6 +15,10 @@ export async function fetchPageTitle(url: string): Promise<string | null> {
 
     const contentType = res.headers.get("content-type") ?? "";
     if (!contentType.includes("text/html") && !contentType.includes("application/xhtml")) {
+      // Drain the body instead of abandoning it: most destination URLs are
+      // not HTML (APIs, PDFs, images, ...), and this runs on every link
+      // creation, so leaving the stream open here leaks it on the common path.
+      await res.body?.cancel();
       return null;
     }
 
