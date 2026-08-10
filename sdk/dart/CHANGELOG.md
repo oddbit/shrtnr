@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.2 (2026-08-10)
+
+Error-handling fixes. No public surface changes.
+
+- A connection reset partway through a response body throws `ShrtnrError` with status 0. `send()` yields only headers and status; `http.Response.fromStream` reads the body afterward, so a mid-transfer drop surfaced as a raw stream error at that second call and escaped the documented "network failures throw `ShrtnrError(status: 0)`" guarantee. Both `requestJson` and `requestText` wrap the read.
+- An empty body served with a non-204 2xx throws `ShrtnrError(statusCode, 'Empty response body')`, joining the adjacent guard that already rejects a non-JSON 2xx body. Nothing on the wire separates "no content by design" from a proxy that stripped the body off a 200, and every resource method follows the call with `json!`, so the truncated case reported "Null check operator used on a null value" and skipped `on ShrtnrError` handlers. A 204 still returns null. The Python SDK carries the same fix in 1.1.2.
+- Records the spec hash for app 0.37.1. Paths and schemas are unchanged; only `info.version` moved.
+
 ## 2.1.1 (2026-07-28)
 
 Error-handling and deserialization fixes. No public surface changes.
