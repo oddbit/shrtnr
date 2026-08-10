@@ -67,9 +67,10 @@ function openModal(html) {
 }
 
 // ---- Escape ----
-// document.textContent -> innerHTML escapes &, <, > but not ": a text node
-// carries a literal quote as-is, so on its own this is unsafe for a value
-// placed inside a double-quoted HTML attribute. Escape " explicitly too.
+// Setting textContent and reading back innerHTML escapes &, < and >, but it
+// leaves the double-quote character untouched: a text node carries a literal
+// quote as-is. On its own that is unsafe for a value placed inside a
+// double-quoted HTML attribute, so the quote is escaped explicitly below.
 // Still not sufficient inside an inline onclick JS-string (entities decode
 // before the script engine sees them) -- see the comment near
 // pendingDuplicateUrl for that case.
