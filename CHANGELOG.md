@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.37.1 (2026-08-10)
+
+Defect-fix release (PRs #36, #37, and the weekly review batch). No new endpoints or schema changes.
+
+- **Stored XSS closed in the bundle icon picker.** The icon name was interpolated into an inline `onclick` JS-string argument. A bundle icon is a free-text field with no charset restriction, so a quote in the value broke out of the string literal into executable script. The name now rides on `data-icon` and the handler reads `this.dataset.icon`. `esc()` also escapes the double-quote character, which `textContent`/`innerHTML` round-tripping leaves untouched, so a quote in any value placed inside a double-quoted attribute can no longer close it early.
+- **Bundle analytics no longer fails past 99 member slugs.** D1 caps a prepared statement at 100 bound parameters. Expanding a bundle's member slugs into an `IN (?,?,...)` list crossed that cap on wide bundles and failed the whole analytics page with `SQLITE_ERROR`. Every bundle-scoped click query now resolves membership inside SQLite from the bundle id, holding the bind count at one regardless of bundle size. The planner still drives the lookup off `idx_clicks_slug`.
+- **Bundle member slugs load on one bound parameter.** `BundleRepository` bound one parameter per member link to read their slugs, hitting the same D1 cap from the other direction. The membership subquery replaces the id list.
+- **Admin toasts survive a response carrying no JSON body.** Failure paths called `res.json()` and rendered `data.error`, so a 502 from an edge proxy or any non-JSON error body rejected the promise and left the button silent with nothing shown to the user. Every such path now falls back to its translated default message.
+- **Deleting a custom slug reports the deletion.** The success toast read "Custom slug added". Its failure toast, and those for set-primary, disable, and enable, showed a bare untranslated "Error".
+- **Custom slugs enforce a maximum length.** `validateCustomSlug` checked the lower bound and the charset but never the upper, so a caller could store a slug longer than `MAX_SLUG_LENGTH` through the API while the random generator stayed within it.
+- **A trailing `?` inside a fragment survives normalization.** The trailing-`?` strip ran unconditionally, so `https://example.com/#section?` lost a character of fragment content. A `?` at the end only denotes an empty query string when no `#` has opened a fragment ahead of it.
+- **`fetchPageTitle` drains non-HTML bodies.** The early return on a non-HTML content type abandoned the response stream. Most destination URLs are not HTML (APIs, PDFs, images), and this runs on every link creation, so the leak sat on the common path.
+- **Remaining hardcoded admin strings route through `t()`.** The add-slug modal's field label and four slug-action error messages were inline English.
+- OpenAPI paths and schemas are unchanged from 0.37.0; only `info.version` changes. The bump refreshes the recorded spec hash in all three SDKs. TypeScript ships 1.1.3, Python 1.1.2, and Dart 2.1.2 alongside it. Full suite: 76 files, 1128 tests.
+
 ## 0.37.0 (2026-08-05)
 
 Feature and defect release (PRs #34, #35). Adds per-point dates to the clicks-over-time chart and closes three defects from the weekly review.
