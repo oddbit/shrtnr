@@ -285,6 +285,23 @@ void main() {
         expect(e.status, 0);
       }
     });
+
+    test('throws ShrtnrError on an empty body served with a non-204 2xx',
+        () async {
+      // A proxy that strips the body off a 200 leaves nothing to build a
+      // model from, so returning null here only defers the failure to the
+      // resource method's `json!` and reports it as a null-check error
+      // rather than the documented ShrtnrError. Python 1.1.2 raises on the
+      // same case.
+      final m = _mock(status: 200);
+      try {
+        await m.client.links.list();
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 200);
+        expect(e.serverMessage, contains('Empty response body'));
+      }
+    });
   });
 
   // ---- 3. links.get ----

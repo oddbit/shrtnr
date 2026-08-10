@@ -25,6 +25,17 @@ function client(): ShrtnrClient {
   return new ShrtnrClient({ baseUrl: BASE, apiKey: API_KEY, fetch: fetchSpy });
 }
 
+// Yields headers and a first chunk, then errors while the body is still
+// streaming: the failure mode a rejected fetch() promise cannot reproduce.
+function erroringBody(): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode("["));
+      controller.error(new TypeError("connection reset"));
+    },
+  });
+}
+
 function lastCall(): { url: string; init: RequestInit } {
   const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
   return { url, init };
@@ -200,6 +211,54 @@ describe("Error handling", () => {
       await expect(client().links.list()).resolves.toEqual([]);
     } finally {
       globalThis.fetch = realFetch;
+    }
+  });
+
+  it("throws ShrtnrError on an empty body served with a non-204 2xx", async () => {
+    // A proxy that strips the body off a 200 leaves nothing for a resource
+    // method to build a model from. Python raises here and Dart 2.1.2 does
+    // too; TypeScript reaches the same outcome through its JSON-parse guard.
+    fetchSpy.mockResolvedValueOnce(new Response("", { status: 200 }));
+    try {
+      await client().links.get(1);
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(ShrtnrError);
+    }
+  });
+
+  it("reports status 0 when the connection drops mid-body on a JSON response", async () => {
+    // fetch resolves once headers land; the body streams afterward. Reading
+    // it through res.json() reported the response status, so a connection
+    // reset partway through a 200 surfaced as ShrtnrError(200) and read as a
+    // server-side problem. The body read now carries status 0 like every
+    // other transport failure, matching Dart and Python.
+    fetchSpy.mockResolvedValueOnce(new Response(erroringBody(), { status: 200 }));
+    try {
+      await client().links.list();
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(ShrtnrError);
+      expect((e as ShrtnrError).status).toBe(0);
+    }
+  });
+
+  it("wraps a mid-body stream failure on a text response in ShrtnrError", async () => {
+    // requestText handed back res.text() unwrapped, so a reset partway
+    // through a QR download escaped as a raw TypeError past the documented
+    // "network failures throw ShrtnrError with status 0" contract.
+    fetchSpy.mockResolvedValueOnce(
+      new Response(erroringBody(), {
+        status: 200,
+        headers: { "Content-Type": "image/svg+xml" },
+      }),
+    );
+    try {
+      await client().links.qr(5);
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(ShrtnrError);
+      expect((e as ShrtnrError).status).toBe(0);
     }
   });
 });

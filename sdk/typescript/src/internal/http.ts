@@ -79,9 +79,16 @@ export class HttpClient {
 
     if (res.status === 204) return undefined as T;
 
+    // fetch settles once headers arrive; the body streams afterward, so a
+    // connection reset mid-transfer fails here rather than at the call
+    // above. Read and parse in separate steps to keep the two apart: a
+    // transport failure reports status 0 like every other network error,
+    // and only a body that arrived intact but isn't JSON carries the
+    // response status.
+    const text = await this.readBody(res);
     let json: unknown;
     try {
-      json = await res.json();
+      json = JSON.parse(text);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       throw new ShrtnrError(res.status, `Invalid JSON response: ${msg}`);
@@ -118,7 +125,16 @@ export class HttpClient {
       throw new ShrtnrError(res.status, serverMessage);
     }
 
-    return res.text();
+    return this.readBody(res);
+  }
+
+  private async readBody(res: Response): Promise<string> {
+    try {
+      return await res.text();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new ShrtnrError(0, msg);
+    }
   }
 
   private buildUrl(path: string, query?: Record<string, string | undefined>): string {

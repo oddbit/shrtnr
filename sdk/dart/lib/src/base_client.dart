@@ -80,7 +80,15 @@ class ShrtnrBaseClient {
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (response.statusCode == 204 || response.body.isEmpty) return null;
+      if (response.statusCode == 204) return null;
+      // An empty body on a non-204 2xx is the same "truncated body served
+      // with a 200" case the jsonDecode branch below covers (a CDN or proxy
+      // that strips the body off some 2xx responses). Returning null only
+      // defers the failure to the caller's `json!`, which reports it as a
+      // null-check error instead of the documented ShrtnrError.
+      if (response.body.isEmpty) {
+        throw ShrtnrError(response.statusCode, 'Empty response body');
+      }
       try {
         return jsonDecode(response.body);
       } catch (e) {
