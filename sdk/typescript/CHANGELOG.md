@@ -2,6 +2,15 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.1.3 (2026-08-10)
+
+Error-handling fixes. No public surface changes.
+
+- A caller-supplied `fetch` binds to `globalThis`, matching the treatment the default already got in 1.1.1. Only the fallback branch was ever bound, so `fetch: window.fetch` (the README's own custom-fetch example) was invoked with the `HttpClient` instance as its receiver and failed the brand check browsers perform on `fetch`, throwing `Illegal invocation`.
+- A connection reset partway through a response body raises `ShrtnrError` with status 0 rather than escaping the SDK's error type. `fetch` settles once headers arrive, so the body read is a second point of failure that neither path accounted for: `qr()` returned `res.text()` unwrapped and leaked a raw `TypeError`, and JSON responses reported the response status, labelling a transport failure as `ShrtnrError(200, "Invalid JSON response: ...")`. Reading the body and parsing it are now separate steps, so a failed read carries status 0 and only a body that arrived intact but is not JSON keeps the response status.
+- Documentation: the `Key types` list names the types added since it was written (`BundleTopLink`, `DateCount`, `SlugCount`, `DeletedResult`, `AddedResult`, `RemovedResult`, `BreakdownDimension`, `BreakdownPage`).
+- Records the spec hash for app 0.37.1. Paths and schemas are unchanged; only `info.version` moved.
+
 ## 1.1.2 (2026-08-05)
 
 Serialization fix. No public surface changes.
