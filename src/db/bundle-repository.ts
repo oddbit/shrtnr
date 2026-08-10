@@ -176,13 +176,16 @@ export class BundleRepository {
     const links = linkRows.results ?? [];
     if (links.length === 0) return [];
 
-    const linkIds = links.map((l) => l.id);
-    const placeholders = linkIds.map(() => "?").join(",");
+    // Resolve membership inside SQLite rather than binding one parameter per
+    // member link: D1 caps a statement at 100 bound parameters, and wide
+    // bundles pass that.
     const slugRows = await db
       .prepare(
-        `SELECT ${slugSelect(opts)} FROM slugs s WHERE link_id IN (${placeholders}) ORDER BY is_custom ASC, created_at ASC`,
+        `SELECT ${slugSelect(opts)} FROM slugs s
+         WHERE link_id IN (SELECT link_id FROM bundle_links WHERE bundle_id = ?)
+         ORDER BY is_custom ASC, created_at ASC`,
       )
-      .bind(...linkIds)
+      .bind(bundleId)
       .all<Slug>();
 
     const slugsByLink = new Map<number, Slug[]>();

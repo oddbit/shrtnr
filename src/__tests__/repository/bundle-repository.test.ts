@@ -247,6 +247,21 @@ describe("BundleRepository.listLinks", () => {
     const bundle = await BundleRepository.create(env.DB, { name: "OSS", createdBy: "a@b" });
     expect(await BundleRepository.listLinks(env.DB, bundle.id)).toEqual([]);
   });
+
+  // D1 caps a prepared statement at 100 bound parameters, so the slug loader
+  // cannot bind one parameter per member link.
+  it("returns member links past the D1 bind cap", async () => {
+    const bundle = await BundleRepository.create(env.DB, { name: "Wide", createdBy: "a@b" });
+    const count = 105;
+    for (let i = 0; i < count; i++) {
+      const link = await LinkRepository.create(env.DB, { url: `https://a.com/${i}`, slug: `wide-${i}`, createdBy: "a@b" });
+      await BundleRepository.addLink(env.DB, bundle.id, link.id);
+    }
+
+    const links = await BundleRepository.listLinks(env.DB, bundle.id);
+    expect(links).toHaveLength(count);
+    expect(links.every((l) => l.slugs.length === 1)).toBe(true);
+  });
 });
 
 describe("BundleRepository.listBundlesForLink", () => {
