@@ -297,6 +297,7 @@ export async function setSlugPrimary(
   slug: string,
   identity: string,
 ): Promise<ServiceResult<LinkWithSlugs>> {
+  slug = slug.toLowerCase();
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
   if (link.created_by !== identity) return fail(403, "Only the link owner can change the primary slug");
@@ -316,6 +317,7 @@ export async function disableSlug(
   slug: string,
   identity: string,
 ): Promise<ServiceResult<Slug>> {
+  slug = slug.toLowerCase();
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
   if (link.created_by !== identity) return fail(403, "Only the link owner can disable slugs on this link");
@@ -342,6 +344,7 @@ export async function enableSlug(
   slug: string,
   identity: string,
 ): Promise<ServiceResult<Slug>> {
+  slug = slug.toLowerCase();
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
   if (link.created_by !== identity) return fail(403, "Only the link owner can enable slugs on this link");
@@ -367,6 +370,7 @@ export async function removeSlug(
   slug: string,
   identity: string,
 ): Promise<ServiceResult<{ removed: boolean }>> {
+  slug = slug.toLowerCase();
   const link = await LinkRepository.getById(env.DB, linkId);
   if (!link) return fail(404, "Link not found");
   if (link.created_by !== identity) return fail(403, "Only the link owner can remove slugs on this link");
