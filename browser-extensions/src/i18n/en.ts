@@ -58,6 +58,7 @@ const en = {
   "error.validation": "{message}",
   "error.clipboard": "Copy failed. Select the link above to copy it.",
   "error.permissionDenied": "shrtnr needs permission to talk to {host}. Click Save again and accept.",
+  "error.permissionDeniedTest": "shrtnr needs permission to talk to {host}. Click Test again and accept.",
   "error.tabUnknown": "Couldn't read the active tab.",
 
   // Options page

@@ -60,6 +60,7 @@ const sv: Translations = {
   "error.validation": "{message}",
   "error.clipboard": "Kopiering misslyckades. Markera länken ovan för att kopiera den.",
   "error.permissionDenied": "shrtnr behöver tillstånd att kommunicera med {host}. Klicka på Spara igen och godkänn.",
+  "error.permissionDeniedTest": "shrtnr behöver tillstånd att kommunicera med {host}. Klicka på Testa igen och godkänn.",
   "error.tabUnknown": "Kunde inte läsa den aktiva fliken.",
 
   // Options page

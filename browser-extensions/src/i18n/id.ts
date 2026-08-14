@@ -60,6 +60,7 @@ const id: Translations = {
   "error.validation": "{message}",
   "error.clipboard": "Penyalinan gagal. Pilih tautan di atas untuk menyalinnya.",
   "error.permissionDenied": "shrtnr memerlukan izin untuk berkomunikasi dengan {host}. Klik Simpan lagi dan setujui.",
+  "error.permissionDeniedTest": "shrtnr memerlukan izin untuk berkomunikasi dengan {host}. Klik Uji lagi dan setujui.",
   "error.tabUnknown": "Tidak dapat membaca tab aktif.",
 
   // Options page

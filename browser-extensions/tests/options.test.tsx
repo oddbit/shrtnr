@@ -48,6 +48,7 @@ describe("Options — banner visibility", () => {
 
 describe("Options — Test connection", () => {
   it("shows connected status on success", async () => {
+    chrome.permissions.request = vi.fn(async () => true);
     await renderOptions();
     await waitFor(() => screen.getByLabelText(/server url/i));
     fireEvent.input(screen.getByLabelText(/server url/i), {
@@ -60,6 +61,63 @@ describe("Options — Test connection", () => {
     await waitFor(() => {
       expect(screen.getByText(/connected/i)).toBeTruthy();
     });
+  });
+
+  it("requests host permission before testing", async () => {
+    chrome.permissions.request = vi.fn(async () => true);
+    await renderOptions();
+    await waitFor(() => screen.getByLabelText(/server url/i));
+    fireEvent.input(screen.getByLabelText(/server url/i), {
+      target: { value: "https://x.com" },
+    });
+    fireEvent.input(screen.getByLabelText(/api key/i), {
+      target: { value: "sk_abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /test/i }));
+    await waitFor(() => {
+      expect(chrome.permissions.request).toHaveBeenCalledWith({
+        origins: ["https://x.com/*"],
+      });
+    });
+    await waitFor(() => {
+      expect(mockedTest).toHaveBeenCalledWith({ baseUrl: "https://x.com", apiKey: "sk_abc" });
+    });
+  });
+
+  it("normalizes a server URL with a path to its origin before testing", async () => {
+    // A URL copied from the address bar (with a path) must resolve the same
+    // way handleSave does, or a server that will work fine once saved tests
+    // as unreachable.
+    chrome.permissions.request = vi.fn(async () => true);
+    await renderOptions();
+    await waitFor(() => screen.getByLabelText(/server url/i));
+    fireEvent.input(screen.getByLabelText(/server url/i), {
+      target: { value: "https://x.com/_/admin" },
+    });
+    fireEvent.input(screen.getByLabelText(/api key/i), {
+      target: { value: "sk_abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /test/i }));
+    await waitFor(() => {
+      expect(mockedTest).toHaveBeenCalledWith({ baseUrl: "https://x.com", apiKey: "sk_abc" });
+    });
+  });
+
+  it("shows a permission error and does not call testConnection when permission is denied", async () => {
+    chrome.permissions.request = vi.fn(async () => false);
+    await renderOptions();
+    await waitFor(() => screen.getByLabelText(/server url/i));
+    fireEvent.input(screen.getByLabelText(/server url/i), {
+      target: { value: "https://x.com" },
+    });
+    fireEvent.input(screen.getByLabelText(/api key/i), {
+      target: { value: "sk_abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /test/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/needs permission/i)).toBeTruthy();
+    });
+    expect(mockedTest).not.toHaveBeenCalled();
   });
 
   it("shows the auth error message on 401", async () => {
