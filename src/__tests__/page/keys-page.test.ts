@@ -110,6 +110,20 @@ describe("Keys page table", () => {
     expect(html).not.toContain(`${prefix}&hellip;`);
   });
 
+  it("translates the scope badge instead of rendering the raw scope token", async () => {
+    await seedApiKey();
+    const html = await fetchKeysHtml();
+    expect(html).toMatch(/class="scope-badge create"[^>]*>Create</);
+    expect(html).not.toMatch(/class="scope-badge create"[^>]*>create</);
+  });
+
+  it("localizes the scope badge for a non-English locale", async () => {
+    await seedApiKey();
+    const res = await SELF.fetch(authed("/_/admin/keys", { headers: { Cookie: "lang=id" } }));
+    const html = await res.text();
+    expect(html).toMatch(/class="scope-badge create"[^>]*>Buat</);
+  });
+
   it("keeps the delete action for each key", async () => {
     await seedApiKey();
     const html = await fetchKeysHtml();
