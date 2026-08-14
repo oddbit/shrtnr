@@ -11,11 +11,12 @@ interface RecentLinksData {
 }
 
 /**
- * Mirrors the primary-slug pick on the dashboard page: the first
- * auto-generated slug, falling back to the first slug of any kind.
+ * Picks the slug marked is_primary, falling back to the first auto-generated
+ * slug, then the first slug of any kind. Mirrors the primary-slug pick used
+ * on the link list and detail pages.
  */
 function primarySlug(link: LinkWithSlugs): string {
-  const p = link.slugs.find((s) => !s.is_custom);
+  const p = link.slugs.find((s) => s.is_primary) ?? link.slugs.find((s) => !s.is_custom);
   return p ? p.slug : link.slugs[0]?.slug || "";
 }
 

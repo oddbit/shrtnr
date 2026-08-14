@@ -270,11 +270,10 @@ export class LinkRepository {
 
   /**
    * Batch-resolve the display slug for a set of link ids in one query. Picks
-   * the primary slug per link the way the dashboard does: the first
-   * auto-generated (non-custom) slug, falling back to the first slug of any
-   * kind. Mirrors the `is_custom ASC, created_at ASC` ordering the slug loaders
-   * use, so the pick matches recent-links exactly. Returns a Map keyed by
-   * link_id; ids with no slug are absent.
+   * the slug marked is_primary per link, falling back to the first
+   * auto-generated (non-custom) slug, then the first slug of any kind, so the
+   * pick matches the one used on the link list and detail pages. Returns a
+   * Map keyed by link_id; ids with no slug are absent.
    */
   static async primarySlugByIds(db: D1Database, ids: number[]): Promise<Map<number, string>> {
     const out = new Map<number, string>();
@@ -283,7 +282,7 @@ export class LinkRepository {
     const rows = await db
       .prepare(
         `SELECT link_id, slug FROM slugs WHERE link_id IN (${placeholders})
-         ORDER BY is_custom ASC, created_at ASC`,
+         ORDER BY is_primary DESC, is_custom ASC, created_at ASC`,
       )
       .bind(...ids)
       .all<{ link_id: number; slug: string }>();

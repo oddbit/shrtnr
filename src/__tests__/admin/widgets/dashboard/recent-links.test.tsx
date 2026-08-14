@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../../../setup";
 import { LinkRepository } from "../../../../db";
+import { addCustomSlugToLink, setSlugPrimary } from "../../../../services/link-management";
 import { recentLinksWidget } from "../../../../admin/widgets/dashboard/recent-links";
 import type { WidgetCtx } from "../../../../admin/widgets/types";
 
@@ -50,6 +51,18 @@ describe("dashboard.recent-links widget", () => {
     // The htmx placeholder already carries the bento-card shell, so the widget
     // must render inner content only and not nest its own outer wrapper.
     expect(out).not.toContain("bento-card");
+  });
+
+  it("shows a custom slug the owner set as primary, not the auto-generated one", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://e.com", slug: "auto123" });
+    await addCustomSlugToLink(env as any, link.id, { slug: "promo" });
+    await setSlugPrimary(env as any, link.id, "promo", "anonymous");
+
+    const data = await recentLinksWidget.load(env, ctx, { range: "all" });
+    const out = String(recentLinksWidget.render(data, ctx));
+
+    expect(out).toContain('data-copy-slug="promo"');
+    expect(out).not.toContain('data-copy-slug="auto123"');
   });
 
   it("exposes the copy chip via data-copy-slug, not an inline onclick", async () => {
