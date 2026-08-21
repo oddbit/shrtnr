@@ -82,6 +82,16 @@ describe("i18n", () => {
       );
     });
 
+    it("treats interpolated values as literal text, not replacement patterns", () => {
+      const t = createTranslateFn("en");
+      // "$`" is a special String.replace pattern (text before the match).
+      // A naive string replacement would splice it in instead of the
+      // literal value.
+      expect(t("client.confirmDeleteKey", { title: "x$`y" })).toBe(
+        'Delete API key "x$`y"? This cannot be undone.',
+      );
+    });
+
     it("returns the key itself when no translation exists", () => {
       // Simulate a missing key by casting
       const t = createTranslateFn("en");
