@@ -484,6 +484,30 @@ describe("ClickRepository.getBundleStats", () => {
     expect(stats.countries_reached).toBe(12);
   });
 
+  it("computes top_country pct against the full total, not just the top-10 list sum", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "aaa", createdBy: "a@b" });
+    const bundle = await BundleRepository.create(env.DB, { name: "OSS", createdBy: "a@b" });
+    await BundleRepository.addLink(env.DB, bundle.id, link.id);
+
+    // 11 distinct countries: US clearly on top with 4 clicks, and 10 more
+    // tied at 1 click each so the top-10 list (capped at LIMIT 10) drops one
+    // of them. The true total (14) differs from the top-10 sum (13).
+    const now = Math.floor(Date.now() / 1000);
+    let at = now;
+    for (let i = 0; i < 4; i++) await recordClick(link.slugs[0].slug, at--, { country: "US" });
+    for (const code of ["AA", "BB", "CC", "DD", "EE", "FF", "GG", "HH", "II", "JJ"]) {
+      await recordClick(link.slugs[0].slug, at--, { country: code });
+    }
+
+    const stats = (await ClickRepository.getBundleStats(env.DB, bundle.id, "30d"))!;
+    expect(stats.total_clicks).toBe(14);
+    expect(stats.countries).toHaveLength(10);
+    expect(stats.top_country?.name).toBe("US");
+    // Math.round(4 / 14 * 100) = 29. The old code divided by the top-10
+    // sum (13) instead, which would have produced 31.
+    expect(stats.top_country?.pct).toBe(29);
+  });
+
   it("sorts per_link by click count descending and computes pct_of_bundle", async () => {
     const link1 = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "aaa", createdBy: "a@b" });
     const link2 = await LinkRepository.create(env.DB, { url: "https://b.com", slug: "bbb", createdBy: "a@b" });
