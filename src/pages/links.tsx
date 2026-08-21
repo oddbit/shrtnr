@@ -95,7 +95,7 @@ export const LinksPage: FC<Props> = ({
     { key: "all", labelKey: "links.filterAll", icon: "all_inclusive" },
   ];
 
-  const rangeLabel = range === "all" ? t("range.long.all") : range;
+  const rangeLabel = range === "all" ? t("range.long.all") : t(`range.${range}` as const);
   const preserveParams: Record<string, string | undefined> = {
     sort,
     filter,

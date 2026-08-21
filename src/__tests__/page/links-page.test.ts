@@ -83,6 +83,16 @@ describe("Links listing page", () => {
     expect(html).toMatch(/Clicks\s*\(7d\)/i);
   });
 
+  it("localizes the range in the clicks column header instead of showing the raw range key", async () => {
+    await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const res = await SELF.fetch(req("/_/admin/links?range=24h", { headers: { Cookie: "lang=id" } }));
+    const html = await res.text();
+    // id.ts localizes "range.24h" to "24J"; the raw internal key "24h"
+    // must not leak through untranslated.
+    expect(html).toContain("Klik (24J)");
+    expect(html).not.toContain("(24h)");
+  });
+
   it("the displayed click total reflects the selected range", async () => {
     const link = await LinkRepository.create(env.DB, {
       url: "https://example.com",
