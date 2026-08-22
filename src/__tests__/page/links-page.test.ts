@@ -174,6 +174,26 @@ describe("Links listing page", () => {
     expect(html).toMatch(/1\s*[–-]\s*25\s+of\s+30/);
   });
 
+  it("preserves the active search in pagination URLs", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://pdf.co/document-${i}`,
+        slug: `pdf-${i}`,
+      });
+    }
+
+    const res = await SELF.fetch(req("/_/admin/links?search=pdf.co"));
+    const html = await res.text();
+    const pageTwoHref = html.match(
+      /class="page-btn[^"]*" href="([^"]+)"[^>]*>\s*2\s*<\/a>/,
+    )?.[1];
+    const decodedHref = pageTwoHref?.replaceAll("&amp;", "&");
+
+    expect(pageTwoHref).toBeDefined();
+    expect(decodedHref).toContain("page=2");
+    expect(decodedHref).toContain("search=pdf.co");
+  });
+
   it("clamps a negative page param instead of producing an empty, out-of-range slice", async () => {
     for (let i = 0; i < 30; i++) {
       await LinkRepository.create(env.DB, {
