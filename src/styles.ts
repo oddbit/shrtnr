@@ -476,13 +476,14 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 .link-disabled { opacity: 0.5; }
 .disabled-badge { display: inline-flex; align-items: center; gap: 0.2rem; background: var(--color-danger); color: var(--color-danger-foreground); font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: var(--radius-md); text-transform: uppercase; letter-spacing: 0.05em; }
 .link-date { font-size: 0.7rem; color: var(--color-text-muted); margin-top: 0.2rem; }
-.pagination { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.4rem; padding: 0.75rem 0; }
+.pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-top: 1.4rem; padding: 0.75rem 0; }
 .pagination-summary { font-size: 0.78rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
-.pagination-pages { display: flex; gap: 0.25rem; }
+.pagination-pages { display: flex; align-items: center; gap: 0.25rem; max-width: 100%; }
 .page-btn { background: transparent; border: 2px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text-muted); font-family: var(--font-family-body); font-size: 0.8rem; font-weight: 600; padding: 0.3rem 0.6rem; cursor: pointer; transition: all 0.2s; min-width: 2rem; text-align: center; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .page-btn:hover { border-color: var(--color-text-muted); color: var(--color-text); }
 .page-btn.active { border-color: var(--color-accent); color: var(--color-accent); }
 .page-btn:disabled, .page-btn.disabled { opacity: 0.3; cursor: default; pointer-events: none; }
+.page-ellipsis { display: inline-flex; align-items: center; justify-content: center; min-width: 1.5rem; color: var(--color-text-subtle); font-size: 0.8rem; }
 .per-page { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; color: var(--color-text-muted); }
 .per-page-label { font-size: 0.78rem; color: var(--color-text-muted); }
 .per-page-select { min-width: 4rem; }
@@ -840,7 +841,9 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   .filter-chip { flex: 1; justify-content: center; }
   .settings-layout { flex-direction: column !important; }
   .settings-layout > div:last-child { max-width: 100% !important; }
-  .pagination { flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+  .pagination { gap: 0.5rem; justify-content: center; }
+  .pagination-pages { order: 3; width: 100%; justify-content: center; overflow-x: auto; }
+  .page-btn { padding-inline: 0.45rem; }
   .bundle-grid { grid-template-columns: 1fr; }
   .detail-analytics { grid-template-columns: 1fr; }
   .bundle-link-head { gap: 0.5rem; }
