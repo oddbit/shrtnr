@@ -23,6 +23,25 @@ export type LinksFilter = "active" | "disabled" | "all";
 
 export type PaginationItem = number | "ellipsis";
 
+/**
+ * The page actually rendered and where its rows start, with every input
+ * floored the way `paginationItems` floors its own. Clamp here rather than at
+ * the call site: a caller computing `Math.ceil(0 / perPage)` hands over
+ * `totalPages: 0`, which drives `currentPage` to 0 and the row range to
+ * `-perPage`. The upper bound on `perPage` stays with the service, which owns
+ * `LINKS_MAX_PER_PAGE`.
+ */
+export function pageWindow(
+  page: number,
+  perPage: number,
+  totalPages: number,
+): { currentPage: number; pageCount: number; perPage: number; start: number } {
+  const rows = Math.max(1, Math.floor(perPage) || 1);
+  const pageCount = Math.max(1, Math.floor(totalPages) || 1);
+  const currentPage = Math.min(Math.max(1, Math.floor(page) || 1), pageCount);
+  return { currentPage, pageCount, perPage: rows, start: (currentPage - 1) * rows };
+}
+
 export function paginationItems(
   currentPage: number,
   totalPages: number,
@@ -102,15 +121,14 @@ export const LinksPage: FC<Props> = ({
   const isLinkDisabled = (l: LinkWithSlugs) =>
     l.expires_at != null && l.expires_at < now;
 
-  const currentPage = Math.min(Math.max(1, page), totalPages);
-  const start = (currentPage - 1) * perPage;
+  const { currentPage, pageCount, perPage: rowsPerPage, start } = pageWindow(page, perPage, totalPages);
 
   function buildUrl(overrides: Record<string, string | undefined>): string {
     const params = new URLSearchParams();
     const next = {
       sort,
       page: String(currentPage),
-      per_page: String(perPage),
+      per_page: String(rowsPerPage),
       filter,
       range,
       search: searchQuery,
@@ -140,7 +158,7 @@ export const LinksPage: FC<Props> = ({
     sort,
     filter,
     page: String(currentPage),
-    per_page: String(perPage),
+    per_page: String(rowsPerPage),
   };
   if (searchQuery) preserveParams.search = searchQuery;
 
@@ -302,11 +320,11 @@ export const LinksPage: FC<Props> = ({
             <div class="pagination-summary">
               {t("links.pageSummary", {
                 from: total === 0 ? 0 : start + 1,
-                to: Math.min(start + perPage, total),
+                to: Math.min(start + rowsPerPage, total),
                 total,
               })}
             </div>
-            {totalPages > 1 && (
+            {pageCount > 1 && (
               <div class="pagination-pages">
                 <a
                   class={`page-btn${currentPage <= 1 ? " disabled" : ""}`}
@@ -314,7 +332,7 @@ export const LinksPage: FC<Props> = ({
                 >
                   <span class="icon icon-sm">chevron_left</span>
                 </a>
-                {paginationItems(currentPage, totalPages).map((item) =>
+                {paginationItems(currentPage, pageCount).map((item) =>
                   item === "ellipsis" ? (
                     <span class="page-ellipsis" aria-hidden="true">…</span>
                   ) : (
@@ -328,9 +346,9 @@ export const LinksPage: FC<Props> = ({
                   ),
                 )}
                 <a
-                  class={`page-btn${currentPage >= totalPages ? " disabled" : ""}`}
+                  class={`page-btn${currentPage >= pageCount ? " disabled" : ""}`}
                   href={
-                    currentPage < totalPages
+                    currentPage < pageCount
                       ? pageUrl(currentPage + 1)
                       : "#"
                   }
@@ -348,7 +366,7 @@ export const LinksPage: FC<Props> = ({
                   aria-label={t("links.perPageAria")}
                 >
                   {LINKS_PER_PAGE_OPTIONS.map((n) => (
-                    <option value={perPageUrl(n)} selected={perPage === n}>
+                    <option value={perPageUrl(n)} selected={rowsPerPage === n}>
                       {n}
                     </option>
                   ))}
