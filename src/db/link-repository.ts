@@ -160,27 +160,31 @@ export class LinkRepository {
     const order = query.sort === "popular"
       ? `${linkClickCountSql(opts)} DESC, l.created_at DESC, l.id DESC`
       : "l.created_at DESC, l.id DESC";
-    const windowSql = `SELECT l.id FROM links l${where} ORDER BY ${order} LIMIT ? OFFSET ?`;
+    const links = await db
+      .prepare(`SELECT l.* FROM links l${where} ORDER BY ${order} LIMIT ? OFFSET ?`)
+      .bind(...binds, limit, offset)
+      .all<Link>();
+    const rows = links.results ?? [];
+    // total came from a separate statement, so rows deleted between the two
+    // leave a positive total with nothing to serve.
+    if (rows.length === 0) return { links: [], total, offset };
 
-    const [links, slugs] = await Promise.all([
-      db
-        .prepare(`SELECT l.* FROM links l${where} ORDER BY ${order} LIMIT ? OFFSET ?`)
-        .bind(...binds, limit, offset)
-        .all<Link>(),
-      // The window repeats as a subquery instead of binding the ids it
-      // returned: D1 caps bound parameters per statement, and a 100-row page
-      // would sit at that ceiling.
-      db
-        .prepare(
-          `SELECT ${slugSelect(opts)} FROM slugs s WHERE s.link_id IN (${windowSql}) ORDER BY is_custom ASC, created_at ASC`,
-        )
-        .bind(...binds, limit, offset)
-        .all<Slug>(),
-    ]);
+    // Bind the ids the window returned rather than repeating the window as a
+    // subquery. Embedding it would run the whole WHERE + ORDER BY + LIMIT a
+    // second time, and under sort=popular that ORDER BY is a correlated
+    // COUNT over clicks per catalog row. One bind per served row keeps this
+    // inside D1's parameter cap; LINKS_PER_PAGE_OPTIONS enforces the ceiling.
+    const ids = rows.map((l) => l.id);
+    const slugs = await db
+      .prepare(
+        `SELECT ${slugSelect(opts)} FROM slugs s WHERE s.link_id IN (${ids.map(() => "?").join(",")}) ORDER BY is_custom ASC, created_at ASC`,
+      )
+      .bind(...ids)
+      .all<Slug>();
 
     const byLink = bucketByLink(slugs.results ?? []);
     return {
-      links: (links.results ?? []).map((link) => assembleLink(link, byLink.get(link.id) ?? [])),
+      links: rows.map((link) => assembleLink(link, byLink.get(link.id) ?? [])),
       total,
       offset,
     };

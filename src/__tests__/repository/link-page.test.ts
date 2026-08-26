@@ -24,23 +24,23 @@ async function click(slug: string, at: number): Promise<void> {
 }
 
 /**
- * Counts the statements a call issues so a test can pin the cost of a page
- * render. Traps exec() alongside prepare(): batch() composes already-prepared
- * statements and so is counted through prepare, but exec() takes raw SQL and
- * would otherwise slip past the count entirely.
+ * Records the SQL of every statement a call issues, so a test can pin both the
+ * cost of a page render and the shape of what it sends. Traps exec() alongside
+ * prepare(): batch() composes already-prepared statements and so is recorded
+ * through prepare, but exec() takes raw SQL and would slip past entirely.
  */
-function countingDb(counter: { n: number }): D1Database {
+function spyDb(log: string[]): D1Database {
   return new Proxy(env.DB, {
     get(target, prop, receiver) {
       if (prop === "prepare") {
         return (sql: string) => {
-          counter.n++;
+          log.push(sql);
           return (target as unknown as D1Database).prepare(sql);
         };
       }
       if (prop === "exec") {
         return (sql: string) => {
-          counter.n++;
+          log.push(sql);
           return (target as unknown as D1Database).exec(sql);
         };
       }
@@ -85,20 +85,46 @@ describe("LinkRepository.page windowing", () => {
 
   it("costs three statements at 5 links and the same three at 60", async () => {
     await seed(5, "a");
-    const small = { n: 0 };
-    await LinkRepository.page(countingDb(small), { limit: 25 });
+    const small: string[] = [];
+    await LinkRepository.page(spyDb(small), { limit: 25 });
 
     await seed(55, "b");
-    const large = { n: 0 };
-    const result = await LinkRepository.page(countingDb(large), { limit: 25 });
+    const large: string[] = [];
+    const result = await LinkRepository.page(spyDb(large), { limit: 25 });
 
     // Pin the absolute count, not just the equality: a regression to thirty
     // statements per render is equally flat across catalog sizes and would
     // satisfy an equality assertion on its own.
-    expect(small.n).toBe(3);
-    expect(large.n).toBe(3);
+    expect(small).toHaveLength(3);
+    expect(large).toHaveLength(3);
     expect(result.links).toHaveLength(25);
     expect(result.total).toBe(60);
+  });
+
+  it("computes the filtered, sorted window exactly once per render", async () => {
+    await seed(30);
+    const log: string[] = [];
+    await LinkRepository.page(spyDb(log), { limit: 5, offset: 5, sort: "popular" });
+
+    // Under sort=popular the window's ORDER BY is a correlated COUNT over
+    // clicks joined to slugs, so re-running it to fetch the slugs doubles the
+    // per-row aggregates. Only the link query may carry the window, and only
+    // it may carry the link-level aggregate the ordering rests on. The slug
+    // query has its own per-slug click_count, hence the narrower match.
+    expect(log.filter((sql) => sql.includes("LIMIT ? OFFSET ?"))).toHaveLength(1);
+    expect(log.filter((sql) => sql.includes("JOIN slugs cs"))).toHaveLength(1);
+  });
+
+  it("binds the served ids to fetch slugs, staying inside the D1 parameter cap", async () => {
+    await seed(3);
+    const log: string[] = [];
+    const result = await LinkRepository.page(spyDb(log), { limit: 2 });
+
+    const slugQuery = log.find((sql) => sql.includes("FROM slugs s WHERE s.link_id IN"));
+    expect(slugQuery).toBeDefined();
+    expect(slugQuery).toContain("IN (?,?)");
+    expect(result.links).toHaveLength(2);
+    expect(result.links.every((l) => l.slugs.length === 1)).toBe(true);
   });
 
   it("attaches every slug of the windowed links and no others", async () => {
