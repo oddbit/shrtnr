@@ -20,12 +20,7 @@ export {
   findSlugForRedirect,
   recordClick,
 } from "./link-management";
-export type {
-  ListLinksOptions,
-  ListLinksPageOptions,
-  LinksPageData,
-  LinksEmptyReason,
-} from "./link-management";
+export type { LinksEmptyReason } from "./link-management";
 
 export {
   listAllApiKeys,

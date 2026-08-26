@@ -8,7 +8,7 @@ import { Delta } from "../components/delta";
 import { RangePicker } from "../components/range-picker";
 import { fmtNumber } from "../i18n/format";
 import { LINKS_PER_PAGE_OPTIONS } from "../constants";
-import type { LinksEmptyReason } from "../services/link-management";
+import type { LinksEmptyReason } from "../services";
 
 function formatDate(ts: number, lang: string): string {
   const d = new Date(ts * 1000);
