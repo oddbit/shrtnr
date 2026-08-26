@@ -25,19 +25,25 @@ export type PaginationItem = number | "ellipsis";
 
 /**
  * One end of the paginator: a chevron that steps to the previous or next page.
- * The glyph is icon-font text, so it stays out of the accessibility tree and
- * the control carries a translated name instead. At the first or last page the
- * step has nowhere to go, so it drops its href: no href means no tab stop and
- * no dead jump to "#", and aria-disabled announces why it is dimmed.
+ * The glyph is icon-font text, so `aria-hidden` keeps it out of the
+ * accessibility tree and the control carries a translated name instead. At the
+ * first or last page the step has nowhere to go, so it drops its href: no href
+ * means no tab stop and no dead jump to "#", and aria-disabled announces why
+ * it is dimmed.
+ *
+ * `direction` picks both the glyph and nothing else, so a chevron can never
+ * point one way while its accessible name says the other.
  */
-const PageStep: FC<{ icon: string; label: string; href?: string }> = ({
-  icon,
-  label,
-  href,
-}) => {
+const PAGE_STEP_ICON = { prev: "chevron_left", next: "chevron_right" } as const;
+
+const PageStep: FC<{
+  direction: keyof typeof PAGE_STEP_ICON;
+  label: string;
+  href?: string;
+}> = ({ direction, label, href }) => {
   const glyph = (
     <span class="icon icon-sm" aria-hidden="true">
-      {icon}
+      {PAGE_STEP_ICON[direction]}
     </span>
   );
   return href ? (
@@ -362,7 +368,7 @@ export const LinksPage: FC<Props> = ({
             {pageCount > 1 && (
               <nav class="pagination-pages" aria-label={t("pagination.landmark")}>
                 <PageStep
-                  icon="chevron_left"
+                  direction="prev"
                   label={t("pagination.prev")}
                   href={currentPage > 1 ? pageUrl(currentPage - 1) : undefined}
                 />
@@ -380,7 +386,7 @@ export const LinksPage: FC<Props> = ({
                   ),
                 )}
                 <PageStep
-                  icon="chevron_right"
+                  direction="next"
                   label={t("pagination.next")}
                   href={
                     currentPage < pageCount ? pageUrl(currentPage + 1) : undefined
