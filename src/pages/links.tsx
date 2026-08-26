@@ -24,6 +24,45 @@ export type LinksFilter = "active" | "disabled" | "all";
 export type PaginationItem = number | "ellipsis";
 
 /**
+ * One end of the paginator: a chevron that steps to the previous or next page.
+ * The glyph is icon-font text, so `aria-hidden` keeps it out of the
+ * accessibility tree and the control carries a translated name instead. At the
+ * first or last page the step has nowhere to go, so it drops its href: no href
+ * means no tab stop and no dead jump to "#", and aria-disabled announces why
+ * it is dimmed.
+ *
+ * `direction` picks both the glyph and nothing else, so a chevron can never
+ * point one way while its accessible name says the other.
+ */
+const PAGE_STEP_ICON = { prev: "chevron_left", next: "chevron_right" } as const;
+
+const PageStep: FC<{
+  direction: keyof typeof PAGE_STEP_ICON;
+  label: string;
+  href?: string;
+}> = ({ direction, label, href }) => {
+  const glyph = (
+    <span class="icon icon-sm" aria-hidden="true">
+      {PAGE_STEP_ICON[direction]}
+    </span>
+  );
+  return href ? (
+    <a class="page-btn" href={href} aria-label={label}>
+      {glyph}
+    </a>
+  ) : (
+    <span
+      class="page-btn disabled"
+      role="link"
+      aria-disabled="true"
+      aria-label={label}
+    >
+      {glyph}
+    </span>
+  );
+};
+
+/**
  * The page actually rendered and where its rows start, with every input
  * floored the way `paginationItems` floors its own. Clamp here rather than at
  * the call site: a caller computing `Math.ceil(0 / perPage)` hands over
@@ -269,7 +308,9 @@ export const LinksPage: FC<Props> = ({
                       >
                         <td data-label={t("links.colLink")}>
                           <div class="col-link-label">
-                            {link.label || link.url}
+                            <a class="col-link-label-link no-row-nav" href={href}>
+                              {link.label || link.url}
+                            </a>
                             {disabled && (
                               <span class="disabled-badge col-disabled-badge">
                                 <span class="icon icon-xs">block</span>{" "}
@@ -327,13 +368,12 @@ export const LinksPage: FC<Props> = ({
               })}
             </div>
             {pageCount > 1 && (
-              <div class="pagination-pages">
-                <a
-                  class={`page-btn${currentPage <= 1 ? " disabled" : ""}`}
-                  href={currentPage > 1 ? pageUrl(currentPage - 1) : "#"}
-                >
-                  <span class="icon icon-sm">chevron_left</span>
-                </a>
+              <nav class="pagination-pages" aria-label={t("pagination.landmark")}>
+                <PageStep
+                  direction="prev"
+                  label={t("pagination.prev")}
+                  href={currentPage > 1 ? pageUrl(currentPage - 1) : undefined}
+                />
                 {paginationItems(currentPage, pageCount).map((item) =>
                   item === "ellipsis" ? (
                     <span class="page-ellipsis" aria-hidden="true">…</span>
@@ -347,17 +387,14 @@ export const LinksPage: FC<Props> = ({
                     </a>
                   ),
                 )}
-                <a
-                  class={`page-btn${currentPage >= pageCount ? " disabled" : ""}`}
+                <PageStep
+                  direction="next"
+                  label={t("pagination.next")}
                   href={
-                    currentPage < pageCount
-                      ? pageUrl(currentPage + 1)
-                      : "#"
+                    currentPage < pageCount ? pageUrl(currentPage + 1) : undefined
                   }
-                >
-                  <span class="icon icon-sm">chevron_right</span>
-                </a>
-              </div>
+                />
+              </nav>
             )}
             <div class="per-page">
               <span class="per-page-label">{t("links.show")}</span>

@@ -75,6 +75,11 @@ const id: Translations = {
   "links.searchResults": "{count} tautan cocok",
   "links.clearSearch": "Hapus",
 
+  // Paginator (shared by the links listing and the link-detail stat pager)
+  "pagination.landmark": "Paginasi",
+  "pagination.prev": "Halaman sebelumnya",
+  "pagination.next": "Halaman berikutnya",
+
   // Link Detail
   "linkDetail.title": "Detail Tautan",
   "linkDetail.enable": "Aktifkan",
@@ -114,8 +119,6 @@ const id: Translations = {
   "linkDetail.linkModes": "Metode Akses",
   "linkDetail.noData": "Belum ada data",
   "linkDetail.statPager": "{from}-{to} dari {total}",
-  "linkDetail.prevPage": "Halaman sebelumnya",
-  "linkDetail.nextPage": "Halaman berikutnya",
   "linkDetail.clickToCopy": "Klik untuk menyalin",
   "linkDetail.slugs": "Slug",
   "linkDetail.clicks": "klik",

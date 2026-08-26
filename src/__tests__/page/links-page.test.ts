@@ -295,6 +295,61 @@ describe("Links listing page", () => {
     expect(pageTwo).not.toContain("search=");
   });
 
+  it("gives every row an anchor to its detail page so the keyboard can reach it", async () => {
+    const link = await LinkRepository.create(env.DB, {
+      url: "https://example.com/some/deep/path",
+      slug: "abc",
+      label: "Example link",
+    });
+
+    const html = await (await SELF.fetch(req("/_/admin/links"))).text();
+
+    // A real anchor is a tab stop and answers Enter. The row onclick is a
+    // mouse convenience and reaches neither.
+    const row = html.match(
+      new RegExp(`<a\\b([^>]*href="/_/admin/links/${link.id}"[^>]*)>([\\s\\S]*?)</a>`),
+    );
+    expect(row).not.toBeNull();
+    expect(row![2].replace(/<[^>]*>/g, "").trim()).toBe("Example link");
+    // The row handler bails on this target, so the anchor navigates once
+    // instead of racing `location.href` to the same URL.
+    expect(row![1]).toContain("no-row-nav");
+  });
+
+  it("keeps the disabled badge out of the row anchor's accessible name", async () => {
+    const link = await LinkRepository.create(env.DB, {
+      url: "https://example.com",
+      slug: "gone",
+      label: "Expired link",
+      expiresAt: Math.floor(Date.now() / 1000) - 60,
+    });
+
+    const html = await (
+      await SELF.fetch(req("/_/admin/links?filter=all"))
+    ).text();
+
+    const row = html.match(
+      new RegExp(`<a\\b[^>]*href="/_/admin/links/${link.id}"[^>]*>([\\s\\S]*?)</a>`),
+    );
+    expect(row).not.toBeNull();
+    // "Expired link", not "Expired link Disabled".
+    expect(row![1].replace(/<[^>]*>/g, "").trim()).toBe("Expired link");
+  });
+
+  it("leaves the row onclick in place as the mouse shortcut", async () => {
+    const link = await LinkRepository.create(env.DB, {
+      url: "https://example.com",
+      slug: "abc",
+    });
+
+    const html = await (await SELF.fetch(req("/_/admin/links"))).text();
+
+    // JSX entity-encodes the quotes inside the attribute value.
+    expect(html).toContain(
+      `location.href=&#39;/_/admin/links/${link.id}&#39;`,
+    );
+  });
+
   it("clamps a negative page param instead of producing an empty, out-of-range slice", async () => {
     for (let i = 0; i < 30; i++) {
       await LinkRepository.create(env.DB, {
@@ -322,6 +377,72 @@ describe("Links listing page", () => {
     // Pages 6 and 7 are outside the window, replaced by an ellipsis span.
     expect(html).toMatch(/<span class="page-ellipsis"/);
     expect(html).not.toMatch(/class="page-btn[^"]*"[^>]*>6</);
+  });
+
+  it("gives the prev/next chevrons accessible names and hides the glyph text", async () => {
+    for (let i = 0; i < 8; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links?per_page=1&page=4"));
+    const html = await res.text();
+    expect(html).toMatch(/<a[^>]*class="page-btn"[^>]*aria-label="Previous page"/);
+    expect(html).toMatch(/<a[^>]*class="page-btn"[^>]*aria-label="Next page"/);
+    // The icon-font glyph is decorative and must not reach the accessibility tree.
+    expect(html).toMatch(/<span class="icon icon-sm" aria-hidden="true">chevron_left<\/span>/);
+    expect(html).toMatch(/<span class="icon icon-sm" aria-hidden="true">chevron_right<\/span>/);
+  });
+
+  it("keeps the disabled prev control out of the tab order on the first page", async () => {
+    for (let i = 0; i < 8; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links?per_page=1&page=1"));
+    const html = await res.text();
+    const prev = html.match(/<[a-z]+[^>]*class="page-btn disabled"[^>]*aria-label="Previous page"[^>]*>/);
+    expect(prev).not.toBeNull();
+    const tag = prev![0];
+    // No href means no keyboard focus and no dead navigation to "#".
+    expect(tag).not.toContain("href");
+    expect(tag).toContain('aria-disabled="true"');
+    expect(tag).toContain('role="link"');
+    // The next control is still live on page 1.
+    const next = html.match(/<a[^>]*aria-label="Next page"[^>]*>/);
+    expect(next).not.toBeNull();
+    expect(next![0]).toContain("href=");
+  });
+
+  it("keeps the disabled next control out of the tab order on the last page", async () => {
+    for (let i = 0; i < 8; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links?per_page=1&page=8"));
+    const html = await res.text();
+    const next = html.match(/<[a-z]+[^>]*class="page-btn disabled"[^>]*aria-label="Next page"[^>]*>/);
+    expect(next).not.toBeNull();
+    expect(next![0]).not.toContain("href");
+    expect(next![0]).toContain('aria-disabled="true"');
+  });
+
+  it("wraps the page links in a named navigation landmark", async () => {
+    for (let i = 0; i < 8; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links?per_page=1&page=1"));
+    const html = await res.text();
+    expect(html).toMatch(/<nav class="pagination-pages" aria-label="Pagination">/);
+    expect(html).not.toMatch(/<div class="pagination-pages"/);
   });
 
   it("clamps an unparseable page param onto the first page", async () => {

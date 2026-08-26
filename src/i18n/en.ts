@@ -72,6 +72,11 @@ const en = {
   "links.searchResults": "{count} matching links",
   "links.clearSearch": "Clear",
 
+  // Paginator (shared by the links listing and the link-detail stat pager)
+  "pagination.landmark": "Pagination",
+  "pagination.prev": "Previous page",
+  "pagination.next": "Next page",
+
   // Link Detail
   "linkDetail.title": "Link Details",
   "linkDetail.enable": "Enable",
@@ -111,8 +116,6 @@ const en = {
   "linkDetail.linkModes": "Access Method",
   "linkDetail.noData": "No data yet",
   "linkDetail.statPager": "{from}-{to} of {total}",
-  "linkDetail.prevPage": "Previous page",
-  "linkDetail.nextPage": "Next page",
   "linkDetail.clickToCopy": "Click to copy",
   "linkDetail.slugs": "Slugs",
   "linkDetail.clicks": "clicks",

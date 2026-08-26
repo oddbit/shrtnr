@@ -677,6 +677,8 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 .links-table tbody tr:hover td { background: var(--color-surface-interactive); }
 .links-table tbody tr.disabled td { opacity: 0.55; }
 .links-table .col-link-label { font-weight: 700; font-size: 0.95rem; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
+.links-table .col-link-label-link { color: inherit; text-decoration: none; }
+.links-table .col-link-label-link:focus-visible { outline: 2px solid var(--color-success); outline-offset: 2px; border-radius: var(--radius-sm); }
 .links-table .col-link-url { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.78rem; color: var(--color-text-muted); margin-top: 0.25rem; max-width: 320px; }
 .links-table .col-link-url .icon { font-size: 13px; color: var(--color-text-subtle); flex-shrink: 0; }
 .links-table .col-link-url > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
