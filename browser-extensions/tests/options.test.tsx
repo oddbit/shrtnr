@@ -218,6 +218,47 @@ describe("Options — Save", () => {
     expect(await getConfig()).toBeNull();
   });
 
+  it("shows a localized message when the browser rejects the write with an Error", async () => {
+    // chrome.storage error strings are English-only browser internals, so
+    // surfacing err.message leaks English into id/sv installs.
+    chrome.permissions.request = vi.fn(async () => true);
+    await renderOptions();
+    await waitFor(() => screen.getByLabelText(/server url/i));
+    chrome.storage.sync.set = vi.fn(async () => {
+      throw new Error("QUOTA_BYTES_PER_ITEM quota exceeded");
+    });
+    fireEvent.input(screen.getByLabelText(/server url/i), {
+      target: { value: "https://x.com" },
+    });
+    fireEvent.input(screen.getByLabelText(/api key/i), {
+      target: { value: "sk_abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/couldn't save your settings/i)).toBeTruthy();
+    });
+    expect(screen.queryByText(/QUOTA_BYTES_PER_ITEM/)).toBeNull();
+  });
+
+  it("shows the same localized message when the write rejects with a non-Error", async () => {
+    chrome.permissions.request = vi.fn(async () => true);
+    await renderOptions();
+    await waitFor(() => screen.getByLabelText(/server url/i));
+    chrome.storage.sync.set = vi.fn(async () => {
+      throw "boom";
+    });
+    fireEvent.input(screen.getByLabelText(/server url/i), {
+      target: { value: "https://x.com" },
+    });
+    fireEvent.input(screen.getByLabelText(/api key/i), {
+      target: { value: "sk_abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/couldn't save your settings/i)).toBeTruthy();
+    });
+  });
+
   it("Save button is disabled when fields empty", async () => {
     await renderOptions();
     await waitFor(() => screen.getByRole("button", { name: /^save$/i }));

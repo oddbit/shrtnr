@@ -156,9 +156,10 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
       await setConfig({ baseUrl: baseUrl.trim(), apiKey: trimmedKey });
       setSaveState({ kind: "idle" });
       onSaved({ baseUrl: normalizedOrigin, apiKey: trimmedKey });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Save failed";
-      setSaveState({ kind: "error", messageKey: "error.validation", params: { message } });
+    } catch {
+      // chrome.storage rejections carry English-only browser strings
+      // (quota, write-rate). Report a localized message instead.
+      setSaveState({ kind: "error", messageKey: "error.saveFailed" });
     }
   }
 

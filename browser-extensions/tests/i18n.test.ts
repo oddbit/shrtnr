@@ -57,6 +57,15 @@ describe("i18n.createTranslateFn", () => {
     expect(svText).not.toBe(enText);
   });
 
+  it("localizes the save-failure message", () => {
+    const enText = createTranslateFn("en")("error.saveFailed");
+    const idText = createTranslateFn("id")("error.saveFailed");
+    const svText = createTranslateFn("sv")("error.saveFailed");
+    expect(enText).not.toBe("error.saveFailed");
+    expect(idText).not.toBe(enText);
+    expect(svText).not.toBe(enText);
+  });
+
   it("returns the key itself when missing in both target and fallback", () => {
     const t = createTranslateFn("en");
     // @ts-expect-error: deliberately passing an unknown key
