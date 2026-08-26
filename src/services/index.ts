@@ -3,6 +3,7 @@
 
 export {
   listLinks,
+  listLinksPage,
   getLink,
   getLinkBySlug,
   createLink,
@@ -18,6 +19,12 @@ export {
   listLinksByOwner,
   findSlugForRedirect,
   recordClick,
+} from "./link-management";
+export type {
+  ListLinksOptions,
+  ListLinksPageOptions,
+  LinksPageData,
+  LinksEmptyReason,
 } from "./link-management";
 
 export {

@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { LinkRepository, SlugRepository, ClickRepository, SettingRepository } from "../db";
-import type { ClickFilters } from "../db";
+import type { ClickFilters, LinkSort, LinkStatus } from "../db";
 import { SlugCache } from "../kv";
-import { DEFAULT_SLUG_LENGTH } from "../constants";
+import { DEFAULT_SLUG_LENGTH, LINKS_DEFAULT_PER_PAGE, LINKS_MAX_PER_PAGE } from "../constants";
 import { generateUniqueSlug, validateSlugLength, validateCustomSlug } from "../slugs";
 import { BreakdownPage, ClickData, ClickStats, DashboardStats, Env, LinkWithSlugs, Slug, TimelineData, TimelineRange } from "../types";
 import { normalizeUrl } from "../normalize-url";
@@ -46,6 +46,85 @@ export async function listLinks(env: Env, opts?: ListLinksOptions): Promise<Serv
   if (!opts?.withDeltaRange) return ok(links);
   const enriched = await ClickRepository.attachLinkDeltasBulk(env.DB, links, opts.withDeltaRange, undefined, opts.filters);
   return ok(enriched);
+}
+
+export interface ListLinksPageOptions extends ListLinksOptions {
+  /** 1-based. Clamped up to 1 and down to the last populated page. */
+  page?: number;
+  /** Clamped to [1, LINKS_MAX_PER_PAGE]. */
+  perPage?: number;
+  sort?: LinkSort;
+  status?: LinkStatus;
+  /** Substring filter. Omit for the unsearched listing; a blank string matches nothing. */
+  search?: string;
+  /** Widen the search to created_by. Admin surfaces only. */
+  includeOwner?: boolean;
+}
+
+/** Why a rendered page has no rows, so the caller can pick the right empty copy. */
+export type LinksEmptyReason = "no-links" | "all-filtered";
+
+export interface LinksPageData {
+  /** Rows for this page: already filtered, sorted and windowed by SQL. */
+  links: LinkWithSlugs[];
+  /** Rows matching the filters across the whole catalog. */
+  total: number;
+  /** Page actually served, after clamping. */
+  page: number;
+  perPage: number;
+  totalPages: number;
+  /** Set only when `links` is empty. */
+  emptyReason?: LinksEmptyReason;
+}
+
+/**
+ * One page of the links listing. Cost scales with `perPage`, not with the
+ * catalog: SQL does the filtering, sorting and windowing, and only the served
+ * rows get delta enrichment. Use this for the listings page; `listLinks`
+ * remains for API and MCP callers that return the full set.
+ */
+export async function listLinksPage(env: Env, opts?: ListLinksPageOptions): Promise<ServiceResult<LinksPageData>> {
+  const perPage = Math.min(
+    Math.max(1, Math.floor(opts?.perPage ?? LINKS_DEFAULT_PER_PAGE) || LINKS_DEFAULT_PER_PAGE),
+    LINKS_MAX_PER_PAGE,
+  );
+  const requestedPage = Math.max(1, Math.floor(opts?.page ?? 1) || 1);
+  const status = opts?.status ?? "active";
+  const sinceTs = rangeToSinceTs(opts?.range);
+
+  const result = await LinkRepository.page(
+    env.DB,
+    {
+      limit: perPage,
+      offset: (requestedPage - 1) * perPage,
+      sort: opts?.sort ?? "recent",
+      status,
+      search: opts?.search,
+      searchOwner: opts?.includeOwner,
+    },
+    { filters: opts?.filters, sinceTs },
+  );
+
+  const totalPages = Math.max(1, Math.ceil(result.total / perPage));
+  // The repository clamps an out-of-range offset, so derive the served page
+  // from what came back rather than from what was asked for.
+  const page = Math.floor(result.offset / perPage) + 1;
+
+  let emptyReason: LinksEmptyReason | undefined;
+  if (result.total === 0) {
+    // One extra count, only on the empty path: it separates "no links yet"
+    // from "the status filter hid them all".
+    const unfiltered = status === "all"
+      ? 0
+      : await LinkRepository.count(env.DB, { search: opts?.search, searchOwner: opts?.includeOwner });
+    emptyReason = unfiltered > 0 ? "all-filtered" : "no-links";
+  }
+
+  const links = opts?.withDeltaRange
+    ? await ClickRepository.attachLinkDeltasBulk(env.DB, result.links, opts.withDeltaRange, undefined, opts.filters)
+    : result.links;
+
+  return ok({ links, total: result.total, page, perPage, totalPages, emptyReason });
 }
 
 export interface GetLinkOptions {

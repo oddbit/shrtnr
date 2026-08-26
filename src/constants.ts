@@ -19,6 +19,13 @@ export const BREAKDOWN_PAGE_SIZE = 10;
 // Upper bound a single breakdown request may fetch.
 export const MAX_BREAKDOWN_LIMIT = 100;
 
+// Links listing page size. The options feed the per-page selector, and the
+// maximum caps what a hand-edited per_page query can pull into one page so the
+// route's cost stays bounded by the window, not by the catalog.
+export const LINKS_PER_PAGE_OPTIONS = [25, 50, 100] as const;
+export const LINKS_DEFAULT_PER_PAGE: (typeof LINKS_PER_PAGE_OPTIONS)[number] = 25;
+export const LINKS_MAX_PER_PAGE = 100;
+
 export const THEMES = ["oddbit", "dark", "light"] as const;
 export const DEFAULT_THEME: (typeof THEMES)[number] = "oddbit";
 
