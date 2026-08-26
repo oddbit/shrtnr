@@ -82,11 +82,7 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
     try {
       origin = new URL(baseUrl.trim()).origin;
     } catch {
-      setTestState({
-        kind: "error",
-        messageKey: "error.validation",
-        params: { message: "Invalid URL" },
-      });
+      setTestState({ kind: "error", messageKey: "error.invalidUrl" });
       return;
     }
 
@@ -135,11 +131,7 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
     try {
       normalizedOrigin = new URL(baseUrl.trim()).origin;
     } catch {
-      setSaveState({
-        kind: "error",
-        messageKey: "error.validation",
-        params: { message: "Invalid URL" },
-      });
+      setSaveState({ kind: "error", messageKey: "error.invalidUrl" });
       return;
     }
 

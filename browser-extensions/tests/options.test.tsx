@@ -120,6 +120,26 @@ describe("Options — Test connection", () => {
     expect(mockedTest).not.toHaveBeenCalled();
   });
 
+  it("shows a localized invalid-URL error and skips the permission request", async () => {
+    // error.validation is a "{message}" passthrough, so feeding it an English
+    // literal leaks English into id/sv installs.
+    chrome.permissions.request = vi.fn(async () => true);
+    await renderOptions();
+    await waitFor(() => screen.getByLabelText(/server url/i));
+    fireEvent.input(screen.getByLabelText(/server url/i), {
+      target: { value: "not a url" },
+    });
+    fireEvent.input(screen.getByLabelText(/api key/i), {
+      target: { value: "sk_abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /test/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/not a valid url/i)).toBeTruthy();
+    });
+    expect(chrome.permissions.request).not.toHaveBeenCalled();
+    expect(mockedTest).not.toHaveBeenCalled();
+  });
+
   it("shows the auth error message on 401", async () => {
     mockedTest.mockRejectedValue(new ExtensionError("unauthorized", "bad", 401));
     await renderOptions();
@@ -175,6 +195,25 @@ describe("Options — Save", () => {
     await waitFor(() => {
       expect(screen.getByText(/needs permission/i)).toBeTruthy();
     });
+    const { getConfig } = await import("../src/storage");
+    expect(await getConfig()).toBeNull();
+  });
+
+  it("shows a localized invalid-URL error and does not persist", async () => {
+    chrome.permissions.request = vi.fn(async () => true);
+    await renderOptions();
+    await waitFor(() => screen.getByLabelText(/server url/i));
+    fireEvent.input(screen.getByLabelText(/server url/i), {
+      target: { value: "not a url" },
+    });
+    fireEvent.input(screen.getByLabelText(/api key/i), {
+      target: { value: "sk_abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/not a valid url/i)).toBeTruthy();
+    });
+    expect(chrome.permissions.request).not.toHaveBeenCalled();
     const { getConfig } = await import("../src/storage");
     expect(await getConfig()).toBeNull();
   });
