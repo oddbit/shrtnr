@@ -308,7 +308,9 @@ export const LinksPage: FC<Props> = ({
                       >
                         <td data-label={t("links.colLink")}>
                           <div class="col-link-label">
-                            {link.label || link.url}
+                            <a class="col-link-label-link no-row-nav" href={href}>
+                              {link.label || link.url}
+                            </a>
                             {disabled && (
                               <span class="disabled-badge col-disabled-badge">
                                 <span class="icon icon-xs">block</span>{" "}
