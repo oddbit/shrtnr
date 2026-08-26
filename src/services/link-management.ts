@@ -64,10 +64,14 @@ export interface ListLinksPageOptions extends ListLinksOptions {
 /**
  * Why a rendered page has no rows, so the caller can pick the right empty copy.
  * `no-links` means the catalog itself is empty, `all-disabled` that every link
- * there is has expired, and `no-matches` that the search or status filter
- * selected none of them.
+ * there is has expired, `no-matches` that the status filter selected none of
+ * them, and `no-search-matches` that a search did.
+ *
+ * The last two are split here rather than in the page because this is where the
+ * search is already trimmed. A caller re-deriving "did a search happen" from
+ * the raw query can disagree with the reason it was handed.
  */
-export type LinksEmptyReason = "no-links" | "all-disabled" | "no-matches";
+export type LinksEmptyReason = "no-links" | "all-disabled" | "no-matches" | "no-search-matches";
 
 export interface LinksPageData {
   /** Rows for this page: already filtered, sorted and windowed by SQL. */
@@ -129,10 +133,13 @@ export async function listLinksPage(env: Env, opts?: ListLinksPageOptions): Prom
     // emptied it.
     const catalog = await LinkRepository.count(env.DB);
     if (catalog === 0) emptyReason = "no-links";
-    // Nothing active in a non-empty catalog means every link has expired.
-    // Any other empty result is a filter or search that selected none of them,
-    // which is the opposite claim.
-    else if (status === "active" && !opts?.search?.trim()) emptyReason = "all-disabled";
+    // A live search outranks the status filter: the query is the specific thing
+    // the page can name back to the user, and it is the more likely culprit.
+    else if (opts?.search?.trim()) emptyReason = "no-search-matches";
+    // Nothing active in a non-empty catalog means every link has expired. Any
+    // other empty result is a status filter that selected none of them, which
+    // is the opposite claim.
+    else if (status === "active") emptyReason = "all-disabled";
     else emptyReason = "no-matches";
   }
 

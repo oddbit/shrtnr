@@ -86,10 +86,24 @@ describe("listLinksPage", () => {
     expect(result.emptyReason).toBe("no-matches");
   });
 
-  it("reports no-matches when a search finds nothing in a populated catalog", async () => {
+  it("reports no-search-matches when a search finds nothing in a populated catalog", async () => {
+    // The search is what emptied the window, so the reason has to say so: the
+    // page cannot tell a search-emptied result from a filter-emptied one once
+    // both arrive as the same reason.
     await seed(3);
     const result = await listLinksPage(env as never, { page: 1, perPage: 25, search: "xyzzy-nothing" });
-    expect(result.emptyReason).toBe("no-matches");
+    expect(result.emptyReason).toBe("no-search-matches");
+  });
+
+  it("reports no-search-matches when a status filter is narrowing alongside the search", async () => {
+    await seed(3);
+    const result = await listLinksPage(env as never, {
+      page: 1,
+      perPage: 25,
+      status: "disabled",
+      search: "xyzzy-nothing",
+    });
+    expect(result.emptyReason).toBe("no-search-matches");
   });
 
   it("reports no-links for an empty catalog even under a search", async () => {

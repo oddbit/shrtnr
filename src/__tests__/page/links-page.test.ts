@@ -654,12 +654,40 @@ describe("Links listing page windowing", () => {
       await SELF.fetch(req("/_/admin/links?search=zzz", { headers: { Cookie: "lang=en" } }))
     ).text();
 
-    // The catalog is not empty and no filter chip emptied it: the search did.
-    // Match the whole sentence, so a bare query or an unreplaced placeholder
-    // sitting next to one cannot pass.
-    expect(emptyState(html)).toContain("No links match &quot;zzz&quot;.");
+    // The search emptied the window, and the default Active chip is narrowing
+    // too, so the copy names both. Match the whole sentence, so a bare query or
+    // an unreplaced placeholder sitting next to one cannot pass.
+    expect(emptyState(html)).toContain("No links match &quot;zzz&quot; in Active.");
     expect(emptyState(html)).not.toContain("current filter");
     expect(emptyState(html)).not.toContain("No links yet");
+  });
+
+  it("names the filter alongside the query when a chip is narrowing too", async () => {
+    // A link matching "one" exists and is one chip away, so blaming the query
+    // alone would be as wrong as blaming the filter alone.
+    for (const slug of ["one", "two", "three"]) {
+      await LinkRepository.create(env.DB, { url: `https://example.com/${slug}`, slug });
+    }
+    const html = await (
+      await SELF.fetch(
+        req("/_/admin/links?filter=disabled&search=one", { headers: { Cookie: "lang=en" } }),
+      )
+    ).text();
+
+    expect(emptyState(html)).toContain("No links match &quot;one&quot; in Disabled.");
+  });
+
+  it("names only the query when the All chip is hiding nothing", async () => {
+    await seed(3);
+    const html = await (
+      await SELF.fetch(
+        req("/_/admin/links?filter=all&search=zzz", { headers: { Cookie: "lang=en" } }),
+      )
+    ).text();
+
+    // Nothing is narrowing but the search, so there is no filter to name.
+    expect(emptyState(html)).toContain("No links match &quot;zzz&quot;.");
+    expect(emptyState(html)).not.toContain("in All");
   });
 
   it("keeps the filter wording when a filter, not a search, emptied the list", async () => {
