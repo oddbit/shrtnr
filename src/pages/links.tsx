@@ -21,6 +21,39 @@ export type LinksFilter = "active" | "disabled" | "all";
 
 export type PaginationItem = number | "ellipsis";
 
+/**
+ * One end of the paginator: a chevron that steps to the previous or next page.
+ * The glyph is icon-font text, so it stays out of the accessibility tree and
+ * the control carries a translated name instead. At the first or last page the
+ * step has nowhere to go, so it drops its href: no href means no tab stop and
+ * no dead jump to "#", and aria-disabled announces why it is dimmed.
+ */
+const PageStep: FC<{ icon: string; label: string; href?: string }> = ({
+  icon,
+  label,
+  href,
+}) => {
+  const glyph = (
+    <span class="icon icon-sm" aria-hidden="true">
+      {icon}
+    </span>
+  );
+  return href ? (
+    <a class="page-btn" href={href} aria-label={label}>
+      {glyph}
+    </a>
+  ) : (
+    <span
+      class="page-btn disabled"
+      role="link"
+      aria-disabled="true"
+      aria-label={label}
+    >
+      {glyph}
+    </span>
+  );
+};
+
 export function paginationItems(
   currentPage: number,
   totalPages: number,
@@ -309,13 +342,12 @@ export const LinksPage: FC<Props> = ({
                   total: sorted.length,
                 })}
               </div>
-              <div class="pagination-pages">
-                <a
-                  class={`page-btn${currentPage <= 1 ? " disabled" : ""}`}
-                  href={currentPage > 1 ? pageUrl(currentPage - 1) : "#"}
-                >
-                  <span class="icon icon-sm">chevron_left</span>
-                </a>
+              <nav class="pagination-pages" aria-label={t("links.pagination")}>
+                <PageStep
+                  icon="chevron_left"
+                  label={t("linkDetail.prevPage")}
+                  href={currentPage > 1 ? pageUrl(currentPage - 1) : undefined}
+                />
                 {paginationItems(currentPage, totalPages).map((item) =>
                   item === "ellipsis" ? (
                     <span class="page-ellipsis" aria-hidden="true">…</span>
@@ -329,17 +361,14 @@ export const LinksPage: FC<Props> = ({
                     </a>
                   ),
                 )}
-                <a
-                  class={`page-btn${currentPage >= totalPages ? " disabled" : ""}`}
+                <PageStep
+                  icon="chevron_right"
+                  label={t("linkDetail.nextPage")}
                   href={
-                    currentPage < totalPages
-                      ? pageUrl(currentPage + 1)
-                      : "#"
+                    currentPage < totalPages ? pageUrl(currentPage + 1) : undefined
                   }
-                >
-                  <span class="icon icon-sm">chevron_right</span>
-                </a>
-              </div>
+                />
+              </nav>
               <div class="per-page">
                 <span class="per-page-label">{t("links.show")}</span>
                 <div class="form-select per-page-select">
