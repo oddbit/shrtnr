@@ -220,7 +220,11 @@ app.get("/_/admin/dashboard", async (c) => {
 app.get("/_/admin/links", async (c) => {
   const identity = c.var.identity;
   const { theme, slugLength, t, lang, translations, defaultRange } = await getPageData(c, identity);
-  const searchQuery = c.req.query("search") || "";
+  // Trim before anything reads it. The repository treats a query that trims
+  // to nothing as matching nothing (a bare LIKE "%%" would match every row),
+  // so an untrimmed run of spaces empties the window and the empty state
+  // then blames whichever filter happens to be selected.
+  const searchQuery = (c.req.query("search") ?? "").trim();
   const filters = await resolveClickFilters(c.env, identity);
   const validRanges = new Set<TimelineRange>(["24h", "7d", "30d", "90d", "1y", "all"]);
   const rangeParam = c.req.query("range");

@@ -121,24 +121,48 @@ export function paginationItems(
   ];
 }
 
+/** Longest query the empty state repeats back before it gets clipped. */
+const EMPTY_STATE_QUERY_MAX = 60;
+
 /**
  * Copy for an empty result set.
  *
  * `emptyReason` says why the served window came back with nothing, but its
  * `no-matches` value covers two different claims: a filter chip that selected
- * none of the catalog, or a search that matched none of it. The service cannot
- * tell those apart in copy, so the query splits the case here. Naming the query
- * back to the user beats blaming a filter they never touched.
+ * none of the catalog, or a search that matched none of it. The service hands
+ * back one reason and the page owns the query, so the split lands here. Naming
+ * the query back to the user beats blaming a filter they never touched.
+ *
+ * The query is user input dropped into a centred one-paragraph block. Escaping
+ * keeps it safe, and clipping keeps a pasted essay from pushing the toolbar and
+ * the paginator off screen.
  */
-function emptyStateCopy(
+export function emptyStateCopy(
   t: TranslateFn,
   emptyReason: LinksEmptyReason | undefined,
   searchQuery: string,
 ): string {
-  if (emptyReason === "all-disabled") return t("links.allDisabled");
-  if (emptyReason !== "no-matches") return t("links.empty");
-  const query = searchQuery.trim();
-  return query ? t("links.noSearchMatches", { query }) : t("links.noMatches");
+  switch (emptyReason) {
+    case "all-disabled":
+      return t("links.allDisabled");
+    case "no-matches": {
+      const query = searchQuery.trim();
+      if (!query) return t("links.noMatches");
+      const shown = query.length > EMPTY_STATE_QUERY_MAX
+        ? `${query.slice(0, EMPTY_STATE_QUERY_MAX)}…`
+        : query;
+      return t("links.noSearchMatches", { query: shown });
+    }
+    case "no-links":
+    case undefined:
+      return t("links.empty");
+    default: {
+      // A reason added to the union has to pick its own copy here instead of
+      // inheriting the first-run message by falling through.
+      const unhandled: never = emptyReason;
+      return unhandled;
+    }
+  }
 }
 
 type Props = {
