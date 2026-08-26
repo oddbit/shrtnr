@@ -46,6 +46,20 @@ def test_auth_sends_bearer_header(client: Shrtnr) -> None:
     assert req.headers["Authorization"] == f"Bearer {API_KEY}"
 
 
+@respx.mock
+def test_follows_redirects_on_the_owned_client(client: Shrtnr) -> None:
+    # httpx.Client defaults to follow_redirects=False. The TS SDK (fetch,
+    # default "follow") and Dart SDK (http.Client, follows by default) both
+    # transparently follow a 3xx from the deployment's front door, so the
+    # owned httpx client must opt in too or the same base_url behaves
+    # differently depending on which SDK made the request.
+    respx.get(f"{BASE_URL}/_/api/links").mock(
+        return_value=httpx.Response(301, headers={"Location": f"{BASE_URL}/_/api/links/"}),
+    )
+    respx.get(f"{BASE_URL}/_/api/links/").mock(return_value=httpx.Response(200, json=[]))
+    assert client.links.list() == []
+
+
 # ---- Error handling ----
 
 

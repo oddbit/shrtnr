@@ -32,7 +32,10 @@ export function createTranslateFn(lang: string): TranslateFn {
     let value = strings[key] || fallback[key] || key;
     if (params) {
       for (const [k, v] of Object.entries(params)) {
-        value = value.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+        // Replacer function, not a string: a string replacement treats
+        // "$&", "$`", "$'", "$1" etc. in the value as special patterns
+        // instead of literal text.
+        value = value.replace(new RegExp(`\\{${k}\\}`, "g"), () => String(v));
       }
     }
     return value;

@@ -49,6 +49,18 @@ async def test_async_auth_sends_bearer_header(client: AsyncShrtnr) -> None:
     assert route.calls[0].request.headers["Authorization"] == f"Bearer {API_KEY}"
 
 
+@respx.mock
+async def test_async_follows_redirects_on_the_owned_client(client: AsyncShrtnr) -> None:
+    # See test_follows_redirects_on_the_owned_client in test_client.py:
+    # httpx.AsyncClient defaults to follow_redirects=False, unlike the
+    # TS/Dart SDKs, so the owned client must opt in explicitly.
+    respx.get(f"{BASE_URL}/_/api/links").mock(
+        return_value=httpx.Response(301, headers={"Location": f"{BASE_URL}/_/api/links/"}),
+    )
+    respx.get(f"{BASE_URL}/_/api/links/").mock(return_value=httpx.Response(200, json=[]))
+    assert await client.links.list() == []
+
+
 # ---- Errors ----
 
 

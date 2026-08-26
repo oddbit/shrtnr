@@ -1176,9 +1176,11 @@ export class ClickRepository {
     }
 
     const countriesList = countries.results ?? [];
-    const countriesTotal = countriesList.reduce((s, c) => s + c.count, 0);
+    // Denominator must be the bundle's full click total, not the sum of the
+    // top-10 countries list: with more than 10 distinct countries, summing
+    // only the listed ones inflates the top country's share.
     const topCountry = countriesList[0]
-      ? { name: countriesList[0].name, pct: countriesTotal > 0 ? Math.round((countriesList[0].count / countriesTotal) * 100) : 0 }
+      ? { name: countriesList[0].name, pct: totalClicks > 0 ? Math.round((countriesList[0].count / totalClicks) * 100) : 0 }
       : undefined;
 
     const top = perLink[0] && perLink[0].click_count > 0 ? perLink[0] : undefined;
