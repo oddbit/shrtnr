@@ -6,6 +6,7 @@ import { LinkRepository } from "./link-repository";
 import { BundleRepository } from "./bundle-repository";
 import { RANGE_SECONDS, computeDelta } from "../services/trends";
 import { ClickFilters, clickFilterSql } from "./filters";
+import { D1_MAX_BOUND_PARAMS } from "../constants";
 import type { PaginatedDimension } from "../constants";
 
 export type BreakdownDimension = "country" | "referrer_host" | "device_type" | "os" | "browser" | "link_mode" | "channel";
@@ -772,22 +773,34 @@ export class ClickRepository {
 
     const ts = now ?? Math.floor(Date.now() / 1000);
     const span = RANGE_SECONDS[range];
-    const currStart = ts - span;
-    const prevStart = ts - 2 * span;
+    const currStart = Math.floor(ts - span);
+    const prevStart = Math.floor(ts - 2 * span);
     const filterFrag = clickFilterSql(filters, "c");
+
+    // Clicks outgrow links, so grouping every click in the range to label one
+    // page of rows is the largest scan on that request. Restrict the group-by
+    // to the ids being served. Past D1's parameter cap the ids will not bind,
+    // and a caller handing over the whole catalog wants the full aggregate
+    // anyway, so that case keeps the unrestricted query. The window bounds go
+    // inline, as in clickWindowSql, leaving the binds for ids.
+    const ids = links.map((l) => l.id);
+    const scope = ids.length <= D1_MAX_BOUND_PARAMS
+      ? ` AND s.link_id IN (${ids.map(() => "?").join(",")})`
+      : "";
+    const scopeBinds = scope ? ids : [];
 
     const [curRows, prevRows] = await Promise.all([
       db
         .prepare(
-          `SELECT s.link_id as link_id, COUNT(*) as cnt FROM clicks c JOIN slugs s ON c.slug = s.slug WHERE c.clicked_at >= ?${filterFrag} GROUP BY s.link_id`,
+          `SELECT s.link_id as link_id, COUNT(*) as cnt FROM clicks c JOIN slugs s ON c.slug = s.slug WHERE c.clicked_at >= ${currStart}${filterFrag}${scope} GROUP BY s.link_id`,
         )
-        .bind(currStart)
+        .bind(...scopeBinds)
         .all<{ link_id: number; cnt: number }>(),
       db
         .prepare(
-          `SELECT s.link_id as link_id, COUNT(*) as cnt FROM clicks c JOIN slugs s ON c.slug = s.slug WHERE c.clicked_at >= ? AND c.clicked_at < ?${filterFrag} GROUP BY s.link_id`,
+          `SELECT s.link_id as link_id, COUNT(*) as cnt FROM clicks c JOIN slugs s ON c.slug = s.slug WHERE c.clicked_at >= ${prevStart} AND c.clicked_at < ${currStart}${filterFrag}${scope} GROUP BY s.link_id`,
         )
-        .bind(prevStart, currStart)
+        .bind(...scopeBinds)
         .all<{ link_id: number; cnt: number }>(),
     ]);
 
