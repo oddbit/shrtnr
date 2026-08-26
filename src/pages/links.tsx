@@ -25,6 +25,11 @@ export function paginationItems(
   currentPage: number,
   totalPages: number,
 ): PaginationItem[] {
+  // Clamp here rather than at the call site: no caller should have to repeat
+  // these guards, and the next one will be an htmx partial that does not.
+  totalPages = Math.max(1, totalPages);
+  currentPage = Math.min(Math.max(1, currentPage), totalPages);
+
   if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, index) => index + 1);
   }
