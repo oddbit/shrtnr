@@ -235,9 +235,11 @@ export const LinksPage: FC<Props> = ({
         <div class="empty-state">
           <span class="icon">link_off</span>
           <p>
-            {emptyReason === "all-filtered"
+            {emptyReason === "all-disabled"
               ? t("links.allDisabled")
-              : t("links.empty")}
+              : emptyReason === "no-matches"
+                ? t("links.noMatches")
+                : t("links.empty")}
           </p>
         </div>
       ) : (

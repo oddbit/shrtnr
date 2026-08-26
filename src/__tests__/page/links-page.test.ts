@@ -10,6 +10,15 @@ function req(path: string, init?: RequestInit): Request {
   return new Request(`https://shrtnr.test${path}`, init);
 }
 
+/**
+ * The rendered empty state, or "" when the page has rows. The layout embeds
+ * every translation string in the admin client script, so a page-wide match
+ * on empty copy hits that blob instead of the markup.
+ */
+function emptyState(html: string): string {
+  return html.match(/<div class="empty-state">.*?<\/div>/s)?.[0] ?? "";
+}
+
 beforeAll(applyMigrations);
 beforeEach(resetData);
 
@@ -487,5 +496,38 @@ describe("Links listing page windowing", () => {
   it("shows the first-run empty state when there are no links at all", async () => {
     const html = await (await SELF.fetch(req("/_/admin/links", { headers: { Cookie: "lang=en" } }))).text();
     expect(html).toContain("No links yet");
+  });
+
+  it("does not claim every link is disabled when the disabled filter matched nothing", async () => {
+    for (const slug of ["one", "two", "three"]) {
+      await LinkRepository.create(env.DB, { url: `https://example.com/${slug}`, slug });
+    }
+    const html = await (
+      await SELF.fetch(req("/_/admin/links?filter=disabled", { headers: { Cookie: "lang=en" } }))
+    ).text();
+
+    expect(emptyState(html)).not.toContain("All links are disabled");
+    expect(emptyState(html)).toContain("No links match");
+  });
+
+  it("points the all-disabled empty state at the filter that shows them", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await LinkRepository.update(env.DB, link.id, { expires_at: Math.floor(Date.now() / 1000) - 10 });
+    const html = await (await SELF.fetch(req("/_/admin/links", { headers: { Cookie: "lang=en" } }))).text();
+
+    // The filter chips replaced the "Show disabled" toggle the copy named.
+    expect(html).not.toContain("Show disabled");
+  });
+
+  it("does not print a row count above an empty state", async () => {
+    for (const slug of ["one", "two", "three"]) {
+      await LinkRepository.create(env.DB, { url: `https://example.com/${slug}`, slug });
+    }
+    const html = await (
+      await SELF.fetch(req("/_/admin/links?search=xyzzy-nothing", { headers: { Cookie: "lang=en" } }))
+    ).text();
+
+    expect(emptyState(html)).toContain("No links match");
+    expect(emptyState(html)).not.toContain("No links yet");
   });
 });

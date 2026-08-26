@@ -62,10 +62,10 @@ const sv: Translations = {
   "links.perPage": "per sida",
   "links.perPageAria": "Länkar per sida",
   "links.colTrend": "Trend",
-  "links.showDisabled": "Visa inaktiverade",
   "links.newLink": "Ny länk",
   "links.allDisabled":
-    'Alla länkar är inaktiverade. Växla "Visa inaktiverade" för att se dem.',
+    'Alla länkar är avaktiverade. Välj filtret "Avaktiverade" för att se dem.',
+  "links.noMatches": "Inga länkar matchar det valda filtret.",
   "links.empty":
     "Inga länkar ännu. Använd knappen + Ny länk ovan för att komma igång.",
   "links.disabled": "Inaktiverad",

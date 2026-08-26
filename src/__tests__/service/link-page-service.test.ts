@@ -76,13 +76,47 @@ describe("listLinksPage", () => {
     expect(result.data.totalPages).toBe(1);
   });
 
-  it("reports all-filtered when the status filter hid every link", async () => {
+  it("reports all-disabled when the active filter hid every link", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     await LinkRepository.update(env.DB, link.id, { expires_at: NOW - 10 });
     const result = await listLinksPage(env as never, { page: 1, perPage: 25, status: "active" });
     if (!result.ok) throw new Error("expected ok");
     expect(result.data.total).toBe(0);
-    expect(result.data.emptyReason).toBe("all-filtered");
+    expect(result.data.emptyReason).toBe("all-disabled");
+  });
+
+  it("reports no-matches when the disabled filter finds nothing to show", async () => {
+    // The inverse of the case above: every link is active, so "all links are
+    // disabled" would state the opposite of the truth.
+    await seed(3);
+    const result = await listLinksPage(env as never, { page: 1, perPage: 25, status: "disabled" });
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.data.total).toBe(0);
+    expect(result.data.emptyReason).toBe("no-matches");
+  });
+
+  it("reports no-matches when a search finds nothing in a populated catalog", async () => {
+    await seed(3);
+    const result = await listLinksPage(env as never, { page: 1, perPage: 25, search: "xyzzy-nothing" });
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.data.emptyReason).toBe("no-matches");
+  });
+
+  it("reports no-links for an empty catalog even under a search", async () => {
+    const result = await listLinksPage(env as never, { page: 1, perPage: 25, search: "anything" });
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.data.emptyReason).toBe("no-links");
+  });
+
+  it("names a reason whenever the served window is empty, not only when the total is zero", async () => {
+    // The total and the window come from separate statements. Deleting rows
+    // between them leaves a positive total with nothing to render, and the
+    // page would otherwise print "30 links" above "No links yet".
+    await seed(3);
+    const result = await listLinksPage(env as never, { page: 1, perPage: 25, status: "disabled" });
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.data.links).toHaveLength(0);
+    expect(result.data.emptyReason).toBeDefined();
   });
 
   it("leaves emptyReason unset when the window has rows", async () => {

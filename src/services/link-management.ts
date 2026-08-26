@@ -61,8 +61,13 @@ export interface ListLinksPageOptions extends ListLinksOptions {
   includeOwner?: boolean;
 }
 
-/** Why a rendered page has no rows, so the caller can pick the right empty copy. */
-export type LinksEmptyReason = "no-links" | "all-filtered";
+/**
+ * Why a rendered page has no rows, so the caller can pick the right empty copy.
+ * `no-links` means the catalog itself is empty, `all-disabled` that every link
+ * there is has expired, and `no-matches` that the search or status filter
+ * selected none of them.
+ */
+export type LinksEmptyReason = "no-links" | "all-disabled" | "no-matches";
 
 export interface LinksPageData {
   /** Rows for this page: already filtered, sorted and windowed by SQL. */
@@ -73,7 +78,7 @@ export interface LinksPageData {
   page: number;
   perPage: number;
   totalPages: number;
-  /** Set only when `links` is empty. */
+  /** Set whenever `links` is empty, which is when the caller renders empty copy. */
   emptyReason?: LinksEmptyReason;
 }
 
@@ -110,14 +115,21 @@ export async function listLinksPage(env: Env, opts?: ListLinksPageOptions): Prom
   // from what came back rather than from what was asked for.
   const page = Math.floor(result.offset / perPage) + 1;
 
+  // Keyed off the served window, not the total: the two come from separate
+  // statements, so a positive total can arrive with nothing to render and the
+  // page would print a row count directly above "no links yet".
   let emptyReason: LinksEmptyReason | undefined;
-  if (result.total === 0) {
-    // One extra count, only on the empty path: it separates "no links yet"
-    // from "the status filter hid them all".
-    const unfiltered = status === "all"
-      ? 0
-      : await LinkRepository.count(env.DB, { search: opts?.search, searchOwner: opts?.includeOwner });
-    emptyReason = unfiltered > 0 ? "all-filtered" : "no-links";
+  if (result.links.length === 0) {
+    // One extra count, only on the empty path, and unfiltered: it is the one
+    // thing the rows cannot say, whether the catalog is empty or the filters
+    // emptied it.
+    const catalog = await LinkRepository.count(env.DB);
+    if (catalog === 0) emptyReason = "no-links";
+    // Nothing active in a non-empty catalog means every link has expired.
+    // Any other empty result is a filter or search that selected none of them,
+    // which is the opposite claim.
+    else if (status === "active" && !opts?.search?.trim()) emptyReason = "all-disabled";
+    else emptyReason = "no-matches";
   }
 
   const links = opts?.withDeltaRange
