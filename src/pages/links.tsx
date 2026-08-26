@@ -7,6 +7,8 @@ import type { TranslateFn } from "../i18n";
 import { Delta } from "../components/delta";
 import { RangePicker } from "../components/range-picker";
 import { fmtNumber } from "../i18n/format";
+import { LINKS_DEFAULT_PER_PAGE, LINKS_PER_PAGE_OPTIONS } from "../constants";
+import type { LinksEmptyReason } from "../services/link-management";
 
 function formatDate(ts: number, lang: string): string {
   const d = new Date(ts * 1000);
@@ -62,7 +64,16 @@ export function paginationItems(
 }
 
 type Props = {
+  /**
+   * Rows for the current page only: the query already applied the filter, the
+   * sort and the window, so this component never slices a catalog.
+   */
   links: LinkWithSlugs[];
+  /** Rows matching the filter across the whole catalog. Drives the counts. */
+  total: number;
+  totalPages: number;
+  /** Set only when `links` is empty; picks which empty-state copy to show. */
+  emptyReason?: LinksEmptyReason;
   sort: string;
   page: number;
   perPage: number;
@@ -75,6 +86,9 @@ type Props = {
 
 export const LinksPage: FC<Props> = ({
   links,
+  total,
+  totalPages,
+  emptyReason,
   sort,
   page,
   perPage,
@@ -88,25 +102,8 @@ export const LinksPage: FC<Props> = ({
   const isLinkDisabled = (l: LinkWithSlugs) =>
     l.expires_at != null && l.expires_at < now;
 
-  const activeLinks = links.filter((l) => !isLinkDisabled(l));
-  const disabledLinks = links.filter((l) => isLinkDisabled(l));
-  const filtered =
-    filter === "disabled"
-      ? disabledLinks
-      : filter === "all"
-        ? links
-        : activeLinks;
-
-  const sorted = [...filtered].sort((a, b) =>
-    sort === "popular"
-      ? b.total_clicks - a.total_clicks
-      : b.created_at - a.created_at,
-  );
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / perPage));
-  const currentPage = Math.min(page, totalPages);
+  const currentPage = Math.min(Math.max(1, page), totalPages);
   const start = (currentPage - 1) * perPage;
-  const pageLinks = sorted.slice(start, start + perPage);
 
   function buildUrl(overrides: Record<string, string | undefined>): string {
     const params = new URLSearchParams();
@@ -129,7 +126,7 @@ export const LinksPage: FC<Props> = ({
   const perPageUrl = (n: number) => buildUrl({ per_page: String(n), page: "1" });
   const filterUrl = (f: LinksFilter) => buildUrl({ filter: f, page: "1" });
 
-  const countKey = filtered.length !== 1 ? "links.countPlural" : "links.count";
+  const countKey = total !== 1 ? "links.countPlural" : "links.count";
 
   const filterChips: { key: LinksFilter; labelKey: "links.filterActive" | "links.filterDisabled" | "links.filterAll"; icon: string }[] = [
     { key: "active", labelKey: "links.filterActive", icon: "link" },
@@ -173,7 +170,7 @@ export const LinksPage: FC<Props> = ({
 
       {searchQuery && (
         <div class="search-results-bar">
-          <span class="count">{t("links.searchResults", { count: filtered.length })}</span>
+          <span class="count">{t("links.searchResults", { count: total })}</span>
           <a href="/_/admin/links" class="btn btn-ghost btn-sm">
             <span class="icon icon-xs">close</span> {t("links.clearSearch")}
           </a>
@@ -210,16 +207,16 @@ export const LinksPage: FC<Props> = ({
             </a>
           </div>
           <div class="toolbar-count">
-            {t(countKey as any, { count: filtered.length })}
+            {t(countKey as any, { count: total })}
           </div>
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {links.length === 0 ? (
         <div class="empty-state">
           <span class="icon">link_off</span>
           <p>
-            {links.length > 0
+            {emptyReason === "all-filtered"
               ? t("links.allDisabled")
               : t("links.empty")}
           </p>
@@ -238,7 +235,7 @@ export const LinksPage: FC<Props> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {pageLinks.map((link) => {
+                  {links.map((link) => {
                     const mainSlug = link.slugs.find((s) => s.is_primary)
                       || link.slugs.find((s) => s.is_custom)
                       || link.slugs[0];
@@ -300,13 +297,13 @@ export const LinksPage: FC<Props> = ({
             </div>
           </div>
 
-          {(totalPages > 1 || links.length > 25) && (
+          {(totalPages > 1 || total > LINKS_DEFAULT_PER_PAGE) && (
             <div class="pagination">
               <div class="pagination-summary">
                 {t("links.pageSummary", {
-                  from: sorted.length === 0 ? 0 : start + 1,
-                  to: Math.min(start + perPage, sorted.length),
-                  total: sorted.length,
+                  from: total === 0 ? 0 : start + 1,
+                  to: Math.min(start + perPage, total),
+                  total,
                 })}
               </div>
               <div class="pagination-pages">
@@ -348,7 +345,7 @@ export const LinksPage: FC<Props> = ({
                     onchange="location.href=this.value"
                     aria-label={t("links.perPageAria")}
                   >
-                    {[25, 50, 100].map((n) => (
+                    {LINKS_PER_PAGE_OPTIONS.map((n) => (
                       <option value={perPageUrl(n)} selected={perPage === n}>
                         {n}
                       </option>

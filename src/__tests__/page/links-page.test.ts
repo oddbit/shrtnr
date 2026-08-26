@@ -225,3 +225,91 @@ describe("Links listing page", () => {
     expect(html).toMatch(/1\s*[–-]\s*1\s+of\s+30/);
   });
 });
+
+describe("Links listing page windowing", () => {
+  async function seed(count: number): Promise<void> {
+    for (let i = 0; i < count; i++) {
+      await LinkRepository.create(env.DB, { url: `https://example${i}.com`, slug: `s${i}` });
+    }
+  }
+
+  function rowCount(html: string): number {
+    return [...html.matchAll(/class="col-short-chip-slug">/g)].length;
+  }
+
+  it("renders only the requested window of rows, not the whole catalog", async () => {
+    await seed(60);
+    const res = await SELF.fetch(req("/_/admin/links?per_page=25"));
+    const html = await res.text();
+    expect(rowCount(html)).toBe(25);
+    expect(html).toMatch(/1\s*[–-]\s*25\s+of\s+60/);
+  });
+
+  it("serves the next window on page 2 with no overlap", async () => {
+    await seed(30);
+    const first = await (await SELF.fetch(req("/_/admin/links?per_page=25&page=1"))).text();
+    const second = await (await SELF.fetch(req("/_/admin/links?per_page=25&page=2"))).text();
+    expect(rowCount(second)).toBe(5);
+    expect(second).toMatch(/26\s*[–-]\s*30\s+of\s+30/);
+    const slugsOn = (html: string) =>
+      [...html.matchAll(/class="col-short-chip-slug">([^<]+)</g)].map((m) => m[1]);
+    const firstSlugs = new Set(slugsOn(first));
+    expect(slugsOn(second).some((s) => firstSlugs.has(s))).toBe(false);
+  });
+
+  it("caps per_page so a crafted query cannot pull the catalog into one page", async () => {
+    await seed(120);
+    const res = await SELF.fetch(req("/_/admin/links?per_page=100000"));
+    const html = await res.text();
+    expect(rowCount(html)).toBe(100);
+    expect(html).toMatch(/1\s*[–-]\s*100\s+of\s+120/);
+  });
+
+  it("sorts popular across the whole catalog, not within the rendered page", async () => {
+    await seed(30);
+    // s0 is the oldest link, so recent order puts it on the last page. Its
+    // click lead must still float it to the top of page 1 under popular sort.
+    const now = Math.floor(Date.now() / 1000);
+    const insert = env.DB.prepare(
+      "INSERT INTO clicks (slug, clicked_at, link_mode, is_bot, is_self_referrer) VALUES (?, ?, 'link', 0, 0)",
+    );
+    await insert.bind("s0", now - 60).run();
+    await insert.bind("s0", now - 61).run();
+
+    const html = await (await SELF.fetch(req("/_/admin/links?sort=popular&per_page=25"))).text();
+    const slugs = [...html.matchAll(/class="col-short-chip-slug">([^<]+)</g)].map((m) => m[1]);
+    expect(slugs[0]).toBe("s0");
+  });
+
+  it("counts and pages the filtered set for the disabled filter", async () => {
+    for (let i = 0; i < 6; i++) {
+      const link = await LinkRepository.create(env.DB, { url: `https://e${i}.com`, slug: `d${i}` });
+      if (i % 2 === 0) {
+        await LinkRepository.update(env.DB, link.id, { expires_at: Math.floor(Date.now() / 1000) - 10 });
+      }
+    }
+    const html = await (await SELF.fetch(req("/_/admin/links?filter=disabled&per_page=2"))).text();
+    expect(html).toMatch(/1\s*[–-]\s*2\s+of\s+3/);
+    expect(rowCount(html)).toBe(2);
+  });
+
+  it("windows search results and counts every match", async () => {
+    await seed(30);
+    const html = await (await SELF.fetch(req("/_/admin/links?search=example&per_page=10&page=2"))).text();
+    expect(html).toContain("30 matching links");
+    expect(rowCount(html)).toBe(10);
+    expect(html).toMatch(/11\s*[–-]\s*20\s+of\s+30/);
+  });
+
+  it("keeps the all-disabled empty state when the active filter hides everything", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await LinkRepository.update(env.DB, link.id, { expires_at: Math.floor(Date.now() / 1000) - 10 });
+    const html = await (await SELF.fetch(req("/_/admin/links", { headers: { Cookie: "lang=en" } }))).text();
+    expect(html).toContain("All links are disabled");
+  });
+
+  it("shows the first-run empty state when there are no links at all", async () => {
+    const html = await (await SELF.fetch(req("/_/admin/links", { headers: { Cookie: "lang=en" } }))).text();
+    expect(html).toContain("No links yet");
+  });
+});

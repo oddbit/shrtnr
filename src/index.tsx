@@ -29,9 +29,8 @@ import {
   getAppSettings,
   resolveClickFilters,
   getLinkAnalytics,
-  listLinks,
+  listLinksPage,
   getLink,
-  searchLinks,
   listAllApiKeys,
   listBundlesForLink,
   listBundles,
@@ -39,7 +38,7 @@ import {
   listBundleLinks,
   getBundleAnalytics,
 } from "./services";
-import { DEFAULT_SLUG_LENGTH, DEFAULT_THEME, THEMES } from "./constants";
+import { DEFAULT_SLUG_LENGTH, DEFAULT_THEME, LINKS_DEFAULT_PER_PAGE, THEMES } from "./constants";
 import { createTranslateFn, getTranslations, DEFAULT_LANGUAGE, isSupportedLanguage } from "./i18n";
 import { handleHealth } from "./api/health";
 import {
@@ -226,13 +225,9 @@ app.get("/_/admin/links", async (c) => {
   const validRanges = new Set<TimelineRange>(["24h", "7d", "30d", "90d", "1y", "all"]);
   const rangeParam = c.req.query("range");
   const range = (validRanges.has(rangeParam as TimelineRange) ? rangeParam : defaultRange) as TimelineRange;
-  const linksResult = searchQuery
-    ? await searchLinks(c.env, searchQuery, { includeOwner: true, withDeltaRange: range, filters, range })
-    : await listLinks(c.env, { withDeltaRange: range, filters, range });
-  const links = linksResult.ok ? linksResult.data : [];
-  const sort = c.req.query("sort") || "recent";
-  const page = Math.max(1, parseInt(c.req.query("page") || "1", 10) || 1);
-  const perPage = Math.max(1, parseInt(c.req.query("per_page") || "25", 10) || 25);
+  const sort = c.req.query("sort") === "popular" ? "popular" : "recent";
+  const requestedPage = Math.max(1, parseInt(c.req.query("page") || "1", 10) || 1);
+  const requestedPerPage = parseInt(c.req.query("per_page") || String(LINKS_DEFAULT_PER_PAGE), 10);
   const filterParam = c.req.query("filter");
   const legacyShowDisabled = c.req.query("show_disabled") === "1";
   const filter = filterParam === "disabled" || filterParam === "all" || filterParam === "active"
@@ -240,13 +235,32 @@ app.get("/_/admin/links", async (c) => {
     : legacyShowDisabled
       ? "all"
       : "active";
+  // One window, filtered and sorted in SQL: the route pays for the rows it
+  // renders, not for the catalog. listLinksPage clamps page and per_page.
+  const pageResult = await listLinksPage(c.env, {
+    page: requestedPage,
+    perPage: requestedPerPage,
+    sort,
+    status: filter,
+    search: searchQuery || undefined,
+    includeOwner: true,
+    withDeltaRange: range,
+    filters,
+    range,
+  });
+  const data = pageResult.ok
+    ? pageResult.data
+    : { links: [], total: 0, page: 1, perPage: LINKS_DEFAULT_PER_PAGE, totalPages: 1, emptyReason: "no-links" as const };
   return c.html(
     <Layout active="links" theme={theme} t={t} lang={lang} translations={translations}>
       <LinksPage
-        links={links}
+        links={data.links}
+        total={data.total}
+        totalPages={data.totalPages}
+        emptyReason={data.emptyReason}
         sort={sort}
-        page={page}
-        perPage={perPage}
+        page={data.page}
+        perPage={data.perPage}
         filter={filter}
         range={range}
         searchQuery={searchQuery}
