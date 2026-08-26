@@ -49,7 +49,6 @@ const id: Translations = {
   "links.countPlural": "{count} tautan",
   "links.recent": "Terbaru",
   "links.popular": "Populer",
-  "links.showDisabled": "Tampilkan nonaktif",
   "links.filterActive": "Aktif",
   "links.filterDisabled": "Nonaktif",
   "links.filterAll": "Semua",
@@ -65,7 +64,8 @@ const id: Translations = {
   "links.colTrend": "Tren",
   "links.newLink": "Tautan Baru",
   "links.allDisabled":
-    'Semua tautan nonaktif. Aktifkan "Tampilkan nonaktif" untuk melihatnya.',
+    'Semua tautan nonaktif. Pilih filter "Nonaktif" untuk melihatnya.',
+  "links.noMatches": "Tidak ada tautan yang cocok dengan filter saat ini.",
   "links.empty":
     "Belum ada tautan. Gunakan tombol + Tautan Baru di atas untuk memulai.",
   "links.disabled": "Nonaktif",

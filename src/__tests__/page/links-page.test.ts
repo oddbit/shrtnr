@@ -10,6 +10,15 @@ function req(path: string, init?: RequestInit): Request {
   return new Request(`https://shrtnr.test${path}`, init);
 }
 
+/**
+ * The rendered empty state, or "" when the page has rows. The layout embeds
+ * every translation string in the admin client script, so a page-wide match
+ * on empty copy hits that blob instead of the markup.
+ */
+function emptyState(html: string): string {
+  return html.match(/<div class="empty-state">.*?<\/div>/s)?.[0] ?? "";
+}
+
 beforeAll(applyMigrations);
 beforeEach(resetData);
 
@@ -184,6 +193,108 @@ describe("Links listing page", () => {
     expect(html).toMatch(/1\s*[–-]\s*25\s+of\s+30/);
   });
 
+  it("preserves the active search in pagination URLs", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://pdf.co/document-${i}`,
+        slug: `pdf-${i}`,
+      });
+    }
+
+    const res = await SELF.fetch(req("/_/admin/links?search=pdf.co"));
+    const html = await res.text();
+    const pageTwoHref = html.match(
+      /class="page-btn[^"]*" href="([^"]+)"[^>]*>\s*2\s*<\/a>/,
+    )?.[1];
+    const decodedHref = pageTwoHref?.replaceAll("&amp;", "&");
+
+    expect(pageTwoHref).toBeDefined();
+    expect(decodedHref).toContain("page=2");
+    expect(decodedHref).toContain("search=pdf.co");
+  });
+
+  // Pull hrefs out of anchors carrying `className`, independent of attribute
+  // order, with entity-encoded ampersands decoded for plain substring checks.
+  // `label` matches the anchor's visible text once tags are stripped.
+  function anchorHrefs(html: string, className: string, label?: string): string[] {
+    const found: string[] = [];
+    const anchor = /<a\b([^>]*)>([\s\S]*?)<\/a>/g;
+    let m: RegExpExecArray | null;
+    while ((m = anchor.exec(html)) !== null) {
+      const [, attrs, inner] = m;
+      if (!new RegExp(`class="[^"]*\\b${className}\\b[^"]*"`).test(attrs)) continue;
+      if (label !== undefined && inner.replace(/<[^>]*>/g, "").trim() !== label) continue;
+      const href = attrs.match(/href="([^"]*)"/)?.[1];
+      if (href) found.push(href.replaceAll("&amp;", "&"));
+    }
+    return found;
+  }
+
+  async function seedSearchFixture(): Promise<void> {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://pdf.co/document-${i}`,
+        slug: `pdf-${i}`,
+      });
+    }
+    for (let i = 0; i < 10; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://other.example/note-${i}`,
+        slug: `other-${i}`,
+      });
+    }
+  }
+
+  it("lists only matching links when page two of a search is opened", async () => {
+    await seedSearchFixture();
+
+    const first = await SELF.fetch(req("/_/admin/links?search=pdf.co"));
+    const [pageTwo] = anchorHrefs(await first.text(), "page-btn", "2");
+    expect(pageTwo).toBeDefined();
+
+    const res = await SELF.fetch(req(pageTwo));
+    expect(res.status).toBe(200);
+    const html = await res.text();
+
+    // 30 matches, not the 40 links in the table.
+    expect(html).toMatch(/26\s*[–-]\s*30\s+of\s+30/);
+    expect(html).not.toContain("other.example");
+    // The search box stays populated so the query is still editable.
+    expect(html).toMatch(/id="quick-url"[^>]*value="pdf\.co"/);
+  });
+
+  it("carries the active search through sort, filter, and page-size URLs", async () => {
+    await seedSearchFixture();
+
+    const res = await SELF.fetch(req("/_/admin/links?search=pdf.co"));
+    const html = await res.text();
+    const perPageHrefs = [...html.matchAll(/<option value="([^"]*)"/g)].map((m) =>
+      m[1].replaceAll("&amp;", "&"),
+    );
+    const controls = [
+      ...anchorHrefs(html, "sort-btn"),
+      ...anchorHrefs(html, "filter-chip"),
+      ...perPageHrefs,
+    ];
+
+    expect(controls).toHaveLength(8);
+    // Each control resets to page one but must keep the query.
+    for (const href of controls) {
+      expect(href).toContain("search=pdf.co");
+      expect(href).toContain("page=1");
+    }
+  });
+
+  it("drops the search from pagination URLs once the query is cleared", async () => {
+    await seedSearchFixture();
+
+    const res = await SELF.fetch(req("/_/admin/links"));
+    const [pageTwo] = anchorHrefs(await res.text(), "page-btn", "2");
+
+    expect(pageTwo).toBeDefined();
+    expect(pageTwo).not.toContain("search=");
+  });
+
   it("clamps a negative page param instead of producing an empty, out-of-range slice", async () => {
     for (let i = 0; i < 30; i++) {
       await LinkRepository.create(env.DB, {
@@ -279,6 +390,14 @@ describe("Links listing page", () => {
     expect(html).not.toMatch(/<div class="pagination-pages"/);
   });
 
+  it("clamps an unparseable page param onto the first page", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, { url: `https://example${i}.com`, slug: `s${i}` });
+    }
+    const html = await (await SELF.fetch(req("/_/admin/links?page=abc"))).text();
+    expect(html).toMatch(/1\s*[–-]\s*25\s+of\s+30/);
+  });
+
   it("clamps a negative per_page param instead of an inverted slice range", async () => {
     for (let i = 0; i < 30; i++) {
       await LinkRepository.create(env.DB, {
@@ -289,5 +408,200 @@ describe("Links listing page", () => {
     const res = await SELF.fetch(req("/_/admin/links?per_page=-5"));
     const html = await res.text();
     expect(html).toMatch(/1\s*[–-]\s*1\s+of\s+30/);
+  });
+
+  it("hides the page buttons when a wider per_page fits every link on one page", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links?per_page=100"));
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    // All 30 rows land on page 1, so there is nothing to page through.
+    expect(html.match(/class="col-short-chip-slug"/g)).toHaveLength(30);
+    expect(html).not.toContain('class="pagination-pages"');
+    expect(html).not.toMatch(/class="page-btn/);
+    // The summary and the per-page selector survive: they are the only way back to 25.
+    expect(html).toContain('class="pagination"');
+    expect(html).toContain('class="pagination-summary"');
+    expect(html).toContain("per-page-select");
+  });
+
+  it("hides the page buttons when a filter narrows the result set to one page", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+        expiresAt: i < 2 ? now - 3600 : null,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links?filter=disabled"));
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    // Only s0 and s1 are expired; the unfiltered count must not decide this.
+    expect(html.match(/class="col-short-chip-slug"/g)).toHaveLength(2);
+    expect(html).toContain(">s0<");
+    expect(html).toContain(">s1<");
+    expect(html).not.toContain(">s2<");
+    expect(html).not.toContain('class="pagination-pages"');
+    expect(html).not.toMatch(/class="page-btn/);
+    expect(html).toContain('class="pagination-summary"');
+    expect(html).toContain("per-page-select");
+  });
+
+  it("still renders the page buttons when the result set spans more than one page", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links"));
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('class="pagination"');
+    expect(html).toContain('class="pagination-pages"');
+    expect(html).toMatch(/class="page-btn[^"]*"[^>]*>2</);
+    expect(html).toContain("per-page-select");
+  });
+
+  it("keeps the per-page selector reachable after widening per_page", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links?per_page=50"));
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    // Every in-page link re-emits per_page, so the selector is the only route back to 25.
+    expect(html).toContain("per-page-select");
+    expect(html).toContain("per_page=25");
+  });
+});
+
+describe("Links listing page windowing", () => {
+  async function seed(count: number): Promise<void> {
+    for (let i = 0; i < count; i++) {
+      await LinkRepository.create(env.DB, { url: `https://example${i}.com`, slug: `s${i}` });
+    }
+  }
+
+  function rowCount(html: string): number {
+    return [...html.matchAll(/class="col-short-chip-slug">/g)].length;
+  }
+
+  it("renders only the requested window of rows, not the whole catalog", async () => {
+    await seed(60);
+    const res = await SELF.fetch(req("/_/admin/links?per_page=25"));
+    const html = await res.text();
+    expect(rowCount(html)).toBe(25);
+    expect(html).toMatch(/1\s*[–-]\s*25\s+of\s+60/);
+  });
+
+  it("serves the next window on page 2 with no overlap", async () => {
+    await seed(30);
+    const first = await (await SELF.fetch(req("/_/admin/links?per_page=25&page=1"))).text();
+    const second = await (await SELF.fetch(req("/_/admin/links?per_page=25&page=2"))).text();
+    expect(rowCount(second)).toBe(5);
+    expect(second).toMatch(/26\s*[–-]\s*30\s+of\s+30/);
+    const slugsOn = (html: string) =>
+      [...html.matchAll(/class="col-short-chip-slug">([^<]+)</g)].map((m) => m[1]);
+    const firstSlugs = new Set(slugsOn(first));
+    expect(slugsOn(second).some((s) => firstSlugs.has(s))).toBe(false);
+  });
+
+  it("caps per_page so a crafted query cannot pull the catalog into one page", async () => {
+    await seed(120);
+    const res = await SELF.fetch(req("/_/admin/links?per_page=100000"));
+    const html = await res.text();
+    expect(rowCount(html)).toBe(100);
+    expect(html).toMatch(/1\s*[–-]\s*100\s+of\s+120/);
+  });
+
+  it("sorts popular across the whole catalog, not within the rendered page", async () => {
+    await seed(30);
+    // s0 is the oldest link, so recent order puts it on the last page. Its
+    // click lead must still float it to the top of page 1 under popular sort.
+    const now = Math.floor(Date.now() / 1000);
+    const insert = env.DB.prepare(
+      "INSERT INTO clicks (slug, clicked_at, link_mode, is_bot, is_self_referrer) VALUES (?, ?, 'link', 0, 0)",
+    );
+    await insert.bind("s0", now - 60).run();
+    await insert.bind("s0", now - 61).run();
+
+    const html = await (await SELF.fetch(req("/_/admin/links?sort=popular&per_page=25"))).text();
+    const slugs = [...html.matchAll(/class="col-short-chip-slug">([^<]+)</g)].map((m) => m[1]);
+    expect(slugs[0]).toBe("s0");
+  });
+
+  it("counts and pages the filtered set for the disabled filter", async () => {
+    for (let i = 0; i < 6; i++) {
+      const link = await LinkRepository.create(env.DB, { url: `https://e${i}.com`, slug: `d${i}` });
+      if (i % 2 === 0) {
+        await LinkRepository.update(env.DB, link.id, { expires_at: Math.floor(Date.now() / 1000) - 10 });
+      }
+    }
+    const html = await (await SELF.fetch(req("/_/admin/links?filter=disabled&per_page=2"))).text();
+    expect(html).toMatch(/1\s*[–-]\s*2\s+of\s+3/);
+    expect(rowCount(html)).toBe(2);
+  });
+
+  it("windows search results and counts every match", async () => {
+    await seed(30);
+    const html = await (await SELF.fetch(req("/_/admin/links?search=example&per_page=10&page=2"))).text();
+    expect(html).toContain("30 matching links");
+    expect(rowCount(html)).toBe(10);
+    expect(html).toMatch(/11\s*[–-]\s*20\s+of\s+30/);
+  });
+
+  it("keeps the all-disabled empty state when the active filter hides everything", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await LinkRepository.update(env.DB, link.id, { expires_at: Math.floor(Date.now() / 1000) - 10 });
+    const html = await (await SELF.fetch(req("/_/admin/links", { headers: { Cookie: "lang=en" } }))).text();
+    expect(html).toContain("All links are disabled");
+  });
+
+  it("shows the first-run empty state when there are no links at all", async () => {
+    const html = await (await SELF.fetch(req("/_/admin/links", { headers: { Cookie: "lang=en" } }))).text();
+    expect(html).toContain("No links yet");
+  });
+
+  it("does not claim every link is disabled when the disabled filter matched nothing", async () => {
+    for (const slug of ["one", "two", "three"]) {
+      await LinkRepository.create(env.DB, { url: `https://example.com/${slug}`, slug });
+    }
+    const html = await (
+      await SELF.fetch(req("/_/admin/links?filter=disabled", { headers: { Cookie: "lang=en" } }))
+    ).text();
+
+    expect(emptyState(html)).not.toContain("All links are disabled");
+    expect(emptyState(html)).toContain("No links match");
+  });
+
+  it("points the all-disabled empty state at the filter that shows them", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await LinkRepository.update(env.DB, link.id, { expires_at: Math.floor(Date.now() / 1000) - 10 });
+    const html = await (await SELF.fetch(req("/_/admin/links", { headers: { Cookie: "lang=en" } }))).text();
+
+    // The filter chips replaced the "Show disabled" toggle the copy named.
+    expect(html).not.toContain("Show disabled");
+  });
+
+  it("does not print a row count above an empty state", async () => {
+    for (const slug of ["one", "two", "three"]) {
+      await LinkRepository.create(env.DB, { url: `https://example.com/${slug}`, slug });
+    }
+    const html = await (
+      await SELF.fetch(req("/_/admin/links?search=xyzzy-nothing", { headers: { Cookie: "lang=en" } }))
+    ).text();
+
+    expect(emptyState(html)).toContain("No links match");
+    expect(emptyState(html)).not.toContain("No links yet");
   });
 });

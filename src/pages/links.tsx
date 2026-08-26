@@ -7,6 +7,8 @@ import type { TranslateFn } from "../i18n";
 import { Delta } from "../components/delta";
 import { RangePicker } from "../components/range-picker";
 import { fmtNumber } from "../i18n/format";
+import { LINKS_PER_PAGE_OPTIONS } from "../constants";
+import type { LinksEmptyReason } from "../services";
 
 function formatDate(ts: number, lang: string): string {
   const d = new Date(ts * 1000);
@@ -54,6 +56,25 @@ const PageStep: FC<{ icon: string; label: string; href?: string }> = ({
   );
 };
 
+/**
+ * The page actually rendered and where its rows start, with every input
+ * floored the way `paginationItems` floors its own. Clamp here rather than at
+ * the call site: a caller computing `Math.ceil(0 / perPage)` hands over
+ * `totalPages: 0`, which drives `currentPage` to 0 and the row range to
+ * `-perPage`. The upper bound on `perPage` stays with the service, which owns
+ * `LINKS_MAX_PER_PAGE`.
+ */
+export function pageWindow(
+  page: number,
+  perPage: number,
+  totalPages: number,
+): { currentPage: number; pageCount: number; perPage: number; start: number } {
+  const rows = Math.max(1, Math.floor(perPage) || 1);
+  const pageCount = Math.max(1, Math.floor(totalPages) || 1);
+  const currentPage = Math.min(Math.max(1, Math.floor(page) || 1), pageCount);
+  return { currentPage, pageCount, perPage: rows, start: (currentPage - 1) * rows };
+}
+
 export function paginationItems(
   currentPage: number,
   totalPages: number,
@@ -95,7 +116,16 @@ export function paginationItems(
 }
 
 type Props = {
+  /**
+   * Rows for the current page only: the query already applied the filter, the
+   * sort and the window, so this component never slices a catalog.
+   */
   links: LinkWithSlugs[];
+  /** Rows matching the filter across the whole catalog. Drives the counts. */
+  total: number;
+  totalPages: number;
+  /** Set only when `links` is empty; picks which empty-state copy to show. */
+  emptyReason?: LinksEmptyReason;
   sort: string;
   page: number;
   perPage: number;
@@ -108,6 +138,9 @@ type Props = {
 
 export const LinksPage: FC<Props> = ({
   links,
+  total,
+  totalPages,
+  emptyReason,
   sort,
   page,
   perPage,
@@ -121,34 +154,17 @@ export const LinksPage: FC<Props> = ({
   const isLinkDisabled = (l: LinkWithSlugs) =>
     l.expires_at != null && l.expires_at < now;
 
-  const activeLinks = links.filter((l) => !isLinkDisabled(l));
-  const disabledLinks = links.filter((l) => isLinkDisabled(l));
-  const filtered =
-    filter === "disabled"
-      ? disabledLinks
-      : filter === "all"
-        ? links
-        : activeLinks;
-
-  const sorted = [...filtered].sort((a, b) =>
-    sort === "popular"
-      ? b.total_clicks - a.total_clicks
-      : b.created_at - a.created_at,
-  );
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / perPage));
-  const currentPage = Math.min(page, totalPages);
-  const start = (currentPage - 1) * perPage;
-  const pageLinks = sorted.slice(start, start + perPage);
+  const { currentPage, pageCount, perPage: rowsPerPage, start } = pageWindow(page, perPage, totalPages);
 
   function buildUrl(overrides: Record<string, string | undefined>): string {
     const params = new URLSearchParams();
     const next = {
       sort,
       page: String(currentPage),
-      per_page: String(perPage),
+      per_page: String(rowsPerPage),
       filter,
       range,
+      search: searchQuery,
       ...overrides,
     };
     for (const [k, v] of Object.entries(next)) {
@@ -162,7 +178,7 @@ export const LinksPage: FC<Props> = ({
   const perPageUrl = (n: number) => buildUrl({ per_page: String(n), page: "1" });
   const filterUrl = (f: LinksFilter) => buildUrl({ filter: f, page: "1" });
 
-  const countKey = filtered.length !== 1 ? "links.countPlural" : "links.count";
+  const countKey = total !== 1 ? "links.countPlural" : "links.count";
 
   const filterChips: { key: LinksFilter; labelKey: "links.filterActive" | "links.filterDisabled" | "links.filterAll"; icon: string }[] = [
     { key: "active", labelKey: "links.filterActive", icon: "link" },
@@ -175,7 +191,7 @@ export const LinksPage: FC<Props> = ({
     sort,
     filter,
     page: String(currentPage),
-    per_page: String(perPage),
+    per_page: String(rowsPerPage),
   };
   if (searchQuery) preserveParams.search = searchQuery;
 
@@ -206,7 +222,7 @@ export const LinksPage: FC<Props> = ({
 
       {searchQuery && (
         <div class="search-results-bar">
-          <span class="count">{t("links.searchResults", { count: filtered.length })}</span>
+          <span class="count">{t("links.searchResults", { count: total })}</span>
           <a href="/_/admin/links" class="btn btn-ghost btn-sm">
             <span class="icon icon-xs">close</span> {t("links.clearSearch")}
           </a>
@@ -243,18 +259,20 @@ export const LinksPage: FC<Props> = ({
             </a>
           </div>
           <div class="toolbar-count">
-            {t(countKey as any, { count: filtered.length })}
+            {t(countKey as any, { count: total })}
           </div>
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {links.length === 0 ? (
         <div class="empty-state">
           <span class="icon">link_off</span>
           <p>
-            {links.length > 0
+            {emptyReason === "all-disabled"
               ? t("links.allDisabled")
-              : t("links.empty")}
+              : emptyReason === "no-matches"
+                ? t("links.noMatches")
+                : t("links.empty")}
           </p>
         </div>
       ) : (
@@ -271,7 +289,7 @@ export const LinksPage: FC<Props> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {pageLinks.map((link) => {
+                  {links.map((link) => {
                     const mainSlug = link.slugs.find((s) => s.is_primary)
                       || link.slugs.find((s) => s.is_custom)
                       || link.slugs[0];
@@ -333,22 +351,22 @@ export const LinksPage: FC<Props> = ({
             </div>
           </div>
 
-          {(totalPages > 1 || links.length > 25) && (
-            <div class="pagination">
-              <div class="pagination-summary">
-                {t("links.pageSummary", {
-                  from: sorted.length === 0 ? 0 : start + 1,
-                  to: Math.min(start + perPage, sorted.length),
-                  total: sorted.length,
-                })}
-              </div>
+          <div class="pagination">
+            <div class="pagination-summary">
+              {t("links.pageSummary", {
+                from: total === 0 ? 0 : start + 1,
+                to: Math.min(start + rowsPerPage, total),
+                total,
+              })}
+            </div>
+            {pageCount > 1 && (
               <nav class="pagination-pages" aria-label={t("links.pagination")}>
                 <PageStep
                   icon="chevron_left"
                   label={t("linkDetail.prevPage")}
                   href={currentPage > 1 ? pageUrl(currentPage - 1) : undefined}
                 />
-                {paginationItems(currentPage, totalPages).map((item) =>
+                {paginationItems(currentPage, pageCount).map((item) =>
                   item === "ellipsis" ? (
                     <span class="page-ellipsis" aria-hidden="true">…</span>
                   ) : (
@@ -365,29 +383,29 @@ export const LinksPage: FC<Props> = ({
                   icon="chevron_right"
                   label={t("linkDetail.nextPage")}
                   href={
-                    currentPage < totalPages ? pageUrl(currentPage + 1) : undefined
+                    currentPage < pageCount ? pageUrl(currentPage + 1) : undefined
                   }
                 />
               </nav>
-              <div class="per-page">
-                <span class="per-page-label">{t("links.show")}</span>
-                <div class="form-select per-page-select">
-                  <select
-                    class="form-input form-input-sm"
-                    onchange="location.href=this.value"
-                    aria-label={t("links.perPageAria")}
-                  >
-                    {[25, 50, 100].map((n) => (
-                      <option value={perPageUrl(n)} selected={perPage === n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <span class="per-page-label">{t("links.perPage")}</span>
+            )}
+            <div class="per-page">
+              <span class="per-page-label">{t("links.show")}</span>
+              <div class="form-select per-page-select">
+                <select
+                  class="form-input form-input-sm"
+                  onchange="location.href=this.value"
+                  aria-label={t("links.perPageAria")}
+                >
+                  {LINKS_PER_PAGE_OPTIONS.map((n) => (
+                    <option value={perPageUrl(n)} selected={rowsPerPage === n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
               </div>
+              <span class="per-page-label">{t("links.perPage")}</span>
             </div>
-          )}
+          </div>
         </>
       )}
     </>

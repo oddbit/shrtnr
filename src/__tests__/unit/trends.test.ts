@@ -1,7 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
-import { applyMigrations, resetData } from "../setup";
+import { applyMigrations, resetData, spyDb } from "../setup";
 import { LinkRepository, ClickRepository } from "../../db";
+import type { LinkWithSlugs } from "../../types";
 import { computeDelta, formatAvgPerDay } from "../../services/trends";
 
 beforeAll(applyMigrations);
@@ -158,6 +159,47 @@ describe("ClickRepository.attachLinkDeltasBulk", () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     const [out] = await ClickRepository.attachLinkDeltasBulk(env.DB, [link], "24h");
     expect(out.delta_pct).toBeUndefined();
+  });
+
+  it("aggregates only the clicks of the links it was handed", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const served = await LinkRepository.create(env.DB, { url: "https://a.example", slug: "served" });
+    const other = await LinkRepository.create(env.DB, { url: "https://b.example", slug: "other" });
+    const insertClick = (slug: string, t: number) =>
+      env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(slug, t).run();
+    for (let i = 0; i < 4; i++) await insertClick(served.slugs[0].slug, now - i * 60);
+    for (let i = 0; i < 2; i++) await insertClick(served.slugs[0].slug, now - 86401 - i * 60);
+    // Clicks on a link outside the window: the group-by must not read them.
+    for (let i = 0; i < 50; i++) await insertClick(other.slugs[0].slug, now - i * 60);
+
+    const log: string[] = [];
+    const [out] = await ClickRepository.attachLinkDeltasBulk(spyDb(log), [served], "24h", now);
+
+    expect(out.delta_pct).toBe(100);
+    // Clicks grow faster than links, so an unrestricted GROUP BY makes the
+    // delta pills the largest scan on a page that renders 25 rows.
+    expect(log.every((sql) => sql.includes("s.link_id IN (?)"))).toBe(true);
+  });
+
+  it("keeps deltas correct for a set too large to bind, without the id restriction", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const links: LinkWithSlugs[] = [];
+    for (let i = 0; i < 101; i++) {
+      links.push(await LinkRepository.create(env.DB, { url: `https://e${i}.example`, slug: `wide${i}` }));
+    }
+    const insertClick = (slug: string, t: number) =>
+      env.DB.prepare("INSERT INTO clicks (slug, clicked_at) VALUES (?, ?)").bind(slug, t).run();
+    for (let i = 0; i < 6; i++) await insertClick(links[0].slugs[0].slug, now - i * 60);
+    for (let i = 0; i < 3; i++) await insertClick(links[0].slugs[0].slug, now - 86401 - i * 60);
+
+    const log: string[] = [];
+    const out = await ClickRepository.attachLinkDeltasBulk(spyDb(log), links, "24h", now);
+
+    // Above D1's parameter cap the ids cannot be bound, and a caller asking
+    // for every link wants the whole aggregate anyway.
+    expect(log.every((sql) => !sql.includes("s.link_id IN"))).toBe(true);
+    expect(log).toHaveLength(2);
+    expect(out.find((l) => l.id === links[0].id)?.delta_pct).toBe(100);
   });
 
   it("leaves delta undefined when previous window is zero but current has clicks", async () => {
