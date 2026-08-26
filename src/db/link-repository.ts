@@ -141,13 +141,13 @@ export class LinkRepository {
     // the opposite of what an empty search box means.
     if (query.search !== undefined && !query.search.trim()) return { links: [], total: 0, offset: 0 };
 
-    const { where, binds } = linkFilterSql(query);
-    const totalRow = await db
-      .prepare(`SELECT COUNT(*) AS n FROM links l${where}`)
-      .bind(...binds)
-      .first<{ n: number }>();
-    const total = totalRow?.n ?? 0;
+    // Take the total from count() rather than building a second COUNT here:
+    // the toolbar total and the empty-state count then cannot diverge, and a
+    // later change to how rows are totalled lands in one statement.
+    const total = await LinkRepository.count(db, query);
     if (total === 0) return { links: [], total: 0, offset: 0 };
+
+    const { where, binds } = linkFilterSql(query);
 
     // A caller can ask past the end: a bookmarked page number, or rows
     // deleted since the URL was built. Serve the last populated window and

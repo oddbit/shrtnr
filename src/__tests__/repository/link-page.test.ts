@@ -307,4 +307,26 @@ describe("LinkRepository.count", () => {
     expect(await LinkRepository.count(env.DB, { search: "handbook" })).toBe(1);
     expect(await LinkRepository.count(env.DB, { search: "nothing" })).toBe(0);
   });
+
+  it("agrees with page().total under every filter combination", async () => {
+    // page() derives its total from count(), so the empty-state count the
+    // service takes and the total the toolbar renders cannot disagree.
+    await seed(4, "live");
+    const expired = await LinkRepository.create(env.DB, { url: "https://dead.com", slug: "dead-one" });
+    await LinkRepository.update(env.DB, expired.id, { expires_at: NOW - 10 });
+
+    const cases = [
+      {},
+      { status: "active" as const },
+      { status: "disabled" as const },
+      { status: "all" as const },
+      { search: "live" },
+      { search: "dead", status: "disabled" as const },
+      { search: "nomatch" },
+    ];
+    for (const query of cases) {
+      const paged = await LinkRepository.page(env.DB, { ...query, limit: 2, now: NOW });
+      expect(paged.total).toBe(await LinkRepository.count(env.DB, { ...query, now: NOW }));
+    }
+  });
 });
