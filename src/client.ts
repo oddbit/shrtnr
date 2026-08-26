@@ -865,13 +865,13 @@ function renderStatPagerFooter(containerId) {
   var prevDis = st.page <= 1 || st.loading;
   var nextDis = st.page >= pages || st.loading;
   footer.innerHTML =
-    '<button class="stat-pager-btn" aria-label="' + esc(t('linkDetail.prevPage')) + '"' +
+    '<button class="stat-pager-btn" aria-label="' + esc(t('pagination.prev')) + '"' +
       (prevDis ? ' disabled' : '') + ' onclick="statPageGo(\\'' + containerId + '\\',-1)">' +
       '<span class="icon">chevron_left</span></button>' +
     '<span class="stat-pager-label">' +
       esc(t('linkDetail.statPager', { from: fmtNum(from), to: fmtNum(to), total: fmtNum(st.total) })) +
       '</span>' +
-    '<button class="stat-pager-btn" aria-label="' + esc(t('linkDetail.nextPage')) + '"' +
+    '<button class="stat-pager-btn" aria-label="' + esc(t('pagination.next')) + '"' +
       (nextDis ? ' disabled' : '') + ' onclick="statPageGo(\\'' + containerId + '\\',1)">' +
       '<span class="icon">chevron_right</span></button>';
 }

@@ -360,10 +360,10 @@ export const LinksPage: FC<Props> = ({
               })}
             </div>
             {pageCount > 1 && (
-              <nav class="pagination-pages" aria-label={t("links.pagination")}>
+              <nav class="pagination-pages" aria-label={t("pagination.landmark")}>
                 <PageStep
                   icon="chevron_left"
-                  label={t("linkDetail.prevPage")}
+                  label={t("pagination.prev")}
                   href={currentPage > 1 ? pageUrl(currentPage - 1) : undefined}
                 />
                 {paginationItems(currentPage, pageCount).map((item) =>
@@ -381,7 +381,7 @@ export const LinksPage: FC<Props> = ({
                 )}
                 <PageStep
                   icon="chevron_right"
-                  label={t("linkDetail.nextPage")}
+                  label={t("pagination.next")}
                   href={
                     currentPage < pageCount ? pageUrl(currentPage + 1) : undefined
                   }

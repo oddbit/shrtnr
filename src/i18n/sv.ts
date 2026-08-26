@@ -74,7 +74,11 @@ const sv: Translations = {
   "links.show": "Visa",
   "links.searchResults": "{count} matchande länkar",
   "links.clearSearch": "Rensa",
-  "links.pagination": "Paginering",
+
+  // Paginator (shared by the links listing and the link-detail stat pager)
+  "pagination.landmark": "Paginering",
+  "pagination.prev": "Föregående sida",
+  "pagination.next": "Nästa sida",
 
   // Link Detail
   "linkDetail.title": "Länkdetaljer",
@@ -115,8 +119,6 @@ const sv: Translations = {
   "linkDetail.linkModes": "Åtkomstmetod",
   "linkDetail.noData": "Ingen data ännu",
   "linkDetail.statPager": "{from}-{to} av {total}",
-  "linkDetail.prevPage": "Föregående sida",
-  "linkDetail.nextPage": "Nästa sida",
   "linkDetail.clickToCopy": "Klicka för att kopiera",
   "linkDetail.slugs": "Sluggar",
   "linkDetail.clicks": "klick",
