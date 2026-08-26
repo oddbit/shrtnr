@@ -298,5 +298,4 @@ describe("Links listing page", () => {
     expect(html).toContain("per-page-select");
     expect(html).toContain("per_page=25");
   });
-
 });
