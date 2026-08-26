@@ -10,6 +10,14 @@ function req(path: string): Request {
   return new Request(`https://shrtnr.test${path}`);
 }
 
+// Read the back link's href regardless of attribute order.
+function detailBackHref(html: string): string | undefined {
+  const tag = (html.match(/<a\b[^>]*>/g) ?? []).find((t) =>
+    /class="[^"]*\bdetail-back\b[^"]*"/.test(t),
+  );
+  return tag?.match(/href="([^"]*)"/)?.[1]?.replaceAll("&amp;", "&");
+}
+
 beforeAll(applyMigrations);
 beforeEach(resetData);
 
@@ -91,5 +99,53 @@ describe("Link detail page server render", () => {
     const res = await SELF.fetch(req(`/_/admin/links/${link.id}`));
     const html = await res.text();
     expect(html).toMatch(/class="timeline-range-btn active"\s+data-range="30d"/);
+  });
+  it("back link returns to the listing the visitor came from", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://pdf.co/doc", slug: "abc" });
+    const from = encodeURIComponent("sort=popular&page=2&per_page=25&filter=all&range=7d&search=pdf.co");
+
+    const res = await SELF.fetch(req(`/_/admin/links/${link.id}?from=${from}`));
+    expect(res.status).toBe(200);
+    const back = detailBackHref(await res.text());
+
+    expect(back).toBeDefined();
+    expect(back).toContain("search=pdf.co");
+    expect(back).toContain("page=2");
+    expect(back).toContain("sort=popular");
+    expect(back).toContain("filter=all");
+    expect(back).toContain("range=7d");
+  });
+
+  it("back link falls back to the bare listing with no from param", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const res = await SELF.fetch(req(`/_/admin/links/${link.id}`));
+
+    expect(detailBackHref(await res.text())).toBe("/_/admin/links");
+  });
+
+  it("back link drops unknown params from a caller-supplied from value", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const from = encodeURIComponent("search=pdf.co&redirect=https://evil.test&admin=1");
+
+    const res = await SELF.fetch(req(`/_/admin/links/${link.id}?from=${from}`));
+    const back = detailBackHref(await res.text());
+
+    expect(back).toBeDefined();
+    expect(back!.startsWith("/_/admin/links?")).toBe(true);
+    expect(back).toContain("search=pdf.co");
+    expect(back).not.toContain("evil.test");
+    expect(back).not.toContain("admin=1");
+  });
+
+  it("an absolute url in from cannot point the back link off the listing", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    const from = encodeURIComponent("https://evil.test/steal?search=x");
+
+    const res = await SELF.fetch(req(`/_/admin/links/${link.id}?from=${from}`));
+    const back = detailBackHref(await res.text());
+
+    expect(back).toBeDefined();
+    expect(back!.startsWith("/_/admin/links")).toBe(true);
+    expect(back).not.toContain("evil.test");
   });
 });

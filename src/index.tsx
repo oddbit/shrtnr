@@ -90,7 +90,7 @@ import { ShrtnrMCP } from "./mcp/server";
 
 import { Layout } from "./pages/layout";
 import { DashboardPage } from "./pages/dashboard";
-import { LinksPage } from "./pages/links";
+import { LinksPage, linksListingHref } from "./pages/links";
 import { LinkDetailPage } from "./pages/link-detail";
 import { KeysPage } from "./pages/keys";
 import { SettingsPage } from "./pages/settings";
@@ -266,6 +266,7 @@ app.get("/_/admin/links/:id", async (c) => {
   const filters = await resolveClickFilters(c.env, identity);
   const linkResult = await getLink(c.env, id, { filters, range: initialRange });
   if (!linkResult.ok) return notFoundResponse();
+  const backHref = linksListingHref(c.req.query("from"));
   const [analyticsResult, bundlesResult] = await Promise.all([
     getLinkAnalytics(c.env, id, initialRange, filters),
     listBundlesForLink(c.env, id, identity),
@@ -279,7 +280,7 @@ app.get("/_/admin/links/:id", async (c) => {
   const bundles = bundlesResult.ok ? bundlesResult.data : [];
   return c.html(
     <Layout active="links" theme={theme} t={t} lang={lang} translations={translations}>
-      <LinkDetailPage link={linkResult.data} analytics={analytics} bundles={bundles} t={t} lang={lang} identity={identity} initialRange={initialRange} />
+      <LinkDetailPage link={linkResult.data} analytics={analytics} bundles={bundles} t={t} lang={lang} identity={identity} initialRange={initialRange} backHref={backHref} />
     </Layout>,
   );
 });

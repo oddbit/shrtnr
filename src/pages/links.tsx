@@ -19,6 +19,24 @@ function formatDate(ts: number, lang: string): string {
 
 export type LinksFilter = "active" | "disabled" | "all";
 
+// Query params that describe a listing view. A `from` value arrives on the
+// detail page's query string, so the path is fixed below and only these keys
+// survive: a caller cannot aim the back link somewhere else.
+const LISTING_PARAMS = ["sort", "page", "per_page", "filter", "range", "search"] as const;
+
+export function linksListingHref(from?: string): string {
+  if (!from) return "/_/admin/links";
+  const start = from.indexOf("?");
+  const incoming = new URLSearchParams(start === -1 ? from : from.slice(start + 1));
+  const params = new URLSearchParams();
+  for (const key of LISTING_PARAMS) {
+    const value = incoming.get(key);
+    if (value) params.set(key, value);
+  }
+  const query = params.toString();
+  return query ? `/_/admin/links?${query}` : "/_/admin/links";
+}
+
 type Props = {
   links: LinkWithSlugs[];
   sort: string;
@@ -87,6 +105,14 @@ export const LinksPage: FC<Props> = ({
   const pageUrl = (p: number) => buildUrl({ page: String(p) });
   const perPageUrl = (n: number) => buildUrl({ per_page: String(n), page: "1" });
   const filterUrl = (f: LinksFilter) => buildUrl({ filter: f, page: "1" });
+
+  // Carry the listing view into each row's target so the detail page's back
+  // link returns to this search, page, sort, and filter.
+  const listingQuery = buildUrl({}).split("?")[1] ?? "";
+  const detailHref = (id: number) =>
+    listingQuery
+      ? `/_/admin/links/${id}?from=${encodeURIComponent(listingQuery)}`
+      : `/_/admin/links/${id}`;
 
   const countKey = filtered.length !== 1 ? "links.countPlural" : "links.count";
 
@@ -202,7 +228,7 @@ export const LinksPage: FC<Props> = ({
                       || link.slugs.find((s) => s.is_custom)
                       || link.slugs[0];
                     const disabled = isLinkDisabled(link);
-                    const href = `/_/admin/links/${link.id}`;
+                    const href = detailHref(link.id);
                     return (
                       <tr
                         class={disabled ? "disabled" : ""}

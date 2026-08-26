@@ -327,4 +327,22 @@ describe("Links listing page", () => {
     expect(pageTwo).toBeDefined();
     expect(pageTwo).not.toContain("search=");
   });
+  it("row navigation carries the listing context back to the detail page", async () => {
+    await seedSearchFixture();
+
+    const res = await SELF.fetch(req("/_/admin/links?search=pdf.co&sort=popular"));
+    const html = await res.text();
+    // Hono escapes the inline handler's quotes, so decode before matching.
+    const decoded = html.replaceAll("&#39;", "'").replaceAll("&amp;", "&");
+    const rowTarget = decoded.match(
+      /location\.href='(\/_\/admin\/links\/\d+[^']*)'/,
+    )?.[1];
+
+    expect(rowTarget).toBeDefined();
+    const from = new URL(rowTarget!, "https://shrtnr.test").searchParams.get("from");
+    expect(from).toBeTruthy();
+    const listing = new URLSearchParams(from!);
+    expect(listing.get("search")).toBe("pdf.co");
+    expect(listing.get("sort")).toBe("popular");
+  });
 });

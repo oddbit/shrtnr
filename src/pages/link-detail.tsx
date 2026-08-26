@@ -65,9 +65,10 @@ type Props = {
   lang: string;
   identity: string;
   initialRange: TimelineRange;
+  backHref?: string;
 };
 
-export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, lang, identity, initialRange }) => {
+export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, lang, identity, initialRange, backHref = "/_/admin/links" }) => {
   const now = Math.floor(Date.now() / 1000);
   const isExpired = link.expires_at != null && link.expires_at < now;
   const isOwner = identity === link.created_by;
@@ -96,7 +97,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
   return (
     <>
       <div class="detail-header">
-        <a href="/_/admin/links" class="detail-back">
+        <a href={backHref} class="detail-back">
           <span class="icon icon-lg">arrow_back</span>
         </a>
         <div class="page-title">{t("linkDetail.title")}</div>
