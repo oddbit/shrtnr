@@ -116,6 +116,7 @@ export const LinksPage: FC<Props> = ({
       per_page: String(perPage),
       filter,
       range,
+      search: searchQuery,
       ...overrides,
     };
     for (const [k, v] of Object.entries(next)) {

@@ -184,6 +184,108 @@ describe("Links listing page", () => {
     expect(html).toMatch(/1\s*[–-]\s*25\s+of\s+30/);
   });
 
+  it("preserves the active search in pagination URLs", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://pdf.co/document-${i}`,
+        slug: `pdf-${i}`,
+      });
+    }
+
+    const res = await SELF.fetch(req("/_/admin/links?search=pdf.co"));
+    const html = await res.text();
+    const pageTwoHref = html.match(
+      /class="page-btn[^"]*" href="([^"]+)"[^>]*>\s*2\s*<\/a>/,
+    )?.[1];
+    const decodedHref = pageTwoHref?.replaceAll("&amp;", "&");
+
+    expect(pageTwoHref).toBeDefined();
+    expect(decodedHref).toContain("page=2");
+    expect(decodedHref).toContain("search=pdf.co");
+  });
+
+  // Pull hrefs out of anchors carrying `className`, independent of attribute
+  // order, with entity-encoded ampersands decoded for plain substring checks.
+  // `label` matches the anchor's visible text once tags are stripped.
+  function anchorHrefs(html: string, className: string, label?: string): string[] {
+    const found: string[] = [];
+    const anchor = /<a\b([^>]*)>([\s\S]*?)<\/a>/g;
+    let m: RegExpExecArray | null;
+    while ((m = anchor.exec(html)) !== null) {
+      const [, attrs, inner] = m;
+      if (!new RegExp(`class="[^"]*\\b${className}\\b[^"]*"`).test(attrs)) continue;
+      if (label !== undefined && inner.replace(/<[^>]*>/g, "").trim() !== label) continue;
+      const href = attrs.match(/href="([^"]*)"/)?.[1];
+      if (href) found.push(href.replaceAll("&amp;", "&"));
+    }
+    return found;
+  }
+
+  async function seedSearchFixture(): Promise<void> {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://pdf.co/document-${i}`,
+        slug: `pdf-${i}`,
+      });
+    }
+    for (let i = 0; i < 10; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://other.example/note-${i}`,
+        slug: `other-${i}`,
+      });
+    }
+  }
+
+  it("lists only matching links when page two of a search is opened", async () => {
+    await seedSearchFixture();
+
+    const first = await SELF.fetch(req("/_/admin/links?search=pdf.co"));
+    const [pageTwo] = anchorHrefs(await first.text(), "page-btn", "2");
+    expect(pageTwo).toBeDefined();
+
+    const res = await SELF.fetch(req(pageTwo));
+    expect(res.status).toBe(200);
+    const html = await res.text();
+
+    // 30 matches, not the 40 links in the table.
+    expect(html).toMatch(/26\s*[–-]\s*30\s+of\s+30/);
+    expect(html).not.toContain("other.example");
+    // The search box stays populated so the query is still editable.
+    expect(html).toMatch(/id="quick-url"[^>]*value="pdf\.co"/);
+  });
+
+  it("carries the active search through sort, filter, and page-size URLs", async () => {
+    await seedSearchFixture();
+
+    const res = await SELF.fetch(req("/_/admin/links?search=pdf.co"));
+    const html = await res.text();
+    const perPageHrefs = [...html.matchAll(/<option value="([^"]*)"/g)].map((m) =>
+      m[1].replaceAll("&amp;", "&"),
+    );
+    const controls = [
+      ...anchorHrefs(html, "sort-btn"),
+      ...anchorHrefs(html, "filter-chip"),
+      ...perPageHrefs,
+    ];
+
+    expect(controls).toHaveLength(8);
+    // Each control resets to page one but must keep the query.
+    for (const href of controls) {
+      expect(href).toContain("search=pdf.co");
+      expect(href).toContain("page=1");
+    }
+  });
+
+  it("drops the search from pagination URLs once the query is cleared", async () => {
+    await seedSearchFixture();
+
+    const res = await SELF.fetch(req("/_/admin/links"));
+    const [pageTwo] = anchorHrefs(await res.text(), "page-btn", "2");
+
+    expect(pageTwo).toBeDefined();
+    expect(pageTwo).not.toContain("search=");
+  });
+
   it("clamps a negative page param instead of producing an empty, out-of-range slice", async () => {
     for (let i = 0; i < 30; i++) {
       await LinkRepository.create(env.DB, {
