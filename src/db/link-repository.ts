@@ -57,6 +57,8 @@ export interface LinkPageQuery {
   /** Substring matched against label, url, any slug, and (with `searchOwner`) created_by. */
   search?: string;
   searchOwner?: boolean;
+  /** Exact `created_by` match. Unrelated to `searchOwner`, which widens a substring search. */
+  owner?: string;
   /** Reference time for the `status` comparison. Defaults to now. */
   now?: number;
 }
@@ -82,9 +84,16 @@ function likePattern(query: string): string {
   return `%${escaped}%`;
 }
 
-function linkFilterSql(query: Pick<LinkPageQuery, "status" | "search" | "searchOwner" | "now">): LinkFilterSql {
+type LinkFilterQuery = Pick<LinkPageQuery, "status" | "search" | "searchOwner" | "owner" | "now">;
+
+function linkFilterSql(query: LinkFilterQuery): LinkFilterSql {
   const conds: string[] = [];
   const binds: (string | number)[] = [];
+
+  if (query.owner !== undefined) {
+    conds.push("l.created_by = ?");
+    binds.push(query.owner);
+  }
 
   const now = query.now ?? Math.floor(Date.now() / 1000);
   if (query.status === "active") {
@@ -115,12 +124,50 @@ function linkFilterSql(query: Pick<LinkPageQuery, "status" | "search" | "searchO
 }
 
 export class LinkRepository {
-  static async list(db: D1Database, opts?: LinkRepoOptions): Promise<LinkWithSlugs[]> {
-    const links = await db.prepare("SELECT * FROM links ORDER BY created_at DESC").all<Link>();
-    const slugs = await db.prepare(`SELECT ${slugSelect(opts)} FROM slugs s ORDER BY is_custom ASC, created_at ASC`).all<Slug>();
+  /**
+   * Every link matching `query`, newest first, with slugs attached. Two
+   * statements whatever the match count: the rows, then the slugs of those
+   * rows bucketed by `link_id` so assembly stays O(links + slugs).
+   *
+   * The unbounded sibling of `page()`, for the API and MCP callers that hand
+   * back a whole set. Both derive their predicate from `linkFilterSql`, so
+   * what "search" or "owner" selects has one definition: adding a searchable
+   * column or changing case handling reaches every surface at once, and the
+   * two cannot disagree on tie ordering.
+   *
+   * The slug query restates the predicate as a subquery rather than binding
+   * the ids it got back. A match set has no ceiling and D1 caps bound
+   * parameters per statement, so ids cannot be bound here the way `page()`
+   * binds its window. The subquery carries no ORDER BY and no LIMIT, so it
+   * costs a second pass over the predicate and no second sort.
+   */
+  private static async rows(
+    db: D1Database,
+    query: LinkFilterQuery,
+    opts?: LinkRepoOptions,
+  ): Promise<LinkWithSlugs[]> {
+    const { where, binds } = linkFilterSql(query);
+    const links = await db
+      .prepare(`SELECT l.* FROM links l${where} ORDER BY l.created_at DESC, l.id DESC`)
+      .bind(...binds)
+      .all<Link>();
+    const rows = links.results ?? [];
+    if (rows.length === 0) return [];
+
+    // An empty predicate selects every link, so the subquery would filter
+    // nothing and cost a scan to say so.
+    const scope = where ? ` WHERE s.link_id IN (SELECT l.id FROM links l${where})` : "";
+    const slugs = await db
+      .prepare(`SELECT ${slugSelect(opts)} FROM slugs s${scope} ORDER BY is_custom ASC, created_at ASC`)
+      .bind(...(where ? binds : []))
+      .all<Slug>();
 
     const byLink = bucketByLink(slugs.results ?? []);
-    return (links.results ?? []).map((link) => assembleLink(link, byLink.get(link.id) ?? []));
+    return rows.map((link) => assembleLink(link, byLink.get(link.id) ?? []));
+  }
+
+  static async list(db: D1Database, opts?: LinkRepoOptions): Promise<LinkWithSlugs[]> {
+    return LinkRepository.rows(db, {}, opts);
   }
 
   /**
@@ -194,10 +241,7 @@ export class LinkRepository {
    * Rows matching the filters, without fetching any of them. Callers use it to
    * tell an empty catalog from one whose links are all filtered out.
    */
-  static async count(
-    db: D1Database,
-    query?: Pick<LinkPageQuery, "status" | "search" | "searchOwner" | "now">,
-  ): Promise<number> {
+  static async count(db: D1Database, query?: LinkFilterQuery): Promise<number> {
     if (query?.search !== undefined && !query.search.trim()) return 0;
     const { where, binds } = linkFilterSql(query ?? {});
     const row = await db.prepare(`SELECT COUNT(*) AS n FROM links l${where}`).bind(...binds).first<{ n: number }>();
@@ -375,51 +419,25 @@ export class LinkRepository {
     return ((slugRows.results ?? []) as { slug: string }[]).map((r) => r.slug);
   }
 
+  /**
+   * Links whose label, url, any slug, or (with `includeOwner`) `created_by`
+   * contains `query`. Two statements, not one per match: fetching each match
+   * through `getById` cost two statements per row, so a broad search over a
+   * large catalog exhausted D1's per-invocation subrequest budget.
+   */
   static async search(
     db: D1Database,
     query: string,
     opts?: LinkRepoOptions & { includeOwner?: boolean },
   ): Promise<LinkWithSlugs[]> {
+    // A query that trims to nothing matches every row under LIKE, which is the
+    // opposite of what an empty search box means.
     if (!query.trim()) return [];
-
-    const pattern = likePattern(query);
-
-    const where = opts?.includeOwner
-      ? "lower(l.label) LIKE ? ESCAPE '\\' OR lower(s.slug) LIKE ? ESCAPE '\\' OR lower(l.url) LIKE ? ESCAPE '\\' OR lower(l.created_by) LIKE ? ESCAPE '\\'"
-      : "lower(l.label) LIKE ? ESCAPE '\\' OR lower(s.slug) LIKE ? ESCAPE '\\' OR lower(l.url) LIKE ? ESCAPE '\\'";
-
-    const binds = opts?.includeOwner
-      ? [pattern, pattern, pattern, pattern]
-      : [pattern, pattern, pattern];
-
-    const matched = await db
-      .prepare(
-        `SELECT DISTINCT l.id FROM links l
-         LEFT JOIN slugs s ON s.link_id = l.id
-         WHERE ${where}
-         ORDER BY l.created_at DESC`,
-      )
-      .bind(...binds)
-      .all<{ id: number }>();
-
-    const ids = matched.results ?? [];
-    if (ids.length === 0) return [];
-
-    const results = await Promise.all(ids.map(({ id }) => LinkRepository.getById(db, id, opts)));
-    return results.filter((l): l is LinkWithSlugs => l !== null);
+    return LinkRepository.rows(db, { search: query, searchOwner: opts?.includeOwner }, opts);
   }
 
   static async findByOwner(db: D1Database, owner: string, opts?: LinkRepoOptions): Promise<LinkWithSlugs[]> {
-    const rows = await db
-      .prepare("SELECT id FROM links WHERE created_by = ? ORDER BY created_at DESC")
-      .bind(owner)
-      .all<{ id: number }>();
-
-    const ids = rows.results ?? [];
-    if (ids.length === 0) return [];
-
-    const results = await Promise.all(ids.map(({ id }) => LinkRepository.getById(db, id, opts)));
-    return results.filter((l): l is LinkWithSlugs => l !== null);
+    return LinkRepository.rows(db, { owner }, opts);
   }
 
   /**

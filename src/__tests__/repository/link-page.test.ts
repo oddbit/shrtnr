@@ -3,7 +3,7 @@
 
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
-import { applyMigrations, resetData } from "../setup";
+import { applyMigrations, resetData, spyDb } from "../setup";
 import { LinkRepository, SlugRepository } from "../../db";
 
 beforeAll(applyMigrations);
@@ -21,33 +21,6 @@ async function click(slug: string, at: number): Promise<void> {
   await env.DB.prepare(
     "INSERT INTO clicks (slug, clicked_at, link_mode, is_bot, is_self_referrer) VALUES (?, ?, 'link', 0, 0)",
   ).bind(slug, at).run();
-}
-
-/**
- * Records the SQL of every statement a call issues, so a test can pin both the
- * cost of a page render and the shape of what it sends. Traps exec() alongside
- * prepare(): batch() composes already-prepared statements and so is recorded
- * through prepare, but exec() takes raw SQL and would slip past entirely.
- */
-function spyDb(log: string[]): D1Database {
-  return new Proxy(env.DB, {
-    get(target, prop, receiver) {
-      if (prop === "prepare") {
-        return (sql: string) => {
-          log.push(sql);
-          return (target as unknown as D1Database).prepare(sql);
-        };
-      }
-      if (prop === "exec") {
-        return (sql: string) => {
-          log.push(sql);
-          return (target as unknown as D1Database).exec(sql);
-        };
-      }
-      const value = Reflect.get(target, prop, receiver);
-      return typeof value === "function" ? value.bind(target) : value;
-    },
-  }) as unknown as D1Database;
 }
 
 describe("LinkRepository.page windowing", () => {
