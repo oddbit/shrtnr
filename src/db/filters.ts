@@ -48,3 +48,19 @@ export function slugClickCountSql(opts?: SlugClickCountOptions): string {
   }
   return frag + ") AS click_count";
 }
+
+/**
+ * Scalar subquery totalling a link's clicks across all its slugs, under the
+ * same bot/self-referrer filters and `sinceTs` window as
+ * `slugClickCountSql`. Use it to order a link query by popularity in SQL so
+ * the ranking matches the `total_clicks` the caller will render. Pass the
+ * alias the outer query gives the links table.
+ */
+export function linkClickCountSql(opts?: SlugClickCountOptions, linkAlias = "l"): string {
+  let frag = `(SELECT COUNT(*) FROM clicks c JOIN slugs cs ON c.slug = cs.slug WHERE cs.link_id = ${linkAlias}.id`;
+  frag += clickFilterSql(opts?.filters, "c");
+  if (opts?.sinceTs !== undefined) {
+    frag += ` AND c.clicked_at >= ${Math.floor(opts.sinceTs)}`;
+  }
+  return frag + ")";
+}

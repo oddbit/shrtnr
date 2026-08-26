@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Link, Slug, LinkWithSlugs } from "../types";
-import { SlugClickCountOptions, slugClickCountSql } from "./filters";
+import { SlugClickCountOptions, slugClickCountSql, linkClickCountSql } from "./filters";
 
 /**
  * Options that scope per-slug click counts. Repository methods that return
@@ -27,15 +27,177 @@ function assembleLink(link: Link, slugs: Slug[]): LinkWithSlugs {
   };
 }
 
+/**
+ * Buckets slug rows by `link_id` so assembly is one Map lookup per link
+ * instead of a full rescan of the slug set, which would make assembly
+ * O(links x slugs).
+ */
+function bucketByLink(slugs: Slug[]): Map<number, Slug[]> {
+  const byLink = new Map<number, Slug[]>();
+  for (const s of slugs) {
+    const arr = byLink.get(s.link_id);
+    if (arr) arr.push(s);
+    else byLink.set(s.link_id, [s]);
+  }
+  return byLink;
+}
+
+/** Sort orders the paginated listing supports. */
+export type LinkSort = "recent" | "popular";
+
+/** Lifecycle slice the paginated listing supports, decided by `expires_at`. */
+export type LinkStatus = "active" | "disabled" | "all";
+
+export interface LinkPageQuery {
+  /** Rows per page. A non-positive value yields an empty page, never the whole table. */
+  limit: number;
+  offset?: number;
+  sort?: LinkSort;
+  status?: LinkStatus;
+  /** Substring matched against label, url, any slug, and (with `searchOwner`) created_by. */
+  search?: string;
+  searchOwner?: boolean;
+  /** Reference time for the `status` comparison. Defaults to now. */
+  now?: number;
+}
+
+export interface LinkPage {
+  links: LinkWithSlugs[];
+  /** Rows matching the filters across the whole catalog, not just this window. */
+  total: number;
+  /** Offset actually served, clamped when the caller asked past the last row. */
+  offset: number;
+}
+
+/** Predicate shared by the paginated listing and its counts. */
+type LinkFilterSql = { where: string; binds: (string | number)[] };
+
+function likePattern(query: string): string {
+  // Escape SQLite LIKE metacharacters so a user query of "_" or "50%" is
+  // treated as a literal string, not a wildcard pattern.
+  const escaped = query.trim().toLowerCase()
+    .replace(/\\/g, "\\\\")
+    .replace(/%/g, "\\%")
+    .replace(/_/g, "\\_");
+  return `%${escaped}%`;
+}
+
+function linkFilterSql(query: Pick<LinkPageQuery, "status" | "search" | "searchOwner" | "now">): LinkFilterSql {
+  const conds: string[] = [];
+  const binds: (string | number)[] = [];
+
+  const now = query.now ?? Math.floor(Date.now() / 1000);
+  if (query.status === "active") {
+    conds.push("(l.expires_at IS NULL OR l.expires_at >= ?)");
+    binds.push(now);
+  } else if (query.status === "disabled") {
+    conds.push("(l.expires_at IS NOT NULL AND l.expires_at < ?)");
+    binds.push(now);
+  }
+
+  const term = query.search?.trim();
+  if (term) {
+    const pattern = likePattern(term);
+    const fields = query.searchOwner
+      ? ["lower(l.label)", "lower(l.url)", "lower(l.created_by)"]
+      : ["lower(l.label)", "lower(l.url)"];
+    const ors = fields.map((f) => `${f} LIKE ? ESCAPE '\\'`);
+    binds.push(...fields.map(() => pattern));
+    // EXISTS rather than a join: a link with several matching slugs must count
+    // once, and a joined query would need DISTINCT to say the same thing while
+    // breaking the COUNT(*) that derives the page count.
+    ors.push("EXISTS (SELECT 1 FROM slugs ms WHERE ms.link_id = l.id AND lower(ms.slug) LIKE ? ESCAPE '\\')");
+    binds.push(pattern);
+    conds.push(`(${ors.join(" OR ")})`);
+  }
+
+  return { where: conds.length ? ` WHERE ${conds.join(" AND ")}` : "", binds };
+}
+
 export class LinkRepository {
   static async list(db: D1Database, opts?: LinkRepoOptions): Promise<LinkWithSlugs[]> {
     const links = await db.prepare("SELECT * FROM links ORDER BY created_at DESC").all<Link>();
     const slugs = await db.prepare(`SELECT ${slugSelect(opts)} FROM slugs s ORDER BY is_custom ASC, created_at ASC`).all<Slug>();
 
-    return (links.results ?? []).map((link) => {
-      const linkSlugs = (slugs.results ?? []).filter((s) => s.link_id === link.id);
-      return assembleLink(link, linkSlugs);
-    });
+    const byLink = bucketByLink(slugs.results ?? []);
+    return (links.results ?? []).map((link) => assembleLink(link, byLink.get(link.id) ?? []));
+  }
+
+  /**
+   * One page of links with their slugs, plus the total the page was cut from.
+   *
+   * Three queries whatever the catalog size: a `COUNT(*)` for the total, the
+   * windowed link rows, and the slugs of only those rows. Filtering, sorting
+   * and the window all live in SQL, so a caller rendering 25 rows never loads
+   * the catalog to slice it in JS. Use this for the listings page; `list()`
+   * stays for the API and MCP callers that hand back everything.
+   */
+  static async page(db: D1Database, query: LinkPageQuery, opts?: LinkRepoOptions): Promise<LinkPage> {
+    // SQLite treats a negative LIMIT as "no limit", so a non-positive value
+    // must short-circuit rather than reach SQL and return the whole table.
+    const limit = Math.floor(query.limit);
+    if (limit <= 0) return { links: [], total: 0, offset: 0 };
+    // A search that trims to nothing matches everything under LIKE, which is
+    // the opposite of what an empty search box means.
+    if (query.search !== undefined && !query.search.trim()) return { links: [], total: 0, offset: 0 };
+
+    const { where, binds } = linkFilterSql(query);
+    const totalRow = await db
+      .prepare(`SELECT COUNT(*) AS n FROM links l${where}`)
+      .bind(...binds)
+      .first<{ n: number }>();
+    const total = totalRow?.n ?? 0;
+    if (total === 0) return { links: [], total: 0, offset: 0 };
+
+    // A caller can ask past the end: a bookmarked page number, or rows
+    // deleted since the URL was built. Serve the last populated window and
+    // report the offset used so the caller can label the page it actually got.
+    const requested = Math.max(0, Math.floor(query.offset ?? 0));
+    const offset = requested >= total ? Math.floor((total - 1) / limit) * limit : requested;
+
+    // created_at is second-granularity, so tie-break on id to keep windows
+    // disjoint when several links share a timestamp.
+    const order = query.sort === "popular"
+      ? `${linkClickCountSql(opts)} DESC, l.created_at DESC, l.id DESC`
+      : "l.created_at DESC, l.id DESC";
+    const windowSql = `SELECT l.id FROM links l${where} ORDER BY ${order} LIMIT ? OFFSET ?`;
+
+    const [links, slugs] = await Promise.all([
+      db
+        .prepare(`SELECT l.* FROM links l${where} ORDER BY ${order} LIMIT ? OFFSET ?`)
+        .bind(...binds, limit, offset)
+        .all<Link>(),
+      // The window repeats as a subquery instead of binding the ids it
+      // returned: D1 caps bound parameters per statement, and a 100-row page
+      // would sit at that ceiling.
+      db
+        .prepare(
+          `SELECT ${slugSelect(opts)} FROM slugs s WHERE s.link_id IN (${windowSql}) ORDER BY is_custom ASC, created_at ASC`,
+        )
+        .bind(...binds, limit, offset)
+        .all<Slug>(),
+    ]);
+
+    const byLink = bucketByLink(slugs.results ?? []);
+    return {
+      links: (links.results ?? []).map((link) => assembleLink(link, byLink.get(link.id) ?? [])),
+      total,
+      offset,
+    };
+  }
+
+  /**
+   * Rows matching the filters, without fetching any of them. Callers use it to
+   * tell an empty catalog from one whose links are all filtered out.
+   */
+  static async count(
+    db: D1Database,
+    query?: Pick<LinkPageQuery, "status" | "search" | "searchOwner" | "now">,
+  ): Promise<number> {
+    if (query?.search !== undefined && !query.search.trim()) return 0;
+    const { where, binds } = linkFilterSql(query ?? {});
+    const row = await db.prepare(`SELECT COUNT(*) AS n FROM links l${where}`).bind(...binds).first<{ n: number }>();
+    return row?.n ?? 0;
   }
 
   /**
@@ -68,13 +230,7 @@ export class LinkRepository {
       .bind(...ids)
       .all<Slug>();
 
-    const byLink = new Map<number, Slug[]>();
-    for (const s of slugs.results ?? []) {
-      const arr = byLink.get(s.link_id);
-      if (arr) arr.push(s);
-      else byLink.set(s.link_id, [s]);
-    }
-
+    const byLink = bucketByLink(slugs.results ?? []);
     return rows.map((link) => assembleLink(link, byLink.get(link.id) ?? []));
   }
 
@@ -222,13 +378,7 @@ export class LinkRepository {
   ): Promise<LinkWithSlugs[]> {
     if (!query.trim()) return [];
 
-    // Escape SQLite LIKE metacharacters so a user query of "_" or "50%" is
-    // treated as a literal string, not a wildcard pattern.
-    const escaped = query.trim().toLowerCase()
-      .replace(/\\/g, "\\\\")
-      .replace(/%/g, "\\%")
-      .replace(/_/g, "\\_");
-    const pattern = `%${escaped}%`;
+    const pattern = likePattern(query);
 
     const where = opts?.includeOwner
       ? "lower(l.label) LIKE ? ESCAPE '\\' OR lower(s.slug) LIKE ? ESCAPE '\\' OR lower(l.url) LIKE ? ESCAPE '\\' OR lower(l.created_by) LIKE ? ESCAPE '\\'"
