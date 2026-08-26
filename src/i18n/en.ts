@@ -64,6 +64,7 @@ const en = {
   "links.allDisabled":
     'All links are disabled. Pick the "Disabled" filter to see them.',
   "links.noMatches": "No links match the current filter.",
+  "links.noSearchMatches": 'No links match "{query}".',
   "links.empty": "No links yet. Use the + New Link button above to get started.",
   "links.disabled": "Disabled",
   "links.clicks": "clicks",

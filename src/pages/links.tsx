@@ -121,6 +121,26 @@ export function paginationItems(
   ];
 }
 
+/**
+ * Copy for an empty result set.
+ *
+ * `emptyReason` says why the served window came back with nothing, but its
+ * `no-matches` value covers two different claims: a filter chip that selected
+ * none of the catalog, or a search that matched none of it. The service cannot
+ * tell those apart in copy, so the query splits the case here. Naming the query
+ * back to the user beats blaming a filter they never touched.
+ */
+function emptyStateCopy(
+  t: TranslateFn,
+  emptyReason: LinksEmptyReason | undefined,
+  searchQuery: string,
+): string {
+  if (emptyReason === "all-disabled") return t("links.allDisabled");
+  if (emptyReason !== "no-matches") return t("links.empty");
+  const query = searchQuery.trim();
+  return query ? t("links.noSearchMatches", { query }) : t("links.noMatches");
+}
+
 type Props = {
   /**
    * Rows for the current page only: the query already applied the filter, the
@@ -273,13 +293,7 @@ export const LinksPage: FC<Props> = ({
       {links.length === 0 ? (
         <div class="empty-state">
           <span class="icon">link_off</span>
-          <p>
-            {emptyReason === "all-disabled"
-              ? t("links.allDisabled")
-              : emptyReason === "no-matches"
-                ? t("links.noMatches")
-                : t("links.empty")}
-          </p>
+          <p>{emptyStateCopy(t, emptyReason, searchQuery || "")}</p>
         </div>
       ) : (
         <>

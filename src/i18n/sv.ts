@@ -66,6 +66,7 @@ const sv: Translations = {
   "links.allDisabled":
     'Alla länkar är avaktiverade. Välj filtret "Avaktiverade" för att se dem.',
   "links.noMatches": "Inga länkar matchar det valda filtret.",
+  "links.noSearchMatches": 'Inga länkar matchar "{query}".',
   "links.empty":
     "Inga länkar ännu. Använd knappen + Ny länk ovan för att komma igång.",
   "links.disabled": "Inaktiverad",

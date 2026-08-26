@@ -648,6 +648,47 @@ describe("Links listing page windowing", () => {
     expect(html).not.toContain("Show disabled");
   });
 
+  it("names the query in the empty state when a search matched nothing", async () => {
+    for (const slug of ["one", "two", "three"]) {
+      await LinkRepository.create(env.DB, { url: `https://example.com/${slug}`, slug });
+    }
+    const html = await (
+      await SELF.fetch(req("/_/admin/links?search=zzz", { headers: { Cookie: "lang=en" } }))
+    ).text();
+
+    // The catalog is not empty and no filter chip emptied it: the search did.
+    expect(emptyState(html)).toContain("zzz");
+    expect(emptyState(html)).not.toContain("current filter");
+    expect(emptyState(html)).not.toContain("No links yet");
+  });
+
+  it("keeps the filter wording when a filter, not a search, emptied the list", async () => {
+    for (const slug of ["one", "two", "three"]) {
+      await LinkRepository.create(env.DB, { url: `https://example.com/${slug}`, slug });
+    }
+    const html = await (
+      await SELF.fetch(req("/_/admin/links?filter=disabled", { headers: { Cookie: "lang=en" } }))
+    ).text();
+
+    expect(emptyState(html)).toContain("current filter");
+  });
+
+  it("escapes markup in a search query before naming it in the empty state", async () => {
+    for (const slug of ["one", "two", "three"]) {
+      await LinkRepository.create(env.DB, { url: `https://example.com/${slug}`, slug });
+    }
+    const html = await (
+      await SELF.fetch(
+        req(`/_/admin/links?search=${encodeURIComponent("<b>zzz</b>")}`, {
+          headers: { Cookie: "lang=en" },
+        }),
+      )
+    ).text();
+
+    expect(emptyState(html)).toContain("&lt;b&gt;zzz&lt;/b&gt;");
+    expect(emptyState(html)).not.toContain("<b>zzz</b>");
+  });
+
   it("does not print a row count above an empty state", async () => {
     for (const slug of ["one", "two", "three"]) {
       await LinkRepository.create(env.DB, { url: `https://example.com/${slug}`, slug });

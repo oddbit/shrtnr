@@ -66,6 +66,7 @@ const id: Translations = {
   "links.allDisabled":
     'Semua tautan nonaktif. Pilih filter "Nonaktif" untuk melihatnya.',
   "links.noMatches": "Tidak ada tautan yang cocok dengan filter saat ini.",
+  "links.noSearchMatches": 'Tidak ada tautan yang cocok dengan "{query}".',
   "links.empty":
     "Belum ada tautan. Gunakan tombol + Tautan Baru di atas untuk memulai.",
   "links.disabled": "Nonaktif",
