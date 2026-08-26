@@ -212,7 +212,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "Create link",
         description:
-          "Shorten a URL and create a short link. If the destination URL already exists, the existing link is returned with `duplicate: true`, so there is no need to search for the URL first. Optional custom slugs are attached after creation; slugs already in use are reported in `slug_rejections` rather than failing the call.",
+          "Shorten a URL and create a short link. Idempotent, like an UPSERT: a repeat call with the same destination returns the existing link with `duplicate: true` instead of failing. It normalizes the trailing slash first, so `https://example.com/a/` and `https://example.com/a` resolve to one link. There is no need to look up or search for a URL before calling this. Optional custom slugs are attached after creation; slugs already in use are reported in `slug_rejections` rather than failing the call.",
         inputSchema: {
           url: z.string().url().describe("Destination URL to shorten"),
           label: z.string().optional().describe("Human-readable label for the link"),
@@ -225,7 +225,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
             ),
           expires_at: z.number().int().nonnegative().optional().describe("Unix timestamp when the link expires"),
         },
-        annotations: { title: "Create link", ...WRITE_NEW },
+        annotations: { title: "Create link", ...WRITE_IDEMPOTENT },
       },
       async ({ custom_slug, ...opts }) => {
         const result = await createLink(this.env, { ...opts, created_via: "mcp", created_by: this.identity });
