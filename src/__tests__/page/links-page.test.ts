@@ -10,6 +10,15 @@ function req(path: string, init?: RequestInit): Request {
   return new Request(`https://shrtnr.test${path}`, init);
 }
 
+/**
+ * The rendered empty state, or "" when the page has rows. The layout embeds
+ * every translation string in the admin client script, so a page-wide match
+ * on empty copy hits that blob instead of the markup.
+ */
+function emptyState(html: string): string {
+  return html.match(/<div class="empty-state">.*?<\/div>/s)?.[0] ?? "";
+}
+
 beforeAll(applyMigrations);
 beforeEach(resetData);
 
@@ -315,6 +324,14 @@ describe("Links listing page", () => {
     expect(html).not.toMatch(/class="page-btn[^"]*"[^>]*>6</);
   });
 
+  it("clamps an unparseable page param onto the first page", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, { url: `https://example${i}.com`, slug: `s${i}` });
+    }
+    const html = await (await SELF.fetch(req("/_/admin/links?page=abc"))).text();
+    expect(html).toMatch(/1\s*[–-]\s*25\s+of\s+30/);
+  });
+
   it("clamps a negative per_page param instead of an inverted slice range", async () => {
     for (let i = 0; i < 30; i++) {
       await LinkRepository.create(env.DB, {
@@ -399,5 +416,126 @@ describe("Links listing page", () => {
     // Every in-page link re-emits per_page, so the selector is the only route back to 25.
     expect(html).toContain("per-page-select");
     expect(html).toContain("per_page=25");
+  });
+});
+
+describe("Links listing page windowing", () => {
+  async function seed(count: number): Promise<void> {
+    for (let i = 0; i < count; i++) {
+      await LinkRepository.create(env.DB, { url: `https://example${i}.com`, slug: `s${i}` });
+    }
+  }
+
+  function rowCount(html: string): number {
+    return [...html.matchAll(/class="col-short-chip-slug">/g)].length;
+  }
+
+  it("renders only the requested window of rows, not the whole catalog", async () => {
+    await seed(60);
+    const res = await SELF.fetch(req("/_/admin/links?per_page=25"));
+    const html = await res.text();
+    expect(rowCount(html)).toBe(25);
+    expect(html).toMatch(/1\s*[–-]\s*25\s+of\s+60/);
+  });
+
+  it("serves the next window on page 2 with no overlap", async () => {
+    await seed(30);
+    const first = await (await SELF.fetch(req("/_/admin/links?per_page=25&page=1"))).text();
+    const second = await (await SELF.fetch(req("/_/admin/links?per_page=25&page=2"))).text();
+    expect(rowCount(second)).toBe(5);
+    expect(second).toMatch(/26\s*[–-]\s*30\s+of\s+30/);
+    const slugsOn = (html: string) =>
+      [...html.matchAll(/class="col-short-chip-slug">([^<]+)</g)].map((m) => m[1]);
+    const firstSlugs = new Set(slugsOn(first));
+    expect(slugsOn(second).some((s) => firstSlugs.has(s))).toBe(false);
+  });
+
+  it("caps per_page so a crafted query cannot pull the catalog into one page", async () => {
+    await seed(120);
+    const res = await SELF.fetch(req("/_/admin/links?per_page=100000"));
+    const html = await res.text();
+    expect(rowCount(html)).toBe(100);
+    expect(html).toMatch(/1\s*[–-]\s*100\s+of\s+120/);
+  });
+
+  it("sorts popular across the whole catalog, not within the rendered page", async () => {
+    await seed(30);
+    // s0 is the oldest link, so recent order puts it on the last page. Its
+    // click lead must still float it to the top of page 1 under popular sort.
+    const now = Math.floor(Date.now() / 1000);
+    const insert = env.DB.prepare(
+      "INSERT INTO clicks (slug, clicked_at, link_mode, is_bot, is_self_referrer) VALUES (?, ?, 'link', 0, 0)",
+    );
+    await insert.bind("s0", now - 60).run();
+    await insert.bind("s0", now - 61).run();
+
+    const html = await (await SELF.fetch(req("/_/admin/links?sort=popular&per_page=25"))).text();
+    const slugs = [...html.matchAll(/class="col-short-chip-slug">([^<]+)</g)].map((m) => m[1]);
+    expect(slugs[0]).toBe("s0");
+  });
+
+  it("counts and pages the filtered set for the disabled filter", async () => {
+    for (let i = 0; i < 6; i++) {
+      const link = await LinkRepository.create(env.DB, { url: `https://e${i}.com`, slug: `d${i}` });
+      if (i % 2 === 0) {
+        await LinkRepository.update(env.DB, link.id, { expires_at: Math.floor(Date.now() / 1000) - 10 });
+      }
+    }
+    const html = await (await SELF.fetch(req("/_/admin/links?filter=disabled&per_page=2"))).text();
+    expect(html).toMatch(/1\s*[–-]\s*2\s+of\s+3/);
+    expect(rowCount(html)).toBe(2);
+  });
+
+  it("windows search results and counts every match", async () => {
+    await seed(30);
+    const html = await (await SELF.fetch(req("/_/admin/links?search=example&per_page=10&page=2"))).text();
+    expect(html).toContain("30 matching links");
+    expect(rowCount(html)).toBe(10);
+    expect(html).toMatch(/11\s*[–-]\s*20\s+of\s+30/);
+  });
+
+  it("keeps the all-disabled empty state when the active filter hides everything", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await LinkRepository.update(env.DB, link.id, { expires_at: Math.floor(Date.now() / 1000) - 10 });
+    const html = await (await SELF.fetch(req("/_/admin/links", { headers: { Cookie: "lang=en" } }))).text();
+    expect(html).toContain("All links are disabled");
+  });
+
+  it("shows the first-run empty state when there are no links at all", async () => {
+    const html = await (await SELF.fetch(req("/_/admin/links", { headers: { Cookie: "lang=en" } }))).text();
+    expect(html).toContain("No links yet");
+  });
+
+  it("does not claim every link is disabled when the disabled filter matched nothing", async () => {
+    for (const slug of ["one", "two", "three"]) {
+      await LinkRepository.create(env.DB, { url: `https://example.com/${slug}`, slug });
+    }
+    const html = await (
+      await SELF.fetch(req("/_/admin/links?filter=disabled", { headers: { Cookie: "lang=en" } }))
+    ).text();
+
+    expect(emptyState(html)).not.toContain("All links are disabled");
+    expect(emptyState(html)).toContain("No links match");
+  });
+
+  it("points the all-disabled empty state at the filter that shows them", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await LinkRepository.update(env.DB, link.id, { expires_at: Math.floor(Date.now() / 1000) - 10 });
+    const html = await (await SELF.fetch(req("/_/admin/links", { headers: { Cookie: "lang=en" } }))).text();
+
+    // The filter chips replaced the "Show disabled" toggle the copy named.
+    expect(html).not.toContain("Show disabled");
+  });
+
+  it("does not print a row count above an empty state", async () => {
+    for (const slug of ["one", "two", "three"]) {
+      await LinkRepository.create(env.DB, { url: `https://example.com/${slug}`, slug });
+    }
+    const html = await (
+      await SELF.fetch(req("/_/admin/links?search=xyzzy-nothing", { headers: { Cookie: "lang=en" } }))
+    ).text();
+
+    expect(emptyState(html)).toContain("No links match");
+    expect(emptyState(html)).not.toContain("No links yet");
   });
 });

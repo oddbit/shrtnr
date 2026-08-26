@@ -47,7 +47,6 @@ const en = {
   "links.countPlural": "{count} links",
   "links.recent": "Recent",
   "links.popular": "Popular",
-  "links.showDisabled": "Show disabled",
   "links.filterActive": "Active",
   "links.filterDisabled": "Disabled",
   "links.filterAll": "All",
@@ -63,7 +62,8 @@ const en = {
   "links.colTrend": "Trend",
   "links.newLink": "New Link",
   "links.allDisabled":
-    'All links are disabled. Toggle "Show disabled" to see them.',
+    'All links are disabled. Pick the "Disabled" filter to see them.',
+  "links.noMatches": "No links match the current filter.",
   "links.empty": "No links yet. Use the + New Link button above to get started.",
   "links.disabled": "Disabled",
   "links.clicks": "clicks",
