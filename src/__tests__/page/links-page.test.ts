@@ -224,4 +224,47 @@ describe("Links listing page", () => {
     const html = await res.text();
     expect(html).toMatch(/1\s*[–-]\s*1\s+of\s+30/);
   });
+
+  it("hides the paginator when a wider per_page fits every link on one page", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links?per_page=100"));
+    const html = await res.text();
+    // All 30 rows fit on page 1, so there is nothing to page through.
+    expect(html).not.toContain('class="pagination"');
+    expect(html).not.toMatch(/class="page-btn/);
+  });
+
+  it("hides the paginator when a filter narrows the result set to one page", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+        expiresAt: i < 2 ? now - 3600 : null,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links?filter=disabled"));
+    const html = await res.text();
+    // Only 2 of the 30 links are expired; the unfiltered count must not decide this.
+    expect(html).not.toContain('class="pagination"');
+    expect(html).not.toMatch(/class="page-btn/);
+  });
+
+  it("still renders the paginator when the result set spans more than one page", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links"));
+    const html = await res.text();
+    expect(html).toContain('class="pagination"');
+    expect(html).toMatch(/class="page-btn[^"]*"[^>]*>2</);
+  });
 });

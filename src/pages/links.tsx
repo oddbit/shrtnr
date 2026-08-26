@@ -300,7 +300,7 @@ export const LinksPage: FC<Props> = ({
             </div>
           </div>
 
-          {(totalPages > 1 || links.length > 25) && (
+          {totalPages > 1 && (
             <div class="pagination">
               <div class="pagination-summary">
                 {t("links.pageSummary", {
