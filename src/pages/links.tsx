@@ -300,15 +300,15 @@ export const LinksPage: FC<Props> = ({
             </div>
           </div>
 
-          {totalPages > 1 && (
-            <div class="pagination">
-              <div class="pagination-summary">
-                {t("links.pageSummary", {
-                  from: sorted.length === 0 ? 0 : start + 1,
-                  to: Math.min(start + perPage, sorted.length),
-                  total: sorted.length,
-                })}
-              </div>
+          <div class="pagination">
+            <div class="pagination-summary">
+              {t("links.pageSummary", {
+                from: start + 1,
+                to: Math.min(start + perPage, sorted.length),
+                total: sorted.length,
+              })}
+            </div>
+            {totalPages > 1 && (
               <div class="pagination-pages">
                 <a
                   class={`page-btn${currentPage <= 1 ? " disabled" : ""}`}
@@ -340,25 +340,25 @@ export const LinksPage: FC<Props> = ({
                   <span class="icon icon-sm">chevron_right</span>
                 </a>
               </div>
-              <div class="per-page">
-                <span class="per-page-label">{t("links.show")}</span>
-                <div class="form-select per-page-select">
-                  <select
-                    class="form-input form-input-sm"
-                    onchange="location.href=this.value"
-                    aria-label={t("links.perPageAria")}
-                  >
-                    {[25, 50, 100].map((n) => (
-                      <option value={perPageUrl(n)} selected={perPage === n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <span class="per-page-label">{t("links.perPage")}</span>
+            )}
+            <div class="per-page">
+              <span class="per-page-label">{t("links.show")}</span>
+              <div class="form-select per-page-select">
+                <select
+                  class="form-input form-input-sm"
+                  onchange="location.href=this.value"
+                  aria-label={t("links.perPageAria")}
+                >
+                  {[25, 50, 100].map((n) => (
+                    <option value={perPageUrl(n)} selected={perPage === n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
               </div>
+              <span class="per-page-label">{t("links.perPage")}</span>
             </div>
-          )}
+          </div>
         </>
       )}
     </>

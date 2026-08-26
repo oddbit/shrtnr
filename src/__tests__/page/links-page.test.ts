@@ -225,7 +225,7 @@ describe("Links listing page", () => {
     expect(html).toMatch(/1\s*[–-]\s*1\s+of\s+30/);
   });
 
-  it("hides the paginator when a wider per_page fits every link on one page", async () => {
+  it("hides the page buttons when a wider per_page fits every link on one page", async () => {
     for (let i = 0; i < 30; i++) {
       await LinkRepository.create(env.DB, {
         url: `https://example${i}.com`,
@@ -233,13 +233,19 @@ describe("Links listing page", () => {
       });
     }
     const res = await SELF.fetch(req("/_/admin/links?per_page=100"));
+    expect(res.status).toBe(200);
     const html = await res.text();
-    // All 30 rows fit on page 1, so there is nothing to page through.
-    expect(html).not.toContain('class="pagination"');
+    // All 30 rows land on page 1, so there is nothing to page through.
+    expect(html.match(/class="col-short-chip-slug"/g)).toHaveLength(30);
+    expect(html).not.toContain('class="pagination-pages"');
     expect(html).not.toMatch(/class="page-btn/);
+    // The summary and the per-page selector survive: they are the only way back to 25.
+    expect(html).toContain('class="pagination"');
+    expect(html).toContain('class="pagination-summary"');
+    expect(html).toContain("per-page-select");
   });
 
-  it("hides the paginator when a filter narrows the result set to one page", async () => {
+  it("hides the page buttons when a filter narrows the result set to one page", async () => {
     const now = Math.floor(Date.now() / 1000);
     for (let i = 0; i < 30; i++) {
       await LinkRepository.create(env.DB, {
@@ -249,13 +255,20 @@ describe("Links listing page", () => {
       });
     }
     const res = await SELF.fetch(req("/_/admin/links?filter=disabled"));
+    expect(res.status).toBe(200);
     const html = await res.text();
-    // Only 2 of the 30 links are expired; the unfiltered count must not decide this.
-    expect(html).not.toContain('class="pagination"');
+    // Only s0 and s1 are expired; the unfiltered count must not decide this.
+    expect(html.match(/class="col-short-chip-slug"/g)).toHaveLength(2);
+    expect(html).toContain(">s0<");
+    expect(html).toContain(">s1<");
+    expect(html).not.toContain(">s2<");
+    expect(html).not.toContain('class="pagination-pages"');
     expect(html).not.toMatch(/class="page-btn/);
+    expect(html).toContain('class="pagination-summary"');
+    expect(html).toContain("per-page-select");
   });
 
-  it("still renders the paginator when the result set spans more than one page", async () => {
+  it("still renders the page buttons when the result set spans more than one page", async () => {
     for (let i = 0; i < 30; i++) {
       await LinkRepository.create(env.DB, {
         url: `https://example${i}.com`,
@@ -263,8 +276,27 @@ describe("Links listing page", () => {
       });
     }
     const res = await SELF.fetch(req("/_/admin/links"));
+    expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain('class="pagination"');
+    expect(html).toContain('class="pagination-pages"');
     expect(html).toMatch(/class="page-btn[^"]*"[^>]*>2</);
+    expect(html).toContain("per-page-select");
   });
+
+  it("keeps the per-page selector reachable after widening per_page", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links?per_page=50"));
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    // Every in-page link re-emits per_page, so the selector is the only route back to 25.
+    expect(html).toContain("per-page-select");
+    expect(html).toContain("per_page=25");
+  });
+
 });
