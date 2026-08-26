@@ -842,8 +842,14 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   .settings-layout { flex-direction: column !important; }
   .settings-layout > div:last-child { max-width: 100% !important; }
   .pagination { gap: 0.5rem; justify-content: center; }
-  .pagination-pages { order: 3; width: 100%; justify-content: center; overflow-x: auto; }
-  .page-btn { padding-inline: 0.45rem; }
+  /* The flex line follows DOM order, with no order property, so focus travels with
+     the reading direction. Auto margins center the window while it fits and collapse
+     to 0 once it overflows, keeping the scroll container's start edge reachable. */
+  .pagination-pages { width: 100%; overflow-x: auto; }
+  .pagination-pages > :first-child { margin-inline-start: auto; }
+  .pagination-pages > :last-child { margin-inline-end: auto; }
+  .page-btn { padding-inline: 0.45rem; flex-shrink: 0; }
+  .page-ellipsis { flex-shrink: 0; }
   .bundle-grid { grid-template-columns: 1fr; }
   .detail-analytics { grid-template-columns: 1fr; }
   .bundle-link-head { gap: 0.5rem; }
