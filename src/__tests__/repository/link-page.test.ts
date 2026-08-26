@@ -23,7 +23,12 @@ async function click(slug: string, at: number): Promise<void> {
   ).bind(slug, at).run();
 }
 
-/** Counts prepare() calls so a test can assert cost does not scale with catalog size. */
+/**
+ * Counts the statements a call issues so a test can pin the cost of a page
+ * render. Traps exec() alongside prepare(): batch() composes already-prepared
+ * statements and so is counted through prepare, but exec() takes raw SQL and
+ * would otherwise slip past the count entirely.
+ */
 function countingDb(counter: { n: number }): D1Database {
   return new Proxy(env.DB, {
     get(target, prop, receiver) {
@@ -31,6 +36,12 @@ function countingDb(counter: { n: number }): D1Database {
         return (sql: string) => {
           counter.n++;
           return (target as unknown as D1Database).prepare(sql);
+        };
+      }
+      if (prop === "exec") {
+        return (sql: string) => {
+          counter.n++;
+          return (target as unknown as D1Database).exec(sql);
         };
       }
       const value = Reflect.get(target, prop, receiver);
@@ -72,7 +83,7 @@ describe("LinkRepository.page windowing", () => {
     expect((await LinkRepository.page(env.DB, { limit: -3 })).links).toEqual([]);
   });
 
-  it("costs the same number of queries at 5 links as at 60", async () => {
+  it("costs three statements at 5 links and the same three at 60", async () => {
     await seed(5, "a");
     const small = { n: 0 };
     await LinkRepository.page(countingDb(small), { limit: 25 });
@@ -81,7 +92,11 @@ describe("LinkRepository.page windowing", () => {
     const large = { n: 0 };
     const result = await LinkRepository.page(countingDb(large), { limit: 25 });
 
-    expect(large.n).toBe(small.n);
+    // Pin the absolute count, not just the equality: a regression to thirty
+    // statements per render is equally flat across catalog sizes and would
+    // satisfy an equality assertion on its own.
+    expect(small.n).toBe(3);
+    expect(large.n).toBe(3);
     expect(result.links).toHaveLength(25);
     expect(result.total).toBe(60);
   });
