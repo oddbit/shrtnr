@@ -58,8 +58,11 @@ const sv: Translations = {
   "error.rateLimited": "För många förfrågningar. Försök igen om en stund.",
   "error.server": "Din shrtnr-server returnerade ett fel.",
   "error.validation": "{message}",
+  "error.invalidUrl": "Ogiltig URL. Använd hela adressen, till exempel https://din-shrtnr.example.com.",
+  "error.saveFailed": "Det gick inte att spara inställningarna. Försök igen.",
   "error.clipboard": "Kopiering misslyckades. Markera länken ovan för att kopiera den.",
   "error.permissionDenied": "shrtnr behöver tillstånd att kommunicera med {host}. Klicka på Spara igen och godkänn.",
+  "error.permissionDeniedTest": "shrtnr behöver tillstånd att kommunicera med {host}. Klicka på Testa igen och godkänn.",
   "error.tabUnknown": "Kunde inte läsa den aktiva fliken.",
 
   // Options page

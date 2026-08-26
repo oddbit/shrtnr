@@ -67,9 +67,13 @@ export class HttpClient {
     }
 
     if (!res.ok) {
+      // Read and parse in separate steps, same as the success path below: a
+      // connection reset while streaming an error body is a transport
+      // failure (status 0), not the server's declared HTTP status.
+      const text = await this.readBody(res);
       let serverMessage = `HTTP ${res.status}`;
       try {
-        const json = (await res.json()) as { error?: string };
+        const json = JSON.parse(text) as { error?: string };
         if (typeof json.error === "string") serverMessage = json.error;
       } catch {
         // ignore parse failure; keep default message
@@ -115,9 +119,13 @@ export class HttpClient {
     }
 
     if (!res.ok) {
+      // Read and parse in separate steps, same as the success path below: a
+      // connection reset while streaming an error body is a transport
+      // failure (status 0), not the server's declared HTTP status.
+      const text = await this.readBody(res);
       let serverMessage = `HTTP ${res.status}`;
       try {
-        const json = (await res.json()) as { error?: string };
+        const json = JSON.parse(text) as { error?: string };
         if (typeof json.error === "string") serverMessage = json.error;
       } catch {
         // ignore parse failure; keep default message

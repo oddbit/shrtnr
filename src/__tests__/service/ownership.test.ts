@@ -168,6 +168,45 @@ describe("Slug ownership: disable", () => {
   });
 });
 
+describe("Slug case sensitivity: mutation endpoints match stored (lowercase) slugs", () => {
+  it("disableSlug matches a differently-cased slug argument", async () => {
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "custom-slug" });
+
+    const result = await disableSlug(env as any, link.id, "Custom-Slug", OWNER);
+    expect(result.ok).toBe(true);
+  });
+
+  it("enableSlug matches a differently-cased slug argument", async () => {
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "custom-slug" });
+    await disableSlug(env as any, link.id, "custom-slug", OWNER);
+
+    const result = await enableSlug(env as any, link.id, "CUSTOM-SLUG", OWNER);
+    expect(result.ok).toBe(true);
+  });
+
+  it("removeSlug matches a differently-cased slug argument", async () => {
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "custom-slug" });
+
+    const result = await removeSlug(env as any, link.id, "Custom-Slug", OWNER);
+    expect(result.ok).toBe(true);
+  });
+
+  it("setSlugPrimary matches a differently-cased slug argument", async () => {
+    const link = await createOwnedLink();
+    await addCustomSlugToLink(env as any, link.id, { slug: "custom-slug" });
+
+    const result = await setSlugPrimary(env as any, link.id, "Custom-Slug", OWNER);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const primary = result.data.slugs.find((s) => s.is_primary === 1);
+      expect(primary?.slug).toBe("custom-slug");
+    }
+  });
+});
+
 describe("Slug ownership: enable", () => {
   it("link owner can enable a disabled slug", async () => {
     const link = await createOwnedLink();

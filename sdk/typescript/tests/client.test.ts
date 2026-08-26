@@ -243,6 +243,21 @@ describe("Error handling", () => {
     }
   });
 
+  it("reports status 0 when the connection drops mid-body on an error response", async () => {
+    // The error branch read the body via res.json() directly, so a
+    // connection reset while streaming a 500's error body was swallowed by
+    // the catch and reported as ShrtnrError(500, "HTTP 500") instead of the
+    // status-0 transport failure every other read path reports.
+    fetchSpy.mockResolvedValueOnce(new Response(erroringBody(), { status: 500 }));
+    try {
+      await client().links.list();
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(ShrtnrError);
+      expect((e as ShrtnrError).status).toBe(0);
+    }
+  });
+
   it("wraps a mid-body stream failure on a text response in ShrtnrError", async () => {
     // requestText handed back res.text() unwrapped, so a reset partway
     // through a QR download escaped as a raw TypeError past the documented
@@ -250,6 +265,25 @@ describe("Error handling", () => {
     fetchSpy.mockResolvedValueOnce(
       new Response(erroringBody(), {
         status: 200,
+        headers: { "Content-Type": "image/svg+xml" },
+      }),
+    );
+    try {
+      await client().links.qr(5);
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(ShrtnrError);
+      expect((e as ShrtnrError).status).toBe(0);
+    }
+  });
+
+  it("reports status 0 when the connection drops mid-body on a non-2xx text response", async () => {
+    // requestText's error branch had the same res.json()-without-readBody
+    // gap as request(): a reset while streaming a non-2xx QR error body
+    // reported the stale HTTP status instead of status 0.
+    fetchSpy.mockResolvedValueOnce(
+      new Response(erroringBody(), {
+        status: 500,
         headers: { "Content-Type": "image/svg+xml" },
       }),
     );

@@ -58,8 +58,11 @@ const id: Translations = {
   "error.rateLimited": "Terlalu banyak permintaan. Coba lagi sebentar.",
   "error.server": "Server shrtnr Anda mengembalikan kesalahan.",
   "error.validation": "{message}",
+  "error.invalidUrl": "URL tidak valid. Gunakan alamat lengkap, seperti https://shrtnr-anda.example.com.",
+  "error.saveFailed": "Gagal menyimpan pengaturan. Coba lagi.",
   "error.clipboard": "Penyalinan gagal. Pilih tautan di atas untuk menyalinnya.",
   "error.permissionDenied": "shrtnr memerlukan izin untuk berkomunikasi dengan {host}. Klik Simpan lagi dan setujui.",
+  "error.permissionDeniedTest": "shrtnr memerlukan izin untuk berkomunikasi dengan {host}. Klik Uji lagi dan setujui.",
   "error.tabUnknown": "Tidak dapat membaca tab aktif.",
 
   // Options page

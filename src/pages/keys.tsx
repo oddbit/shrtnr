@@ -8,6 +8,12 @@ import { SdkList } from "./sdk-list";
 // Bullets that stand in for the redacted tail of a key prefix, e.g. sk_84cc••••••.
 const KEY_MASK = "••••••";
 
+function scopeLabel(scope: string, t: TranslateFn): string {
+  if (scope === "create") return t("client.scopeCreate");
+  if (scope === "read") return t("client.scopeRead");
+  return scope;
+}
+
 function formatDate(ts: number, lang: string): string {
   const d = new Date(ts * 1000);
   return d.toLocaleDateString(lang, {
@@ -132,7 +138,7 @@ export const KeysPage: FC<Props> = ({ keys, t, lang, origin }) => {
                       <td data-label={t("keys.colScope")}>
                         <span class="scope-badges">
                           {scopes.map((s) => (
-                            <span class={`scope-badge ${s}`}>{s}</span>
+                            <span class={`scope-badge ${s}`}>{scopeLabel(s, t)}</span>
                           ))}
                         </span>
                       </td>
