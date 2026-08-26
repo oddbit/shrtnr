@@ -196,6 +196,23 @@ describe("Links listing page", () => {
     expect(html).toMatch(/1\s*[–-]\s*25\s+of\s+30/);
   });
 
+  it("marks the active page with aria-current and renders ellipses outside the window", async () => {
+    // per_page=1 gives 8 pages from 8 links, past the 7-item compact window.
+    for (let i = 0; i < 8; i++) {
+      await LinkRepository.create(env.DB, {
+        url: `https://example${i}.com`,
+        slug: `s${i}`,
+      });
+    }
+    const res = await SELF.fetch(req("/_/admin/links?per_page=1&page=1"));
+    const html = await res.text();
+    // Page 1 is the active link and carries aria-current.
+    expect(html).toMatch(/<a[^>]*class="page-btn active"[^>]*aria-current="page"[^>]*>1</);
+    // Pages 6 and 7 are outside the window, replaced by an ellipsis span.
+    expect(html).toMatch(/<span class="page-ellipsis"/);
+    expect(html).not.toMatch(/class="page-btn[^"]*"[^>]*>6</);
+  });
+
   it("clamps a negative per_page param instead of an inverted slice range", async () => {
     for (let i = 0; i < 30; i++) {
       await LinkRepository.create(env.DB, {
