@@ -7,7 +7,7 @@ import type { TranslateFn } from "../i18n";
 import { Delta } from "../components/delta";
 import { RangePicker } from "../components/range-picker";
 import { fmtNumber } from "../i18n/format";
-import { LINKS_DEFAULT_PER_PAGE, LINKS_PER_PAGE_OPTIONS } from "../constants";
+import { LINKS_PER_PAGE_OPTIONS } from "../constants";
 import type { LinksEmptyReason } from "../services/link-management";
 
 function formatDate(ts: number, lang: string): string {
@@ -113,6 +113,7 @@ export const LinksPage: FC<Props> = ({
       per_page: String(perPage),
       filter,
       range,
+      search: searchQuery,
       ...overrides,
     };
     for (const [k, v] of Object.entries(next)) {
@@ -297,15 +298,15 @@ export const LinksPage: FC<Props> = ({
             </div>
           </div>
 
-          {(totalPages > 1 || total > LINKS_DEFAULT_PER_PAGE) && (
-            <div class="pagination">
-              <div class="pagination-summary">
-                {t("links.pageSummary", {
-                  from: total === 0 ? 0 : start + 1,
-                  to: Math.min(start + perPage, total),
-                  total,
-                })}
-              </div>
+          <div class="pagination">
+            <div class="pagination-summary">
+              {t("links.pageSummary", {
+                from: total === 0 ? 0 : start + 1,
+                to: Math.min(start + perPage, total),
+                total,
+              })}
+            </div>
+            {totalPages > 1 && (
               <div class="pagination-pages">
                 <a
                   class={`page-btn${currentPage <= 1 ? " disabled" : ""}`}
@@ -337,25 +338,25 @@ export const LinksPage: FC<Props> = ({
                   <span class="icon icon-sm">chevron_right</span>
                 </a>
               </div>
-              <div class="per-page">
-                <span class="per-page-label">{t("links.show")}</span>
-                <div class="form-select per-page-select">
-                  <select
-                    class="form-input form-input-sm"
-                    onchange="location.href=this.value"
-                    aria-label={t("links.perPageAria")}
-                  >
-                    {LINKS_PER_PAGE_OPTIONS.map((n) => (
-                      <option value={perPageUrl(n)} selected={perPage === n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <span class="per-page-label">{t("links.perPage")}</span>
+            )}
+            <div class="per-page">
+              <span class="per-page-label">{t("links.show")}</span>
+              <div class="form-select per-page-select">
+                <select
+                  class="form-input form-input-sm"
+                  onchange="location.href=this.value"
+                  aria-label={t("links.perPageAria")}
+                >
+                  {LINKS_PER_PAGE_OPTIONS.map((n) => (
+                    <option value={perPageUrl(n)} selected={perPage === n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
               </div>
+              <span class="per-page-label">{t("links.perPage")}</span>
             </div>
-          )}
+          </div>
         </>
       )}
     </>
