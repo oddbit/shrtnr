@@ -10,6 +10,50 @@ function req(path: string, init?: RequestInit): Request {
   return new Request(`https://shrtnr.test${path}`, init);
 }
 
+// Pull hrefs out of anchors carrying `className`, independent of attribute
+// order, with entity-encoded ampersands decoded back for plain substring
+// assertions. `label` matches the anchor's visible text once tags are stripped.
+function anchorHrefs(
+  html: string,
+  className: string,
+  label?: string,
+): string[] {
+  const found: string[] = [];
+  const anchor = /<a\b([^>]*)>([\s\S]*?)<\/a>/g;
+  let m: RegExpExecArray | null;
+  while ((m = anchor.exec(html)) !== null) {
+    const [, attrs, inner] = m;
+    if (!new RegExp(`class="[^"]*\\b${className}\\b[^"]*"`).test(attrs)) continue;
+    if (label !== undefined && inner.replace(/<[^>]*>/g, "").trim() !== label) continue;
+    const href = attrs.match(/href="([^"]*)"/)?.[1];
+    if (href) found.push(href.replaceAll("&amp;", "&"));
+  }
+  return found;
+}
+
+// Values of the per-page <select>, which navigates via onchange rather than
+// an anchor.
+function perPageOptionValues(html: string): string[] {
+  return [...html.matchAll(/<option value="([^"]*)"/g)].map((m) =>
+    m[1].replaceAll("&amp;", "&"),
+  );
+}
+
+async function seedSearchFixture(): Promise<void> {
+  for (let i = 0; i < 30; i++) {
+    await LinkRepository.create(env.DB, {
+      url: `https://pdf.co/document-${i}`,
+      slug: `pdf-${i}`,
+    });
+  }
+  for (let i = 0; i < 10; i++) {
+    await LinkRepository.create(env.DB, {
+      url: `https://other.example/note-${i}`,
+      slug: `other-${i}`,
+    });
+  }
+}
+
 beforeAll(applyMigrations);
 beforeEach(resetData);
 
@@ -216,5 +260,71 @@ describe("Links listing page", () => {
     const res = await SELF.fetch(req("/_/admin/links?per_page=-5"));
     const html = await res.text();
     expect(html).toMatch(/1\s*[–-]\s*1\s+of\s+30/);
+  });
+  it("carries the active search through sort, filter, and page-size URLs", async () => {
+    await seedSearchFixture();
+
+    const res = await SELF.fetch(req("/_/admin/links?search=pdf.co"));
+    const html = await res.text();
+
+    const sortHrefs = anchorHrefs(html, "sort-btn");
+    const filterHrefs = anchorHrefs(html, "filter-chip");
+    const perPageHrefs = perPageOptionValues(html);
+
+    expect(sortHrefs).toHaveLength(2);
+    expect(filterHrefs).toHaveLength(3);
+    expect(perPageHrefs).toHaveLength(3);
+
+    // Each of these controls resets to page one but must keep the query.
+    for (const href of [...sortHrefs, ...filterHrefs, ...perPageHrefs]) {
+      expect(href).toContain("search=pdf.co");
+      expect(href).toContain("page=1");
+    }
+  });
+
+  it("keeps sort, filter, and page size alongside the search in pagination URLs", async () => {
+    await seedSearchFixture();
+
+    const res = await SELF.fetch(
+      req("/_/admin/links?search=pdf.co&sort=popular&filter=all&per_page=25"),
+    );
+    const html = await res.text();
+    const [pageTwo] = anchorHrefs(html, "page-btn", "2");
+
+    expect(pageTwo).toBeDefined();
+    expect(pageTwo).toContain("search=pdf.co");
+    expect(pageTwo).toContain("page=2");
+    expect(pageTwo).toContain("sort=popular");
+    expect(pageTwo).toContain("filter=all");
+    expect(pageTwo).toContain("per_page=25");
+  });
+
+  it("lists only matching links when page two of a search is opened", async () => {
+    await seedSearchFixture();
+
+    const first = await SELF.fetch(req("/_/admin/links?search=pdf.co"));
+    const [pageTwo] = anchorHrefs(await first.text(), "page-btn", "2");
+    expect(pageTwo).toBeDefined();
+
+    const res = await SELF.fetch(req(pageTwo));
+    expect(res.status).toBe(200);
+    const html = await res.text();
+
+    // 30 matches, not the 40 links in the table.
+    expect(html).toMatch(/26\s*[–-]\s*30\s+of\s+30/);
+    expect(html).not.toContain("other.example");
+    // The search box stays populated so the query is still editable.
+    expect(html).toMatch(/id="quick-url"[^>]*value="pdf\.co"/);
+  });
+
+  it("drops the search from pagination URLs once the query is cleared", async () => {
+    await seedSearchFixture();
+
+    const res = await SELF.fetch(req("/_/admin/links"));
+    const html = await res.text();
+    const [pageTwo] = anchorHrefs(html, "page-btn", "2");
+
+    expect(pageTwo).toBeDefined();
+    expect(pageTwo).not.toContain("search=");
   });
 });
