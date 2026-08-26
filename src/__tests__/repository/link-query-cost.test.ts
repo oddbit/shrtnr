@@ -51,6 +51,20 @@ describe("unwindowed link queries cost the same at any match count", () => {
     expect(many).toHaveLength(2);
   });
 
+  it("findByUrl issues two statements for 3 duplicates and two for 40", async () => {
+    const url = "https://example.com/dupe";
+    for (let i = 0; i < 3; i++) await LinkRepository.create(env.DB, { url, slug: `u${i}` });
+    const few: string[] = [];
+    expect(await LinkRepository.findByUrl(spyDb(few), url)).toHaveLength(3);
+
+    for (let i = 3; i < 40; i++) await LinkRepository.create(env.DB, { url, slug: `u${i}` });
+    const many: string[] = [];
+    expect(await LinkRepository.findByUrl(spyDb(many), url)).toHaveLength(40);
+
+    expect(few).toHaveLength(2);
+    expect(many).toHaveLength(2);
+  });
+
   it("list issues two statements whatever the catalog size", async () => {
     await seed(3, "all");
     const few: string[] = [];

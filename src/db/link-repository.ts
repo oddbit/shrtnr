@@ -59,6 +59,8 @@ export interface LinkPageQuery {
   searchOwner?: boolean;
   /** Exact `created_by` match. Unrelated to `searchOwner`, which widens a substring search. */
   owner?: string;
+  /** Exact `url` match, for finding the links that already point somewhere. */
+  url?: string;
   /** Reference time for the `status` comparison. Defaults to now. */
   now?: number;
 }
@@ -84,7 +86,7 @@ function likePattern(query: string): string {
   return `%${escaped}%`;
 }
 
-type LinkFilterQuery = Pick<LinkPageQuery, "status" | "search" | "searchOwner" | "owner" | "now">;
+type LinkFilterQuery = Pick<LinkPageQuery, "status" | "search" | "searchOwner" | "owner" | "url" | "now">;
 
 function linkFilterSql(query: LinkFilterQuery): LinkFilterSql {
   const conds: string[] = [];
@@ -93,6 +95,11 @@ function linkFilterSql(query: LinkFilterQuery): LinkFilterSql {
   if (query.owner !== undefined) {
     conds.push("l.created_by = ?");
     binds.push(query.owner);
+  }
+
+  if (query.url !== undefined) {
+    conds.push("l.url = ?");
+    binds.push(query.url);
   }
 
   const now = query.now ?? Math.floor(Date.now() / 1000);
@@ -304,16 +311,7 @@ export class LinkRepository {
   }
 
   static async findByUrl(db: D1Database, url: string, opts?: LinkRepoOptions): Promise<LinkWithSlugs[]> {
-    const rows = await db
-      .prepare("SELECT id FROM links WHERE url = ? ORDER BY created_at DESC")
-      .bind(url)
-      .all<{ id: number }>();
-
-    const ids = rows.results ?? [];
-    if (ids.length === 0) return [];
-
-    const results = await Promise.all(ids.map(({ id }) => LinkRepository.getById(db, id, opts)));
-    return results.filter((l): l is LinkWithSlugs => l !== null);
+    return LinkRepository.rows(db, { url }, opts);
   }
 
   static async create(
