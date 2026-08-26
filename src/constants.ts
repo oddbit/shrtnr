@@ -24,7 +24,7 @@ export const MAX_BREAKDOWN_LIMIT = 100;
 // route's cost stays bounded by the window, not by the catalog.
 export const LINKS_PER_PAGE_OPTIONS = [25, 50, 100] as const;
 export const LINKS_DEFAULT_PER_PAGE: (typeof LINKS_PER_PAGE_OPTIONS)[number] = 25;
-export const LINKS_MAX_PER_PAGE = 100;
+export const LINKS_MAX_PER_PAGE = Math.max(...LINKS_PER_PAGE_OPTIONS);
 
 export const THEMES = ["oddbit", "dark", "light"] as const;
 export const DEFAULT_THEME: (typeof THEMES)[number] = "oddbit";
