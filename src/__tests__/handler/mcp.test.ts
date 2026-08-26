@@ -686,4 +686,52 @@ describe("MCP tool descriptions", () => {
       await client.close();
     }
   });
+
+  // createLink() normalizes the URL and returns the existing row on a repeat
+  // call, so a caller never has to search before shortening. The description
+  // and the idempotent annotation both have to announce that, otherwise every
+  // agent re-discovers the contract by trial or by a wasted lookup.
+  it("create_link announces its idempotent upsert contract", async () => {
+    const agent = Object.create(ShrtnrMCP.prototype) as ShrtnrMCP;
+    agent.server = new McpServer({ name: "shrtnr", version: "test" });
+    await agent.init();
+
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test-client", version: "test" });
+    await Promise.all([
+      client.connect(clientTransport),
+      agent.server.connect(serverTransport),
+    ]);
+
+    try {
+      const { tools } = await client.listTools();
+      const createLinkTool = tools.find((t) => t.name === "create_link");
+      expect(createLinkTool).toBeDefined();
+      expect(createLinkTool?.description).toMatch(/idempotent/i);
+      expect(createLinkTool?.description).toMatch(/trailing slash/i);
+      expect(createLinkTool?.description).toMatch(/no need to (search|look)/i);
+      expect(createLinkTool?.annotations?.idempotentHint).toBe(true);
+    } finally {
+      await client.close();
+    }
+  });
+});
+
+// ---- create_link trailing-slash normalization ----
+// The description promises that a trailing slash does not fork a second link.
+// This pins the behaviour behind that promise.
+
+describe("create_link URL normalization", () => {
+  it("treats a trailing-slash variant as the same destination", async () => {
+    const first = await createLink(env as never, { url: "https://slash.example/docs", created_by: "dennis@oddbit.id" });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+
+    const second = await createLink(env as never, { url: "https://slash.example/docs/", created_by: "dennis@oddbit.id" });
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+
+    expect(second.data.id).toBe(first.data.id);
+    expect(second.meta?.duplicate).toBe(true);
+  });
 });
