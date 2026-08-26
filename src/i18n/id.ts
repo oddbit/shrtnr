@@ -74,6 +74,7 @@ const id: Translations = {
   "links.show": "Tampilkan",
   "links.searchResults": "{count} tautan cocok",
   "links.clearSearch": "Hapus",
+  "links.pagination": "Paginasi",
 
   // Link Detail
   "linkDetail.title": "Detail Tautan",

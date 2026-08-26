@@ -71,6 +71,7 @@ const en = {
   "links.show": "Show",
   "links.searchResults": "{count} matching links",
   "links.clearSearch": "Clear",
+  "links.pagination": "Pagination",
 
   // Link Detail
   "linkDetail.title": "Link Details",
