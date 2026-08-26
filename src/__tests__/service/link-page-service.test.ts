@@ -23,37 +23,32 @@ describe("listLinksPage", () => {
   it("returns one window plus the page arithmetic", async () => {
     await seed(30);
     const result = await listLinksPage(env as never, { page: 1, perPage: 25 });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.data.links).toHaveLength(25);
-    expect(result.data.total).toBe(30);
-    expect(result.data.totalPages).toBe(2);
-    expect(result.data.page).toBe(1);
+    expect(result.links).toHaveLength(25);
+    expect(result.total).toBe(30);
+    expect(result.totalPages).toBe(2);
+    expect(result.page).toBe(1);
   });
 
   it("clamps a page past the end and reports the page it served", async () => {
     await seed(30);
     const result = await listLinksPage(env as never, { page: 99, perPage: 25 });
-    if (!result.ok) throw new Error("expected ok");
-    expect(result.data.page).toBe(2);
-    expect(result.data.links).toHaveLength(5);
+    expect(result.page).toBe(2);
+    expect(result.links).toHaveLength(5);
   });
 
   it("clamps perPage to the maximum so a crafted query cannot request the catalog", async () => {
     await seed(30);
     const result = await listLinksPage(env as never, { page: 1, perPage: 100000 });
-    if (!result.ok) throw new Error("expected ok");
-    expect(result.data.perPage).toBe(LINKS_MAX_PER_PAGE);
-    expect(result.data.links.length).toBeLessThanOrEqual(LINKS_MAX_PER_PAGE);
+    expect(result.perPage).toBe(LINKS_MAX_PER_PAGE);
+    expect(result.links.length).toBeLessThanOrEqual(LINKS_MAX_PER_PAGE);
   });
 
   it("clamps a non-positive perPage to one row", async () => {
     await seed(3);
     const result = await listLinksPage(env as never, { page: 1, perPage: -5 });
-    if (!result.ok) throw new Error("expected ok");
-    expect(result.data.perPage).toBe(1);
-    expect(result.data.links).toHaveLength(1);
-    expect(result.data.totalPages).toBe(3);
+    expect(result.perPage).toBe(1);
+    expect(result.links).toHaveLength(1);
+    expect(result.totalPages).toBe(3);
   });
 
   it("attaches deltas to the served rows only", async () => {
@@ -63,26 +58,23 @@ describe("listLinksPage", () => {
     await insert.bind("s1", NOW - 40 * 86400).run();
 
     const result = await listLinksPage(env as never, { page: 1, perPage: 1, withDeltaRange: "30d", range: "30d" });
-    if (!result.ok) throw new Error("expected ok");
-    expect(result.data.links).toHaveLength(1);
-    expect(result.data.links[0].delta_pct).toBe(0);
+    expect(result.links).toHaveLength(1);
+    expect(result.links[0].delta_pct).toBe(0);
   });
 
   it("reports no-links for an empty catalog", async () => {
     const result = await listLinksPage(env as never, { page: 1, perPage: 25 });
-    if (!result.ok) throw new Error("expected ok");
-    expect(result.data.total).toBe(0);
-    expect(result.data.emptyReason).toBe("no-links");
-    expect(result.data.totalPages).toBe(1);
+    expect(result.total).toBe(0);
+    expect(result.emptyReason).toBe("no-links");
+    expect(result.totalPages).toBe(1);
   });
 
   it("reports all-disabled when the active filter hid every link", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
     await LinkRepository.update(env.DB, link.id, { expires_at: NOW - 10 });
     const result = await listLinksPage(env as never, { page: 1, perPage: 25, status: "active" });
-    if (!result.ok) throw new Error("expected ok");
-    expect(result.data.total).toBe(0);
-    expect(result.data.emptyReason).toBe("all-disabled");
+    expect(result.total).toBe(0);
+    expect(result.emptyReason).toBe("all-disabled");
   });
 
   it("reports no-matches when the disabled filter finds nothing to show", async () => {
@@ -90,22 +82,19 @@ describe("listLinksPage", () => {
     // disabled" would state the opposite of the truth.
     await seed(3);
     const result = await listLinksPage(env as never, { page: 1, perPage: 25, status: "disabled" });
-    if (!result.ok) throw new Error("expected ok");
-    expect(result.data.total).toBe(0);
-    expect(result.data.emptyReason).toBe("no-matches");
+    expect(result.total).toBe(0);
+    expect(result.emptyReason).toBe("no-matches");
   });
 
   it("reports no-matches when a search finds nothing in a populated catalog", async () => {
     await seed(3);
     const result = await listLinksPage(env as never, { page: 1, perPage: 25, search: "xyzzy-nothing" });
-    if (!result.ok) throw new Error("expected ok");
-    expect(result.data.emptyReason).toBe("no-matches");
+    expect(result.emptyReason).toBe("no-matches");
   });
 
   it("reports no-links for an empty catalog even under a search", async () => {
     const result = await listLinksPage(env as never, { page: 1, perPage: 25, search: "anything" });
-    if (!result.ok) throw new Error("expected ok");
-    expect(result.data.emptyReason).toBe("no-links");
+    expect(result.emptyReason).toBe("no-links");
   });
 
   it("names a reason whenever the served window is empty, not only when the total is zero", async () => {
@@ -114,24 +103,36 @@ describe("listLinksPage", () => {
     // page would otherwise print "30 links" above "No links yet".
     await seed(3);
     const result = await listLinksPage(env as never, { page: 1, perPage: 25, status: "disabled" });
-    if (!result.ok) throw new Error("expected ok");
-    expect(result.data.links).toHaveLength(0);
-    expect(result.data.emptyReason).toBeDefined();
+    expect(result.links).toHaveLength(0);
+    expect(result.emptyReason).toBeDefined();
+  });
+
+  it("owns every page and per-page guard, whatever the route hands over", async () => {
+    await seed(30);
+    // The route parses query params and does not clamp them, so the service is
+    // the single place these rules live.
+    for (const page of [0, -3, 0.5, NaN]) {
+      const result = await listLinksPage(env as never, { page, perPage: 25 });
+      expect(result.page).toBe(1);
+      expect(result.links).toHaveLength(25);
+    }
+    for (const perPage of [0, -5, NaN]) {
+      const result = await listLinksPage(env as never, { page: 1, perPage });
+      expect(result.perPage).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it("leaves emptyReason unset when the window has rows", async () => {
     await seed(1);
     const result = await listLinksPage(env as never, { page: 1, perPage: 25 });
-    if (!result.ok) throw new Error("expected ok");
-    expect(result.data.emptyReason).toBeUndefined();
+    expect(result.emptyReason).toBeUndefined();
   });
 
   it("windows a search instead of loading every match", async () => {
     await seed(30);
     const result = await listLinksPage(env as never, { page: 2, perPage: 10, search: "example", includeOwner: true });
-    if (!result.ok) throw new Error("expected ok");
-    expect(result.data.total).toBe(30);
-    expect(result.data.links).toHaveLength(10);
-    expect(result.data.totalPages).toBe(3);
+    expect(result.total).toBe(30);
+    expect(result.links).toHaveLength(10);
+    expect(result.totalPages).toBe(3);
   });
 });

@@ -324,6 +324,14 @@ describe("Links listing page", () => {
     expect(html).not.toMatch(/class="page-btn[^"]*"[^>]*>6</);
   });
 
+  it("clamps an unparseable page param onto the first page", async () => {
+    for (let i = 0; i < 30; i++) {
+      await LinkRepository.create(env.DB, { url: `https://example${i}.com`, slug: `s${i}` });
+    }
+    const html = await (await SELF.fetch(req("/_/admin/links?page=abc"))).text();
+    expect(html).toMatch(/1\s*[–-]\s*25\s+of\s+30/);
+  });
+
   it("clamps a negative per_page param instead of an inverted slice range", async () => {
     for (let i = 0; i < 30; i++) {
       await LinkRepository.create(env.DB, {

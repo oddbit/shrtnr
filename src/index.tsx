@@ -226,7 +226,7 @@ app.get("/_/admin/links", async (c) => {
   const rangeParam = c.req.query("range");
   const range = (validRanges.has(rangeParam as TimelineRange) ? rangeParam : defaultRange) as TimelineRange;
   const sort = c.req.query("sort") === "popular" ? "popular" : "recent";
-  const requestedPage = Math.max(1, parseInt(c.req.query("page") || "1", 10) || 1);
+  const requestedPage = parseInt(c.req.query("page") || "1", 10);
   const requestedPerPage = parseInt(c.req.query("per_page") || String(LINKS_DEFAULT_PER_PAGE), 10);
   const filterParam = c.req.query("filter");
   const legacyShowDisabled = c.req.query("show_disabled") === "1";
@@ -236,8 +236,9 @@ app.get("/_/admin/links", async (c) => {
       ? "all"
       : "active";
   // One window, filtered and sorted in SQL: the route pays for the rows it
-  // renders, not for the catalog. listLinksPage clamps page and per_page.
-  const pageResult = await listLinksPage(c.env, {
+  // renders, not for the catalog. The route only parses these params;
+  // listLinksPage owns every bound on page and per_page.
+  const data = await listLinksPage(c.env, {
     page: requestedPage,
     perPage: requestedPerPage,
     sort,
@@ -248,9 +249,6 @@ app.get("/_/admin/links", async (c) => {
     filters,
     range,
   });
-  const data = pageResult.ok
-    ? pageResult.data
-    : { links: [], total: 0, page: 1, perPage: LINKS_DEFAULT_PER_PAGE, totalPages: 1, emptyReason: "no-links" as const };
   return c.html(
     <Layout active="links" theme={theme} t={t} lang={lang} translations={translations}>
       <LinksPage

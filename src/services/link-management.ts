@@ -87,8 +87,12 @@ export interface LinksPageData {
  * catalog: SQL does the filtering, sorting and windowing, and only the served
  * rows get delta enrichment. Use this for the listings page; `listLinks`
  * remains for API and MCP callers that return the full set.
+ *
+ * Returns the page data rather than a `ServiceResult`: every input is clamped
+ * here, so there is no failure to report and no caller has to write a fallback
+ * arm that restates the shape.
  */
-export async function listLinksPage(env: Env, opts?: ListLinksPageOptions): Promise<ServiceResult<LinksPageData>> {
+export async function listLinksPage(env: Env, opts?: ListLinksPageOptions): Promise<LinksPageData> {
   const perPage = Math.min(
     Math.max(1, Math.floor(opts?.perPage ?? LINKS_DEFAULT_PER_PAGE) || LINKS_DEFAULT_PER_PAGE),
     LINKS_MAX_PER_PAGE,
@@ -136,7 +140,7 @@ export async function listLinksPage(env: Env, opts?: ListLinksPageOptions): Prom
     ? await ClickRepository.attachLinkDeltasBulk(env.DB, result.links, opts.withDeltaRange, undefined, opts.filters)
     : result.links;
 
-  return ok({ links, total: result.total, page, perPage, totalPages, emptyReason });
+  return { links, total: result.total, page, perPage, totalPages, emptyReason };
 }
 
 export interface GetLinkOptions {
