@@ -2,6 +2,13 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.1.3 (2026-08-27)
+
+Transport fix. No public surface changes.
+
+- The owned `httpx.Client` and `httpx.AsyncClient` follow redirects. httpx defaults to `follow_redirects=False`, while the TypeScript SDK (`fetch`, default `"follow"`) and the Dart SDK (`http.Client`) both follow a 3xx from a deployment's front door transparently, so the same `base_url` behaved differently depending on which SDK made the request. A caller-supplied `http_client` keeps its own setting.
+- Records the spec hash for app 0.38.0. Paths and schemas are unchanged; only `info.version` moved.
+
 ## 1.1.2 (2026-08-10)
 
 Error-handling fix. No public surface changes.
