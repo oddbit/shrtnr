@@ -2,6 +2,13 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.1.4 (2026-08-27)
+
+Error-handling fix. No public surface changes.
+
+- A connection reset while streaming a non-2xx error body raises `ShrtnrError` with status 0, the same transport-failure signal every other read path reports. 1.1.3 separated reading from parsing on the success path, but both error branches (`request` and `requestText`) still called `res.json()` directly, so a reset mid-body on a 500 was swallowed by the parse guard and reported as `ShrtnrError(500, "HTTP 500")`, labelling a transport failure with the server's declared status.
+- Records the spec hash for app 0.38.0. Paths and schemas are unchanged; only `info.version` moved.
+
 ## 1.1.3 (2026-08-10)
 
 Error-handling fixes. No public surface changes.
