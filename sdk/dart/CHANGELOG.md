@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.3 (2026-08-27)
+
+Spec hash refresh. No code changes and no public surface changes.
+
+- Records the spec hash for app 0.38.0. Paths and schemas are unchanged; only `info.version` moved. The TypeScript and Python SDKs ship their own fixes in 1.1.4 and 1.1.3 alongside it.
+
 ## 2.1.2 (2026-08-10)
 
 Error-handling fixes. No public surface changes.
