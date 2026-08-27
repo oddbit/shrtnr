@@ -7,6 +7,9 @@ import { createTranslateFn } from "../../i18n";
 
 const t = createTranslateFn("en");
 
+/** An unpaired half of a surrogate pair, left behind by a UTF-16 slice. */
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
 describe("links empty state copy", () => {
   it("names both the query and the filter when each is narrowing", () => {
     expect(emptyStateCopy(t, "no-search-matches", "zzz", "disabled")).toBe(
@@ -38,6 +41,16 @@ describe("links empty state copy", () => {
     expect(emptyStateCopy(t, "no-search-matches", "   ", "all")).toBe(
       "No links match the current filter.",
     );
+  });
+
+  it("clips a long query on a character boundary, not mid-emoji", () => {
+    // The leading letter puts every emoji on an odd UTF-16 offset, so the cut
+    // lands between the two halves of one. Without it the pairs straddle the
+    // boundary evenly and a naive slice gets away with it.
+    const copy = emptyStateCopy(t, "no-search-matches", `a${"\u{1F44D}".repeat(70)}`, "all");
+    expect(copy).toContain("…");
+    // An unpaired surrogate reaches the browser as a replacement character.
+    expect(LONE_SURROGATE.test(copy)).toBe(false);
   });
 
   it("clamps a long query so the empty state stays one readable line", () => {

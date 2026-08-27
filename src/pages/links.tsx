@@ -122,14 +122,26 @@ export function paginationItems(
 }
 
 /**
- * The status chips, in the order they render. One table, so the chip a user
- * clicks and the filter the empty state names can never drift apart.
+ * The chip label per status. A Record rather than a lookup over the chip list:
+ * every LinksFilter has an entry by construction, so naming one needs no
+ * not-found arm that can never run.
+ */
+const FILTER_LABEL: Record<LinksFilter, TranslationKey> = {
+  active: "links.filterActive",
+  disabled: "links.filterDisabled",
+  all: "links.filterAll",
+};
+
+/**
+ * The status chips, in the order they render. They read their labels from the
+ * table above, so the chip a user clicks and the filter the empty state names
+ * can never drift apart.
  */
 const FILTER_CHIPS = [
-  { key: "active", labelKey: "links.filterActive", icon: "link" },
-  { key: "disabled", labelKey: "links.filterDisabled", icon: "block" },
-  { key: "all", labelKey: "links.filterAll", icon: "all_inclusive" },
-] as const satisfies readonly { key: LinksFilter; labelKey: TranslationKey; icon: string }[];
+  { key: "active", icon: "link" },
+  { key: "disabled", icon: "block" },
+  { key: "all", icon: "all_inclusive" },
+] as const satisfies readonly { key: LinksFilter; icon: string }[];
 
 /** Longest query the empty state repeats back before it gets clipped. */
 const EMPTY_STATE_QUERY_MAX = 60;
@@ -164,12 +176,14 @@ export function emptyStateCopy(
       // so an empty one is unreachable. Naming it back to the user would read
       // as `No links match ""`, so fall back rather than print that.
       if (!query) return t("links.noMatches");
-      const shown = query.length > EMPTY_STATE_QUERY_MAX
-        ? `${query.slice(0, EMPTY_STATE_QUERY_MAX)}…`
+      // Count and cut code points, not UTF-16 units: slicing a string mid pair
+      // strands half an emoji, and the response ships it as U+FFFD.
+      const chars = [...query];
+      const shown = chars.length > EMPTY_STATE_QUERY_MAX
+        ? `${chars.slice(0, EMPTY_STATE_QUERY_MAX).join("")}…`
         : query;
       if (filter === "all") return t("links.noSearchMatches", { query: shown });
-      const label = FILTER_CHIPS.find((chip) => chip.key === filter)?.labelKey;
-      return t("links.noSearchMatchesInFilter", { query: shown, filter: label ? t(label) : filter });
+      return t("links.noSearchMatchesInFilter", { query: shown, filter: t(FILTER_LABEL[filter]) });
     }
     case "no-links":
     case undefined:
@@ -300,7 +314,7 @@ export const LinksPage: FC<Props> = ({
                 href={filterUrl(chip.key)}
               >
                 <span class="icon">{chip.icon}</span>
-                <span>{t(chip.labelKey)}</span>
+                <span>{t(FILTER_LABEL[chip.key])}</span>
               </a>
             ))}
           </div>
