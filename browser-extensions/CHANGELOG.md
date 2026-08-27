@@ -2,6 +2,13 @@
 
 All notable changes to the shrtnr browser extensions are documented in this file.
 
+## 0.1.1 (2026-08-27)
+
+Defect-fix release. No new permissions and no manifest changes beyond the version.
+
+- **"Test connection" works before the first save.** The test fetched with the URL as typed and without requesting host permission, so it ran under a normal page's same-origin rules and reported a reachable server as a network failure. It now normalizes the entered address to its origin and requests host permission for it, the same steps Save takes, and names the host in the message when the permission is declined.
+- **Invalid-URL and save-failure messages are localized.** Both rendered English browser or hardcoded strings through the `{message}` placeholder. Each has its own translated key in English, Indonesian, and Swedish.
+
 ## 0.1.0 (2026-04-30)
 
 Initial release. Chrome and Firefox extensions that shorten the active tab into a self-hosted shrtnr deployment, copy the short URL to the clipboard, and offer a server-side QR code. Single source tree under `browser-extensions/`, two store artifacts via the same MV3 build (`dist/chrome.zip`, `dist/firefox.zip`).
