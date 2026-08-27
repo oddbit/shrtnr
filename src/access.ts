@@ -32,6 +32,31 @@ function extractToken(request: Request): string | null {
 }
 
 /**
+ * Name of the cookie that carries a fake identity in dev mode. Set by
+ * /_/dev/login, cleared by /_/dev/logout, read only while ACCESS_AUD is unset.
+ */
+export const DEV_IDENTITY_COOKIE = "dev_identity";
+
+/**
+ * The dev-mode identity a browser chose through /_/dev/login. DEV_IDENTITY is
+ * one identity for the whole server; the cookie is one per browser session, so
+ * two browsers (or two Playwright contexts) can act as two owners against the
+ * same dev instance. Callers must check for dev mode first: this reads the
+ * cookie without asking whether it may be trusted.
+ */
+function devIdentityFromCookie(request: Request): string | null {
+  const cookies = request.headers.get("Cookie") ?? "";
+  const match = cookies.match(new RegExp(`(?:^|;\\s*)${DEV_IDENTITY_COOKIE}=([^;]*)`));
+  if (!match) return null;
+  try {
+    const value = decodeURIComponent(match[1]).trim();
+    return value || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Parse the payload of an unverified JWT without validating the signature.
  * Returns the raw payload object or null if malformed.
  */
@@ -81,6 +106,8 @@ export async function extractIdentity(request: Request, env: Env, aud = env.ACCE
     }
     const emailHeader = request.headers.get("Cf-Access-Authenticated-User-Email");
     if (emailHeader?.trim()) return emailHeader.trim();
+    const devCookie = devIdentityFromCookie(request);
+    if (devCookie) return devCookie;
     if (env.DEV_IDENTITY?.trim()) return env.DEV_IDENTITY.trim();
     return "anonymous";
   }
@@ -103,9 +130,13 @@ export async function extractIdentity(request: Request, env: Env, aud = env.ACCE
 /**
  * Check whether the request carries a valid Cloudflare Access session.
  * Looks for explicit auth signals (JWT header, CF_Authorization cookie)
- * and verifies the JWT if present. Does not fall back to DEV_IDENTITY.
+ * and verifies the JWT if present. Does not fall back to DEV_IDENTITY: that
+ * would sign every visitor in and hide the landing page from local dev. The
+ * dev_identity cookie does count as a session in dev mode, since the visitor
+ * chose it through /_/dev/login the way a real visitor chooses to log in.
  */
 export async function isSignedIn(request: Request, env: Env): Promise<boolean> {
+  if (!env.ACCESS_AUD && devIdentityFromCookie(request)) return true;
   const hasJwt = request.headers.has("Cf-Access-Jwt-Assertion");
   const cookies = request.headers.get("Cookie") ?? "";
   const hasCookie = cookies.includes("CF_Authorization=");
@@ -143,6 +174,8 @@ export async function verifyAccessJwt(
     }
     const emailHeader = request.headers.get("Cf-Access-Authenticated-User-Email");
     if (emailHeader) return { email: emailHeader };
+    const devCookie = devIdentityFromCookie(request);
+    if (devCookie) return { email: devCookie };
     if (env.DEV_IDENTITY) return { email: env.DEV_IDENTITY };
     return null;
   }

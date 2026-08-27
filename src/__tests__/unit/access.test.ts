@@ -238,3 +238,68 @@ describe("extractIdentity", () => {
     expect(await extractIdentity(req, env)).toBe("email@example.com");
   });
 });
+
+// ---- dev_identity cookie: the browser-side counterpart of DEV_IDENTITY ----
+
+describe("dev_identity cookie", () => {
+  const cookieReq = (cookie: string, extra: Record<string, string> = {}) =>
+    makeRequest({ Cookie: cookie, ...extra });
+
+  describe("when ACCESS_AUD is not configured (dev mode)", () => {
+    it("extractIdentity returns the cookie value", async () => {
+      const id = await extractIdentity(cookieReq("dev_identity=alice%40example.com"), fakeEnv());
+      expect(id).toBe("alice@example.com");
+    });
+
+    it("extractIdentity prefers the cookie over DEV_IDENTITY", async () => {
+      // The env var is one identity for the whole server. The cookie is one
+      // identity per browser session, so two browsers can act as two owners
+      // against the same dev instance.
+      const env = fakeEnv({ DEV_IDENTITY: "dev@local" });
+      expect(await extractIdentity(cookieReq("dev_identity=alice%40example.com"), env)).toBe("alice@example.com");
+    });
+
+    it("extractIdentity prefers a JWT or the Access email header over the cookie", async () => {
+      const jwt = makeJwt({ email: "jwt@example.com" });
+      expect(
+        await extractIdentity(cookieReq("dev_identity=alice%40example.com", { "Cf-Access-Jwt-Assertion": jwt }), fakeEnv()),
+      ).toBe("jwt@example.com");
+      expect(
+        await extractIdentity(
+          cookieReq("dev_identity=alice%40example.com", { "Cf-Access-Authenticated-User-Email": "hdr@example.com" }),
+          fakeEnv(),
+        ),
+      ).toBe("hdr@example.com");
+    });
+
+    it("extractIdentity ignores a blank cookie and falls through to DEV_IDENTITY", async () => {
+      const env = fakeEnv({ DEV_IDENTITY: "dev@local" });
+      expect(await extractIdentity(cookieReq("dev_identity=; theme=dark"), env)).toBe("dev@local");
+    });
+
+    it("verifyAccessJwt returns the cookie identity as the user email", async () => {
+      const user = await verifyAccessJwt(cookieReq("dev_identity=alice%40example.com"), fakeEnv());
+      expect(user).toEqual({ email: "alice@example.com" });
+    });
+
+    it("isSignedIn treats the cookie as a session, so the landing page redirects to the dashboard", async () => {
+      expect(await isSignedIn(cookieReq("dev_identity=alice%40example.com"), fakeEnv())).toBe(true);
+    });
+  });
+
+  describe("when ACCESS_AUD is configured (production mode)", () => {
+    const prodEnv = () => fakeEnv({ ACCESS_AUD: "aud-tag", ACCESS_JWKS_URL: "https://team.cloudflareaccess.com/cdn-cgi/access/certs" });
+
+    it("extractIdentity ignores the cookie", async () => {
+      expect(await extractIdentity(cookieReq("dev_identity=alice%40example.com"), prodEnv())).toBe("anonymous");
+    });
+
+    it("verifyAccessJwt ignores the cookie", async () => {
+      expect(await verifyAccessJwt(cookieReq("dev_identity=alice%40example.com"), prodEnv())).toBeNull();
+    });
+
+    it("isSignedIn ignores the cookie", async () => {
+      expect(await isSignedIn(cookieReq("dev_identity=alice%40example.com"), prodEnv())).toBe(false);
+    });
+  });
+});

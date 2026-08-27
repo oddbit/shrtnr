@@ -21,6 +21,7 @@
 import { Hono } from "hono";
 import type { Env, TimelineRange } from "./types";
 import { verifyAccessJwt, extractIdentity, isSignedIn, type AccessUser } from "./access";
+import { handleDevLogin, handleDevLogout } from "./dev-login";
 import { handleRedirect } from "./redirect";
 import { unauthorizedResponse, hasScope, forbiddenResponse } from "./auth";
 import { apiRouter } from "./api/router";
@@ -105,6 +106,11 @@ const app = new Hono<HonoEnv>();
 // ---- Health check (public) ----
 
 app.get("/_/health", () => handleHealth());
+
+// ---- Dev-mode fake sign-in (404 whenever ACCESS_AUD is set) ----
+
+app.get("/_/dev/login", (c) => handleDevLogin(c.req.raw, c.env));
+app.get("/_/dev/logout", (c) => handleDevLogout(c.req.raw, c.env));
 
 // ---- Admin auth middleware ----
 

@@ -1,0 +1,17 @@
+# Local development variables. Copy to .dev.vars (git-ignored) and edit.
+#
+# The admin pages are protected by Cloudflare Access in production. Locally
+# ACCESS_AUD is unset, so the worker skips JWT verification and needs another
+# source of identity: every write is owner-gated and every settings row is
+# keyed by it.
+#
+# Two ways to supply one:
+#
+# 1. Per browser: open http://localhost:8787/_/dev/login?as=you@example.com
+#    (or the form at /_/dev/login). Sets a dev_identity cookie for that
+#    browser only. Sign out at /_/dev/logout. Use your real email to act as
+#    the owner of links imported from production.
+#
+# 2. Server-wide fallback: DEV_IDENTITY below applies to any request that
+#    carries no cookie, header, or JWT. The test suite pins it to dev@local.
+DEV_IDENTITY=dev@local

@@ -144,7 +144,7 @@ npx wrangler secret put ACCESS_JWKS_URL
 
 `ACCESS_JWKS_URL` follows the pattern `https://<your-team-name>.cloudflareaccess.com/cdn-cgi/access/certs`.
 
-When `ACCESS_AUD` is set, the worker validates the JWT signature and audience claim on every admin and MCP request. When absent (local dev), it skips verification and falls back to dev mode.
+When `ACCESS_AUD` is set, the worker validates the JWT signature and audience claim on every admin and MCP request. When absent (local dev), it skips verification and takes the identity from the `dev_identity` cookie or `DEV_IDENTITY` instead. See [Local sign-in](#local-sign-in).
 
 
 
@@ -282,10 +282,21 @@ For full endpoint shapes, parameters, and example payloads, see the live API ref
 
 ```bash
 yarn install
-yarn db:migrate         # apply migrations to local D1
+cp .dev.vars.example .dev.vars   # local identity settings, git-ignored
+yarn db:migrate                  # apply migrations to local D1
 yarn test
 yarn dev
 ```
+
+### Local sign-in
+
+Cloudflare Access protects the admin pages in production. `wrangler dev` runs without it, and the admin pages still need an identity: writes are owner-gated and settings are stored per user. Pick one per browser:
+
+```
+http://localhost:8787/_/dev/login?as=you@example.com
+```
+
+This sets a `dev_identity` cookie for that browser only, so a second browser or a second Playwright context can act as a second owner. `/_/dev/login` without `as` shows a form; `/_/dev/logout` clears the cookie. Requests carrying no cookie fall back to `DEV_IDENTITY` from `.dev.vars`. Both routes answer 404 whenever `ACCESS_AUD` is set, so a deployment exposes nothing.
 
 ### SDK development
 
