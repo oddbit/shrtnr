@@ -648,6 +648,84 @@ describe("Links listing page windowing", () => {
     expect(html).not.toContain("Show disabled");
   });
 
+  it("names the query in the empty state when a search matched nothing", async () => {
+    await seed(3);
+    const html = await (
+      await SELF.fetch(req("/_/admin/links?search=zzz", { headers: { Cookie: "lang=en" } }))
+    ).text();
+
+    // The search emptied the window, and the default Active chip is narrowing
+    // too, so the copy names both. Match the whole sentence, so a bare query or
+    // an unreplaced placeholder sitting next to one cannot pass.
+    expect(emptyState(html)).toContain("No links match &quot;zzz&quot; in Active.");
+    expect(emptyState(html)).not.toContain("current filter");
+    expect(emptyState(html)).not.toContain("No links yet");
+  });
+
+  it("names the filter alongside the query when a chip is narrowing too", async () => {
+    // A link matching "one" exists and is one chip away, so blaming the query
+    // alone would be as wrong as blaming the filter alone.
+    for (const slug of ["one", "two", "three"]) {
+      await LinkRepository.create(env.DB, { url: `https://example.com/${slug}`, slug });
+    }
+    const html = await (
+      await SELF.fetch(
+        req("/_/admin/links?filter=disabled&search=one", { headers: { Cookie: "lang=en" } }),
+      )
+    ).text();
+
+    expect(emptyState(html)).toContain("No links match &quot;one&quot; in Disabled.");
+  });
+
+  it("names only the query when the All chip is hiding nothing", async () => {
+    await seed(3);
+    const html = await (
+      await SELF.fetch(
+        req("/_/admin/links?filter=all&search=zzz", { headers: { Cookie: "lang=en" } }),
+      )
+    ).text();
+
+    // Nothing is narrowing but the search, so there is no filter to name.
+    expect(emptyState(html)).toContain("No links match &quot;zzz&quot;.");
+    expect(emptyState(html)).not.toContain("in All");
+  });
+
+  it("keeps the filter wording when a filter, not a search, emptied the list", async () => {
+    await seed(3);
+    const html = await (
+      await SELF.fetch(req("/_/admin/links?filter=disabled", { headers: { Cookie: "lang=en" } }))
+    ).text();
+
+    expect(emptyState(html)).toContain("No links match the current filter.");
+  });
+
+  it("escapes markup in a search query before naming it in the empty state", async () => {
+    await seed(3);
+    const html = await (
+      await SELF.fetch(
+        req(`/_/admin/links?search=${encodeURIComponent("<b>zzz</b>")}`, {
+          headers: { Cookie: "lang=en" },
+        }),
+      )
+    ).text();
+
+    expect(emptyState(html)).toContain("&lt;b&gt;zzz&lt;/b&gt;");
+    expect(emptyState(html)).not.toContain("<b>zzz</b>");
+  });
+
+  it("treats a whitespace-only search as no search at all", async () => {
+    // The repository returns nothing for a search that trims to empty, so an
+    // untrimmed query reaches the empty state and gets attributed to whatever
+    // the filter happens to be. Under the default Active filter that reads
+    // "All links are disabled" over a catalog where nothing is disabled.
+    await seed(3);
+    for (const url of ["/_/admin/links?search=%20%20", "/_/admin/links?filter=all&search=%20"]) {
+      const html = await (await SELF.fetch(req(url, { headers: { Cookie: "lang=en" } }))).text();
+      expect(emptyState(html)).toBe("");
+      expect(rowCount(html)).toBe(3);
+    }
+  });
+
   it("does not print a row count above an empty state", async () => {
     for (const slug of ["one", "two", "three"]) {
       await LinkRepository.create(env.DB, { url: `https://example.com/${slug}`, slug });

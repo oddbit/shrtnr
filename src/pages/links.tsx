@@ -3,7 +3,7 @@
 
 import type { FC } from "hono/jsx";
 import type { LinkWithSlugs, TimelineRange } from "../types";
-import type { TranslateFn } from "../i18n";
+import type { TranslateFn, TranslationKey } from "../i18n";
 import { Delta } from "../components/delta";
 import { RangePicker } from "../components/range-picker";
 import { fmtNumber } from "../i18n/format";
@@ -121,6 +121,82 @@ export function paginationItems(
   ];
 }
 
+/**
+ * The chip label per status. A Record rather than a lookup over the chip list:
+ * every LinksFilter has an entry by construction, so naming one needs no
+ * not-found arm that can never run.
+ */
+const FILTER_LABEL: Record<LinksFilter, TranslationKey> = {
+  active: "links.filterActive",
+  disabled: "links.filterDisabled",
+  all: "links.filterAll",
+};
+
+/**
+ * The status chips, in the order they render. They read their labels from the
+ * table above, so the chip a user clicks and the filter the empty state names
+ * can never drift apart.
+ */
+const FILTER_CHIPS = [
+  { key: "active", icon: "link" },
+  { key: "disabled", icon: "block" },
+  { key: "all", icon: "all_inclusive" },
+] as const satisfies readonly { key: LinksFilter; icon: string }[];
+
+/** Longest query the empty state repeats back before it gets clipped. */
+const EMPTY_STATE_QUERY_MAX = 60;
+
+/**
+ * Copy for an empty result set.
+ *
+ * The service says why the served window came back with nothing. The page adds
+ * the two things only it holds: the query to name, and the chip that may be
+ * narrowing alongside it. Under `all` nothing but the search is hiding rows, so
+ * there is no filter worth naming; under `active` or `disabled` both are, and
+ * blaming either one alone is half the truth.
+ *
+ * The query is user input dropped into a centred one-paragraph block. Escaping
+ * keeps it safe, and clipping keeps a pasted essay from pushing the toolbar and
+ * the paginator off screen.
+ */
+export function emptyStateCopy(
+  t: TranslateFn,
+  emptyReason: LinksEmptyReason | undefined,
+  searchQuery: string,
+  filter: LinksFilter,
+): string {
+  switch (emptyReason) {
+    case "all-disabled":
+      return t("links.allDisabled");
+    case "no-matches":
+      return t("links.noMatches");
+    case "no-search-matches": {
+      const query = searchQuery.trim();
+      // The service only raises this reason for a query that survives a trim,
+      // so an empty one is unreachable. Naming it back to the user would read
+      // as `No links match ""`, so fall back rather than print that.
+      if (!query) return t("links.noMatches");
+      // Count and cut code points, not UTF-16 units: slicing a string mid pair
+      // strands half an emoji, and the response ships it as U+FFFD.
+      const chars = [...query];
+      const shown = chars.length > EMPTY_STATE_QUERY_MAX
+        ? `${chars.slice(0, EMPTY_STATE_QUERY_MAX).join("")}…`
+        : query;
+      if (filter === "all") return t("links.noSearchMatches", { query: shown });
+      return t("links.noSearchMatchesInFilter", { query: shown, filter: t(FILTER_LABEL[filter]) });
+    }
+    case "no-links":
+    case undefined:
+      return t("links.empty");
+    default: {
+      // A reason added to the union has to pick its own copy here instead of
+      // inheriting the first-run message by falling through.
+      const unhandled: never = emptyReason;
+      return unhandled;
+    }
+  }
+}
+
 type Props = {
   /**
    * Rows for the current page only: the query already applied the filter, the
@@ -186,12 +262,6 @@ export const LinksPage: FC<Props> = ({
 
   const countKey = total !== 1 ? "links.countPlural" : "links.count";
 
-  const filterChips: { key: LinksFilter; labelKey: "links.filterActive" | "links.filterDisabled" | "links.filterAll"; icon: string }[] = [
-    { key: "active", labelKey: "links.filterActive", icon: "link" },
-    { key: "disabled", labelKey: "links.filterDisabled", icon: "block" },
-    { key: "all", labelKey: "links.filterAll", icon: "all_inclusive" },
-  ];
-
   const rangeLabel = range === "all" ? t("range.long.all") : t(`range.${range}` as const);
   const preserveParams: Record<string, string | undefined> = {
     sort,
@@ -238,13 +308,13 @@ export const LinksPage: FC<Props> = ({
       <div class="toolbar">
         <div class="toolbar-group">
           <div class="filter-chips" role="group" aria-label={t("links.filter")}>
-            {filterChips.map((chip) => (
+            {FILTER_CHIPS.map((chip) => (
               <a
                 class={`filter-chip${filter === chip.key ? " active" : ""}`}
                 href={filterUrl(chip.key)}
               >
                 <span class="icon">{chip.icon}</span>
-                <span>{t(chip.labelKey)}</span>
+                <span>{t(FILTER_LABEL[chip.key])}</span>
               </a>
             ))}
           </div>
@@ -273,13 +343,7 @@ export const LinksPage: FC<Props> = ({
       {links.length === 0 ? (
         <div class="empty-state">
           <span class="icon">link_off</span>
-          <p>
-            {emptyReason === "all-disabled"
-              ? t("links.allDisabled")
-              : emptyReason === "no-matches"
-                ? t("links.noMatches")
-                : t("links.empty")}
-          </p>
+          <p>{emptyStateCopy(t, emptyReason, searchQuery || "", filter)}</p>
         </div>
       ) : (
         <>

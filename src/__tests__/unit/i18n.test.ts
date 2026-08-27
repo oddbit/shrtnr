@@ -20,6 +20,11 @@ function flattenKeys(obj: unknown, prefix = ""): string[] {
   return out;
 }
 
+/** The `{name}` placeholders a translated string interpolates. */
+function placeholders(value: string): string[] {
+  return [...(value.match(/\{[a-zA-Z0-9_]+\}/g) ?? [])].sort();
+}
+
 describe("i18n", () => {
   describe("isSupportedLanguage", () => {
     it("returns true for supported languages", () => {
@@ -54,6 +59,17 @@ describe("i18n", () => {
     it("falls back to English for unsupported language", () => {
       const t = getTranslations("fr");
       expect(t["nav.dashboard"]).toBe("Dashboard");
+    });
+  });
+
+  describe("placeholder parity", () => {
+    // Translations is typed off en, so a missing key fails the build. Nothing
+    // types the placeholders inside a value, so a locale can keep the key and
+    // silently drop the interpolation the key exists for.
+    it.each([["id", id], ["sv", sv]] as const)("keeps every %s placeholder that en declares", (_name, locale) => {
+      for (const key of Object.keys(en) as (keyof typeof en)[]) {
+        expect(placeholders(locale[key])).toEqual(placeholders(en[key]));
+      }
     });
   });
 
