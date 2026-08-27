@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .wrangler/
+playwright-report/
+test-results/
 .dev.vars
 .DS_Store
 ignore/

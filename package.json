@@ -16,11 +16,15 @@
     "secret:put": "wrangler secret put",
     "test": "vitest run",
     "test:watch": "vitest",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
     "emit-spec": "tsx scripts/emit-spec.ts"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.18.8",
     "@cloudflare/workers-types": "^5.20260728.1",
+    "@playwright/test": "1.62.1",
+    "@types/node": "^26.4.0",
     "@vitest/runner": "^4.1.10",
     "@vitest/snapshot": "^4.1.10",
     "tsx": "^4.23.1",

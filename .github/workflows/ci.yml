@@ -35,6 +35,36 @@ jobs:
       - name: Run vitest suite
         run: yarn test --run
 
+  e2e-browser:
+    name: Browser e2e (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Typecheck e2e suite
+        run: yarn tsc --noEmit -p e2e
+      - name: Install Chromium
+        run: yarn playwright install --with-deps chromium
+      # Boots wrangler dev on a throwaway D1, signs in through /_/dev/login,
+      # seeds a known catalog, and drives every admin page in a real browser.
+      # The vitest suite proves the server's HTML and SQL; this proves the
+      # page responds when clicked.
+      - name: Run e2e suite
+        run: yarn e2e
+        env:
+          CI: "true"
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
   sdk-typescript:
     name: SDK — TypeScript
     runs-on: ubuntu-latest

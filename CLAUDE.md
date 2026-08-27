@@ -66,6 +66,9 @@ Workflow on API change:
 - Write tests first. Ask the developer for behavior details; if trivial, write directly. Implement to pass.
 - Write tests for every requested behavior or change.
 - Never modify or remove tests to accommodate code changes. If a new feature breaks an existing test, stop and notify the developer. Only adding new tests is permitted.
+- Two suites, two questions. `yarn test` (vitest, `src/__tests__/`) asks whether the server emits the right HTML, JSON and SQL. `yarn e2e` (Playwright, `e2e/`) asks whether the page in front of the user responds when clicked: it boots `wrangler dev` on a throwaway D1, signs in through `/_/dev/login`, seeds a catalog, and drives every admin page in Chromium.
+- Any change under `src/pages/`, `src/admin/`, `src/client.ts`, `src/styles.ts` or `src/index.tsx` admin routes ends with `yarn e2e` green, not only `yarn test`. A code review or release that touches those paths is not complete until the e2e suite has run. Rendering tests cannot see a dead control, a script that throws on load, or a link that 500s under real data; the browser can.
+- New admin controls (chip, sort, paginator, selector, row action) get an e2e step that clicks them and asserts the URL and the marked state, alongside the vitest render assertions.
 
 ## Internationalization
 
