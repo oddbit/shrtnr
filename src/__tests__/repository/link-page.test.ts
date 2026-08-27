@@ -1,7 +1,7 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData, spyDb } from "../setup";
 import { LinkRepository, SlugRepository } from "../../db";
@@ -326,6 +326,28 @@ describe("LinkRepository.count", () => {
     for (const query of cases) {
       const paged = await LinkRepository.page(env.DB, { ...query, limit: 2, now: NOW });
       expect(paged.total).toBe(await LinkRepository.count(env.DB, { ...query, now: NOW }));
+    }
+  });
+});
+
+describe("LinkRepository.page reference time", () => {
+  it("counts and windows against one `now`, so a link expiring mid-request cannot skew the total", async () => {
+    // count() and the row query are separate statements. Each read the clock
+    // for itself, so a link whose expires_at fell between the two reads was
+    // counted as active and then excluded from the rows: total 1, links 0.
+    const link = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "a" });
+    const expiresAt = NOW + 5;
+    await env.DB.prepare("UPDATE links SET expires_at = ? WHERE id = ?").bind(expiresAt, link.id).run();
+
+    // First clock read lands before the expiry, every later one after it.
+    let reads = 0;
+    const spy = vi.spyOn(Date, "now").mockImplementation(() => (reads++ === 0 ? expiresAt - 1 : expiresAt + 1) * 1000);
+    try {
+      const result = await LinkRepository.page(env.DB, { limit: 25, status: "active" });
+      expect(result.links).toHaveLength(result.total);
+      expect(result.total).toBe(1);
+    } finally {
+      spy.mockRestore();
     }
   });
 });

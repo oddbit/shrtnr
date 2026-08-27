@@ -186,14 +186,20 @@ export class LinkRepository {
    * the catalog to slice it in JS. Use this for the listings page; `list()`
    * stays for the API and MCP callers that hand back everything.
    */
-  static async page(db: D1Database, query: LinkPageQuery, opts?: LinkRepoOptions): Promise<LinkPage> {
+  static async page(db: D1Database, requested: LinkPageQuery, opts?: LinkRepoOptions): Promise<LinkPage> {
     // SQLite treats a negative LIMIT as "no limit", so a non-positive value
     // must short-circuit rather than reach SQL and return the whole table.
-    const limit = Math.floor(query.limit);
+    const limit = Math.floor(requested.limit);
     if (limit <= 0) return { links: [], total: 0, offset: 0 };
     // A search that trims to nothing matches everything under LIKE, which is
     // the opposite of what an empty search box means.
-    if (query.search !== undefined && !query.search.trim()) return { links: [], total: 0, offset: 0 };
+    if (requested.search !== undefined && !requested.search.trim()) return { links: [], total: 0, offset: 0 };
+
+    // Read the clock once and hand the same instant to count() and the row
+    // query. Each statement defaulting to its own Date.now() lets a link whose
+    // expires_at falls between the two reads be counted and then excluded, so
+    // the page prints a total one higher than the rows it serves.
+    const query: LinkPageQuery = { ...requested, now: requested.now ?? Math.floor(Date.now() / 1000) };
 
     // Take the total from count() rather than building a second COUNT here:
     // the toolbar total and the empty-state count then cannot diverge, and a
@@ -206,8 +212,8 @@ export class LinkRepository {
     // A caller can ask past the end: a bookmarked page number, or rows
     // deleted since the URL was built. Serve the last populated window and
     // report the offset used so the caller can label the page it actually got.
-    const requested = Math.max(0, Math.floor(query.offset ?? 0));
-    const offset = requested >= total ? Math.floor((total - 1) / limit) * limit : requested;
+    const wanted = Math.max(0, Math.floor(query.offset ?? 0));
+    const offset = wanted >= total ? Math.floor((total - 1) / limit) * limit : wanted;
 
     // created_at is second-granularity, so tie-break on id to keep windows
     // disjoint when several links share a timestamp.
@@ -439,11 +445,11 @@ export class LinkRepository {
   }
 
   /**
-   * Batch-resolve the display slug for a set of link ids in one query. Picks
-   * the slug marked is_primary per link, falling back to the first
-   * auto-generated (non-custom) slug, then the first slug of any kind, so the
-   * pick matches the one used on the link list and detail pages. Returns a
-   * Map keyed by link_id; ids with no slug are absent.
+   * Batch-resolve the display slug for a set of link ids in one query. Orders
+   * the way `pickPrimarySlug` picks: the slug marked is_primary per link,
+   * then the first custom slug, then the first slug of any kind, so the SQL
+   * pick and the in-memory pick name the same slug. Returns a Map keyed by
+   * link_id; ids with no slug are absent.
    */
   static async primarySlugByIds(db: D1Database, ids: number[]): Promise<Map<number, string>> {
     const out = new Map<number, string>();
@@ -452,7 +458,7 @@ export class LinkRepository {
     const rows = await db
       .prepare(
         `SELECT link_id, slug FROM slugs WHERE link_id IN (${placeholders})
-         ORDER BY is_primary DESC, is_custom ASC, created_at ASC`,
+         ORDER BY is_primary DESC, is_custom DESC, created_at ASC`,
       )
       .bind(...ids)
       .all<{ link_id: number; slug: string }>();
