@@ -109,3 +109,21 @@ describe("dashboard.recent-links widget", () => {
     expect(large).toBe(small);
   });
 });
+
+describe("dashboard.recent-links widget primary-slug fallback", () => {
+  it("names a link with no primary flag by its custom slug, matching the links page", async () => {
+    // The is_primary flag is an invariant every write path keeps, so this row
+    // state only arises from a bad import or hand-edited data. When it does,
+    // the dashboard and the links page must still agree on which slug names
+    // the link: the custom one, not the random one.
+    const link = await LinkRepository.create(env.DB, { url: "https://e.com", slug: "auto123" });
+    await addCustomSlugToLink(env as any, link.id, { slug: "promo" });
+    await env.DB.prepare("UPDATE slugs SET is_primary = 0 WHERE link_id = ?").bind(link.id).run();
+
+    const data = await recentLinksWidget.load(env, ctx, { range: "all" });
+    const out = String(recentLinksWidget.render(data, ctx));
+
+    expect(out).toContain('data-copy-slug="promo"');
+    expect(out).not.toContain('data-copy-slug="auto123"');
+  });
+});

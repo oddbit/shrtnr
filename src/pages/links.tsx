@@ -8,6 +8,7 @@ import { Delta } from "../components/delta";
 import { RangePicker } from "../components/range-picker";
 import { fmtNumber } from "../i18n/format";
 import { LINKS_PER_PAGE_OPTIONS } from "../constants";
+import { pickPrimarySlug } from "../slugs";
 import type { LinksEmptyReason } from "../services";
 
 function formatDate(ts: number, lang: string): string {
@@ -360,9 +361,7 @@ export const LinksPage: FC<Props> = ({
                 </thead>
                 <tbody>
                   {links.map((link) => {
-                    const mainSlug = link.slugs.find((s) => s.is_primary)
-                      || link.slugs.find((s) => s.is_custom)
-                      || link.slugs[0];
+                    const mainSlug = pickPrimarySlug(link.slugs);
                     const disabled = isLinkDisabled(link);
                     const href = `/_/admin/links/${link.id}`;
                     return (

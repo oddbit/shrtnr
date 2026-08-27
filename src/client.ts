@@ -41,11 +41,15 @@ function t(key, params) {
 }
 
 // The slug string to display or copy when "the link" needs one representative
-// chip: the link's primary, falling back to the first slug.
+// chip. Same order as pickPrimarySlug in src/slugs.ts: the flagged primary,
+// then the first custom slug, then the first slug of any kind.
 function pickPrimarySlug(link) {
   if (!link.slugs || link.slugs.length === 0) return '';
   for (var i = 0; i < link.slugs.length; i++) {
     if (link.slugs[i].is_primary) return link.slugs[i].slug;
+  }
+  for (var j = 0; j < link.slugs.length; j++) {
+    if (link.slugs[j].is_custom) return link.slugs[j].slug;
   }
   return link.slugs[0].slug;
 }

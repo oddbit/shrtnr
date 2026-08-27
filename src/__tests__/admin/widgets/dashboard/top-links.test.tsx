@@ -60,3 +60,15 @@ describe("dashboard.top-links widget", () => {
     expect(data.rows[0].slug).toBe("promo");
   });
 });
+
+describe("dashboard.top-links widget primary-slug fallback", () => {
+  it("names a link with no primary flag by its custom slug, matching the links page", async () => {
+    const link = await LinkRepository.create(env.DB, { url: "https://e.com", slug: "auto123" });
+    await addCustomSlugToLink(env as any, link.id, { slug: "promo" });
+    await env.DB.prepare("UPDATE slugs SET is_primary = 0 WHERE link_id = ?").bind(link.id).run();
+    await ClickRepository.record(env.DB, "auto123", {});
+
+    const data = await topLinksWidget.load(env, ctx, { range: "all" });
+    expect(data.rows[0].slug).toBe("promo");
+  });
+});

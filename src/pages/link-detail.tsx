@@ -8,6 +8,7 @@ import { countryName } from "../country";
 import { escHtml } from "../escape";
 import { formatAvgPerDay } from "../services/trends";
 import { fmtNumber } from "../i18n/format";
+import { pickPrimarySlug } from "../slugs";
 import { ACCESS_METHOD_OPTIONS, fillMissingOptions } from "../analytics-fill";
 
 const StatBar: FC<{
@@ -72,10 +73,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
   const isExpired = link.expires_at != null && link.expires_at < now;
   const isOwner = identity === link.created_by;
 
-  // Primary slug is the one marked is_primary, falling back to first custom, then random
-  const primarySlug = link.slugs.find((s) => s.is_primary)
-    || link.slugs.find((s) => s.is_custom)
-    || link.slugs[0];
+  const primarySlug = pickPrimarySlug(link.slugs);
   const displaySlug = primarySlug?.slug || "";
   const randomSlug = link.slugs.find((s) => !s.is_custom);
   const custom = link.slugs.filter((s) => s.is_custom);

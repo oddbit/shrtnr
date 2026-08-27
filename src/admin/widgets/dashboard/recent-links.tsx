@@ -3,21 +3,12 @@
 import type { AdminWidget } from "../types";
 import type { Env, TimelineRange, LinkWithSlugs } from "../../../types";
 import { LinkRepository } from "../../../db";
+import { pickPrimarySlug } from "../../../slugs";
 import { parseRangeParam } from "./_range";
 
 interface RecentLinksData {
   range: TimelineRange;
   links: LinkWithSlugs[];
-}
-
-/**
- * Picks the slug marked is_primary, falling back to the first auto-generated
- * slug, then the first slug of any kind. Mirrors the primary-slug pick used
- * on the link list and detail pages.
- */
-function primarySlug(link: LinkWithSlugs): string {
-  const p = link.slugs.find((s) => s.is_primary) ?? link.slugs.find((s) => !s.is_custom);
-  return p ? p.slug : link.slugs[0]?.slug || "";
 }
 
 /**
@@ -49,7 +40,7 @@ export const recentLinksWidget: AdminWidget<{ range: TimelineRange }, RecentLink
           <div class="muted-hint">{t("dashboard.noLinks")}</div>
         ) : (
           d.links.map((link) => {
-            const slug = primarySlug(link);
+            const slug = pickPrimarySlug(link.slugs)?.slug ?? "";
             return (
               <a href={`/_/admin/links/${link.id}`} class="recent-row">
                 <span

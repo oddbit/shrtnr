@@ -3,6 +3,7 @@
 
 import { SlugRepository } from "./db";
 import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH } from "./constants";
+import type { Slug } from "./types";
 
 // Unambiguous lowercase characters: removed l, o, 0, 1 to avoid confusion
 export const RANDOM_CHARSET = "abcdefghijkmnpqrstuvwxyz23456789";
@@ -46,4 +47,18 @@ export function validateSlugLength(length: number): string | null {
   if (!Number.isInteger(length) || length < MIN_SLUG_LENGTH) return `Slug length must be an integer >= ${MIN_SLUG_LENGTH}`;
   if (length > MAX_SLUG_LENGTH) return `Slug length must be an integer <= ${MAX_SLUG_LENGTH}`;
   return null;
+}
+
+/**
+ * The one slug that names a link when a surface has room for only one: the
+ * slug flagged `is_primary`. Every write path keeps exactly one slug flagged,
+ * so the fallbacks only run on data that skipped those paths. When they do,
+ * the first custom slug wins over the auto-generated one (loaders order auto
+ * slugs first, so "first in list" would hand back the random slug), then the
+ * first slug of any kind. Every admin surface, the QR endpoint and the MCP
+ * server pick through here, so they cannot disagree on which slug a link is.
+ * `LinkRepository.primarySlugByIds` orders its SQL the same way.
+ */
+export function pickPrimarySlug(slugs: Slug[]): Slug | undefined {
+  return slugs.find((s) => s.is_primary) ?? slugs.find((s) => s.is_custom) ?? slugs[0];
 }

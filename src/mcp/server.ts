@@ -58,6 +58,7 @@ import {
 import type { TimelineRange } from "../types";
 import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH, DEFAULT_SLUG_LENGTH, TIMELINE_RANGES } from "../constants";
 import { renderQrSvg } from "../qr";
+import { pickPrimarySlug } from "../slugs";
 import {
   BUNDLE_ACCENTS,
   CustomSlugStringSchema,
@@ -480,7 +481,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
 
         const target = requestedSlug
           ? link.slugs.find((s) => s.slug === requestedSlug.toLowerCase())
-          : (link.slugs.find((s) => s.is_primary) ?? link.slugs[0]);
+          : pickPrimarySlug(link.slugs);
 
         if (!target) return fail("Slug not found");
 

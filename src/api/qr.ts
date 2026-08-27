@@ -5,6 +5,7 @@ import { MAX_QR_SIZE, MIN_QR_SIZE } from "../constants";
 import { Env } from "../types";
 import { getLink } from "../services/link-management";
 import { renderQrSvg } from "../qr";
+import { pickPrimarySlug } from "../slugs";
 import { json } from "./response";
 
 export async function handleLinkQr(request: Request, env: Env, linkId: number): Promise<Response> {
@@ -31,7 +32,7 @@ export async function handleLinkQr(request: Request, env: Env, linkId: number): 
   const link = result.data;
   const slug = requestedSlug
     ? link.slugs.find((s) => s.slug === requestedSlug.toLowerCase())
-    : link.slugs.find((s) => s.is_primary) ?? link.slugs[0];
+    : pickPrimarySlug(link.slugs);
 
   if (!slug) return json({ error: "Slug not found" }, 404);
 
