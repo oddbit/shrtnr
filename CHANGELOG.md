@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.38.0 (2026-08-27)
+
+Feature and defect release (PRs #39 through #42, #46 through #50, #55, and the post-merge review). The admin links listing now pages in SQL, and the release closes a batch of defects across the admin UI, the MCP server, the browser extension, and the SDKs.
+
+- **The links listing serves one page at a time.** Filtering, sorting and the window all run in SQL through `LinkRepository.page()`, so rendering 25 rows costs three statements whatever the catalog size, and only the served rows get delta enrichment. Search, status filter, sort and range survive page changes, `per_page` caps at 100 (D1 binds one parameter per served row to fetch its slugs), and a page number past the end clamps to the last populated window instead of rendering empty. Migration `0007` adds `idx_links_created_at` on `links(created_at DESC, id DESC)` so the planner walks the index and stops after `limit + offset` rows rather than sorting the table per request.
+- **Search, owner and URL lookups share one SQL definition and no fan-out.** `search()`, `findByOwner()` and `findByUrl()` fetched every match through `getById`, two statements per row, so a broad search over a large catalog exhausted D1's per-invocation subrequest budget. All three now derive their predicate from the same fragment as the paginated listing and cost two statements total.
+- **Delta pills aggregate only the served links.** The per-link click delta grouped every click in the range to label one page of rows. The group-by now restricts to the ids on the page while they fit inside D1's parameter cap.
+- **Paginator scales past a handful of pages.** Large page counts collapse to a window around the current page with ellipses. The paginator is a `nav` landmark with translated previous/next names and `aria-current` on the active page, hides when the result set fits one page while the per-page selector stays reachable, and on narrow screens scrolls and tabs in reading order.
+- **Empty states say what emptied the list.** Four cases with their own copy: no links yet, every link expired, the status filter matched none, and a search matched none. The search case names the query (clipped by code point at 60 characters) and the chip narrowing alongside it. A search of only whitespace no longer blames whichever filter was selected. The removed "Show disabled" toggle no longer appears in copy.
+- **Every links row has a keyboard path to its detail page.** The row label is a link, so a keyboard user reaches the detail page without a pointer.
+- **One primary-slug pick on every surface.** The dashboard recent-links and top-links widgets ignored `is_primary` and named a link by its auto-generated slug. Every surface (links list, link detail, dashboard widgets, QR endpoint, MCP server, browser-side copy chip) now calls `pickPrimarySlug`: the flagged primary, then the first custom slug, then the first of any kind.
+- **The links page counts and windows against one clock read.** `count()` and the row query each read `Date.now()`, so a link expiring between the two was counted and then excluded, printing a total one higher than the table.
+- **Slug mutation endpoints match slugs case-insensitively.** Set-primary, disable, enable and remove lowercased nothing, so a mixed-case slug in the path returned 404 for a slug that resolves on redirect.
+- **Bundle stats compute the top country's share against the full total.** The denominator was the sum of the top-10 list, which inflated the share past ten distinct countries.
+- **Interpolated `{param}` values are literal text.** `t()` used a string replacement, so `$&`, `` $` `` and `$1` in a value expanded as replacement patterns.
+- **The clicks column header localizes its range label.** The header printed the raw range token (`7d`) instead of the translated label.
+- **API key scope badges translate.** The keys page rendered the raw scope tokens `create` and `read`.
+- **MCP `create_link` declares its idempotent upsert contract.** The description states that a repeat call with the same destination returns the existing link, and the annotation moves from write-new to idempotent so agents stop searching before creating.
+- OpenAPI paths and schemas are unchanged from 0.37.1; only `info.version` changes. The bump refreshes the recorded spec hash in all three SDKs. TypeScript ships 1.1.4 and Python 1.1.3 with their own fixes; Dart takes the hash refresh alone in 2.1.3. Full suite: 85 files, 1267 tests.
+
 ## 0.37.1 (2026-08-10)
 
 Defect-fix release (PRs #36, #37, and the weekly review batch). No new endpoints or schema changes.
