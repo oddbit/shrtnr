@@ -715,6 +715,36 @@ describe("MCP tool descriptions", () => {
       await client.close();
     }
   });
+
+  // Regression: add_link_to_bundle's description claimed "only the bundle
+  // owner can add", but addLinkToBundle() deliberately skips the ownership
+  // gate every other bundle-mutation function enforces (see
+  // bundle-management.ts and the "any authenticated caller can add a link to
+  // any bundle" test in bundle-service.test.ts). A tool description that
+  // promises a check that does not exist could lead an agent to add a link
+  // it does not own, believing the call would be rejected if it were unsafe.
+  it("add_link_to_bundle does not claim an ownership check it does not enforce", async () => {
+    const agent = Object.create(ShrtnrMCP.prototype) as ShrtnrMCP;
+    agent.server = new McpServer({ name: "shrtnr", version: "test" });
+    await agent.init();
+
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test-client", version: "test" });
+    await Promise.all([
+      client.connect(clientTransport),
+      agent.server.connect(serverTransport),
+    ]);
+
+    try {
+      const { tools } = await client.listTools();
+      const addLinkToBundle = tools.find((t) => t.name === "add_link_to_bundle");
+      expect(addLinkToBundle).toBeDefined();
+      expect(addLinkToBundle?.description).not.toMatch(/only the bundle owner can add/i);
+      expect(addLinkToBundle?.description).toMatch(/any authenticated caller/i);
+    } finally {
+      await client.close();
+    }
+  });
 });
 
 // ---- create_link trailing-slash normalization ----

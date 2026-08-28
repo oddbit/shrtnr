@@ -873,7 +873,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "Add link to bundle",
         description:
-          "Add a link to a bundle. Idempotent: adding the same link twice is a no-op. Only the bundle owner can add.",
+          "Add a link to a bundle. Idempotent: adding the same link twice is a no-op. Open to any authenticated caller: adding does not require owning the bundle or the link.",
         inputSchema: {
           bundle_id: z.number().int().positive(),
           link_id: z.number().int().positive(),
