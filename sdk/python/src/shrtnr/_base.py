@@ -80,9 +80,20 @@ def parse_json_response(response: httpx.Response) -> Any:
     if not response.content:
         raise ShrtnrError(response.status_code, "Empty response body")
     try:
-        return response.json()
+        parsed = response.json()
     except Exception as exc:
         raise ShrtnrError(response.status_code, f"Invalid JSON response: {exc}") from exc
+    # A body that is valid JSON but is the literal `null` (4 bytes, so it
+    # passes the empty-body check above, and valid JSON, so it passes the
+    # parse above) used to reach here as a bare `None`. Every single-object
+    # resource method's `SomeModel.from_dict(...)` expects a dict and crashed
+    # on it with a bare AttributeError instead of the documented ShrtnrError —
+    # the same failure mode the empty-body check exists to prevent, just
+    # reached from a non-empty body. Arrays are left alone: list() endpoints
+    # legitimately parse to a JSON array, not a dict.
+    if parsed is None:
+        raise ShrtnrError(response.status_code, "Response body is JSON null")
+    return parsed
 
 
 def parse_text_response(response: httpx.Response) -> str:
