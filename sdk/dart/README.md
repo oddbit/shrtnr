@@ -130,7 +130,7 @@ Key types exported from `package:shrtnr/shrtnr.dart`:
 
 - `Link`, `Slug`, `Bundle`, `BundleWithSummary`, `BundleTopLink`
 - `ClickStats`, `TimelineData`, `TimelineBucket`, `TimelineSummary`, `NameCount`
-- `DateCount`, `SlugCount`
+- `DateCount`, `SlugCount`, `BreakdownPage`
 - `DeletedResult`, `AddedResult`, `RemovedResult`
 - Enums: `TimelineRange`, `BundleAccent`, `BreakdownDimension`, `BundleArchivedFilter`
 

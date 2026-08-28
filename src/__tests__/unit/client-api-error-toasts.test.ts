@@ -12,6 +12,50 @@ import { describe, expect, it } from "vitest";
 import { adminClientScript } from "../../client";
 import type { Translations } from "../../i18n/types";
 
+// Finds every `res.json().then(...)` call that reports the parsed body's
+// `error` field but has no `.catch(...)` immediately after it. Every such
+// block in this file follows the same shape: `toast(data.error || t(...),
+// 'error')` (or `body.error`) — the `.error` access is what marks a block as
+// reporting the API's failure body, as opposed to a success-path `.then(...)`
+// that also happens to call toast() (e.g. "link created").
+//
+// Regression: an earlier version of this guard matched line by line
+// (`/res\.json\(\)\.then\(/` and `/toast\(/` on the *same* line, with no
+// `.catch(` on that line). quickShorten, createLink, and createDuplicate all
+// spread the `.then(function(data) { ... })` call across three lines in the
+// project's usual multi-line style, so the line-based check could never see
+// `res.json().then(` and `toast(` together and missed all three being
+// unguarded. This walks the balanced parentheses of the `.then(...)` call
+// instead, so it sees the whole call regardless of how it's wrapped.
+function findUnguardedJsonThenToast(script: string): string[] {
+  const unguarded: string[] = [];
+  const callStart = /res\.json\(\)\.then\(/g;
+  let match: RegExpExecArray | null;
+  while ((match = callStart.exec(script))) {
+    const openParenIdx = match.index + match[0].length - 1;
+    let depth = 0;
+    let closeParenIdx = -1;
+    for (let i = openParenIdx; i < script.length; i++) {
+      if (script[i] === "(") depth++;
+      else if (script[i] === ")") {
+        depth--;
+        if (depth === 0) {
+          closeParenIdx = i;
+          break;
+        }
+      }
+    }
+    if (closeParenIdx === -1) continue;
+    const block = script.slice(match.index, closeParenIdx + 1);
+    if (!/toast\(/.test(block) || !/\.error\b/.test(block)) continue;
+    const after = script.slice(closeParenIdx + 1, closeParenIdx + 20);
+    if (!/^\s*\.catch\(/.test(after)) {
+      unguarded.push(block.split("\n")[0]);
+    }
+  }
+  return unguarded;
+}
+
 function extractTopLevelChunk(source: string, startPattern: RegExp): string {
   const lines = source.split("\n");
   const startIdx = lines.findIndex((l) => startPattern.test(l));
@@ -43,15 +87,25 @@ const HANDLERS: Array<{ name: string; invoke: (h: Handlers) => void }> = [
   { name: "doCreateBundle", invoke: (h) => h.doCreateBundle() },
   { name: "doUpdateBundle", invoke: (h) => h.doUpdateBundle(1) },
   { name: "doAddLinkToBundle", invoke: (h) => h.doAddLinkToBundle(1, 2) },
+  { name: "quickShorten", invoke: (h) => h.quickShorten() },
+  { name: "createLink", invoke: (h) => h.createLink() },
+  { name: "createDuplicate", invoke: (h) => h.createDuplicate("https://example.com") },
 ];
 
 // Enough of a DOM for the handlers that read form fields before calling the
 // API. Every field reads as non-empty so none of them bail out early.
+// quickShorten gates on isUrl() before ever calling the API, so its URL
+// field needs a real http(s) value; every other field just needs to be
+// non-empty.
 function fakeDocument() {
-  const field = { value: "x", focus() {}, style: {} };
+  const urlIds = new Set(["quick-url", "m-url"]);
   return {
-    getElementById: () => field,
-    querySelector: () => field,
+    getElementById: (id: string) => ({
+      value: urlIds.has(id) ? "https://example.com" : "x",
+      focus() {},
+      style: {},
+    }),
+    querySelector: () => ({ value: "x", focus() {}, style: {} }),
     querySelectorAll: () => [],
   };
 }
@@ -61,6 +115,9 @@ function fakeDocument() {
 function loadHandlers(json: () => Promise<unknown>) {
   const script = adminClientScript("1.0.0", {} as unknown as Translations);
   const code = [
+    // quickShorten calls the standalone isUrl() helper before it ever
+    // reaches the API, so that helper has to be in scope too.
+    extractTopLevelChunk(script, /^function isUrl\(/),
     ...HANDLERS.map((h) =>
       extractTopLevelChunk(script, new RegExp(`^function ${h.name}\\(`)),
     ),
@@ -114,16 +171,7 @@ describe("admin action error toasts", () => {
 
   it("leaves no failure path parsing a JSON error body without a fallback", () => {
     const script = adminClientScript("1.0.0", {} as unknown as Translations);
-    const unguarded = script
-      .split("\n")
-      .filter(
-        (line) =>
-          /res\.json\(\)\.then\(/.test(line) &&
-          /toast\(/.test(line) &&
-          !/\.catch\(/.test(line),
-      );
-
-    expect(unguarded).toEqual([]);
+    expect(findUnguardedJsonThenToast(script)).toEqual([]);
   });
 
   for (const { name, invoke } of HANDLERS) {

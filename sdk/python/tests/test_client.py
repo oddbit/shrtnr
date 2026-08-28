@@ -748,6 +748,20 @@ def test_empty_body_2xx_raises_shrtnr_error(client: Shrtnr) -> None:
     assert exc_info.value.status == 200
 
 
+@respx.mock
+def test_null_body_2xx_raises_shrtnr_error(client: Shrtnr) -> None:
+    """A non-204 2xx response whose body is the JSON literal `null` must also
+    raise ShrtnrError. content is non-empty (4 bytes) and valid JSON, so it
+    slips past both the empty-body check and the JSON-parse check above, and
+    used to reach `SomeModel.from_dict(None)` as a bare AttributeError."""
+    respx.delete(f"{BASE_URL}/_/api/links/5").mock(
+        return_value=httpx.Response(200, content=b"null", headers={"content-type": "application/json"}),
+    )
+    with pytest.raises(ShrtnrError) as exc_info:
+        client.links.delete(5)
+    assert exc_info.value.status == 200
+
+
 # ---- links.qr: size accepts int ----
 
 

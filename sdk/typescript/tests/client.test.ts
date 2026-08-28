@@ -4,6 +4,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ShrtnrClient } from "../src/index";
 import { ShrtnrError } from "../src/index";
+import type { UpdateLinkBody } from "../src/index";
 
 const BASE = "https://shrtnr.test";
 const API_KEY = "sk_abc";
@@ -375,6 +376,21 @@ describe("Case transformation", () => {
     const { init } = lastCall();
     const body = JSON.parse(init.body as string) as Record<string, unknown>;
     expect(body["expires_at"]).toBe(expiresAt.toISOString());
+  });
+
+  it("does not drop a __proto__ key from a request body built from parsed JSON", async () => {
+    mockFetch(200, { id: 1, url: "https://example.com", label: null, created_at: 1000, expires_at: null, created_via: null, created_by: "u", total_clicks: 0, slugs: [] });
+    // JSON.parse (unlike object-literal syntax) creates "__proto__" as a real
+    // own property, simulating a caller that forwards an untrusted/dynamic
+    // patch body. That key used to vanish from the outgoing request with no
+    // error because `out["__proto__"] = v` on a plain object reassigns its
+    // prototype instead of adding an own property.
+    const patch = JSON.parse('{"label":"new","__proto__":{"injected":true}}') as Record<string, unknown>;
+    await client().links.update(1, patch as unknown as UpdateLinkBody);
+    const { init } = lastCall();
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body["label"]).toBe("new");
+    expect(body["__proto__"]).toEqual({ injected: true });
   });
 });
 
