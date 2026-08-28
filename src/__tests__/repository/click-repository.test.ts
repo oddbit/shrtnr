@@ -657,6 +657,90 @@ describe("ClickRepository bundle analytics past the D1 bind cap", () => {
   });
 });
 
+// The same D1 bound-parameter cap applies per link: a link's own slug count
+// (not just a bundle's member slugs) can cross 100 once enough custom slugs
+// are added, and every per-link analytics query used to bind one parameter
+// per slug fetched for that link.
+describe("ClickRepository per-link analytics past the D1 bind cap", () => {
+  const SLUGS = 101; // 1 auto slug + 100 custom => 101 slugs, past D1's 100-parameter cap
+
+  async function wideLink() {
+    const link = await LinkRepository.create(env.DB, { url: "https://a.com/wide", slug: "wide-0", createdBy: "a@b" });
+    const slugs = ["wide-0"];
+    for (let i = 1; i < SLUGS; i++) {
+      await SlugRepository.addCustom(env.DB, link.id, `wide-${i}`);
+      slugs.push(`wide-${i}`);
+    }
+    return { link, slugs };
+  }
+
+  it("getStats aggregates a link whose slug count exceeds the cap", async () => {
+    const { link, slugs } = await wideLink();
+    expect(slugs.length).toBeGreaterThan(100);
+
+    const now = Math.floor(Date.now() / 1000);
+    for (const slug of slugs) {
+      await recordClick(slug, now - 60, { country: "US" });
+    }
+    await recordClick(slugs[0], now - 60, { country: "ID" });
+
+    const stats = await ClickRepository.getStats(env.DB, link.id);
+    expect(stats.total_clicks).toBe(SLUGS + 1);
+    expect(stats.countries.find((c) => c.name === "US")?.count).toBe(SLUGS);
+    expect(stats.slug_clicks).toHaveLength(SLUGS);
+  });
+
+  it("getTimeline aggregates a link whose slug count exceeds the cap", async () => {
+    const { link, slugs } = await wideLink();
+    const now = Math.floor(Date.now() / 1000);
+    for (const slug of slugs) {
+      await recordClick(slug, now - 60);
+    }
+
+    const timeline = await ClickRepository.getTimeline(env.DB, link.id, "30d", now);
+    expect(timeline.summary.last_30d).toBe(SLUGS);
+    expect(timeline.buckets.some((b) => b.count > 0)).toBe(true);
+  });
+
+  it("getLinkBreakdown aggregates a link whose slug count exceeds the cap", async () => {
+    const { link, slugs } = await wideLink();
+    const now = Math.floor(Date.now() / 1000);
+    for (const slug of slugs) {
+      await recordClick(slug, now - 60, { country: "US" });
+    }
+
+    const breakdown = await ClickRepository.getLinkBreakdown(env.DB, link.id, "country", "30d", 10);
+    expect(breakdown).toEqual([{ name: "US", count: SLUGS }]);
+  });
+
+  it("getLinkBreakdownPage pages a link whose slug count exceeds the cap", async () => {
+    const { link, slugs } = await wideLink();
+    const now = Math.floor(Date.now() / 1000);
+    await recordClick(slugs[0], now - 60, { country: "US" });
+    await recordClick(slugs[1], now - 60, { country: "US" });
+    await recordClick(slugs[2], now - 60, { country: "ID" });
+
+    const page = await ClickRepository.getLinkBreakdownPage(env.DB, link.id, "countries", "30d", 0, 10);
+    expect(page.total).toBe(2);
+    expect(page.items).toEqual([
+      { name: "US", count: 2 },
+      { name: "ID", count: 1 },
+    ]);
+  });
+
+  it("compareLinkStats aggregates a link whose slug count exceeds the cap", async () => {
+    const { link, slugs } = await wideLink();
+    const now = Math.floor(Date.now() / 1000);
+    for (const slug of slugs) {
+      await recordClick(slug, now - 60, { country: "US" });
+    }
+
+    const result = await ClickRepository.compareLinkStats(env.DB, link.id, "30d");
+    expect(result.total_clicks).toBe(SLUGS);
+    expect(result.top_country).toBe("US");
+  });
+});
+
 describe("ClickRepository.getBundleSummariesBulk", () => {
   it("returns empty map when called with no bundles", async () => {
     const res = await ClickRepository.getBundleSummariesBulk(env.DB, []);
