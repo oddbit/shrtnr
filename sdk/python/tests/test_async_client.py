@@ -50,6 +50,15 @@ async def test_async_auth_sends_bearer_header(client: AsyncShrtnr) -> None:
 
 
 @respx.mock
+async def test_async_sends_x_client_header(client: AsyncShrtnr) -> None:
+    """See test_sends_x_client_header in test_client.py: the async client
+    shares the header builder, so it must carry X-Client too."""
+    route = respx.get(f"{BASE_URL}/_/api/links").mock(return_value=httpx.Response(200, json=[]))
+    await client.links.list()
+    assert route.calls[0].request.headers["X-Client"] == "sdk"
+
+
+@respx.mock
 async def test_async_follows_redirects_on_the_owned_client(client: AsyncShrtnr) -> None:
     # See test_follows_redirects_on_the_owned_client in test_client.py:
     # httpx.AsyncClient defaults to follow_redirects=False, unlike the

@@ -72,6 +72,18 @@ function bundleSlugScope(column = "slug"): string {
   return `${column} IN (SELECT s_.slug FROM bundle_links bl_ JOIN slugs s_ ON s_.link_id = bl_.link_id WHERE bl_.bundle_id = ?)`;
 }
 
+/**
+ * WHERE fragment matching every click on a slug that belongs to a link,
+ * costing exactly one bound parameter (the link id). Same rationale as
+ * `bundleSlugScope`: a naive `slug IN (?,?,...)` list built from every slug
+ * on the link blows D1's 100-bound-parameter cap once a link accumulates
+ * more than ~99 custom slugs, and fails the whole per-link analytics query
+ * with SQLITE_ERROR.
+ */
+function linkSlugScope(column = "slug"): string {
+  return `${column} IN (SELECT slug FROM slugs WHERE link_id = ?)`;
+}
+
 export type { ClickFilters } from "./filters";
 
 export class ClickRepository {
@@ -129,9 +141,8 @@ export class ClickRepository {
     };
     if (slugs.length === 0) return empty;
 
-    const placeholders = slugs.map(() => "?").join(",");
-    let where = `slug IN (${placeholders})`;
-    const binds: (string | number)[] = [...slugs];
+    let where = linkSlugScope();
+    const binds: (string | number)[] = [linkId];
 
     if (range && range !== "all") {
       const now = Math.floor(Date.now() / 1000);
@@ -211,9 +222,8 @@ export class ClickRepository {
     };
     if (slugs.length === 0) return empty;
 
-    const placeholders = slugs.map(() => "?").join(",");
     const filterFrag = clickFilterSql(filters);
-    const where = `slug IN (${placeholders})${filterFrag}`;
+    const where = `${linkSlugScope()}${filterFrag}`;
 
     // Summary counts
     const t24h = ts - 86400;
@@ -222,11 +232,11 @@ export class ClickRepository {
     const t90d = ts - 90 * 86400;
     const t1y = ts - 365 * 86400;
     const [last24h, last7d, last30d, last90d, last1y] = await Promise.all([
-      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t24h).first<{ cnt: number }>(),
-      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t7d).first<{ cnt: number }>(),
-      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t30d).first<{ cnt: number }>(),
-      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t90d).first<{ cnt: number }>(),
-      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(...slugs, t1y).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(linkId, t24h).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(linkId, t7d).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(linkId, t30d).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(linkId, t90d).first<{ cnt: number }>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM clicks WHERE ${where} AND clicked_at >= ?`).bind(linkId, t1y).first<{ cnt: number }>(),
     ]);
 
     const summary = {
@@ -270,7 +280,7 @@ export class ClickRepository {
         // Pick granularity based on actual data span
         const earliestRow = await db
           .prepare(`SELECT MIN(clicked_at) as t FROM clicks WHERE ${where}`)
-          .bind(...slugs)
+          .bind(linkId)
           .first<{ t: number | null }>();
         allEarliest = earliestRow?.t ?? ts;
         const spanDays = Math.max(1, Math.floor((ts - allEarliest) / 86400));
@@ -290,7 +300,7 @@ export class ClickRepository {
     }
 
     const timeFilter = sinceTs !== null ? ` AND clicked_at >= ?` : "";
-    const binds = sinceTs !== null ? [...slugs, sinceTs] : [...slugs];
+    const binds = sinceTs !== null ? [linkId, sinceTs] : [linkId];
 
     const rows = await db
       .prepare(
@@ -451,9 +461,8 @@ export class ClickRepository {
     const slugs = (slugRows.results ?? []).map((r) => r.slug);
     if (slugs.length === 0) return [];
 
-    const placeholders = slugs.map(() => "?").join(",");
-    let where = `slug IN (${placeholders}) AND ${dimension} IS NOT NULL`;
-    const binds: (string | number)[] = [...slugs];
+    let where = `${linkSlugScope()} AND ${dimension} IS NOT NULL`;
+    const binds: (string | number)[] = [linkId];
 
     if (range && range !== "all") {
       const now = Math.floor(Date.now() / 1000);
@@ -502,9 +511,8 @@ export class ClickRepository {
     const slugs = (slugRows.results ?? []).map((r) => r.slug);
     if (slugs.length === 0) return { items: [], total: 0 };
 
-    const placeholders = slugs.map(() => "?").join(",");
-    let where = `slug IN (${placeholders})`;
-    const binds: (string | number)[] = [...slugs];
+    let where = linkSlugScope();
+    const binds: (string | number)[] = [linkId];
     if (range && range !== "all") {
       where += " AND clicked_at >= ?";
       binds.push(Math.floor(Date.now() / 1000) - (RANGE_SECONDS[range] ?? 0));
@@ -552,9 +560,8 @@ export class ClickRepository {
       return { total_clicks: 0, top_country: null, top_referrer: null };
     }
 
-    const placeholders = slugs.map(() => "?").join(",");
-    let where = `slug IN (${placeholders})`;
-    const binds: (string | number)[] = [...slugs];
+    let where = linkSlugScope();
+    const binds: (string | number)[] = [linkId];
 
     if (range && range !== "all") {
       const now = Math.floor(Date.now() / 1000);
@@ -669,7 +676,7 @@ export class ClickRepository {
   /**
    * Returns a fixed-size counts series for the selected range — used to render
    * sparklines on KPI cards. Buckets are daily for ranges >= 7d, hourly for 24h,
-   * weekly for 1y, and monthly for all.
+   * and monthly (12 points) for 1y and all.
    */
   static async getSparkline(
     db: D1Database,

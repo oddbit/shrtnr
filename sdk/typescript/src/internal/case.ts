@@ -27,7 +27,12 @@ export function keysToCamel(value: unknown): unknown {
     return value.map(keysToCamel);
   }
   if (isPlainObject(value)) {
-    const out: Record<string, unknown> = {};
+    // Object.create(null) rather than `{}`: assigning through `out["__proto__"]
+    // = v` on a `{}` (which inherits Object.prototype's `__proto__` accessor)
+    // sets the object's prototype instead of creating an own property, so a
+    // source key literally named `__proto__` silently vanished from the
+    // output. A null-prototype target has no such accessor to intercept it.
+    const out: Record<string, unknown> = Object.create(null);
     for (const [k, v] of Object.entries(value)) {
       out[toCamel(k)] = keysToCamel(v);
     }
@@ -42,7 +47,9 @@ export function keysToSnake(value: unknown): unknown {
     return value.map(keysToSnake);
   }
   if (isPlainObject(value)) {
-    const out: Record<string, unknown> = {};
+    // See keysToCamel: a null-prototype target avoids silently dropping a
+    // `__proto__` key.
+    const out: Record<string, unknown> = Object.create(null);
     for (const [k, v] of Object.entries(value)) {
       out[toSnake(k)] = keysToSnake(v);
     }

@@ -37,8 +37,14 @@ class _UnsetType:
 UNSET: Any = _UnsetType()
 
 
-def _build_auth_headers(api_key: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {api_key}"}
+def _build_request_headers(api_key: str) -> dict[str, str]:
+    """Headers sent on every request.
+
+    The API reads X-Client to record how a link or bundle was created:
+    "sdk" when it is present, "api" otherwise (src/api/links.ts,
+    src/api/bundles.ts).
+    """
+    return {"Authorization": f"Bearer {api_key}", "X-Client": "sdk"}
 
 
 def _build_url(base_url: str, path: str, query: dict[str, str | None] | None = None) -> str:
@@ -80,9 +86,20 @@ def parse_json_response(response: httpx.Response) -> Any:
     if not response.content:
         raise ShrtnrError(response.status_code, "Empty response body")
     try:
-        return response.json()
+        parsed = response.json()
     except Exception as exc:
         raise ShrtnrError(response.status_code, f"Invalid JSON response: {exc}") from exc
+    # A body that is valid JSON but is the literal `null` (4 bytes, so it
+    # passes the empty-body check above, and valid JSON, so it passes the
+    # parse above) used to reach here as a bare `None`. Every single-object
+    # resource method's `SomeModel.from_dict(...)` expects a dict and crashed
+    # on it with a bare AttributeError instead of the documented ShrtnrError —
+    # the same failure mode the empty-body check exists to prevent, just
+    # reached from a non-empty body. Arrays are left alone: list() endpoints
+    # legitimately parse to a JSON array, not a dict.
+    if parsed is None:
+        raise ShrtnrError(response.status_code, "Response body is JSON null")
+    return parsed
 
 
 def parse_text_response(response: httpx.Response) -> str:

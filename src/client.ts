@@ -189,7 +189,7 @@ function quickShorten() {
     } else {
       return res.json().then(function(data) {
         toast(data.error || t('client.createLinkError'), 'error');
-      });
+      }).catch(function() { toast(t('client.createLinkError'), 'error'); });
     }
   });
 }
@@ -267,7 +267,7 @@ function createLink() {
     } else {
       return res.json().then(function(data) {
         toast(data.error || t('client.createLinkError'), 'error');
-      });
+      }).catch(function() { toast(t('client.createLinkError'), 'error'); });
     }
   });
 }
@@ -285,7 +285,7 @@ function createDuplicate(url) {
     } else {
       return res.json().then(function(data) {
         toast(data.error || t('client.createLinkError'), 'error');
-      });
+      }).catch(function() { toast(t('client.createLinkError'), 'error'); });
     }
   });
 }

@@ -10,7 +10,7 @@ from typing import Any
 import httpx
 
 from .._base import (
-    _build_auth_headers,
+    _build_request_headers,
     _build_url,
     parse_json_response,
     url_encode,
@@ -28,7 +28,7 @@ class Slugs:
         self._http = http
 
     def _headers(self) -> dict[str, str]:
-        return _build_auth_headers(self._api_key)
+        return _build_request_headers(self._api_key)
 
     def _json_headers(self) -> dict[str, str]:
         return {**self._headers(), "Content-Type": "application/json"}
@@ -80,7 +80,7 @@ class AsyncSlugs:
         self._http = http
 
     def _headers(self) -> dict[str, str]:
-        return _build_auth_headers(self._api_key)
+        return _build_request_headers(self._api_key)
 
     def _json_headers(self) -> dict[str, str]:
         return {**self._headers(), "Content-Type": "application/json"}
