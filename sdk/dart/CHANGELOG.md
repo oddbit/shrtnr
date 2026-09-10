@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.0 (2026-09-10)
+
+Restores a request header the 1.0 rewrite dropped. No public surface changes.
+
+- **`X-Client: sdk` is sent again on every request.** The API reads this header to record how a link or bundle was created, setting `created_via` to `sdk` when it is present and `api` otherwise. 1.0 removed it deliberately, as this changelog records, which left every link and bundle created through this SDK recording as `api` while the admin detail pages showed that value as if it were meaningful. Both `requestJson` and `requestText` carry it, so attribution does not depend on the response type. Callers who read `createdVia` should expect `sdk` again for their own writes. The test asserting the header's absence is replaced by two asserting its presence, on the JSON path and the SVG text path.
+- Documentation: the README's `Key types` list names `BreakdownPage`, which the TypeScript and Python READMEs already carried.
+- Records the spec hash for app 0.39.0. Paths and schemas are unchanged; only `info.version` moved. The TypeScript and Python SDKs ship the same header restoration in 1.2.0.
+
 ## 2.1.3 (2026-08-27)
 
 Spec hash refresh. No code changes and no public surface changes.
