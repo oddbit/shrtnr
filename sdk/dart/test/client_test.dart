@@ -199,10 +199,21 @@ void main() {
       );
     });
 
-    test('does not send X-Client header (removed in 1.0)', () async {
+    // Replaces a test that asserted this header's absence. 1.0 dropped it
+    // deliberately, but the API reads X-Client to set created_via on links
+    // and bundles (src/api/links.ts, src/api/bundles.ts), so dropping it
+    // silently recorded every SDK-created record as "api".
+    test('sends X-Client: sdk on a JSON request', () async {
       final m = _mock(status: 200, body: <dynamic>[]);
       await m.client.links.list();
-      expect(m.capture.request!.headers.containsKey('X-Client'), isFalse);
+      expect(m.capture.request!.headers['X-Client'], 'sdk');
+    });
+
+    test('sends X-Client: sdk on the non-JSON text path', () async {
+      final m =
+          _mock(status: 200, body: '<svg/>', contentType: 'image/svg+xml');
+      await m.client.links.qr(5);
+      expect(m.capture.request!.headers['X-Client'], 'sdk');
     });
   });
 

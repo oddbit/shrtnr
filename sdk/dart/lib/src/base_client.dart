@@ -7,6 +7,13 @@ import 'package:http/http.dart' as http;
 
 import 'errors.dart';
 
+/// Value of the `X-Client` header sent on every request.
+///
+/// The API reads it to record how a link or bundle was created: `sdk` when
+/// the header is present, `api` otherwise (`src/api/links.ts`,
+/// `src/api/bundles.ts`).
+const _clientHeader = 'sdk';
+
 /// Low-level HTTP transport used by [ShrtnrClient].
 ///
 /// Handles base URL normalization, auth header injection, query-string
@@ -51,7 +58,10 @@ class ShrtnrBaseClient {
     Object? body,
   }) async {
     final uri = _buildUri(path, query);
-    final headers = <String, String>{'Authorization': _authHeader};
+    final headers = <String, String>{
+      'Authorization': _authHeader,
+      'X-Client': _clientHeader,
+    };
     List<int>? bodyBytes;
     if (body != null) {
       bodyBytes = utf8.encode(jsonEncode(body));
@@ -119,7 +129,10 @@ class ShrtnrBaseClient {
     Map<String, String?>? query,
   }) async {
     final uri = _buildUri(path, query);
-    final headers = <String, String>{'Authorization': _authHeader};
+    final headers = <String, String>{
+      'Authorization': _authHeader,
+      'X-Client': _clientHeader,
+    };
     final request = http.Request(method, uri)..headers.addAll(headers);
 
     http.StreamedResponse streamed;
