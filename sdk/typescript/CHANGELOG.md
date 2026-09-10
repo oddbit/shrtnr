@@ -2,6 +2,14 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.2.0 (2026-09-10)
+
+Restores a request header the 1.0 rewrite dropped, and fixes a silent field loss in case conversion. No public surface changes.
+
+- **`X-Client: sdk` is sent again on every request.** The API reads this header to record how a link or bundle was created, setting `created_via` to `sdk` when it is present and `api` otherwise. The 1.0 rewrite stopped sending it without a changelog note, so every link and bundle created through this SDK since then recorded as `api`, and the admin detail pages showed that value as if it were meaningful. The header rides on both request paths, `request()` and `requestText()`, so attribution no longer depends on which method a caller reached for. Callers who parse `created_via` should expect `sdk` again for their own writes.
+- **`keysToSnake` and `keysToCamel` no longer drop a `__proto__` key.** Both built their output on a plain object literal and assigned with `out[key] = value`. For the literal key `"__proto__"` that assignment reassigns the object's prototype instead of creating an own property, so the field vanished with no error. A request body built from parsed JSON, for example `client.links.update(id, JSON.parse(patch))`, silently lost it. Both functions now build on a null-prototype object.
+- Records the spec hash for app 0.39.0. Paths and schemas are unchanged; only `info.version` moved.
+
 ## 1.1.4 (2026-08-27)
 
 Error-handling fix. No public surface changes.
