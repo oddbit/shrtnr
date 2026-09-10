@@ -22,4 +22,9 @@ dependencies:
 
 dev_dependencies:
   lints: ^6.1.0
-  test: ^1.31.2
+  # Floor stays low so the constraint resolves across the whole SDK range this
+  # package claims above. test 1.31.2 requires Dart >=3.11.0, so pinning that
+  # floor made `dart pub get` impossible on any Dart from 3.4.0 to 3.10.x while
+  # the manifest still advertised support for them. A caret range lets pub pick
+  # the newest test a given SDK can run: 1.31.1 on Dart 3.10, newest on CI.
+  test: ^1.25.0
