@@ -755,7 +755,9 @@ def test_null_body_2xx_raises_shrtnr_error(client: Shrtnr) -> None:
     slips past both the empty-body check and the JSON-parse check above, and
     used to reach `SomeModel.from_dict(None)` as a bare AttributeError."""
     respx.delete(f"{BASE_URL}/_/api/links/5").mock(
-        return_value=httpx.Response(200, content=b"null", headers={"content-type": "application/json"}),
+        return_value=httpx.Response(
+            200, content=b"null", headers={"content-type": "application/json"}
+        ),
     )
     with pytest.raises(ShrtnrError) as exc_info:
         client.links.delete(5)
