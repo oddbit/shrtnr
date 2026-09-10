@@ -16,7 +16,7 @@ import httpx
 
 from .._base import (
     UNSET,
-    _build_auth_headers,
+    _build_request_headers,
     _build_url,
     parse_json_response,
     parse_text_response,
@@ -43,7 +43,7 @@ class Links:
         self._http = http
 
     def _headers(self) -> dict[str, str]:
-        return _build_auth_headers(self._api_key)
+        return _build_request_headers(self._api_key)
 
     def _json_headers(self) -> dict[str, str]:
         return {**self._headers(), "Content-Type": "application/json"}
@@ -197,7 +197,7 @@ class AsyncLinks:
         self._http = http
 
     def _headers(self) -> dict[str, str]:
-        return _build_auth_headers(self._api_key)
+        return _build_request_headers(self._api_key)
 
     def _json_headers(self) -> dict[str, str]:
         return {**self._headers(), "Content-Type": "application/json"}

@@ -47,6 +47,39 @@ def test_auth_sends_bearer_header(client: Shrtnr) -> None:
 
 
 @respx.mock
+def test_sends_x_client_header(client: Shrtnr) -> None:
+    """The API reads X-Client to set created_via on links and bundles
+    (src/api/links.ts, src/api/bundles.ts): "sdk" when present, "api"
+    otherwise. The 1.0 rewrite dropped it, so SDK-created records were
+    indistinguishable from raw API calls."""
+    route = respx.get(f"{BASE_URL}/_/api/links").mock(return_value=httpx.Response(200, json=[]))
+    client.links.list()
+    assert route.calls[0].request.headers["X-Client"] == "sdk"
+
+
+@respx.mock
+def test_sends_x_client_header_on_write(client: Shrtnr) -> None:
+    """Creation is the request that actually feeds created_via, so assert the
+    header on the POST path and not only on reads."""
+    route = respx.post(f"{BASE_URL}/_/api/links").mock(
+        return_value=httpx.Response(201, json=make_link_dict(link_id=1)),
+    )
+    client.links.create(url="https://example.com")
+    assert route.calls[0].request.headers["X-Client"] == "sdk"
+
+
+@respx.mock
+def test_sends_x_client_header_on_text_response(client: Shrtnr) -> None:
+    """The QR endpoint returns SVG through a separate text path; it carries the
+    same header so attribution never depends on the response type."""
+    route = respx.get(f"{BASE_URL}/_/api/links/5/qr").mock(
+        return_value=httpx.Response(200, text="<svg/>"),
+    )
+    client.links.qr(5)
+    assert route.calls[0].request.headers["X-Client"] == "sdk"
+
+
+@respx.mock
 def test_follows_redirects_on_the_owned_client(client: Shrtnr) -> None:
     # httpx.Client defaults to follow_redirects=False. The TS SDK (fetch,
     # default "follow") and Dart SDK (http.Client, follows by default) both

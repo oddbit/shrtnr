@@ -37,8 +37,14 @@ class _UnsetType:
 UNSET: Any = _UnsetType()
 
 
-def _build_auth_headers(api_key: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {api_key}"}
+def _build_request_headers(api_key: str) -> dict[str, str]:
+    """Headers sent on every request.
+
+    The API reads X-Client to record how a link or bundle was created:
+    "sdk" when it is present, "api" otherwise (src/api/links.ts,
+    src/api/bundles.ts).
+    """
+    return {"Authorization": f"Bearer {api_key}", "X-Client": "sdk"}
 
 
 def _build_url(base_url: str, path: str, query: dict[str, str | None] | None = None) -> str:
