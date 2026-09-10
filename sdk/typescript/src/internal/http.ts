@@ -10,6 +10,12 @@ export interface HttpClientConfig {
   fetch?: typeof fetch;
 }
 
+// The API reads this header to record how a link or bundle was created:
+// "sdk" when it is present, "api" otherwise (src/api/links.ts,
+// src/api/bundles.ts). Sent on every request, including the text ones, so
+// the attribution never depends on which method a caller reached for.
+const CLIENT_HEADER = "sdk";
+
 // Browsers brand-check fetch's receiver, so the global implementation stays
 // bound to globalThis. Environments without one (Node 17 and older, legacy
 // browsers) get a ShrtnrError pointing at the `fetch` config option rather than
@@ -49,6 +55,7 @@ export class HttpClient {
     const url = this.buildUrl(path, options.query);
     const headers: Record<string, string> = {
       Authorization: this.authHeader,
+      "X-Client": CLIENT_HEADER,
     };
 
     const init: RequestInit = { method, headers };
@@ -108,6 +115,7 @@ export class HttpClient {
     const url = this.buildUrl(path, query);
     const headers: Record<string, string> = {
       Authorization: this.authHeader,
+      "X-Client": CLIENT_HEADER,
     };
 
     let res: Response;

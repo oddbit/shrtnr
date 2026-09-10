@@ -75,6 +75,39 @@ describe("Auth headers", () => {
 });
 
 // ============================================================
+// 1b. Client identification header
+// ============================================================
+
+// The API reads X-Client to set created_via on links and bundles
+// (src/api/links.ts, src/api/bundles.ts): "sdk" when this header says so,
+// "api" otherwise. Dropping the header in the 1.0 rewrite made every
+// SDK-created record indistinguishable from a raw curl call.
+describe("X-Client header", () => {
+  it("sends X-Client: sdk on a plain JSON request", async () => {
+    mockFetch(200, []);
+    await client().links.list();
+    const { init } = lastCall();
+    expect((init.headers as Record<string, string>)["X-Client"]).toBe("sdk");
+  });
+
+  it("sends X-Client: sdk on a request that carries a body", async () => {
+    mockFetch(201, { id: 1, url: "https://example.com", slug: "abc" });
+    await client().links.create({ url: "https://example.com" });
+    const { init } = lastCall();
+    const headers = init.headers as Record<string, string>;
+    expect(headers["X-Client"]).toBe("sdk");
+    expect(headers["Content-Type"]).toBe("application/json");
+  });
+
+  it("sends X-Client: sdk on the non-JSON text path", async () => {
+    mockFetch(200, "<svg/>", "image/svg+xml");
+    await client().links.qr(5);
+    const { init } = lastCall();
+    expect((init.headers as Record<string, string>)["X-Client"]).toBe("sdk");
+  });
+});
+
+// ============================================================
 // 2. Error handling
 // ============================================================
 
