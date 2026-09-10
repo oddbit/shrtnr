@@ -35,6 +35,17 @@ describe("GET /_/dev/login (dev mode)", () => {
     }
   });
 
+  it("rejects a `to` that only looks same-origin because of an embedded tab/CR/LF", async () => {
+    // A browser strips embedded TAB/CR/LF from a URL before parsing it, so `/\t/evil.example`
+    // collapses to the scheme-relative `//evil.example` once the redirect is followed, even
+    // though it passes a naive `startsWith("/") && !startsWith("//")` check.
+    for (const to of ["/\t/evil.example", "/\r/evil.example", "/\n/evil.example", "/\t\t//evil.example"]) {
+      const res = await SELF.fetch(req(`/_/dev/login?as=alice@example.com&to=${encodeURIComponent(to)}`));
+      expect(res.status).toBe(302);
+      expect(res.headers.get("Location")).toBe("/_/admin/dashboard");
+    }
+  });
+
   it("renders a form when no identity is given", async () => {
     const res = await SELF.fetch(req("/_/dev/login"));
     expect(res.status).toBe(200);

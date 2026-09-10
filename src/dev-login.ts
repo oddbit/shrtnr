@@ -27,9 +27,17 @@ function isDevMode(env: Env): boolean {
   return !env.ACCESS_AUD;
 }
 
-/** Same-origin path only. Anything that could leave the origin falls back to the dashboard. */
+/**
+ * Same-origin path only. Anything that could leave the origin falls back to the dashboard.
+ *
+ * Browsers strip embedded TAB/CR/LF from a URL before parsing it (the WHATWG URL spec's
+ * "remove all ASCII tab or newline" step), so `/\t/evil.example` looks same-origin here but
+ * resolves to `//evil.example`, a scheme-relative URL, once the browser follows the redirect.
+ * Apply the same stripping before validating, so the check sees what the browser will see.
+ */
 function safeReturnPath(raw: string | null): string {
-  if (raw && raw.startsWith("/") && !raw.startsWith("//") && !raw.startsWith("/\\")) return raw;
+  const stripped = raw?.replace(/[\t\r\n]/g, "") ?? "";
+  if (stripped.startsWith("/") && !stripped.startsWith("//") && !stripped.startsWith("/\\")) return stripped;
   return "/_/admin/dashboard";
 }
 
