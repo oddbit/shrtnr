@@ -57,15 +57,17 @@ client.links.create(url="...")
 client.bundles.archive(42)
 ```
 
-**Constructor shape.** The positional `base_url` argument is replaced by a keyword-only `base_url`
-parameter. `api_key` remains keyword-only.
+**Constructor shape.** The `client` parameter is renamed `http_client`. Parameter binding carries
+over from 0.x unchanged: `base_url` is positional-or-keyword, and `api_key`, `timeout` and
+`http_client` are keyword-only. The keyword form of `base_url` is the documented style throughout
+the README, but the positional form is accepted.
 
 ```python
 # 0.x
-Shrtnr("https://s.example.com", api_key="sk_...")
+Shrtnr("https://s.example.com", api_key="sk_...", client=my_httpx_client)
 
 # 1.0
-Shrtnr(base_url="https://s.example.com", api_key="sk_...")
+Shrtnr(base_url="https://s.example.com", api_key="sk_...", http_client=my_httpx_client)
 ```
 
 **`ShrtnrError` shape.** The `body` field is removed. Use `server_message` (the `error` string
