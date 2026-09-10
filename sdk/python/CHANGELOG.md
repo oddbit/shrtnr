@@ -2,6 +2,15 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.2.0 (2026-09-10)
+
+Restores a request header the 1.0 rewrite dropped, and turns one crash into the documented error. No public surface changes.
+
+- **`X-Client: sdk` is sent again on every request.** The API reads this header to record how a link or bundle was created, setting `created_via` to `sdk` when it is present and `api` otherwise. 1.0 removed it deliberately, as this changelog records, which left every link and bundle created through this SDK recording as `api` while the admin detail pages showed that value as if it were meaningful. Every resource routes through one header builder, so the sync and async clients both carry it. Callers who read `created_via` should expect `sdk` again for their own writes.
+- **A 2xx body of literal `null` raises `ShrtnrError` instead of `AttributeError`.** A non-204 response carrying `null` is four bytes of valid JSON, so it cleared both the empty-body guard and the parse guard and reached `SomeModel.from_dict(None)`, which failed with a bare `AttributeError`. `parse_json_response` now raises `ShrtnrError`, matching the documented failure mode and the empty-body fix from 1.1.2. The check is scoped to `None`, so the legitimate array bodies that `list()` returns are unaffected.
+- **The 1.0.0 entry's constructor note is corrected.** It claimed the positional `base_url` argument became keyword-only, and its example implied `Shrtnr("https://...", api_key=...)` stopped working. Neither was true: the 0.1.0 constructor already bound `base_url` as positional-or-keyword with `api_key` keyword-only, exactly as the code does today, so that call shape has always worked. The entry omitted the constructor change that did happen, renaming `client` to `http_client`, which is recorded there now. No signature changed in this release.
+- Records the spec hash for app 0.39.0. Paths and schemas are unchanged; only `info.version` moved.
+
 ## 1.1.3 (2026-08-27)
 
 Transport fix. No public surface changes.
