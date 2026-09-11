@@ -201,6 +201,24 @@ describe("SlugRepository.disable", () => {
     expect(primaries).toHaveLength(1);
     expect(primaries[0].slug).toBe("dsprim-c2");
   });
+
+  it("refuses to disable the system-generated slug, even called directly", async () => {
+    // disableSlug in link-management.ts already blocks this before it
+    // reaches the repository, but the repository must not rely solely on
+    // that: a link has exactly one is_custom = 0 slug for its whole
+    // lifetime, so the primary-fallback query below (which promotes by
+    // is_custom = 0) would re-select this very row and then immediately
+    // demote it, leaving the link with no primary slug at all.
+    const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "onlyauto" });
+    const result = await SlugRepository.disable(env.DB, "onlyauto");
+    expect(result).toBeNull();
+
+    const updated = await LinkRepository.getById(env.DB, link.id);
+    expect(updated!.slugs.find((s) => s.slug === "onlyauto")!.disabled_at).toBeNull();
+    const primaries = updated!.slugs.filter((s) => s.is_primary);
+    expect(primaries).toHaveLength(1);
+    expect(primaries[0].slug).toBe("onlyauto");
+  });
 });
 
 describe("SlugRepository.enable", () => {

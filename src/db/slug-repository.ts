@@ -91,6 +91,17 @@ export class SlugRepository {
     const row = await SlugRepository.findByValue(db, slug);
     if (!row) return null;
 
+    // A link has exactly one system-generated (is_custom = 0) slug for its
+    // whole lifetime, so it can never stand in as "another auto slug" for
+    // itself: the primary-fallback query below promotes by `is_custom = 0`,
+    // and disabling the one and only such row would have that query
+    // re-select the very row being demoted next, leaving the link with no
+    // primary slug at all. The only current caller (disableSlug in
+    // link-management.ts) already refuses this before reaching here; this
+    // guard makes the repository enforce its own invariant rather than rely
+    // solely on that caller.
+    if (!row.is_custom) return null;
+
     // Disable and the primary fallback run in one transactional batch so a
     // failure cannot strand the link without a primary slug. The handover
     // re-checks inside the batch that this slug still holds primary: a
