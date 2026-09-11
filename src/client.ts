@@ -34,7 +34,10 @@ function t(key, params) {
   var val = T[key] || key;
   if (params) {
     for (var k in params) {
-      val = val.replace(new RegExp('\\\\{' + k + '\\\\}', 'g'), String(params[k]));
+      // Replacer function, not a string: a string replacement treats
+      // "$&", "$\`", "$'", "$1" etc. in the value as special patterns
+      // instead of literal text.
+      val = val.replace(new RegExp('\\\\{' + k + '\\\\}', 'g'), function() { return String(params[k]); });
     }
   }
   return val;
