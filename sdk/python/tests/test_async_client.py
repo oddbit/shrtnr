@@ -92,6 +92,17 @@ async def test_async_network_error_wraps_as_status_0(client: AsyncShrtnr) -> Non
         assert exc_info.value.status == 0
 
 
+async def test_async_malformed_base_url_wraps_as_status_0() -> None:
+    # httpx.InvalidURL (e.g. a bad port) is raised synchronously from
+    # request-building, before any I/O, and is not a subclass of
+    # httpx.RequestError. It must still surface as the documented
+    # ShrtnrError(status=0, ...), not escape as a raw httpx exception.
+    client = AsyncShrtnr(base_url="https://example.com:notaport", api_key=API_KEY)
+    with pytest.raises(ShrtnrError) as exc_info:
+        await client.links.list()
+    assert exc_info.value.status == 0
+
+
 # ---- Links resource ----
 
 

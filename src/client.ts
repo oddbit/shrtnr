@@ -34,7 +34,10 @@ function t(key, params) {
   var val = T[key] || key;
   if (params) {
     for (var k in params) {
-      val = val.replace(new RegExp('\\\\{' + k + '\\\\}', 'g'), String(params[k]));
+      // Replacer function, not a string: a string replacement treats
+      // "$&", "$\`", "$'", "$1" etc. in the value as special patterns
+      // instead of literal text.
+      val = val.replace(new RegExp('\\\\{' + k + '\\\\}', 'g'), function() { return String(params[k]); });
     }
   }
   return val;
@@ -254,21 +257,31 @@ function createLink() {
           window.location.href = '/_/admin/links/' + link.id;
           return;
         }
-        api('/links/' + link.id + '/slugs', { method: 'POST', body: JSON.stringify({ slug: custom }) }).then(function(slugRes) {
-          closeModal();
-          if (!slugRes.ok) {
-            toast(t('client.linkCreated'));
-          } else {
-            toast(t('client.linkCreated'));
-          }
-          window.location.href = '/_/admin/links/' + link.id;
-        });
+        attachCustomSlugAndGo(link.id, custom);
       });
     } else {
       return res.json().then(function(data) {
         toast(data.error || t('client.createLinkError'), 'error');
       }).catch(function() { toast(t('client.createLinkError'), 'error'); });
     }
+  });
+}
+
+// Attaches a custom slug to a just-created link, reporting whether the
+// slug itself was accepted (it may already be taken) separately from the
+// link creation that already succeeded by the time this runs.
+function attachCustomSlugAndGo(linkId, slug) {
+  api('/links/' + linkId + '/slugs', { method: 'POST', body: JSON.stringify({ slug: slug }) }).then(function(slugRes) {
+    closeModal();
+    if (!slugRes.ok) {
+      return slugRes.json().then(function(data) {
+        toast(data.error || t('client.customError'), 'error');
+      }).catch(function() { toast(t('client.customError'), 'error'); }).then(function() {
+        window.location.href = '/_/admin/links/' + linkId;
+      });
+    }
+    toast(t('client.linkCreated'));
+    window.location.href = '/_/admin/links/' + linkId;
   });
 }
 

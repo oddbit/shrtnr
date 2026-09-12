@@ -55,11 +55,16 @@ export function makeQR(text: string): boolean[][] | null {
     ];
     const aligns = alignTable[ver];
     if (Array.isArray(aligns)) {
+      const last = aligns.length - 1;
       for (let ai = 0; ai < aligns.length; ai++) {
         for (let aj = 0; aj < aligns.length; aj++) {
+          // Skip the three positions that fall inside a finder pattern. Only
+          // those: from version 7 on, alignment patterns also sit on the
+          // timing pattern's row and column, which are reserved too, and
+          // those must be drawn.
+          if ((ai === 0 && aj === 0) || (ai === 0 && aj === last) || (ai === last && aj === 0)) continue;
           const ar = aligns[ai];
           const ac = aligns[aj];
-          if (reserved[ar] && reserved[ar][ac]) continue;
           for (let dr = -2; dr <= 2; dr++) {
             for (let dc = -2; dc <= 2; dc++) {
               const rr = ar + dr;
@@ -85,10 +90,32 @@ export function makeQR(text: string): boolean[][] | null {
   reserved[size - 8][8] = 1;
   grid[size - 8][8] = 1;
 
-  const eccL = [0, 7, 10, 15, 20, 26, 18, 20, 24, 30, 18];
+  // Version information (versions 7+): two 6x3 blocks, one above the
+  // bottom-left finder and one left of the top-right finder. Reserve them
+  // before data placement so codewords route around them, then write the
+  // 18-bit BCH-protected version number into both.
+  if (ver >= 7) {
+    const versionBits = versionInfoBits(ver);
+    for (let i = 0; i < 18; i++) {
+      const bit = (versionBits >>> i) & 1;
+      const a = size - 11 + (i % 3);
+      const b = Math.floor(i / 3);
+      reserved[b][a] = 1;
+      grid[b][a] = bit;
+      reserved[a][b] = 1;
+      grid[a][b] = bit;
+    }
+  }
+
+  // Error-correction level L block structure (ISO/IEC 18004 Table 9).
+  // Versions 6-10 split the codewords into several Reed-Solomon blocks,
+  // each with its own ECC codewords, interleaved byte by byte.
+  const eccPerBlockL = [0, 7, 10, 15, 20, 26, 18, 20, 24, 30, 18];
+  const numBlocksL = [0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 4];
   const totalCodewords = [0, 26, 44, 70, 100, 134, 172, 196, 242, 292, 346];
-  const numEcc = eccL[ver];
-  const numData = totalCodewords[ver] - numEcc;
+  const numEcc = eccPerBlockL[ver];
+  const numBlocks = numBlocksL[ver];
+  const numData = totalCodewords[ver] - numEcc * numBlocks;
 
   let bits = "";
   bits += "0100";
@@ -108,8 +135,7 @@ export function makeQR(text: string): boolean[][] | null {
 
   const dataBytes: number[] = [];
   for (let i = 0; i < bits.length; i += 8) dataBytes.push(parseInt(bits.slice(i, i + 8), 2));
-  const eccBytes = rsEncode(dataBytes, numEcc);
-  const allBytes = dataBytes.concat(eccBytes);
+  const allBytes = interleaveBlocks(dataBytes, totalCodewords[ver], numBlocks, numEcc);
 
   let bitStr = "";
   for (let i = 0; i < allBytes.length; i++) bitStr += toBin(allBytes[i], 8);
@@ -159,6 +185,51 @@ export function makeQR(text: string): boolean[][] | null {
 
 function toBin(n: number, len: number): string {
   return n.toString(2).padStart(len, "0");
+}
+
+/**
+ * 18-bit version information: the 6-bit version number followed by its
+ * 12-bit BCH(18,6) remainder over the generator polynomial 0x1F25.
+ */
+function versionInfoBits(ver: number): number {
+  let rem = ver;
+  for (let i = 0; i < 12; i++) {
+    rem = (rem << 1) ^ ((rem >>> 11) * 0x1f25);
+  }
+  return (ver << 12) | rem;
+}
+
+/**
+ * Split the data codewords into Reed-Solomon blocks, compute ECC for each,
+ * and interleave them as the spec requires: all blocks' first data byte,
+ * then all blocks' second data byte, ... then the ECC bytes the same way.
+ * When the codeword count does not divide evenly, the leading blocks are
+ * one data byte shorter than the trailing ones.
+ */
+function interleaveBlocks(data: number[], totalCodewords: number, numBlocks: number, eccPerBlock: number): number[] {
+  const numShortBlocks = numBlocks - (totalCodewords % numBlocks);
+  const shortBlockLen = Math.floor(totalCodewords / numBlocks);
+  const shortDataLen = shortBlockLen - eccPerBlock;
+
+  const blocks: { data: number[]; ecc: number[] }[] = [];
+  let offset = 0;
+  for (let b = 0; b < numBlocks; b++) {
+    const dataLen = shortDataLen + (b < numShortBlocks ? 0 : 1);
+    const blockData = data.slice(offset, offset + dataLen);
+    offset += dataLen;
+    blocks.push({ data: blockData, ecc: rsEncode(blockData, eccPerBlock) });
+  }
+
+  const out: number[] = [];
+  for (let i = 0; i <= shortDataLen; i++) {
+    for (const block of blocks) {
+      if (i < block.data.length) out.push(block.data[i]);
+    }
+  }
+  for (let i = 0; i < eccPerBlock; i++) {
+    for (const block of blocks) out.push(block.ecc[i]);
+  }
+  return out;
 }
 
 function rsEncode(data: number[], numEcc: number): number[] {

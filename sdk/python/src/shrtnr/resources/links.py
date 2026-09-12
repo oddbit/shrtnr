@@ -52,16 +52,22 @@ class Links:
         return _build_url(self._base_url, path, query)
 
     def _request(self, method: str, url: str, **kwargs: Any) -> Any:
+        # httpx.InvalidURL isn't a RequestError subclass; catch it too so a
+        # malformed base_url raises ShrtnrError(0, ...) like any other request
+        # failure, per this SDK's documented contract.
         try:
             response = self._http.request(method, url, **kwargs)
-        except httpx.RequestError as exc:
+        except (httpx.RequestError, httpx.InvalidURL) as exc:
             raise ShrtnrError(0, str(exc)) from exc
         return parse_json_response(response)
 
     def _request_text(self, method: str, url: str, **kwargs: Any) -> str:
+        # httpx.InvalidURL isn't a RequestError subclass; catch it too so a
+        # malformed base_url raises ShrtnrError(0, ...) like any other request
+        # failure, per this SDK's documented contract.
         try:
             response = self._http.request(method, url, **kwargs)
-        except httpx.RequestError as exc:
+        except (httpx.RequestError, httpx.InvalidURL) as exc:
             raise ShrtnrError(0, str(exc)) from exc
         return parse_text_response(response)
 
@@ -206,16 +212,22 @@ class AsyncLinks:
         return _build_url(self._base_url, path, query)
 
     async def _request(self, method: str, url: str, **kwargs: Any) -> Any:
+        # httpx.InvalidURL isn't a RequestError subclass; catch it too so a
+        # malformed base_url raises ShrtnrError(0, ...) like any other request
+        # failure, per this SDK's documented contract.
         try:
             response = await self._http.request(method, url, **kwargs)
-        except httpx.RequestError as exc:
+        except (httpx.RequestError, httpx.InvalidURL) as exc:
             raise ShrtnrError(0, str(exc)) from exc
         return parse_json_response(response)
 
     async def _request_text(self, method: str, url: str, **kwargs: Any) -> str:
+        # httpx.InvalidURL isn't a RequestError subclass; catch it too so a
+        # malformed base_url raises ShrtnrError(0, ...) like any other request
+        # failure, per this SDK's documented contract.
         try:
             response = await self._http.request(method, url, **kwargs)
-        except httpx.RequestError as exc:
+        except (httpx.RequestError, httpx.InvalidURL) as exc:
             raise ShrtnrError(0, str(exc)) from exc
         return parse_text_response(response)
 
