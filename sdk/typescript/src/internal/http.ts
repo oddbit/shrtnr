@@ -104,6 +104,16 @@ export class HttpClient {
       const msg = err instanceof Error ? err.message : String(err);
       throw new ShrtnrError(res.status, `Invalid JSON response: ${msg}`);
     }
+    // A body that is valid JSON but parses to a bare scalar (null, a
+    // number, a string, or a bool) rather than an object or array passes
+    // the parse above unchanged. Every resource method expects an object
+    // or array here (a single resource, or a list to map over); a bare
+    // scalar reaching keysToCamel() is returned as-is, so the caller gets
+    // e.g. `null` typed as `Link` and crashes on the first field access
+    // instead of the documented ShrtnrError.
+    if (typeof json !== "object" || json === null) {
+      throw new ShrtnrError(res.status, "Response body is not a JSON object or array");
+    }
     return keysToCamel(json) as T;
   }
 
