@@ -797,6 +797,36 @@ def test_null_body_2xx_raises_shrtnr_error(client: Shrtnr) -> None:
     assert exc_info.value.status == 200
 
 
+@respx.mock
+def test_scalar_body_2xx_raises_shrtnr_error_on_get(client: Shrtnr) -> None:
+    """A non-204 2xx response whose body is a bare JSON number (not null,
+    covered above) must also raise ShrtnrError rather than reach
+    Link.from_dict(5), which raises a bare AttributeError since an int has
+    no .get()."""
+    respx.get(f"{BASE_URL}/_/api/links/5").mock(
+        return_value=httpx.Response(
+            200, content=b"5", headers={"content-type": "application/json"}
+        ),
+    )
+    with pytest.raises(ShrtnrError) as exc_info:
+        client.links.get(5)
+    assert exc_info.value.status == 200
+
+
+@respx.mock
+def test_falsy_scalar_body_2xx_raises_shrtnr_error_on_list(client: Shrtnr) -> None:
+    """A bare JSON `0` on a list() endpoint must raise ShrtnrError instead of
+    silently returning [] via `data or []`."""
+    respx.get(f"{BASE_URL}/_/api/links").mock(
+        return_value=httpx.Response(
+            200, content=b"0", headers={"content-type": "application/json"}
+        ),
+    )
+    with pytest.raises(ShrtnrError) as exc_info:
+        client.links.list()
+    assert exc_info.value.status == 200
+
+
 # ---- links.qr: size accepts int ----
 
 

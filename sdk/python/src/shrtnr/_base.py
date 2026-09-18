@@ -89,16 +89,19 @@ def parse_json_response(response: httpx.Response) -> Any:
         parsed = response.json()
     except Exception as exc:
         raise ShrtnrError(response.status_code, f"Invalid JSON response: {exc}") from exc
-    # A body that is valid JSON but is the literal `null` (4 bytes, so it
-    # passes the empty-body check above, and valid JSON, so it passes the
-    # parse above) used to reach here as a bare `None`. Every single-object
-    # resource method's `SomeModel.from_dict(...)` expects a dict and crashed
-    # on it with a bare AttributeError instead of the documented ShrtnrError —
-    # the same failure mode the empty-body check exists to prevent, just
-    # reached from a non-empty body. Arrays are left alone: list() endpoints
-    # legitimately parse to a JSON array, not a dict.
-    if parsed is None:
-        raise ShrtnrError(response.status_code, "Response body is JSON null")
+    # A body that is valid JSON but parses to a bare scalar (null, a number,
+    # a string, or a bool) rather than an object or array (4 bytes for
+    # `null`, so it passes the empty-body check above, and valid JSON, so it
+    # passes the parse above) used to reach here unchanged. Every
+    # single-object resource method's `SomeModel.from_dict(...)` expects a
+    # dict and crashed on it with a bare AttributeError, and a falsy scalar
+    # (`0`, `false`, `""`) made list() endpoints silently return `[]` instead
+    # of raising, via `data or []` — the same failure mode the empty-body
+    # check exists to prevent, just reached from a non-empty body. Arrays
+    # and objects are left alone: they are the only shapes a resource method
+    # ever legitimately expects.
+    if not isinstance(parsed, (dict, list)):
+        raise ShrtnrError(response.status_code, "Response body is not a JSON object or array")
     return parsed
 
 
