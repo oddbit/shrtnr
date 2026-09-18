@@ -99,11 +99,26 @@ class ShrtnrBaseClient {
       if (response.body.isEmpty) {
         throw ShrtnrError(response.statusCode, 'Empty response body');
       }
+      dynamic decoded;
       try {
-        return jsonDecode(response.body);
+        decoded = jsonDecode(response.body);
       } catch (e) {
         throw ShrtnrError(response.statusCode, 'Invalid JSON response: $e');
       }
+      // A body that is valid JSON but decodes to a bare scalar (null, a
+      // number, a string, or a bool) rather than a Map or List passes the
+      // decode above unchanged. Every resource method expects a Map (a
+      // single resource) or a List (a list to map over) here; a bare
+      // scalar reaching the caller's `json!.cast<...>()`/`Model.fromJson`
+      // fails as a raw null-check or type error instead of the documented
+      // ShrtnrError.
+      if (decoded is! Map && decoded is! List) {
+        throw ShrtnrError(
+          response.statusCode,
+          'Response body is not a JSON object or array',
+        );
+      }
+      return decoded;
     }
 
     String serverMessage = 'HTTP ${response.statusCode}';
