@@ -4,6 +4,13 @@
 import { ShrtnrError } from "../errors";
 import { keysToCamel, keysToSnake } from "./case";
 
+/**
+ * The JSON container a resource method can consume: a single resource
+ * (`object`) or a list to map over (`array`). The transport cannot infer it
+ * from the response, so each call names it.
+ */
+export type JsonShape = "object" | "array";
+
 export interface HttpClientConfig {
   baseUrl: string;
   apiKey: string;
@@ -50,8 +57,9 @@ export class HttpClient {
   async request<T>(
     method: string,
     path: string,
-    options: { body?: unknown; query?: Record<string, string | undefined> } = {},
+    options: { body?: unknown; query?: Record<string, string | undefined>; shape?: JsonShape } = {},
   ): Promise<T> {
+    const shape: JsonShape = options.shape ?? "object";
     const url = this.buildUrl(path, options.query);
     const headers: Record<string, string> = {
       Authorization: this.authHeader,
@@ -104,15 +112,18 @@ export class HttpClient {
       const msg = err instanceof Error ? err.message : String(err);
       throw new ShrtnrError(res.status, `Invalid JSON response: ${msg}`);
     }
-    // A body that is valid JSON but parses to a bare scalar (null, a
-    // number, a string, or a bool) rather than an object or array passes
-    // the parse above unchanged. Every resource method expects an object
-    // or array here (a single resource, or a list to map over); a bare
-    // scalar reaching keysToCamel() is returned as-is, so the caller gets
-    // e.g. `null` typed as `Link` and crashes on the first field access
-    // instead of the documented ShrtnrError.
-    if (typeof json !== "object" || json === null) {
-      throw new ShrtnrError(res.status, "Response body is not a JSON object or array");
+    // A body that is valid JSON but of the wrong container type (a bare
+    // scalar such as null, a number, a string or a bool; an array where a
+    // single resource is expected; an object where a list is expected)
+    // passes the parse above unchanged. Left alone, keysToCamel() returned
+    // it as-is and the caller got e.g. `[]` typed as `Link`, crashing on
+    // the first field access instead of the documented ShrtnrError.
+    if (shape === "array") {
+      if (!Array.isArray(json)) {
+        throw new ShrtnrError(res.status, "Response body is not a JSON array");
+      }
+    } else if (typeof json !== "object" || json === null || Array.isArray(json)) {
+      throw new ShrtnrError(res.status, "Response body is not a JSON object");
     }
     return keysToCamel(json) as T;
   }

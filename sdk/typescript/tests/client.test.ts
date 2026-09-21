@@ -277,6 +277,27 @@ describe("Error handling", () => {
     await expect(client().links.get(1)).rejects.toBeInstanceOf(ShrtnrError);
   });
 
+  it("throws ShrtnrError when a single-object method receives a 2xx JSON array", async () => {
+    // The transport is told which container the caller expects. `[]` on
+    // links.get() used to be returned typed as `Link` and crashed on the
+    // first field access instead of raising the documented ShrtnrError.
+    mockFetch(200, []);
+    await expect(client().links.get(1)).rejects.toMatchObject({
+      status: 200,
+      serverMessage: expect.stringContaining("object"),
+    });
+  });
+
+  it("throws ShrtnrError when a list method receives a 2xx JSON object", async () => {
+    // `{}` on links.list() used to be returned typed as `Link[]`; a caller
+    // mapping over it got an object's keys, or nothing, without an error.
+    mockFetch(200, { id: 1 });
+    await expect(client().links.list()).rejects.toMatchObject({
+      status: 200,
+      serverMessage: expect.stringContaining("array"),
+    });
+  });
+
   it("reports status 0 when the connection drops mid-body on a JSON response", async () => {
     // fetch resolves once headers land; the body streams afterward. Reading
     // it through res.json() reported the response status, so a connection

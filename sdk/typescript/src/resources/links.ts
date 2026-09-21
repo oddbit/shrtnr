@@ -29,6 +29,7 @@ export class LinksResource {
   list(options: { owner?: string; range?: TimelineRange } = {}): Promise<Link[]> {
     return this.http.request("GET", "/_/api/links", {
       query: { owner: options.owner, range: options.range },
+      shape: "array",
     });
   }
 
@@ -96,6 +97,6 @@ export class LinksResource {
 
   /** List bundles that contain this link. */
   bundles(id: number): Promise<Bundle[]> {
-    return this.http.request("GET", `/_/api/links/${id}/bundles`);
+    return this.http.request("GET", `/_/api/links/${id}/bundles`, { shape: "array" });
   }
 }

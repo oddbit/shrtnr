@@ -33,6 +33,7 @@ export class BundlesResource {
   ): Promise<BundleWithSummary[]> {
     return this.http.request("GET", "/_/api/bundles", {
       query: { archived: options.archived, range: options.range },
+      shape: "array",
     });
   }
 
@@ -85,7 +86,7 @@ export class BundlesResource {
 
   /** List links in a bundle. */
   links(id: number): Promise<Link[]> {
-    return this.http.request("GET", `/_/api/bundles/${id}/links`);
+    return this.http.request("GET", `/_/api/bundles/${id}/links`, { shape: "array" });
   }
 
   /** Add a link to a bundle. */
