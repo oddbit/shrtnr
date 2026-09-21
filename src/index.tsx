@@ -43,6 +43,8 @@ import { DEFAULT_SLUG_LENGTH, DEFAULT_THEME, LINKS_DEFAULT_PER_PAGE, THEMES } fr
 import { createTranslateFn, DEFAULT_LANGUAGE, isSupportedLanguage } from "./i18n";
 import { handleHealth } from "./api/health";
 import { assetsRouter } from "./assets";
+import { logUnhandledError, unhandledErrorResponse } from "./unhandled";
+import { HTTPException } from "hono/http-exception";
 import {
   handleListLinks,
   handleGetLink,
@@ -598,6 +600,17 @@ app.get("/:slug", (c) => {
 
 app.notFound(() => notFoundResponse());
 
+// ---- Last-resort error handling ----
+
+// Hono's default prints the error unstructured and answers text/plain, so an
+// API client saw a body its SDK could not parse and the dashboard saw a log
+// line it could not filter. An HTTPException carries its own response.
+app.onError((err, c) => {
+  if (err instanceof HTTPException) return err.getResponse();
+  logUnhandledError(err, c.req.raw);
+  return unhandledErrorResponse(c.req.raw);
+});
+
 // ---- MCP transport handler ----
 
 export { ShrtnrMCP };
@@ -606,6 +619,19 @@ const mcpHandler = ShrtnrMCP.serve("/_/mcp");
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // The routing below the Hono app (host rewrite, MCP transport, OAuth
+    // metadata) runs outside app.onError; the same last-resort handling
+    // applies, so a failure there is a logged 500, not a bare exception.
+    try {
+      return await route(request, env, ctx);
+    } catch (err) {
+      logUnhandledError(err, request);
+      return unhandledErrorResponse(request);
+    }
+  },
+} satisfies ExportedHandler<Env>;
+
+async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     let url = new URL(request.url);
 
     // CF Access MCP-type applications cannot be scoped to a path — they must
@@ -693,8 +719,7 @@ export default {
 
     // Everything else goes to the Hono app.
     return app.fetch(request, env, ctx);
-  },
-} satisfies ExportedHandler<Env>;
+}
 
 // ---- Auth helpers ----
 
