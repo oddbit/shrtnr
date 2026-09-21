@@ -841,6 +841,38 @@ def test_falsy_scalar_body_2xx_raises_shrtnr_error_on_list(client: Shrtnr) -> No
     assert exc_info.value.status == 200
 
 
+@respx.mock
+def test_array_body_2xx_raises_shrtnr_error_on_get(client: Shrtnr) -> None:
+    """A 2xx `[]` on a single-object endpoint must raise ShrtnrError rather
+    than reach Link.from_dict([]), which fails with a bare AttributeError
+    since a list has no .get(). The transport is told which container the
+    caller expects, so the wrong one is rejected before any model sees it."""
+    respx.get(f"{BASE_URL}/_/api/links/5").mock(
+        return_value=httpx.Response(
+            200, content=b"[]", headers={"content-type": "application/json"}
+        ),
+    )
+    with pytest.raises(ShrtnrError) as exc_info:
+        client.links.get(5)
+    assert exc_info.value.status == 200
+    assert "object" in exc_info.value.server_message
+
+
+@respx.mock
+def test_object_body_2xx_raises_shrtnr_error_on_list(client: Shrtnr) -> None:
+    """A 2xx `{}` on a list endpoint must raise ShrtnrError rather than
+    iterate the dict's keys and hand each key string to Link.from_dict."""
+    respx.get(f"{BASE_URL}/_/api/links").mock(
+        return_value=httpx.Response(
+            200, content=b'{"id": 1}', headers={"content-type": "application/json"}
+        ),
+    )
+    with pytest.raises(ShrtnrError) as exc_info:
+        client.links.list()
+    assert exc_info.value.status == 200
+    assert "array" in exc_info.value.server_message
+
+
 # ---- links.qr: size accepts int ----
 
 

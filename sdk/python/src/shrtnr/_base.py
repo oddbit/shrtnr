@@ -10,7 +10,7 @@ same errors. Everything here is the core that would be duplicated between
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import quote
 
 import httpx
@@ -71,8 +71,17 @@ def _raise_from_response(response: httpx.Response) -> None:
     raise ShrtnrError(response.status_code, server_message)
 
 
-def parse_json_response(response: httpx.Response) -> Any:
-    """Parse a JSON response or raise ShrtnrError on non-2xx."""
+JsonShape = Literal["object", "array"]
+
+
+def parse_json_response(response: httpx.Response, shape: JsonShape = "object") -> Any:
+    """Parse a JSON response or raise ShrtnrError on non-2xx.
+
+    ``shape`` names the container the caller can consume: ``"object"`` for a
+    single resource (``SomeModel.from_dict``), ``"array"`` for a list to map
+    over. A 2xx body of any other JSON type raises ShrtnrError here, before a
+    model constructor turns it into a bare AttributeError or TypeError.
+    """
     if not response.is_success:
         _raise_from_response(response)
     if response.status_code == 204:
@@ -89,19 +98,20 @@ def parse_json_response(response: httpx.Response) -> Any:
         parsed = response.json()
     except Exception as exc:
         raise ShrtnrError(response.status_code, f"Invalid JSON response: {exc}") from exc
-    # A body that is valid JSON but parses to a bare scalar (null, a number,
-    # a string, or a bool) rather than an object or array (4 bytes for
-    # `null`, so it passes the empty-body check above, and valid JSON, so it
-    # passes the parse above) used to reach here unchanged. Every
-    # single-object resource method's `SomeModel.from_dict(...)` expects a
-    # dict and crashed on it with a bare AttributeError, and a falsy scalar
-    # (`0`, `false`, `""`) made list() endpoints silently return `[]` instead
-    # of raising, via `data or []`: the same failure mode the empty-body
-    # check exists to prevent, just reached from a non-empty body. Arrays
-    # and objects are left alone: they are the only shapes a resource method
-    # ever legitimately expects.
-    if not isinstance(parsed, (dict, list)):
-        raise ShrtnrError(response.status_code, "Response body is not a JSON object or array")
+    # A body that is valid JSON but of the wrong container type (a bare
+    # scalar such as null, a number, a string or a bool; an array where a
+    # single resource is expected; an object where a list is expected)
+    # passes the empty-body check above (4 bytes for `null`) and the parse
+    # above unchanged. Left alone it reached the resource method, where
+    # `SomeModel.from_dict([])` failed with a bare AttributeError and a
+    # dict on a list() endpoint iterated its keys. The transport cannot
+    # infer the expected container from the response, so the caller names
+    # it and the mismatch raises here with the documented error type.
+    if shape == "array":
+        if not isinstance(parsed, list):
+            raise ShrtnrError(response.status_code, "Response body is not a JSON array")
+    elif not isinstance(parsed, dict):
+        raise ShrtnrError(response.status_code, "Response body is not a JSON object")
     return parsed
 
 
@@ -145,8 +155,8 @@ class _SyncResource:
         except (httpx.RequestError, httpx.InvalidURL) as exc:
             raise ShrtnrError(0, str(exc)) from exc
 
-    def _request(self, method: str, url: str, **kwargs: Any) -> Any:
-        return parse_json_response(self._send(method, url, **kwargs))
+    def _request(self, method: str, url: str, *, shape: JsonShape = "object", **kwargs: Any) -> Any:
+        return parse_json_response(self._send(method, url, **kwargs), shape)
 
     def _request_text(self, method: str, url: str, **kwargs: Any) -> str:
         return parse_text_response(self._send(method, url, **kwargs))
@@ -177,8 +187,10 @@ class _AsyncResource:
         except (httpx.RequestError, httpx.InvalidURL) as exc:
             raise ShrtnrError(0, str(exc)) from exc
 
-    async def _request(self, method: str, url: str, **kwargs: Any) -> Any:
-        return parse_json_response(await self._send(method, url, **kwargs))
+    async def _request(
+        self, method: str, url: str, *, shape: JsonShape = "object", **kwargs: Any
+    ) -> Any:
+        return parse_json_response(await self._send(method, url, **kwargs), shape)
 
     async def _request_text(self, method: str, url: str, **kwargs: Any) -> str:
         return parse_text_response(await self._send(method, url, **kwargs))
