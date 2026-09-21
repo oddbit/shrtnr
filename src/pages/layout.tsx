@@ -3,7 +3,7 @@
 
 import type { FC, PropsWithChildren } from "hono/jsx";
 import { raw } from "hono/html";
-import { adminStyles, MATERIAL_SYMBOLS_HREF } from "../styles";
+import { adminStyles, FONT_FILES, PRELOAD_TEXT_FONTS } from "../styles";
 import { adminClientScript } from "../client";
 import { Topbar } from "../components/topbar";
 import type { TranslateFn } from "../i18n";
@@ -60,20 +60,10 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-        {/*
-          The static instance only: the stylesheet renders every icon at
-          FILL 0 / wght 400, and requesting the opsz, wght, FILL and GRAD
-          ranges made Google serve the 3.98 MB variable font instead of this
-          322 KB file. display=block hides the ligature text ("dashboard",
-          "menu") that display=swap would flash until the font arrives.
-        */}
-        <link href={MATERIAL_SYMBOLS_HREF} rel="stylesheet" />
+        {/* Fonts are self-hosted and declared in the stylesheet; preloading starts the fetch before the CSS is parsed. */}
+        {[...PRELOAD_TEXT_FONTS, FONT_FILES.materialSymbols].map((href) => (
+          <link rel="preload" href={href} as="font" type="font/woff2" crossorigin="" />
+        ))}
         <style>{raw(adminStyles)}</style>
         {/* Version in the file name: public/_headers caches it as immutable. */}
         <script src="/htmx-2.0.4.min.js" defer></script>

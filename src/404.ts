@@ -1,7 +1,7 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-import { GOOGLE_FONTS_HREF, standaloneCenteredStyles } from "./styles";
+import { PRELOAD_TEXT_FONTS, standaloneCenteredStyles } from "./styles";
 
 export function notFoundResponse(): Response {
   return new Response(NOT_FOUND_HTML, {
@@ -25,9 +25,7 @@ const NOT_FOUND_HTML = `<!DOCTYPE html>
   <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="${GOOGLE_FONTS_HREF}" rel="stylesheet">
+  ${PRELOAD_TEXT_FONTS.map((href) => `<link rel="preload" href="${href}" as="font" type="font/woff2" crossorigin>`).join("\n  ")}
   <style>${standaloneCenteredStyles}
     .code {
       font-size: clamp(10rem, 30vw, 28rem);

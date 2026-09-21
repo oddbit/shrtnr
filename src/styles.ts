@@ -1,12 +1,97 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-export const GOOGLE_FONTS_HREF =
-  "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap";
+/*
+ * Fonts are self-hosted from public/fonts (see public/fonts/LICENSE-*.txt):
+ * the Google Fonts stylesheets were two render-blocking third-party
+ * requests on every cold load. File names carry the upstream version, and
+ * public/_headers caches them as immutable, so a font update means a new
+ * file name.
+ *
+ * Subsets follow Google's split (latin, latin-ext, vietnamese) with the
+ * same unicode-range values, so a page only downloads the file whose
+ * characters it shows. Cyrillic and Greek fall back to the system face.
+ */
+export const FONT_FILES = {
+  manropeLatin: "/fonts/manrope-v20-latin.woff2",
+  manropeLatinExt: "/fonts/manrope-v20-latin-ext.woff2",
+  manropeVietnamese: "/fonts/manrope-v20-vietnamese.woff2",
+  spaceGroteskLatin: "/fonts/space-grotesk-v22-latin.woff2",
+  spaceGroteskLatinExt: "/fonts/space-grotesk-v22-latin-ext.woff2",
+  spaceGroteskVietnamese: "/fonts/space-grotesk-v22-vietnamese.woff2",
+  /** Static instance (FILL 0, wght 400): 322 KB against 3.98 MB for the variable font with every axis. */
+  materialSymbols: "/fonts/material-symbols-outlined-v373.woff2",
+} as const;
 
-/** Material Symbols as a static instance (FILL 0, wght 400): 322 KB against 3.98 MB for the full variable font. */
-export const MATERIAL_SYMBOLS_HREF =
-  "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block";
+/** Fonts every page preloads: the latin text files, which the first paint needs. */
+export const PRELOAD_TEXT_FONTS = [FONT_FILES.manropeLatin, FONT_FILES.spaceGroteskLatin] as const;
+
+const UNICODE_RANGE = {
+  latin:
+    "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+  latinExt:
+    "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF",
+  vietnamese:
+    "U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB",
+};
+
+const textFace = (family: string, file: string, range: string) => `
+@font-face {
+  font-family: '${family}';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url(${file}) format('woff2');
+  unicode-range: ${range};
+}`;
+
+/*
+ * Metric-matched local fallbacks. display=swap paints text in the fallback
+ * face first, and every glyph then changes width when the web font lands:
+ * that swap was the whole of the remaining layout shift once icons had a
+ * fixed box. size-adjust scales the fallback to the web font's average
+ * advance (measured in Chromium against Arial over a 90-character sample),
+ * and the ascent/descent overrides match the line box. Liberation Sans is
+ * metric-compatible with Arial and is what Linux resolves it to.
+ */
+const fallbackFace = (family: string, sizeAdjust: number, ascent: number, descent: number) => `
+@font-face {
+  font-family: '${family} Fallback';
+  src: local('Arial'), local('Liberation Sans'), local('Helvetica');
+  size-adjust: ${sizeAdjust}%;
+  ascent-override: ${(ascent / (sizeAdjust / 100)).toFixed(2)}%;
+  descent-override: ${(descent / (sizeAdjust / 100)).toFixed(2)}%;
+  line-gap-override: 0%;
+}`;
+
+/** @font-face rules for the two text families and their fallbacks; part of every page's stylesheet. */
+export const textFontFaces = [
+  textFace("Manrope", FONT_FILES.manropeLatin, UNICODE_RANGE.latin),
+  textFace("Manrope", FONT_FILES.manropeLatinExt, UNICODE_RANGE.latinExt),
+  textFace("Manrope", FONT_FILES.manropeVietnamese, UNICODE_RANGE.vietnamese),
+  textFace("Space Grotesk", FONT_FILES.spaceGroteskLatin, UNICODE_RANGE.latin),
+  textFace("Space Grotesk", FONT_FILES.spaceGroteskLatinExt, UNICODE_RANGE.latinExt),
+  textFace("Space Grotesk", FONT_FILES.spaceGroteskVietnamese, UNICODE_RANGE.vietnamese),
+  // Manrope 400: 101.65% of Arial's width, ascent 1.07em, descent 0.30em.
+  fallbackFace("Manrope", 101.65, 107, 30),
+  // Space Grotesk 400: 107.68% of Arial's width, ascent 0.98em, descent 0.29em.
+  fallbackFace("Space Grotesk", 107.68, 98, 29),
+].join("\n");
+
+/** The icon font, admin only. display=block: an icon font's fallback rendering is its ligature text. */
+export const iconFontFace = `
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(${FONT_FILES.materialSymbols}) format('woff2');
+}`;
+
+const FONT_STACKS = `
+    --font-family-display: 'Space Grotesk', 'Space Grotesk Fallback', system-ui, sans-serif;
+    --font-family-body: 'Manrope', 'Manrope Fallback', system-ui, sans-serif;
+    --font-family-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;`;
 
 export const themes = {
   oddbit: {
@@ -163,15 +248,12 @@ const themeEntries = (theme: keyof typeof themes) =>
     .join("\n  ");
 
 // Design tokens and box-model reset shared by all standalone pages.
-export const standaloneBaseStyles = `
+export const standaloneBaseStyles = `${textFontFaces}
   :root {
     ${themeEntries("oddbit")}
     --radius-sm: 6px;
     --radius-md: 8px;
-    --radius-lg: 12px;
-    --font-family-display: 'Space Grotesk', system-ui, sans-serif;
-    --font-family-body: 'Manrope', system-ui, sans-serif;
-    --font-family-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+    --radius-lg: 12px;${FONT_STACKS}
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -198,15 +280,12 @@ export const standaloneCenteredStyles = `${standaloneBaseStyles}
 /** @deprecated Use standaloneBaseStyles or standaloneCenteredStyles */
 export const standalonePageStyles = standaloneCenteredStyles;
 
-export const adminStyles = `
+export const adminStyles = `${textFontFaces}${iconFontFace}
 :root, [data-theme="oddbit"] {
   ${themeEntries("oddbit")}
   --radius-sm: 6px;
   --radius-md: 8px;
-  --radius-lg: 12px;
-  --font-family-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-family-body: 'Manrope', system-ui, sans-serif;
-  --font-family-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  --radius-lg: 12px;${FONT_STACKS}
 }
 [data-theme="dark"] {
   ${themeEntries("dark")}

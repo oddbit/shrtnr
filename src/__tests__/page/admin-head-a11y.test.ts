@@ -43,26 +43,58 @@ async function adminPages(): Promise<{ name: string; path: string }[]> {
   ];
 }
 
-describe("admin layout head", () => {
-  it("requests the Material Symbols static instance, not the 4 MB variable font", async () => {
-    const html = await fetchHtml("/_/admin/settings");
-    const iconFont = html.match(/href="(https:\/\/fonts\.googleapis\.com\/css2\?family=Material\+Symbols[^"]*)"/);
-    expect(iconFont, "icon font stylesheet is linked").not.toBeNull();
-    const href = iconFont![1];
-    // The full variable font (opsz, wght, FILL, GRAD ranges) weighs 3.98 MB;
-    // the static instance weighs 322 KB and the stylesheet only ever sets
-    // FILL 0 and wght 400.
-    expect(href).not.toMatch(/opsz|wght|FILL|GRAD|@/);
-    // Icon fonts show their ligature text ("dashboard", "menu") until the
-    // font arrives unless display=block hides it.
-    expect(href).toContain("display=block");
+describe("fonts: self-hosted, preloaded, with metric-matched fallbacks", () => {
+  const PAGES = ["/_/admin/settings", "/", "/no-such-page-for-fonts"];
+
+  it("no page links a third-party font stylesheet or preconnects to one", async () => {
+    for (const path of PAGES) {
+      const res = await SELF.fetch(req(path));
+      const html = await res.text();
+      expect(html, path).not.toContain("fonts.googleapis.com");
+      expect(html, path).not.toContain("fonts.gstatic.com");
+    }
   });
 
-  it("keeps display=swap on the text fonts so copy renders in a fallback face immediately", async () => {
+  it("every page declares the text fonts from /fonts with display=swap and preloads the latin files", async () => {
+    for (const path of PAGES) {
+      const res = await SELF.fetch(req(path));
+      const html = await res.text();
+      expect(html, path).toMatch(/@font-face\s*\{[^}]*font-family:\s*'Manrope'[^}]*font-display:\s*swap[^}]*url\(\/fonts\/manrope-v\d+-latin\.woff2\)/);
+      expect(html, path).toMatch(/@font-face\s*\{[^}]*font-family:\s*'Space Grotesk'[^}]*font-display:\s*swap[^}]*url\(\/fonts\/space-grotesk-v\d+-latin\.woff2\)/);
+      expect(html, path).toMatch(/<link rel="preload" href="\/fonts\/manrope-v\d+-latin\.woff2" as="font" type="font\/woff2" crossorigin/);
+      expect(html, path).toMatch(/<link rel="preload" href="\/fonts\/space-grotesk-v\d+-latin\.woff2" as="font" type="font\/woff2" crossorigin/);
+    }
+  });
+
+  it("text fonts fall back to a local face with adjusted metrics so the swap does not shift layout", async () => {
     const html = await fetchHtml("/_/admin/settings");
-    const textFont = html.match(/href="(https:\/\/fonts\.googleapis\.com\/css2\?family=Space\+Grotesk[^"]*)"/);
-    expect(textFont).not.toBeNull();
-    expect(textFont![1]).toContain("display=swap");
+    for (const family of ["Manrope Fallback", "Space Grotesk Fallback"]) {
+      const face = html.match(new RegExp(`@font-face\\s*\\{[^}]*font-family:\\s*'${family}'[^}]*\\}`));
+      expect(face, `${family} face`).not.toBeNull();
+      expect(face![0]).toMatch(/src:\s*local\(/);
+      expect(face![0]).toMatch(/size-adjust:\s*[\d.]+%/);
+      expect(face![0]).toMatch(/ascent-override:\s*[\d.]+%/);
+      expect(face![0]).toMatch(/descent-override:\s*[\d.]+%/);
+    }
+    // The fallback sits between the web font and the generic family.
+    expect(html).toMatch(/--font-family-body:\s*'Manrope',\s*'Manrope Fallback'/);
+    expect(html).toMatch(/--font-family-display:\s*'Space Grotesk',\s*'Space Grotesk Fallback'/);
+  });
+
+  it("the admin shell self-hosts the Material Symbols static instance with display=block and preloads it", async () => {
+    const html = await fetchHtml("/_/admin/settings");
+    // The static instance weighs 322 KB against 3.98 MB for the variable
+    // font with every axis; display=block hides the ligature text ("menu")
+    // that swap would flash until the file arrives.
+    expect(html).toMatch(/@font-face\s*\{[^}]*font-family:\s*'Material Symbols Outlined'[^}]*font-display:\s*block[^}]*url\(\/fonts\/material-symbols-outlined-v\d+\.woff2\)/);
+    expect(html).toMatch(/<link rel="preload" href="\/fonts\/material-symbols-outlined-v\d+\.woff2" as="font" type="font\/woff2" crossorigin/);
+  });
+
+  it("standalone pages do not pull the icon font they never use", async () => {
+    for (const path of ["/", "/no-such-page-for-fonts"]) {
+      const html = await (await SELF.fetch(req(path))).text();
+      expect(html, path).not.toContain("Material Symbols");
+    }
   });
 
   it("loads htmx from a version-stamped path so it can be cached as immutable", async () => {

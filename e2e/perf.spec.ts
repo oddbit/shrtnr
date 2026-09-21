@@ -20,7 +20,7 @@ import { collectVitals, formatVitals, kb, recordResponses, throttle, VITALS_INIT
  */
 const THROTTLED = !!process.env.PERF_THROTTLE;
 
-/** Wire bytes of a cold admin load. Measured 425 KB after the review; the icon font alone was 3.98 MB before it. */
+/** Wire bytes of a cold admin load. Measured 421 KB after the review; the icon font alone was 3.98 MB before it. */
 const ADMIN_COLD_BUDGET = 900 * 1024;
 /** Wire bytes of a cold signed-out landing page. Measured 55 KB. */
 const LANDING_COLD_BUDGET = 200 * 1024;
@@ -75,17 +75,25 @@ test.describe("cold load weight", () => {
     expect(oversized, "no single response above budget").toEqual([]);
     expect(vitals.cls, "cumulative layout shift").toBeLessThan(CLS_BUDGET);
 
-    // The icon font's fallback rendering is its ligature text, so it must
-    // not use display=swap; and the static instance, not the variable font.
-    const iconFontCss = records.find((r) => r.url.includes("family=Material+Symbols"));
-    expect(iconFontCss, "icon font stylesheet requested").toBeDefined();
-    expect(iconFontCss!.url).toContain("display=block");
-    expect(iconFontCss!.url).not.toMatch(/opsz|wght|FILL|GRAD/);
+    // Fonts are self-hosted: nothing on the critical path leaves the origin.
+    const origin = new URL(page.url()).origin;
+    const thirdParty = records.filter((r) => !r.url.startsWith(origin)).map((r) => r.url);
+    expect(thirdParty, "every request stays on the origin").toEqual([]);
 
-    // Version-stamped vendor bundle served as immutable (public/_headers).
-    const htmx = records.find((r) => /\/htmx-[\d.]+\.min\.js$/.test(r.url));
-    expect(htmx, "htmx loaded from a version-stamped path").toBeDefined();
-    expect(htmx!.cacheControl).toContain("immutable");
+    // The icon font is the static instance (322 KB), not the 3.98 MB
+    // variable font, and it arrives with the text fonts.
+    const iconFont = records.find((r) => /\/fonts\/material-symbols-outlined-v\d+\.woff2$/.test(r.url));
+    expect(iconFont, "icon font requested").toBeDefined();
+    expect(iconFont!.encodedBytes).toBeLessThan(SINGLE_RESPONSE_BUDGET);
+    for (const family of ["manrope", "space-grotesk"]) {
+      expect(records.some((r) => r.url.includes(`/fonts/${family}-v`)), `${family} requested`).toBe(true);
+    }
+
+    // Version-stamped files served as immutable (public/_headers).
+    const immutable = records.filter((r) => /\/fonts\/|\/htmx-[\d.]+\.min\.js$/.test(r.url));
+    expect(immutable.length, "versioned assets requested").toBeGreaterThan(0);
+    const revalidating = immutable.filter((r) => !r.cacheControl?.includes("immutable")).map((r) => path(r.url));
+    expect(revalidating, "versioned assets cached as immutable").toEqual([]);
 
     errors.assertClean();
     await context.close();
