@@ -1,6 +1,5 @@
 {
   "enabledPlugins": {
-    "dev@oddbit": true,
     "cloudflare@claude-plugins-official": true
   }
 }
