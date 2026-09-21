@@ -237,30 +237,49 @@ function interleaveBlocks(data: number[], totalCodewords: number, numBlocks: num
   return out;
 }
 
-function rsEncode(data: number[], numEcc: number): number[] {
-  const exp = new Uint8Array(512);
-  const log = new Uint8Array(256);
+// GF(256) log/antilog tables for the QR field (primitive polynomial 0x11d).
+// Built once at module load: interleaveBlocks calls rsEncode once per
+// Reed-Solomon block, 2 for versions 6-9 and 4 for version 10, and
+// src/api/qr.ts serves this per request.
+const GF_EXP = new Uint8Array(512);
+const GF_LOG = new Uint8Array(256);
+{
   let x = 1;
   for (let i = 0; i < 255; i++) {
-    exp[i] = x;
-    log[x] = i;
+    GF_EXP[i] = x;
+    GF_LOG[x] = i;
     x = (x << 1) ^ (x >= 128 ? 0x11d : 0);
   }
-  for (let i = 255; i < 512; i++) exp[i] = exp[i - 255];
+  for (let i = 255; i < 512; i++) GF_EXP[i] = GF_EXP[i - 255];
+}
 
-  function gfMul(a: number, b: number): number {
-    return a === 0 || b === 0 ? 0 : exp[log[a] + log[b]];
-  }
+function gfMul(a: number, b: number): number {
+  return a === 0 || b === 0 ? 0 : GF_EXP[GF_LOG[a] + GF_LOG[b]];
+}
 
+// Generator polynomials keyed by ECC codeword count. A symbol's blocks all
+// carry the same count, so the first block of a code builds it and the rest
+// reuse it. Six distinct counts appear across versions 1-10.
+const genCache = new Map<number, number[]>();
+
+function generatorPoly(numEcc: number): number[] {
+  const cached = genCache.get(numEcc);
+  if (cached) return cached;
   let gen = [1];
   for (let i = 0; i < numEcc; i++) {
     const newGen = new Array(gen.length + 1).fill(0);
     for (let j = 0; j < gen.length; j++) {
       newGen[j] ^= gen[j];
-      newGen[j + 1] ^= gfMul(gen[j], exp[i]);
+      newGen[j + 1] ^= gfMul(gen[j], GF_EXP[i]);
     }
     gen = newGen;
   }
+  genCache.set(numEcc, gen);
+  return gen;
+}
+
+function rsEncode(data: number[], numEcc: number): number[] {
+  const gen = generatorPoly(numEcc);
 
   const msg = new Uint8Array(data.length + numEcc);
   msg.set(data);
