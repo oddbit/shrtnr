@@ -261,6 +261,22 @@ describe("Error handling", () => {
     }
   });
 
+  it("throws ShrtnrError when a non-204 2xx body is the literal JSON null", async () => {
+    // "null" is valid, non-empty JSON, so it passes both the empty-body and
+    // JSON-parse checks and used to reach the caller as a bare `null` typed
+    // as `Link`, crashing on the first field access instead of raising the
+    // documented ShrtnrError. Matches the same guard in the Python SDK.
+    mockFetch(200, null);
+    await expect(client().links.get(1)).rejects.toBeInstanceOf(ShrtnrError);
+  });
+
+  it("throws ShrtnrError when a non-204 2xx body is a bare JSON scalar", async () => {
+    // A bare number/string/bool is just as invalid a shape as null for a
+    // resource method expecting an object or array.
+    mockFetch(200, 5);
+    await expect(client().links.get(1)).rejects.toBeInstanceOf(ShrtnrError);
+  });
+
   it("reports status 0 when the connection drops mid-body on a JSON response", async () => {
     // fetch resolves once headers land; the body streams afterward. Reading
     // it through res.json() reported the response status, so a connection

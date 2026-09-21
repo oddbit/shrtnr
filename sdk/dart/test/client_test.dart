@@ -336,6 +336,43 @@ void main() {
         expect(e.serverMessage, contains('Empty response body'));
       }
     });
+
+    test('throws ShrtnrError when a non-204 2xx body is the literal JSON null',
+        () async {
+      // "null" is valid, non-empty JSON, so it passes both the empty-body
+      // and jsonDecode checks and used to reach the caller as a bare
+      // `null`, failing on the resource method's `json!` with a null-check
+      // error instead of the documented ShrtnrError. Matches the Python
+      // SDK's guard for the same case.
+      final mock = MockClient((request) async {
+        return http.Response('null', 200,
+            headers: <String, String>{'content-type': 'application/json'});
+      });
+      final client = ShrtnrClient(baseUrl: _base, apiKey: _apiKey, httpClient: mock);
+      try {
+        await client.links.list();
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 200);
+      }
+    });
+
+    test('throws ShrtnrError when a non-204 2xx body is a bare JSON scalar',
+        () async {
+      // A bare number/string/bool is just as invalid a shape as null for a
+      // resource method expecting a Map or a List.
+      final mock = MockClient((request) async {
+        return http.Response('5', 200,
+            headers: <String, String>{'content-type': 'application/json'});
+      });
+      final client = ShrtnrClient(baseUrl: _base, apiKey: _apiKey, httpClient: mock);
+      try {
+        await client.links.get(1);
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 200);
+      }
+    });
   });
 
   // ---- 3. links.get ----

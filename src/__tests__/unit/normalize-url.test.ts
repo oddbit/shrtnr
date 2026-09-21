@@ -87,4 +87,22 @@ describe("normalizeUrl", () => {
       "https://example.com/#section?",
     );
   });
+
+  it("preserves a trailing question mark that is part of a query value", () => {
+    expect(normalizeUrl("https://example.com/?x=y?")).toBe(
+      "https://example.com/?x=y?",
+    );
+  });
+
+  it("preserves a trailing question mark inside an embedded redirect URL", () => {
+    expect(normalizeUrl("https://example.com/redirect?next=https://example.org/?")).toBe(
+      "https://example.com/redirect?next=https://example.org/?",
+    );
+  });
+
+  it("preserves a fragment whose content ends in a literal hash", () => {
+    expect(normalizeUrl("https://example.com/#section#")).toBe(
+      "https://example.com/#section#",
+    );
+  });
 });
