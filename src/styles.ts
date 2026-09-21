@@ -831,6 +831,12 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 .integration-card-head .icon { color: var(--color-accent); }
 .integration-card-title { font-weight: 600; }
 .integration-card-desc { font-size: 0.813rem; color: var(--color-text-muted); line-height: 1.45; }
+.integration-card-status { display: flex; align-items: flex-start; gap: 0.35rem; margin-top: 0.6rem; font-size: 0.75rem; line-height: 1.4; color: var(--color-text-muted); }
+.integration-card-status .icon { font-size: 16px; flex: none; }
+.integration-card-status.is-configured .icon { color: var(--color-success); }
+.integration-card-status.is-unconfigured .icon { color: var(--color-danger); }
+.integration-card-status-label { font-weight: 600; color: var(--color-text); }
+.integration-card-status-label::after { content: ":"; }
 .integration-card-link { font-size: 0.7rem; color: var(--color-success); margin-top: 0.6rem; display: inline-flex; align-items: center; gap: 0.25rem; }
 .integration-card-link .icon { font-size: 14px; }
 .integration-sdk-list { list-style: none; padding: 0; margin: 0.75rem 0 0 0; display: flex; flex-direction: column; gap: 0.25rem; }

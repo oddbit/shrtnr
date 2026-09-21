@@ -234,6 +234,11 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
               <span class="integration-card-title">{t("settings.mcpTitle")}</span>
             </div>
             <div class="integration-card-desc">{t("settings.mcpDesc")}</div>
+            <div class={`integration-card-status ${mcpConfigured ? "is-configured" : "is-unconfigured"}`}>
+              <span aria-hidden="true" class="icon">{mcpConfigured ? "check_circle" : "warning"}</span>
+              <span class="integration-card-status-label">{t("settings.mcpOAuth")}</span>
+              {mcpConfigured ? t("settings.mcpConfigured") : t("settings.mcpNotConfigured")}
+            </div>
             <div class="integration-card-link">
               <span aria-hidden="true" class="icon">open_in_new</span>
               {mcpConfigured ? t("settings.mcpDocsLink") : t("settings.mcpSetupLink")}

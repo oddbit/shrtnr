@@ -65,3 +65,17 @@ describe("Settings page analytics filter toggles", () => {
     expect(html).toMatch(/id="filter-self-referrers-toggle"[^>]*checked/);
   });
 });
+
+describe("Settings page MCP OAuth status row", () => {
+  it("renders the status as its own row with a decorative icon and the MCP OAuth label", async () => {
+    // Before this row existed, "Not configured" reached the document only
+    // through the inline client script's embedded translations. The script
+    // is an external asset now, so the card states the status itself.
+    const res = await SELF.fetch(req("/_/admin/settings"));
+    const html = await res.text();
+    expect(html).toMatch(/<div class="integration-card-status is-unconfigured">/);
+    expect(html).toMatch(/integration-card-status is-unconfigured"><span aria-hidden="true" class="icon">warning<\/span>/);
+    expect(html).toContain('<span class="integration-card-status-label">MCP OAuth</span>');
+    expect(html).not.toMatch(/is-configured/);
+  });
+});
