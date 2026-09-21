@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.1 (2026-09-22)
+
+Error-handling fixes on the transport. No public surface changes.
+
+- **A 2xx body of the wrong JSON container throws `ShrtnrError`.** Each call now tells `requestJson` which container it can consume, a single resource or a list. `[]` on `links.get()` used to fail on the resource method's `as Map<String, dynamic>` cast as a raw type error; `{}` on `links.list()` failed the same way on `as List`. The TypeScript and Python SDKs carry the same check in 1.2.1.
+- **A bare JSON scalar on a 2xx body throws `ShrtnrError`.** `null`, a number, a string or a bool passed `jsonDecode` unchanged and failed on the resource method's `json!` as a null-check error, or on the cast as a type error, instead of the documented error.
+- **A 204 throws `ShrtnrError` instead of returning null.** 2.1.2 kept null for a 204. No method can consume one, since every JSON call feeds a model or a list, so the transport treats it as an empty body and throws `Empty response body` with the response status.
+- **A malformed base URL throws `ShrtnrError(0, ...)`.** `Uri.parse` and request construction failed on an unparsable host or port before any I/O and escaped as a raw exception, outside the documented "network failures throw `ShrtnrError(status: 0)`" guarantee. Matches the Python SDK.
+- Records the spec hash for app 0.40.0. Paths and schemas are unchanged; only `info.version` moved.
+
 ## 2.2.0 (2026-09-10)
 
 Restores a request header the 1.0 rewrite dropped. No public surface changes.
