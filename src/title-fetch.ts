@@ -28,7 +28,11 @@ export function isPublicHttpUrl(url: string): boolean {
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
 
-  const host = parsed.hostname.toLowerCase();
+  // A fully qualified name carries a trailing root dot that the WHATWG
+  // parser keeps verbatim, while DNS resolves "name." to the same address
+  // as "name". Strip it, or "metadata.google.internal." walks straight
+  // past every name comparison below.
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, "");
   if (!host) return false;
 
   if (host.startsWith("[") && host.endsWith("]")) {
@@ -107,6 +111,16 @@ function isReservedIPv6(g: number[]): boolean {
   if (leadingZero && g[5] === 0 && g[6] === 0 && (g[7] === 0 || g[7] === 1)) return true;
   // ::ffff:a.b.c.d IPv4-mapped: judge the embedded IPv4 address
   if (leadingZero && g[5] === 0xffff) return isReservedIPv4(groupsToIPv4(g[6], g[7]));
+  // ::a.b.c.d IPv4-compatible (deprecated, still routed by some stacks):
+  // the parser normalizes it to plain hex groups, so ::127.0.0.1 arrives
+  // as ::7f00:1 and neither special case above fires. Judge the embedded
+  // address. The `!== 0` test keeps :: and ::1 with the branch above.
+  if (leadingZero && g[5] === 0 && (g[6] | g[7]) !== 0) {
+    return isReservedIPv4(groupsToIPv4(g[6], g[7]));
+  }
+  // 2002::/16 6to4: bits 16-47 are the IPv4 address of the relay endpoint,
+  // so 2002:7f00:1:: wraps 127.0.0.1. Judge that address.
+  if (g[0] === 0x2002) return isReservedIPv4(groupsToIPv4(g[1], g[2]));
   // 64:ff9b::/96 NAT64: same, the last 32 bits are an IPv4 address
   if (g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every((x) => x === 0)) {
     return isReservedIPv4(groupsToIPv4(g[6], g[7]));

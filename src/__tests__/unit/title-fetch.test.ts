@@ -123,6 +123,19 @@ describe("fetchPageTitle SSRF guard", () => {
     ["IPv4-mapped IPv6 loopback", "http://[::ffff:127.0.0.1]/"],
     ["IPv4-mapped IPv6 private", "http://[::ffff:10.0.0.1]/"],
     ["NAT64 prefix wrapping loopback", "http://[64:ff9b::7f00:1]/"],
+    // Trailing dot: DNS resolves "name." to the same address as "name", and
+    // the WHATWG parser keeps the dot verbatim, so every name comparison
+    // below has to see through it.
+    ["fully qualified localhost", "http://localhost./"],
+    ["fully qualified localhost subdomain", "http://db.localhost./"],
+    ["fully qualified .internal hostname", "http://metadata.google.internal./computeMetadata/v1/"],
+    ["fully qualified .local hostname", "http://printer.local./"],
+    // IPv4-compatible (::/96) and 6to4 (2002::/16) both carry an IPv4
+    // address in their bits; the embedded address is what decides them.
+    ["IPv4-compatible IPv6 loopback", "http://[::127.0.0.1]/"],
+    ["IPv4-compatible IPv6 private", "http://[::a00:1]/"],
+    ["6to4 wrapping loopback", "http://[2002:7f00:1::]/"],
+    ["6to4 wrapping cloud metadata", "http://[2002:a9fe:a9fe::]/"],
   ];
 
   for (const [label, url] of blocked) {
@@ -213,6 +226,13 @@ describe("isPublicHttpUrl", () => {
     expect(isPublicHttpUrl("https://[2606:2800:220:1:248:1893:25c8:1946]/")).toBe(true);
     expect(isPublicHttpUrl("http://172.15.255.255/")).toBe(true);
     expect(isPublicHttpUrl("http://172.32.0.1/")).toBe(true);
+  });
+
+  it("accepts a fully qualified public name and a 6to4 address wrapping a public one", () => {
+    // The trailing-dot strip must not swallow ordinary public names, and
+    // the two new embedded-IPv4 branches judge the address, not the form.
+    expect(isPublicHttpUrl("https://example.com./")).toBe(true);
+    expect(isPublicHttpUrl("http://[2002:5db8:d822::1]/")).toBe(true); // 93.184.216.34
   });
 
   it("rejects private, loopback, link-local and non-http targets", () => {
