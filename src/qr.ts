@@ -9,8 +9,13 @@ import { DEFAULT_QR_SIZE, MAX_QR_SIZE, MIN_QR_SIZE } from "./constants";
  * Supports QR versions 1-10 (up to 271 bytes).
  */
 export function makeQR(text: string): boolean[][] | null {
-  const data: number[] = [];
-  for (let i = 0; i < text.length; i++) data.push(text.charCodeAt(i));
+  // Byte mode carries UTF-8, so encode rather than reading code units:
+  // charCodeAt() hands back 233 for é where UTF-8 needs 0xC3 0xA9, and
+  // anything above U+00FF overflows the 8-bit field outright and
+  // desynchronizes the bit stream. Capacity is judged on the encoded
+  // length for the same reason, or a multi-byte payload undersizes the
+  // version it is written into.
+  const data: number[] = Array.from(new TextEncoder().encode(text));
 
   const caps = [0, 17, 32, 53, 78, 106, 134, 154, 192, 230, 271];
   let ver = 1;

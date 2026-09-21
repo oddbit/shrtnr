@@ -163,3 +163,42 @@ describe("makeQR version information", () => {
     });
   }
 });
+
+describe("makeQR non-ASCII payloads", () => {
+  // Byte mode carries UTF-8. Reading text with charCodeAt() yields a Latin-1
+  // value for é and a 16-bit value for 你, which overflows the 8-bit field
+  // and desynchronizes the bit stream; sizing by text.length rather than
+  // encoded byte length then undersizes the version on top of that. The
+  // symbols came out undecodable while makeQR still returned a grid, so
+  // callers shipped a broken image. Reachable through the MCP qr tool,
+  // whose base_url passes z.string().url() and so admits IDN hosts.
+  for (const text of [
+    "https://s.ex/café",
+    "https://s.ex/你好",
+    "https://s.ex/naïve-café-münchen",
+    "https://s.ex/🎯",
+  ]) {
+    it(`round-trips ${text}`, () => {
+      const grid = makeQR(text);
+      expect(grid).not.toBeNull();
+      expect(decode(grid!)).toBe(text);
+    });
+  }
+
+  it("sizes the version by encoded byte length, not character count", () => {
+    // 60 three-byte characters: 180 bytes needs version 8, while a
+    // length-based check would read 60 and pick version 3.
+    const text = "好".repeat(60);
+    expect(new TextEncoder().encode(text).length).toBe(180);
+    const grid = makeQR(text)!;
+    expect(grid.length).toBe(8 * 4 + 17);
+    expect(decode(grid)).toBe(text);
+  });
+
+  it("refuses a payload whose encoded bytes exceed version-10 capacity", () => {
+    // 91 three-byte characters encode to 273 bytes, past the 271 ceiling,
+    // even though the string is only 91 characters long.
+    expect(makeQR("好".repeat(91))).toBeNull();
+    expect(makeQR("好".repeat(90))).not.toBeNull(); // 270 bytes, fits
+  });
+});
