@@ -210,6 +210,26 @@ describe("fetchPageTitle SSRF guard", () => {
     expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(6);
   });
 
+  it("bounds the whole redirect chain on one deadline, not one per hop", async () => {
+    // A per-hop signal lets a server that answers every request with a 302
+    // just under the limit hold autoLabelLink's waitUntil for MAX_REDIRECTS
+    // times the budget. Every hop must carry the same signal instance.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(redirectResponse("https://a.example/1"))
+      .mockResolvedValueOnce(redirectResponse("https://b.example/2"))
+      .mockResolvedValueOnce(htmlResponse("End"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(await fetchPageTitle("https://example.com/")).toBe("End");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    const signals = fetchMock.mock.calls.map((c) => c[1].signal);
+    expect(signals[0]).toBeInstanceOf(AbortSignal);
+    expect(signals[1]).toBe(signals[0]);
+    expect(signals[2]).toBe(signals[0]);
+  });
+
   it("returns null on a redirect without a Location header", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 302 }));
     vi.stubGlobal("fetch", fetchMock);

@@ -146,12 +146,17 @@ export async function fetchPageTitle(url: string): Promise<string | null> {
   try {
     let current = url;
     let res: Response | null = null;
+    // One deadline for the whole chain, built once. A signal per hop would
+    // give each of the MAX_REDIRECTS + 1 requests its own budget, so a
+    // server answering every request with a slow 302 could hold
+    // autoLabelLink's waitUntil for six times this long.
+    const deadline = AbortSignal.timeout(5000);
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
       if (!isPublicHttpUrl(current)) return null;
       const candidate = await fetch(current, {
         headers: { "User-Agent": "Shrtnr/1.0 (link preview)" },
         redirect: "manual",
-        signal: AbortSignal.timeout(5000),
+        signal: deadline,
       });
       if (candidate.status < 300 || candidate.status > 399) {
         res = candidate;
