@@ -75,7 +75,8 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
         */}
         <link href={MATERIAL_SYMBOLS_HREF} rel="stylesheet" />
         <style>{raw(adminStyles)}</style>
-        <script src="/htmx.min.js" defer></script>
+        {/* Version in the file name: public/_headers caches it as immutable. */}
+        <script src="/htmx-2.0.4.min.js" defer></script>
       </head>
       <body>
         <nav class="sidebar">
