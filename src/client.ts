@@ -140,8 +140,9 @@ function setTheme(theme) {
 // ---- Language ----
 function setLanguage(lang) {
   document.cookie = 'lang=' + lang + ';path=/;max-age=31536000;SameSite=Lax';
-  api('/settings', { method: 'PUT', body: JSON.stringify({ lang: lang }) }).then(function() {
-    window.location.reload();
+  api('/settings', { method: 'PUT', body: JSON.stringify({ lang: lang }) }).then(function(res) {
+    if (res.ok) window.location.reload();
+    else toast(t('client.settingsError'), 'error');
   });
 }
 
