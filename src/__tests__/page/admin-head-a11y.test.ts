@@ -56,7 +56,7 @@ async function adminPages(): Promise<{ name: string; path: string }[]> {
   ];
 }
 
-describe("fonts: self-hosted, preloaded, with metric-matched fallbacks", () => {
+describe("fonts: self-hosted, not preloaded, with metric-matched fallbacks", () => {
   const PAGES = ["/_/admin/settings", "/", "/no-such-page-for-fonts"];
 
   it("no page links a third-party font stylesheet or preconnects to one", async () => {
