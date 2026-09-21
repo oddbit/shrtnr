@@ -69,6 +69,7 @@ Workflow on API change:
 - Two suites, two questions. `yarn test` (vitest, `src/__tests__/`) asks whether the server emits the right HTML, JSON and SQL. `yarn e2e` (Playwright, `e2e/`) asks whether the page in front of the user responds when clicked: it boots `wrangler dev` on a throwaway D1, signs in through `/_/dev/login`, seeds a catalog, and drives every admin page in Chromium.
 - Any change under `src/pages/`, `src/admin/`, `src/client.ts`, `src/styles.ts` or `src/index.tsx` admin routes ends with `yarn e2e` green, not only `yarn test`. A code review or release that touches those paths is not complete until the e2e suite has run. Rendering tests cannot see a dead control, a script that throws on load, or a link that 500s under real data; the browser can.
 - New admin controls (chip, sort, paginator, selector, row action) get an e2e step that clicks them and asserts the URL and the marked state, alongside the vitest render assertions.
+- `e2e/perf.spec.ts` runs inside `yarn e2e` and pins page weight (wire bytes of a cold load, largest single response), layout shift, and DOM accessibility invariants (hidden icon glyphs, one `h1`, labelled controls, named buttons). Byte budgets and DOM checks fail the run; timing is printed, never asserted. `yarn perf` runs that spec alone under a Fast 3G / 4x CPU profile to show what a slow phone meets. A change that adds a font, a script, or a third-party stylesheet ends with `yarn perf` and its table in the PR description.
 
 ## Internationalization
 
