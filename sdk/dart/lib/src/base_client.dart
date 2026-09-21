@@ -182,7 +182,21 @@ class ShrtnrBaseClient {
     throw ShrtnrError(response.statusCode, serverMessage);
   }
 
+  // Uri.parse throws FormatException on a malformed base URL (a bad port,
+  // a bad IDNA host), synchronously and before any I/O. Both request paths
+  // build their URI before entering the try that wraps send(), so the raw
+  // exception escaped the "network failures throw ShrtnrError with
+  // status: 0" guarantee in README.md. Wrapping here rather than at each
+  // call site covers both paths, and any later one, from one place.
   Uri _buildUri(String path, Map<String, String?>? query) {
+    try {
+      return _parseUri(path, query);
+    } on FormatException catch (e) {
+      throw ShrtnrError(0, e.toString());
+    }
+  }
+
+  Uri _parseUri(String path, Map<String, String?>? query) {
     final base = '$_baseUrl$path';
     if (query == null || query.isEmpty) return Uri.parse(base);
     final params = <String, String>{};

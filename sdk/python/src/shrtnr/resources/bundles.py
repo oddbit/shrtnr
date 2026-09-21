@@ -12,15 +12,11 @@ from __future__ import annotations
 from builtins import list as _list
 from typing import Any, Literal
 
-import httpx
-
 from .._base import (
     UNSET,
-    _build_request_headers,
-    _build_url,
-    parse_json_response,
+    _AsyncResource,
+    _SyncResource,
 )
-from ..errors import ShrtnrError
 from ..models import (
     AddedResult,
     BreakdownDimension,
@@ -36,29 +32,8 @@ from ..models import (
 )
 
 
-class Bundles:
+class Bundles(_SyncResource):
     """Synchronous Bundles resource."""
-
-    def __init__(self, base_url: str, api_key: str, http: httpx.Client) -> None:
-        self._base_url = base_url
-        self._api_key = api_key
-        self._http = http
-
-    def _headers(self) -> dict[str, str]:
-        return _build_request_headers(self._api_key)
-
-    def _json_headers(self) -> dict[str, str]:
-        return {**self._headers(), "Content-Type": "application/json"}
-
-    def _url(self, path: str, query: dict[str, str | None] | None = None) -> str:
-        return _build_url(self._base_url, path, query)
-
-    def _request(self, method: str, url: str, **kwargs: Any) -> Any:
-        try:
-            response = self._http.request(method, url, **kwargs)
-        except httpx.RequestError as exc:
-            raise ShrtnrError(0, str(exc)) from exc
-        return parse_json_response(response)
 
     def get(self, id: int, *, range: TimelineRange | None = None) -> BundleWithSummary:
         """Get a bundle by ID with aggregated click summary."""
@@ -181,29 +156,8 @@ class Bundles:
         return RemovedResult.from_dict(self._request("DELETE", url, headers=self._headers()))
 
 
-class AsyncBundles:
+class AsyncBundles(_AsyncResource):
     """Asynchronous Bundles resource."""
-
-    def __init__(self, base_url: str, api_key: str, http: httpx.AsyncClient) -> None:
-        self._base_url = base_url
-        self._api_key = api_key
-        self._http = http
-
-    def _headers(self) -> dict[str, str]:
-        return _build_request_headers(self._api_key)
-
-    def _json_headers(self) -> dict[str, str]:
-        return {**self._headers(), "Content-Type": "application/json"}
-
-    def _url(self, path: str, query: dict[str, str | None] | None = None) -> str:
-        return _build_url(self._base_url, path, query)
-
-    async def _request(self, method: str, url: str, **kwargs: Any) -> Any:
-        try:
-            response = await self._http.request(method, url, **kwargs)
-        except httpx.RequestError as exc:
-            raise ShrtnrError(0, str(exc)) from exc
-        return parse_json_response(response)
 
     async def get(self, id: int, *, range: TimelineRange | None = None) -> BundleWithSummary:
         """Get a bundle by ID with aggregated click summary."""

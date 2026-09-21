@@ -137,6 +137,20 @@ def test_network_error_wraps_as_status_0(client: Shrtnr) -> None:
         assert exc_info.value.status == 0
 
 
+def test_malformed_base_url_wraps_as_status_0() -> None:
+    # httpx.InvalidURL (e.g. a bad port) is raised synchronously from
+    # request-building, before any I/O, and is not a subclass of
+    # httpx.RequestError. It must still surface as the documented
+    # ShrtnrError(status=0, ...), not escape as a raw httpx exception.
+    # Closed via `with`, matching the async twin. The module's own client
+    # fixture returns without closing, so this file has no teardown habit to
+    # follow, but a client built inside a test should still release its pool.
+    with Shrtnr(base_url="https://example.com:notaport", api_key=API_KEY) as client:
+        with pytest.raises(ShrtnrError) as exc_info:
+            client.links.list()
+        assert exc_info.value.status == 0
+
+
 # ---- Base URL normalization ----
 
 

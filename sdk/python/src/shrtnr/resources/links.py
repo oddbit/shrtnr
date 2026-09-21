@@ -12,16 +12,11 @@ from __future__ import annotations
 from builtins import list as _list
 from typing import Any
 
-import httpx
-
 from .._base import (
     UNSET,
-    _build_request_headers,
-    _build_url,
-    parse_json_response,
-    parse_text_response,
+    _AsyncResource,
+    _SyncResource,
 )
-from ..errors import ShrtnrError
 from ..models import (
     BreakdownDimension,
     BreakdownPage,
@@ -34,36 +29,8 @@ from ..models import (
 )
 
 
-class Links:
+class Links(_SyncResource):
     """Synchronous Links resource."""
-
-    def __init__(self, base_url: str, api_key: str, http: httpx.Client) -> None:
-        self._base_url = base_url
-        self._api_key = api_key
-        self._http = http
-
-    def _headers(self) -> dict[str, str]:
-        return _build_request_headers(self._api_key)
-
-    def _json_headers(self) -> dict[str, str]:
-        return {**self._headers(), "Content-Type": "application/json"}
-
-    def _url(self, path: str, query: dict[str, str | None] | None = None) -> str:
-        return _build_url(self._base_url, path, query)
-
-    def _request(self, method: str, url: str, **kwargs: Any) -> Any:
-        try:
-            response = self._http.request(method, url, **kwargs)
-        except httpx.RequestError as exc:
-            raise ShrtnrError(0, str(exc)) from exc
-        return parse_json_response(response)
-
-    def _request_text(self, method: str, url: str, **kwargs: Any) -> str:
-        try:
-            response = self._http.request(method, url, **kwargs)
-        except httpx.RequestError as exc:
-            raise ShrtnrError(0, str(exc)) from exc
-        return parse_text_response(response)
 
     def get(self, id: int, *, range: TimelineRange | None = None) -> Link:
         """Get a link by ID. Optional range scopes the click-count window."""
@@ -188,36 +155,8 @@ class Links:
         return [Bundle.from_dict(x) for x in (data or [])]
 
 
-class AsyncLinks:
+class AsyncLinks(_AsyncResource):
     """Asynchronous Links resource."""
-
-    def __init__(self, base_url: str, api_key: str, http: httpx.AsyncClient) -> None:
-        self._base_url = base_url
-        self._api_key = api_key
-        self._http = http
-
-    def _headers(self) -> dict[str, str]:
-        return _build_request_headers(self._api_key)
-
-    def _json_headers(self) -> dict[str, str]:
-        return {**self._headers(), "Content-Type": "application/json"}
-
-    def _url(self, path: str, query: dict[str, str | None] | None = None) -> str:
-        return _build_url(self._base_url, path, query)
-
-    async def _request(self, method: str, url: str, **kwargs: Any) -> Any:
-        try:
-            response = await self._http.request(method, url, **kwargs)
-        except httpx.RequestError as exc:
-            raise ShrtnrError(0, str(exc)) from exc
-        return parse_json_response(response)
-
-    async def _request_text(self, method: str, url: str, **kwargs: Any) -> str:
-        try:
-            response = await self._http.request(method, url, **kwargs)
-        except httpx.RequestError as exc:
-            raise ShrtnrError(0, str(exc)) from exc
-        return parse_text_response(response)
 
     async def get(self, id: int, *, range: TimelineRange | None = None) -> Link:
         """Get a link by ID. Optional range scopes the click-count window."""

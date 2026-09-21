@@ -9,8 +9,13 @@ import { DEFAULT_QR_SIZE, MAX_QR_SIZE, MIN_QR_SIZE } from "./constants";
  * Supports QR versions 1-10 (up to 271 bytes).
  */
 export function makeQR(text: string): boolean[][] | null {
-  const data: number[] = [];
-  for (let i = 0; i < text.length; i++) data.push(text.charCodeAt(i));
+  // Byte mode carries UTF-8, so encode rather than reading code units:
+  // charCodeAt() hands back 233 for é where UTF-8 needs 0xC3 0xA9, and
+  // anything above U+00FF overflows the 8-bit field outright and
+  // desynchronizes the bit stream. Capacity is judged on the encoded
+  // length for the same reason, or a multi-byte payload undersizes the
+  // version it is written into.
+  const data: number[] = Array.from(new TextEncoder().encode(text));
 
   const caps = [0, 17, 32, 53, 78, 106, 134, 154, 192, 230, 271];
   let ver = 1;
@@ -55,11 +60,16 @@ export function makeQR(text: string): boolean[][] | null {
     ];
     const aligns = alignTable[ver];
     if (Array.isArray(aligns)) {
+      const last = aligns.length - 1;
       for (let ai = 0; ai < aligns.length; ai++) {
         for (let aj = 0; aj < aligns.length; aj++) {
+          // Skip the three positions that fall inside a finder pattern. Only
+          // those: from version 7 on, alignment patterns also sit on the
+          // timing pattern's row and column, which are reserved too, and
+          // those must be drawn.
+          if ((ai === 0 && aj === 0) || (ai === 0 && aj === last) || (ai === last && aj === 0)) continue;
           const ar = aligns[ai];
           const ac = aligns[aj];
-          if (reserved[ar] && reserved[ar][ac]) continue;
           for (let dr = -2; dr <= 2; dr++) {
             for (let dc = -2; dc <= 2; dc++) {
               const rr = ar + dr;
@@ -85,10 +95,32 @@ export function makeQR(text: string): boolean[][] | null {
   reserved[size - 8][8] = 1;
   grid[size - 8][8] = 1;
 
-  const eccL = [0, 7, 10, 15, 20, 26, 18, 20, 24, 30, 18];
+  // Version information (versions 7+): two 6x3 blocks, one above the
+  // bottom-left finder and one left of the top-right finder. Reserve them
+  // before data placement so codewords route around them, then write the
+  // 18-bit BCH-protected version number into both.
+  if (ver >= 7) {
+    const versionBits = versionInfoBits(ver);
+    for (let i = 0; i < 18; i++) {
+      const bit = (versionBits >>> i) & 1;
+      const a = size - 11 + (i % 3);
+      const b = Math.floor(i / 3);
+      reserved[b][a] = 1;
+      grid[b][a] = bit;
+      reserved[a][b] = 1;
+      grid[a][b] = bit;
+    }
+  }
+
+  // Error-correction level L block structure (ISO/IEC 18004 Table 9).
+  // Versions 6-10 split the codewords into several Reed-Solomon blocks,
+  // each with its own ECC codewords, interleaved byte by byte.
+  const eccPerBlockL = [0, 7, 10, 15, 20, 26, 18, 20, 24, 30, 18];
+  const numBlocksL = [0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 4];
   const totalCodewords = [0, 26, 44, 70, 100, 134, 172, 196, 242, 292, 346];
-  const numEcc = eccL[ver];
-  const numData = totalCodewords[ver] - numEcc;
+  const numEcc = eccPerBlockL[ver];
+  const numBlocks = numBlocksL[ver];
+  const numData = totalCodewords[ver] - numEcc * numBlocks;
 
   let bits = "";
   bits += "0100";
@@ -108,8 +140,7 @@ export function makeQR(text: string): boolean[][] | null {
 
   const dataBytes: number[] = [];
   for (let i = 0; i < bits.length; i += 8) dataBytes.push(parseInt(bits.slice(i, i + 8), 2));
-  const eccBytes = rsEncode(dataBytes, numEcc);
-  const allBytes = dataBytes.concat(eccBytes);
+  const allBytes = interleaveBlocks(dataBytes, totalCodewords[ver], numBlocks, numEcc);
 
   let bitStr = "";
   for (let i = 0; i < allBytes.length; i++) bitStr += toBin(allBytes[i], 8);
@@ -161,30 +192,94 @@ function toBin(n: number, len: number): string {
   return n.toString(2).padStart(len, "0");
 }
 
-function rsEncode(data: number[], numEcc: number): number[] {
-  const exp = new Uint8Array(512);
-  const log = new Uint8Array(256);
+/**
+ * 18-bit version information: the 6-bit version number followed by its
+ * 12-bit BCH(18,6) remainder over the generator polynomial 0x1F25.
+ */
+function versionInfoBits(ver: number): number {
+  let rem = ver;
+  for (let i = 0; i < 12; i++) {
+    rem = (rem << 1) ^ ((rem >>> 11) * 0x1f25);
+  }
+  return (ver << 12) | rem;
+}
+
+/**
+ * Split the data codewords into Reed-Solomon blocks, compute ECC for each,
+ * and interleave them as the spec requires: all blocks' first data byte,
+ * then all blocks' second data byte, ... then the ECC bytes the same way.
+ * When the codeword count does not divide evenly, the leading blocks are
+ * one data byte shorter than the trailing ones.
+ */
+function interleaveBlocks(data: number[], totalCodewords: number, numBlocks: number, eccPerBlock: number): number[] {
+  const numShortBlocks = numBlocks - (totalCodewords % numBlocks);
+  const shortBlockLen = Math.floor(totalCodewords / numBlocks);
+  const shortDataLen = shortBlockLen - eccPerBlock;
+
+  const blocks: { data: number[]; ecc: number[] }[] = [];
+  let offset = 0;
+  for (let b = 0; b < numBlocks; b++) {
+    const dataLen = shortDataLen + (b < numShortBlocks ? 0 : 1);
+    const blockData = data.slice(offset, offset + dataLen);
+    offset += dataLen;
+    blocks.push({ data: blockData, ecc: rsEncode(blockData, eccPerBlock) });
+  }
+
+  const out: number[] = [];
+  for (let i = 0; i <= shortDataLen; i++) {
+    for (const block of blocks) {
+      if (i < block.data.length) out.push(block.data[i]);
+    }
+  }
+  for (let i = 0; i < eccPerBlock; i++) {
+    for (const block of blocks) out.push(block.ecc[i]);
+  }
+  return out;
+}
+
+// GF(256) log/antilog tables for the QR field (primitive polynomial 0x11d).
+// Built once at module load: interleaveBlocks calls rsEncode once per
+// Reed-Solomon block, 2 for versions 6-9 and 4 for version 10, and
+// src/api/qr.ts serves this per request.
+const GF_EXP = new Uint8Array(512);
+const GF_LOG = new Uint8Array(256);
+{
   let x = 1;
   for (let i = 0; i < 255; i++) {
-    exp[i] = x;
-    log[x] = i;
+    GF_EXP[i] = x;
+    GF_LOG[x] = i;
     x = (x << 1) ^ (x >= 128 ? 0x11d : 0);
   }
-  for (let i = 255; i < 512; i++) exp[i] = exp[i - 255];
+  for (let i = 255; i < 512; i++) GF_EXP[i] = GF_EXP[i - 255];
+}
 
-  function gfMul(a: number, b: number): number {
-    return a === 0 || b === 0 ? 0 : exp[log[a] + log[b]];
-  }
+function gfMul(a: number, b: number): number {
+  return a === 0 || b === 0 ? 0 : GF_EXP[GF_LOG[a] + GF_LOG[b]];
+}
 
+// Generator polynomials keyed by ECC codeword count. A symbol's blocks all
+// carry the same count, so the first block of a code builds it and the rest
+// reuse it. Six distinct counts appear across versions 1-10.
+const genCache = new Map<number, number[]>();
+
+function generatorPoly(numEcc: number): number[] {
+  const cached = genCache.get(numEcc);
+  if (cached) return cached;
   let gen = [1];
   for (let i = 0; i < numEcc; i++) {
     const newGen = new Array(gen.length + 1).fill(0);
     for (let j = 0; j < gen.length; j++) {
       newGen[j] ^= gen[j];
-      newGen[j + 1] ^= gfMul(gen[j], exp[i]);
+      newGen[j + 1] ^= gfMul(gen[j], GF_EXP[i]);
     }
     gen = newGen;
   }
+  genCache.set(numEcc, gen);
+  return gen;
+}
+
+function rsEncode(data: number[], numEcc: number): number[] {
+  const gen = generatorPoly(numEcc);
 
   const msg = new Uint8Array(data.length + numEcc);
   msg.set(data);

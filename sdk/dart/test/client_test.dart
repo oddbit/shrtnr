@@ -259,6 +259,29 @@ void main() {
       }
     });
 
+    test('throws ShrtnrError with status 0 on a malformed base URL', () async {
+      // Uri.parse throws FormatException on a bad port, and _buildUri runs
+      // outside the try that wraps send(), so the raw exception escaped the
+      // documented "network failures throw ShrtnrError with status: 0"
+      // contract in README.md. Covers both request paths: links.list() goes
+      // through requestJson, links.qrSvg() through requestText.
+      final client =
+          ShrtnrClient(baseUrl: 'https://example.com:notaport', apiKey: _apiKey);
+      try {
+        await client.links.list();
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 0);
+      }
+      try {
+        await client.links.qr(1);
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 0);
+      }
+      client.close();
+    });
+
     test(
         'wraps a non-JSON 2xx body in ShrtnrError instead of throwing a raw FormatException',
         () async {
