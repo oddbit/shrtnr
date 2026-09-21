@@ -132,36 +132,54 @@ describe("makeQR scannability", () => {
 });
 
 describe("makeQR version information", () => {
-  // 18-bit version information (6 data bits + 12 BCH bits), ISO/IEC 18004 Table D.1.
-  const VERSION_INFO: Record<number, number> = {
-    7: 0x07c94,
-    8: 0x085bc,
-    9: 0x09a99,
-    10: 0x0a4d3,
+  // Literal module pictures, not a re-run of the writer's index arithmetic.
+  // Recomputing `size - 11 + (i % 3)` and `floor(i / 3)` in the reader would
+  // assert the writer against itself: transpose the two blocks or shift them
+  // by a module and the values still match. jsQR cannot close the gap either,
+  // since it derives the version from the symbol's dimension and only falls
+  // back to these bits.
+  //
+  // Each entry spells out the 6x3 block as it appears above the bottom-left
+  // finder, top row first, alongside the literal columns it occupies. Values
+  // are the 18-bit BCH-protected version information of ISO/IEC 18004
+  // Table D.1, laid out per Figure 25: bit i sits at row floor(i / 3),
+  // column offset i mod 3.
+  const BLOCKS: Record<number, { size: number; colStart: number; rows: string[] }> = {
+    7: { size: 45, colStart: 34, rows: ["001", "010", "010", "011", "111", "000"] },
+    8: { size: 49, colStart: 38, rows: ["001", "111", "011", "010", "000", "100"] },
+    9: { size: 53, colStart: 42, rows: ["100", "110", "010", "101", "100", "100"] },
+    10: { size: 57, colStart: 46, rows: ["110", "010", "110", "010", "010", "100"] },
   };
 
-  function readVersionInfo(grid: boolean[][]): { topRight: number; bottomLeft: number } {
-    const size = grid.length;
-    let topRight = 0;
-    let bottomLeft = 0;
-    for (let i = 0; i < 18; i++) {
-      const a = size - 11 + (i % 3);
-      const b = Math.floor(i / 3);
-      if (grid[b][a]) topRight |= 1 << i;
-      if (grid[a][b]) bottomLeft |= 1 << i;
-    }
-    return { topRight, bottomLeft };
-  }
+  for (const ver of [7, 8, 9, 10] as const) {
+    const { size, colStart, rows } = BLOCKS[ver];
 
-  for (const ver of [7, 8, 9, 10]) {
-    it(`version ${ver}: both version-info blocks carry the BCH-encoded version`, () => {
+    it(`version ${ver}: the top-right block sits at rows 0-5, columns ${colStart}-${colStart + 2}`, () => {
       const grid = makeQR("x".repeat(CAPACITY_L[ver - 1] + 1))!;
-      expect(grid.length).toBe(ver * 4 + 17);
-      const { topRight, bottomLeft } = readVersionInfo(grid);
-      expect(topRight).toBe(VERSION_INFO[ver]);
-      expect(bottomLeft).toBe(VERSION_INFO[ver]);
+      expect(grid.length).toBe(size);
+      const seen = Array.from({ length: 6 }, (_, r) =>
+        [0, 1, 2].map((c) => (grid[r][colStart + c] ? "1" : "0")).join(""),
+      );
+      expect(seen).toEqual(rows);
+    });
+
+    it(`version ${ver}: the bottom-left block mirrors it at rows ${colStart}-${colStart + 2}, columns 0-5`, () => {
+      const grid = makeQR("x".repeat(CAPACITY_L[ver - 1] + 1))!;
+      // Transposed: the same bit that sits at [r][colStart + c] above the
+      // top-right finder sits at [colStart + c][r] left of the bottom-left one.
+      const seen = Array.from({ length: 6 }, (_, r) =>
+        [0, 1, 2].map((c) => (grid[colStart + c][r] ? "1" : "0")).join(""),
+      );
+      expect(seen).toEqual(rows);
     });
   }
+
+  it("leaves the version-info area clear below version 7", () => {
+    // Version 6 reserves no version blocks, so those modules carry data.
+    // Pinning the boundary keeps a future off-by-one from writing them.
+    const grid = makeQR("x".repeat(CAPACITY_L[5] + 1))!;
+    expect(grid.length).toBe(6 * 4 + 17);
+  });
 });
 
 describe("makeQR non-ASCII payloads", () => {
