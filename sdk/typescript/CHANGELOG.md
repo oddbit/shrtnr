@@ -2,6 +2,15 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.2.1 (2026-09-22)
+
+Error-handling fixes on the transport. No public surface changes.
+
+- **A 2xx body of the wrong JSON container raises `ShrtnrError`.** Each call now tells the transport which container it can consume, a single resource or a list. `[]` on `links.get()` used to come back typed as `Link` and crash on the first field access; `{}` on `links.list()` was returned as an object typed as an array. The Python and Dart SDKs carry the same check in 1.2.1 and 2.2.1.
+- **A bare JSON scalar on a 2xx body raises `ShrtnrError`.** `null`, a number, a string or a bool cleared the JSON-parse guard and reached the caller as a bare value, crashing on the first field access instead of raising the documented error. Matches the guard the Python SDK carried for `null` since 1.2.0.
+- **A 204 raises `ShrtnrError` instead of resolving to `undefined`.** No method can consume a 204, since every JSON call feeds a model or a list, so the transport treats it as an empty body and reports `Empty response body` with the response status, the same message Python and Dart raise.
+- Records the spec hash for app 0.40.0. Paths and schemas are unchanged; only `info.version` moved.
+
 ## 1.2.0 (2026-09-10)
 
 Restores a request header the 1.0 rewrite dropped, and fixes a silent field loss in case conversion. No public surface changes.
