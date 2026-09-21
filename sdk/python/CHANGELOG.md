@@ -2,6 +2,17 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.2.1 (2026-09-22)
+
+Error-handling fixes on the transport. No public surface changes.
+
+- **A 2xx body of the wrong JSON container raises `ShrtnrError`.** Each call now tells `parse_json_response` which container it can consume, a single resource or a list. `[]` on `links.get()` used to reach `Link.from_dict([])` as a bare `AttributeError`; `{}` on `links.list()` iterated the object's keys. The TypeScript and Dart SDKs carry the same check in 1.2.1 and 2.2.1.
+- **Any bare JSON scalar on a 2xx body raises `ShrtnrError`.** 1.2.0 guarded `null` alone. A number, string or bool still reached `SomeModel.from_dict(5)` as a bare `AttributeError`, and a falsy `0` on a `list()` endpoint was swallowed into `[]` by the `data or []` guard. The guards are gone; the container check covers every case.
+- **A 204 raises `ShrtnrError` instead of returning `None`.** 1.1.2 kept `None` for a 204. No method can consume one, since every JSON call feeds a model constructor or a list comprehension, so the transport treats it as an empty body and raises `Empty response body` with the response status.
+- **A malformed `base_url` raises `ShrtnrError(0, ...)`.** `httpx.InvalidURL` is not a `RequestError` subclass and is raised before any I/O, so an unparsable port or host escaped as a raw httpx exception instead of the documented transport failure.
+- The sync and async resources share one request path in `_base.py`, so a transport fix lands once instead of in six method bodies that had to stay identical.
+- Records the spec hash for app 0.40.0. Paths and schemas are unchanged; only `info.version` moved.
+
 ## 1.2.0 (2026-09-10)
 
 Restores a request header the 1.0 rewrite dropped, and turns one crash into the documented error. No public surface changes.
