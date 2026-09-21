@@ -216,7 +216,11 @@ export const adminStyles = `
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: var(--font-family-body); background: var(--color-canvas); color: var(--color-text); min-height: 100vh; display: flex; }
-.icon { font-family: 'Material Symbols Outlined'; font-size: 20px; vertical-align: middle; }
+/* A fixed 1em box, whatever font is showing: until Material Symbols arrives
+   the span holds its ligature text ("content_copy"), and a box sized by that
+   text collapses to a glyph when the font loads, shifting everything beside
+   it (CLS 0.06 to 0.11 measured on the links and link detail pages). */
+.icon { font-family: 'Material Symbols Outlined'; font-size: 20px; vertical-align: middle; display: inline-block; width: 1em; height: 1em; line-height: 1; overflow: hidden; white-space: nowrap; letter-spacing: normal; text-transform: none; font-weight: 400; font-style: normal; }
 
 /* Sidebar */
 .sidebar { width: 240px; background: var(--color-surface); padding: 1.5rem 1rem; display: flex; flex-direction: column; min-height: 100vh; position: fixed; left: 0; top: 0; }
@@ -770,7 +774,7 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 
 /* Empty state */
 .empty-state { text-align: center; padding: 4rem 2rem; color: var(--color-text-muted); }
-.empty-state .icon { font-size: 48px; margin-bottom: 1rem; display: block; }
+.empty-state .icon { font-size: 48px; margin: 0 auto 1rem; display: block; }
 .empty-state p { margin-bottom: 1rem; }
 
 /* Mobile navigation */
