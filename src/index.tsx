@@ -43,8 +43,7 @@ import { DEFAULT_SLUG_LENGTH, DEFAULT_THEME, LINKS_DEFAULT_PER_PAGE, THEMES } fr
 import { createTranslateFn, DEFAULT_LANGUAGE, isSupportedLanguage } from "./i18n";
 import { handleHealth } from "./api/health";
 import { assetsRouter } from "./assets";
-import { logUnhandledError, unhandledErrorResponse } from "./unhandled";
-import { HTTPException } from "hono/http-exception";
+import { answersJson, logUnhandledError, negotiatedErrorFormat, onUnhandledError, unhandledErrorResponse } from "./unhandled";
 import {
   handleListLinks,
   handleGetLink,
@@ -118,6 +117,15 @@ app.route("/", assetsRouter);
 
 app.get("/_/dev/login", (c) => handleDevLogin(c.req.raw, c.env));
 app.get("/_/dev/logout", (c) => handleDevLogout(c.req.raw, c.env));
+
+// ---- JSON route groups ----
+
+// An unhandled exception under these prefixes answers the JSON error shape
+// the clients parse (src/unhandled.ts). Declared here, beside the mounts,
+// so a new API prefix is marked where it is added.
+app.use("/_/admin/api/*", answersJson);
+app.use("/_/admin/w/*", answersJson);
+app.use("/_/api/*", answersJson);
 
 // ---- Admin auth middleware ----
 
@@ -602,14 +610,7 @@ app.notFound(() => notFoundResponse());
 
 // ---- Last-resort error handling ----
 
-// Hono's default prints the error unstructured and answers text/plain, so an
-// API client saw a body its SDK could not parse and the dashboard saw a log
-// line it could not filter. An HTTPException carries its own response.
-app.onError((err, c) => {
-  if (err instanceof HTTPException) return err.getResponse();
-  logUnhandledError(err, c.req.raw);
-  return unhandledErrorResponse(c.req.raw);
-});
+app.onError(onUnhandledError);
 
 // ---- MCP transport handler ----
 
@@ -626,7 +627,7 @@ export default {
       return await route(request, env, ctx);
     } catch (err) {
       logUnhandledError(err, request);
-      return unhandledErrorResponse(request);
+      return unhandledErrorResponse(negotiatedErrorFormat(request));
     }
   },
 } satisfies ExportedHandler<Env>;
@@ -666,22 +667,30 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
     // distinct from the admin application (ACCESS_AUD). Pass it explicitly
     // so JWT validation uses the correct audience.
     if (url.pathname === "/_/mcp" || url.pathname.startsWith("/_/mcp/")) {
-      const identity = await extractIdentity(request, env, env.MCP_ACCESS_AUD);
-      // In production (MCP_ACCESS_AUD set), reject anonymous requests so
-      // MCP clients and the CF Access AI Controls portal correctly detect
-      // that this endpoint requires authentication.
-      if (identity === "anonymous" && env.MCP_ACCESS_AUD) {
-        return new Response("Unauthorized", {
-          status: 401,
-          headers: {
-            "WWW-Authenticate": `Bearer realm="shrtnr"`,
-          },
-        });
+      // JSON-RPC clients parse JSON whatever Accept they send, so a failure
+      // here answers the JSON error shape, declared beside the route like
+      // the answersJson groups on the Hono app.
+      try {
+        const identity = await extractIdentity(request, env, env.MCP_ACCESS_AUD);
+        // In production (MCP_ACCESS_AUD set), reject anonymous requests so
+        // MCP clients and the CF Access AI Controls portal correctly detect
+        // that this endpoint requires authentication.
+        if (identity === "anonymous" && env.MCP_ACCESS_AUD) {
+          return new Response("Unauthorized", {
+            status: 401,
+            headers: {
+              "WWW-Authenticate": `Bearer realm="shrtnr"`,
+            },
+          });
+        }
+        (ctx as unknown as { props: Record<string, unknown> }).props = {
+          email: identity,
+        };
+        return await mcpHandler.fetch!(request, env, ctx);
+      } catch (err) {
+        logUnhandledError(err, request);
+        return unhandledErrorResponse("json");
       }
-      (ctx as unknown as { props: Record<string, unknown> }).props = {
-        email: identity,
-      };
-      return mcpHandler.fetch!(request, env, ctx);
     }
 
     // OAuth Authorization Server Metadata (RFC 8414).
