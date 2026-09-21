@@ -2,20 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { FC, PropsWithChildren } from "hono/jsx";
-import { raw } from "hono/html";
-import { adminStyles, FONT_FILES, PRELOAD_TEXT_FONTS } from "../styles";
-import { adminClientScript } from "../client";
+import { FONT_FILES, PRELOAD_TEXT_FONTS } from "../styles";
+import { adminClientScriptPath, adminStylesheetPath } from "../assets";
 import { Topbar } from "../components/topbar";
 import type { TranslateFn } from "../i18n";
-import type { Translations } from "../i18n/types";
-import pkg from "../../package.json";
 
 type LayoutProps = {
   active: string;
   theme?: string;
   lang?: string;
   t: TranslateFn;
-  translations: Translations;
 };
 
 export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
@@ -23,7 +19,6 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
   theme,
   lang,
   t,
-  translations,
   children,
 }) => {
   const year = new Date().getFullYear();
@@ -64,7 +59,8 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
         {[...PRELOAD_TEXT_FONTS, FONT_FILES.materialSymbols].map((href) => (
           <link rel="preload" href={href} as="font" type="font/woff2" crossorigin="" />
         ))}
-        <style>{raw(adminStyles)}</style>
+        {/* Content-hashed and immutable (src/assets.ts): one download per deploy, not per page. */}
+        <link rel="stylesheet" href={adminStylesheetPath()} />
         {/* Version in the file name: public/_headers caches it as immutable. */}
         <script src="/htmx-2.0.4.min.js" defer></script>
       </head>
@@ -134,7 +130,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
 
         <div id="toast" class="toast" style="display:none" />
 
-        <script>{raw(adminClientScript(pkg.version, translations))}</script>
+        <script src={adminClientScriptPath(htmlLang)}></script>
       </body>
     </html>
   );

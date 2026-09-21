@@ -28,6 +28,8 @@ const LANDING_COLD_BUDGET = 200 * 1024;
 const SINGLE_RESPONSE_BUDGET = 400 * 1024;
 /** Core Web Vitals "good" threshold for CLS (web.dev/articles/vitals). */
 const CLS_BUDGET = 0.1;
+/** Decoded bytes of an admin document. 170 KB while it inlined its CSS and JS; measured 11 KB after they moved to /_/assets. */
+const DOCUMENT_BUDGET = 60 * 1024;
 
 const ADMIN_PAGES: { name: string; path: () => string }[] = [
   { name: "dashboard", path: () => "/_/admin/dashboard" },
@@ -89,8 +91,15 @@ test.describe("cold load weight", () => {
       expect(records.some((r) => r.url.includes(`/fonts/${family}-v`)), `${family} requested`).toBe(true);
     }
 
-    // Version-stamped files served as immutable (public/_headers).
-    const immutable = records.filter((r) => /\/fonts\/|\/htmx-[\d.]+\.min\.js$/.test(r.url));
+    // The document carries no inline stylesheet or client script.
+    expect(vitals.documentBytes, "document decoded bytes").toBeLessThan(DOCUMENT_BUDGET);
+    for (const asset of ["admin.", "client."]) {
+      expect(records.some((r) => r.url.includes(`/_/assets/${asset}`)), `${asset} asset requested`).toBe(true);
+    }
+
+    // Version-stamped and content-hashed files served as immutable
+    // (public/_headers and src/assets.ts).
+    const immutable = records.filter((r) => /\/fonts\/|\/_\/assets\/|\/htmx-[\d.]+\.min\.js$/.test(r.url));
     expect(immutable.length, "versioned assets requested").toBeGreaterThan(0);
     const revalidating = immutable.filter((r) => !r.cacheControl?.includes("immutable")).map((r) => path(r.url));
     expect(revalidating, "versioned assets cached as immutable").toEqual([]);
@@ -144,6 +153,7 @@ test.describe("every admin page", () => {
       const vitals = await collectVitals(page);
       console.log(formatVitals(name, vitals));
       expect(vitals.cls, "cumulative layout shift").toBeLessThan(CLS_BUDGET);
+      expect(vitals.documentBytes, "document decoded bytes").toBeLessThan(DOCUMENT_BUDGET);
       expect(responses().filter((r) => r.status >= 400).map((r) => `${r.status} ${path(r.url)}`)).toEqual([]);
 
       const a11y = await page.evaluate(() => {
