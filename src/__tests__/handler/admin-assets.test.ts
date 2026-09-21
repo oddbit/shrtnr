@@ -88,11 +88,30 @@ describe("GET /_/assets/*", () => {
     expect(en).not.toBe(sv);
   });
 
-  it("answers 404 for a hash it did not emit, so a stale URL never pins wrong content", async () => {
-    const res = await SELF.fetch(req("/_/assets/admin.0000000000000000.css"));
-    expect(res.status).toBe(404);
-    const js = await SELF.fetch(req("/_/assets/client.en.0000000000000000.js"));
-    expect(js.status).toBe(404);
+  it("serves this build's content for a hash from another build, uncached, so a deploy window never leaves a page unstyled", async () => {
+    // A document from the new build can reach an isolate still on the old
+    // one (and a stale tab the other way round). The URL's hash is unknown
+    // here but the path says which asset it is; answer with this build's
+    // copy and no-store, so nothing gets pinned under the wrong URL.
+    const css = await SELF.fetch(req("/_/assets/admin.0000000000000000.css"));
+    expect(css.status).toBe(200);
+    expect(css.headers.get("Cache-Control")).toBe("no-store");
+    expect(css.headers.get("Content-Type")).toContain("text/css");
+    expect(await css.text()).toBe(adminStyles);
+
+    const js = await SELF.fetch(req("/_/assets/client.id.0000000000000000.js"));
+    expect(js.status).toBe(200);
+    expect(js.headers.get("Cache-Control")).toBe("no-store");
+    expect(js.headers.get("Content-Type")).toContain("javascript");
+    expect(await js.text()).toContain(id["client.themeUpdated"]);
+  });
+
+  it("answers the branded 404 for a path that names no asset of this app", async () => {
+    for (const path of ["/_/assets/client.xx.0000000000000000.js", "/_/assets/vendor.js", "/_/assets/admin.css"]) {
+      const res = await SELF.fetch(req(path));
+      expect(res.status, path).toBe(404);
+      expect(res.headers.get("Content-Type"), path).toContain("text/html");
+    }
   });
 
   it("needs no sign-in: the assets carry nothing account-specific", async () => {
