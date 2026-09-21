@@ -8,7 +8,11 @@ test-results/
 worker-configuration.d.ts
 .DS_Store
 ignore/
-.claude/
+# Local Claude Code state. Shared config (settings.json, agents,
+# commands, skills) stays tracked.
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/worktrees/
 
 # Dart / Flutter SDK
 .dart_tool/
