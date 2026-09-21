@@ -4,6 +4,10 @@
 export const GOOGLE_FONTS_HREF =
   "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap";
 
+/** Material Symbols as a static instance (FILL 0, wght 400): 322 KB against 3.98 MB for the full variable font. */
+export const MATERIAL_SYMBOLS_HREF =
+  "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block";
+
 export const themes = {
   oddbit: {
     /* foundation */
@@ -212,8 +216,7 @@ export const adminStyles = `
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: var(--font-family-body); background: var(--color-canvas); color: var(--color-text); min-height: 100vh; display: flex; }
-.icon { font-family: 'Material Symbols Outlined'; font-size: 20px; vertical-align: middle; font-variation-settings: 'FILL' 0, 'wght' 400; }
-.icon-fill { font-variation-settings: 'FILL' 1, 'wght' 400; }
+.icon { font-family: 'Material Symbols Outlined'; font-size: 20px; vertical-align: middle; }
 
 /* Sidebar */
 .sidebar { width: 240px; background: var(--color-surface); padding: 1.5rem 1rem; display: flex; flex-direction: column; min-height: 100vh; position: fixed; left: 0; top: 0; }

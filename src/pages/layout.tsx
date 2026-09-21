@@ -3,7 +3,7 @@
 
 import type { FC, PropsWithChildren } from "hono/jsx";
 import { raw } from "hono/html";
-import { adminStyles } from "../styles";
+import { adminStyles, MATERIAL_SYMBOLS_HREF } from "../styles";
 import { adminClientScript } from "../client";
 import { Topbar } from "../components/topbar";
 import type { TranslateFn } from "../i18n";
@@ -66,10 +66,14 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
           href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
-          rel="stylesheet"
-        />
+        {/*
+          The static instance only: the stylesheet renders every icon at
+          FILL 0 / wght 400, and requesting the opsz, wght, FILL and GRAD
+          ranges made Google serve the 3.98 MB variable font instead of this
+          322 KB file. display=block hides the ligature text ("dashboard",
+          "menu") that display=swap would flash until the font arrives.
+        */}
+        <link href={MATERIAL_SYMBOLS_HREF} rel="stylesheet" />
         <style>{raw(adminStyles)}</style>
         <script src="/htmx.min.js" defer></script>
       </head>
