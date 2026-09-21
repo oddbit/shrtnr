@@ -32,7 +32,7 @@ export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter, range }) => {
     <>
       <div class="page-header topbar">
         <div>
-          <div class="page-title">{t("bundles.title")}</div>
+          <h1 class="page-title">{t("bundles.title")}</h1>
           <div class="page-subtitle">{t("bundles.subtitle")}</div>
         </div>
         <div class="topbar-actions">
@@ -62,11 +62,11 @@ export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter, range }) => {
 
       {bundles.length === 0 ? (
         <div class="bento-card bundle-empty">
-          <span class="icon icon-lg">inventory_2</span>
+          <span aria-hidden="true" class="icon icon-lg">inventory_2</span>
           <div class="bundle-empty-title">{t("bundles.emptyTitle")}</div>
           <div class="bundle-empty-body">{t("bundles.emptyBody")}</div>
           <button class="btn btn-primary" onclick="showCreateBundleModal()">
-            <span class="icon">add</span> {t("bundles.newBundle")}
+            <span aria-hidden="true" class="icon">add</span> {t("bundles.newBundle")}
           </button>
         </div>
       ) : (
@@ -75,7 +75,7 @@ export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter, range }) => {
             <a href={`/_/admin/bundles/${b.id}`} class={`bundle-card accent-${b.accent}`}>
               <div class="bundle-card-head">
                 <span class="bundle-icon-badge">
-                  <span class="icon">{b.icon ?? "inventory_2"}</span>
+                  <span aria-hidden="true" class="icon">{b.icon ?? "inventory_2"}</span>
                 </span>
                 <div class="bundle-card-title">{b.name}</div>
                 {b.archived_at && <span class="bundle-archived-badge">{t("bundles.archived")}</span>}
@@ -108,7 +108,7 @@ export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter, range }) => {
               {b.clicked_links !== undefined && b.link_count > 0 && (
                 <div class="bundle-card-foot">
                   <span class="bundle-card-traffic">
-                    <span class="icon icon-xs">monitoring</span>
+                    <span aria-hidden="true" class="icon icon-xs">monitoring</span>
                     {t("bundles.clickedLinksHint", { count: b.clicked_links, total: b.link_count })}
                   </span>
                 </div>
@@ -116,7 +116,7 @@ export const BundlesPage: FC<Props> = ({ bundles, t, lang, filter, range }) => {
             </a>
           ))}
           <button class="bundle-card bundle-card-new" onclick="showCreateBundleModal()" type="button">
-            <span class="icon icon-lg">add</span>
+            <span aria-hidden="true" class="icon icon-lg">add</span>
             <div class="bundle-card-new-title">{t("bundles.newBundle")}</div>
             <div class="bundle-card-new-body">{t("bundles.emptyBody")}</div>
           </button>

@@ -53,17 +53,17 @@ export const KeysPage: FC<Props> = ({ keys, t, lang, origin }) => {
     <>
       <div class="keys-page-header">
         <div class="page-header">
-          <div class="page-title">{t("keys.title")}</div>
+          <h1 class="page-title">{t("keys.title")}</h1>
           <div class="page-subtitle">{t("keys.subtitle")}</div>
         </div>
         <button class="btn btn-primary" onclick="showCreateKeyModal()">
-          <span class="icon">add</span> {t("keys.newKey")}
+          <span aria-hidden="true" class="icon">add</span> {t("keys.newKey")}
         </button>
       </div>
 
       <div class="auth-banner">
         <span class="auth-banner-text">
-          <span class="icon">info</span>
+          <span aria-hidden="true" class="icon">info</span>
           <span>
             {authParts ? (
               <>
@@ -77,7 +77,7 @@ export const KeysPage: FC<Props> = ({ keys, t, lang, origin }) => {
           </span>
         </span>
         <a class="auth-banner-link" href="/_/api/docs" target="_blank" rel="noopener">
-          {t("keys.docsLink")} <span class="icon">open_in_new</span>
+          {t("keys.docsLink")} <span aria-hidden="true" class="icon">open_in_new</span>
         </a>
       </div>
 
@@ -92,7 +92,7 @@ export const KeysPage: FC<Props> = ({ keys, t, lang, origin }) => {
               aria-label={t("keys.copyCommand")}
               title={t("keys.copyCommand")}
             >
-              <span class="icon">content_copy</span>
+              <span aria-hidden="true" class="icon">content_copy</span>
             </button>
             <pre>
               <code id="quickstart-curl">{curl}</code>
@@ -107,7 +107,7 @@ export const KeysPage: FC<Props> = ({ keys, t, lang, origin }) => {
 
       {keys.length === 0 ? (
         <div class="empty-state">
-          <span class="icon">key_off</span>
+          <span aria-hidden="true" class="icon">key_off</span>
           <p>
             {t("keys.empty")}
           </p>
@@ -148,7 +148,7 @@ export const KeysPage: FC<Props> = ({ keys, t, lang, origin }) => {
                       <td data-label={t("keys.colLastUsed")} class="col-last-used">
                         {k.last_used_at ? (
                           <span class="col-last-used-cell">
-                            <span class="icon">schedule</span>
+                            <span aria-hidden="true" class="icon">schedule</span>
                             {formatDate(k.last_used_at, lang)}
                           </span>
                         ) : (
@@ -161,7 +161,7 @@ export const KeysPage: FC<Props> = ({ keys, t, lang, origin }) => {
                           data-delete-key={k.id}
                           data-delete-key-title={k.title}
                         >
-                          <span class="icon icon-sm">delete</span>
+                          <span aria-hidden="true" class="icon icon-sm">delete</span>
                         </button>
                       </td>
                     </tr>

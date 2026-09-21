@@ -37,7 +37,7 @@ export const KpiCard: FC<KpiCardProps> = ({
     <div class={`bento-card kpi ${spanClass}`} id={id}>
       <div class="kpi-top">
         <div class="kpi-label">
-          {icon && <span class="icon">{icon}</span>}
+          {icon && <span aria-hidden="true" class="icon">{icon}</span>}
           <span>{label}</span>
         </div>
         {deltaPct !== undefined && deltaPct !== null && <Delta pct={deltaPct} lang={lang} id={deltaId} />}

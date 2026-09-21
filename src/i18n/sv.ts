@@ -83,6 +83,8 @@ const sv: Translations = {
 
   // Link Detail
   "linkDetail.title": "Länkdetaljer",
+  "linkDetail.backToLinks": "Tillbaka till länkar",
+  "linkDetail.cancel": "Avbryt",
   "linkDetail.enable": "Aktivera",
   "linkDetail.disable": "Inaktivera",
   "linkDetail.delete": "Radera",

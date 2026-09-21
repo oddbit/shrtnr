@@ -89,7 +89,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
                 class={`nav-item${active === item.id ? " active" : ""}`}
                 href={item.href}
               >
-                <span class="icon">{item.icon}</span> {item.label}
+                <span aria-hidden="true" class="icon">{item.icon}</span> {item.label}
               </a>
             ))}
           </div>
@@ -121,7 +121,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
               onclick="toggleDrawer()"
               aria-label={t("nav.openNavigation")}
             >
-              <span class="icon">menu</span>
+              <span aria-hidden="true" class="icon">menu</span>
             </button>
             <div class="mobile-brand">
               <img src={brandLogotype} alt="shrtnr." />

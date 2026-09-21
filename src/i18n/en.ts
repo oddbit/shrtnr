@@ -80,6 +80,8 @@ const en = {
 
   // Link Detail
   "linkDetail.title": "Link Details",
+  "linkDetail.backToLinks": "Back to links",
+  "linkDetail.cancel": "Cancel",
   "linkDetail.enable": "Enable",
   "linkDetail.disable": "Disable",
   "linkDetail.delete": "Delete",

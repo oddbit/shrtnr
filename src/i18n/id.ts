@@ -83,6 +83,8 @@ const id: Translations = {
 
   // Link Detail
   "linkDetail.title": "Detail Tautan",
+  "linkDetail.backToLinks": "Kembali ke tautan",
+  "linkDetail.cancel": "Batal",
   "linkDetail.enable": "Aktifkan",
   "linkDetail.disable": "Nonaktifkan",
   "linkDetail.delete": "Hapus",

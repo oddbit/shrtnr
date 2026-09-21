@@ -19,7 +19,7 @@ export const Delta: FC<DeltaProps> = ({ pct, lang, id }) => {
   const sign = safePct > 0 ? "+" : "";
   return (
     <span class={`delta ${dir}`} id={id} data-delta={String(safePct)}>
-      <span class="icon">{icon}</span>
+      <span aria-hidden="true" class="icon">{icon}</span>
       <span class="delta-label">{sign}{fmtNumber(safePct, lang)}%</span>
     </span>
   );
