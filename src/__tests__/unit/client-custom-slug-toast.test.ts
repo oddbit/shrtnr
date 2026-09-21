@@ -81,17 +81,20 @@ function loadCreateLink(slugOk: boolean, slugJson: () => Promise<unknown>) {
   ) as (...args: unknown[]) => { createLink: () => void };
 
   const window_ = { location: { href: "" } };
+  let modalClosed = false;
   const handlers = factory(
     api,
     (message: string, level?: string) => {
       toasts.push({ message, level });
     },
     (key: string) => key,
-    () => {},
+    () => {
+      modalClosed = true;
+    },
     window_,
     fakeDocument(),
   );
-  return { handlers, toasts, window: window_ };
+  return { handlers, toasts, window: window_, wasModalClosed: () => modalClosed };
 }
 
 async function waitForToast(toasts: ToastCall[]) {
@@ -102,7 +105,7 @@ async function waitForToast(toasts: ToastCall[]) {
 
 describe("createLink() custom-slug attach toast", () => {
   it("toasts a distinct error when attaching the requested custom slug fails", async () => {
-    const { handlers, toasts, window: win } = loadCreateLink(false, () =>
+    const { handlers, toasts } = loadCreateLink(false, () =>
       Promise.resolve({ error: "slug already taken" }),
     );
 
@@ -110,12 +113,33 @@ describe("createLink() custom-slug attach toast", () => {
     await waitForToast(toasts);
 
     expect(toasts).toEqual([{ message: "slug already taken", level: "error" }]);
-    // The link itself was created, so the user still lands on its detail page.
-    expect(win.location.href).toBe("/_/admin/links/42");
+  });
+
+  // toast() writes into the in-page #toast element with a 3000ms lifetime,
+  // so navigating on the failure branch replaces the document and destroys
+  // the message before it can be read. The user would land on the detail
+  // page carrying only the auto-generated slug with no sign the one they
+  // typed was rejected, which is the failure this whole path exists to
+  // surface. Hold the modal open instead, the way doAddSlug does.
+  it("keeps the modal open and stays on the page when the slug is rejected", async () => {
+    const {
+      handlers,
+      toasts,
+      window: win,
+      wasModalClosed,
+    } = loadCreateLink(false, () => Promise.resolve({ error: "slug already taken" }));
+
+    handlers.createLink();
+    await waitForToast(toasts);
+
+    expect(win.location.href).toBe("");
+    expect(wasModalClosed()).toBe(false);
   });
 
   it("falls back to a generic custom-slug error when the failure body has no message", async () => {
-    const { handlers, toasts } = loadCreateLink(false, () => Promise.reject(new Error("no body")));
+    const { handlers, toasts, window: win, wasModalClosed } = loadCreateLink(false, () =>
+      Promise.reject(new Error("no body")),
+    );
 
     handlers.createLink();
     await waitForToast(toasts);
@@ -123,14 +147,20 @@ describe("createLink() custom-slug attach toast", () => {
     expect(toasts).toHaveLength(1);
     expect(toasts[0].level).toBe("error");
     expect(toasts[0].message).toBe("client.customError");
+    expect(win.location.href).toBe("");
+    expect(wasModalClosed()).toBe(false);
   });
 
-  it("toasts the success message when the custom slug attaches", async () => {
-    const { handlers, toasts } = loadCreateLink(true, () => Promise.resolve({}));
+  it("toasts the success message and navigates when the custom slug attaches", async () => {
+    const { handlers, toasts, window: win, wasModalClosed } = loadCreateLink(true, () =>
+      Promise.resolve({}),
+    );
 
     handlers.createLink();
     await waitForToast(toasts);
 
     expect(toasts).toEqual([{ message: "client.linkCreated", level: undefined }]);
+    expect(win.location.href).toBe("/_/admin/links/42");
+    expect(wasModalClosed()).toBe(true);
   });
 });

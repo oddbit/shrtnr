@@ -272,14 +272,17 @@ function createLink() {
 // link creation that already succeeded by the time this runs.
 function attachCustomSlugAndGo(linkId, slug) {
   api('/links/' + linkId + '/slugs', { method: 'POST', body: JSON.stringify({ slug: slug }) }).then(function(slugRes) {
-    closeModal();
     if (!slugRes.ok) {
+      // Stay put: toast() writes into the in-page #toast element, so closing
+      // the modal and navigating would replace the document and take the
+      // message with it, leaving the user on the detail page with no sign
+      // the slug they typed was rejected. doAddSlug, which posts to this
+      // same endpoint, holds the modal open on failure for the same reason.
       return slugRes.json().then(function(data) {
         toast(data.error || t('client.customError'), 'error');
-      }).catch(function() { toast(t('client.customError'), 'error'); }).then(function() {
-        window.location.href = '/_/admin/links/' + linkId;
-      });
+      }).catch(function() { toast(t('client.customError'), 'error'); });
     }
+    closeModal();
     toast(t('client.linkCreated'));
     window.location.href = '/_/admin/links/' + linkId;
   });
