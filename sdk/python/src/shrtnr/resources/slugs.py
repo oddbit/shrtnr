@@ -5,46 +5,16 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-import httpx
-
 from .._base import (
-    _build_request_headers,
-    _build_url,
-    parse_json_response,
+    _AsyncResource,
+    _SyncResource,
     url_encode,
 )
-from ..errors import ShrtnrError
 from ..models import Link, RemovedResult, Slug
 
 
-class Slugs:
+class Slugs(_SyncResource):
     """Synchronous Slugs resource."""
-
-    def __init__(self, base_url: str, api_key: str, http: httpx.Client) -> None:
-        self._base_url = base_url
-        self._api_key = api_key
-        self._http = http
-
-    def _headers(self) -> dict[str, str]:
-        return _build_request_headers(self._api_key)
-
-    def _json_headers(self) -> dict[str, str]:
-        return {**self._headers(), "Content-Type": "application/json"}
-
-    def _url(self, path: str) -> str:
-        return _build_url(self._base_url, path)
-
-    def _request(self, method: str, url: str, **kwargs: Any) -> Any:
-        # httpx.InvalidURL isn't a RequestError subclass; catch it too so a
-        # malformed base_url raises ShrtnrError(0, ...) like any other request
-        # failure, per this SDK's documented contract.
-        try:
-            response = self._http.request(method, url, **kwargs)
-        except (httpx.RequestError, httpx.InvalidURL) as exc:
-            raise ShrtnrError(0, str(exc)) from exc
-        return parse_json_response(response)
 
     def lookup(self, slug: str) -> Link:
         """Look up a link by its slug."""
@@ -74,32 +44,8 @@ class Slugs:
         return RemovedResult.from_dict(self._request("DELETE", url, headers=self._headers()))
 
 
-class AsyncSlugs:
+class AsyncSlugs(_AsyncResource):
     """Asynchronous Slugs resource."""
-
-    def __init__(self, base_url: str, api_key: str, http: httpx.AsyncClient) -> None:
-        self._base_url = base_url
-        self._api_key = api_key
-        self._http = http
-
-    def _headers(self) -> dict[str, str]:
-        return _build_request_headers(self._api_key)
-
-    def _json_headers(self) -> dict[str, str]:
-        return {**self._headers(), "Content-Type": "application/json"}
-
-    def _url(self, path: str) -> str:
-        return _build_url(self._base_url, path)
-
-    async def _request(self, method: str, url: str, **kwargs: Any) -> Any:
-        # httpx.InvalidURL isn't a RequestError subclass; catch it too so a
-        # malformed base_url raises ShrtnrError(0, ...) like any other request
-        # failure, per this SDK's documented contract.
-        try:
-            response = await self._http.request(method, url, **kwargs)
-        except (httpx.RequestError, httpx.InvalidURL) as exc:
-            raise ShrtnrError(0, str(exc)) from exc
-        return parse_json_response(response)
 
     async def lookup(self, slug: str) -> Link:
         """Look up a link by its slug."""

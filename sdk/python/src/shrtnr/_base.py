@@ -107,3 +107,75 @@ def parse_text_response(response: httpx.Response) -> str:
     if not response.is_success:
         _raise_from_response(response)
     return response.text
+
+
+class _SyncResource:
+    """Construction and the request path shared by the sync resources.
+
+    Links, Bundles and Slugs differ only in the endpoints they call. Keeping
+    the transport here means an httpx exception-hierarchy surprise, a retry
+    policy, a header or a timeout lands once instead of in six method bodies
+    that have to stay byte-identical.
+    """
+
+    def __init__(self, base_url: str, api_key: str, http: httpx.Client) -> None:
+        self._base_url = base_url
+        self._api_key = api_key
+        self._http = http
+
+    def _headers(self) -> dict[str, str]:
+        return _build_request_headers(self._api_key)
+
+    def _json_headers(self) -> dict[str, str]:
+        return {**self._headers(), "Content-Type": "application/json"}
+
+    def _url(self, path: str, query: dict[str, str | None] | None = None) -> str:
+        return _build_url(self._base_url, path, query)
+
+    def _send(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
+        # httpx.InvalidURL isn't a RequestError subclass, and it is raised
+        # synchronously from request-building before any I/O, so catch it too
+        # or a malformed base_url escapes as a raw httpx exception instead of
+        # the ShrtnrError(0, ...) this SDK documents.
+        try:
+            return self._http.request(method, url, **kwargs)
+        except (httpx.RequestError, httpx.InvalidURL) as exc:
+            raise ShrtnrError(0, str(exc)) from exc
+
+    def _request(self, method: str, url: str, **kwargs: Any) -> Any:
+        return parse_json_response(self._send(method, url, **kwargs))
+
+    def _request_text(self, method: str, url: str, **kwargs: Any) -> str:
+        return parse_text_response(self._send(method, url, **kwargs))
+
+
+class _AsyncResource:
+    """Async twin of :class:`_SyncResource`."""
+
+    def __init__(self, base_url: str, api_key: str, http: httpx.AsyncClient) -> None:
+        self._base_url = base_url
+        self._api_key = api_key
+        self._http = http
+
+    def _headers(self) -> dict[str, str]:
+        return _build_request_headers(self._api_key)
+
+    def _json_headers(self) -> dict[str, str]:
+        return {**self._headers(), "Content-Type": "application/json"}
+
+    def _url(self, path: str, query: dict[str, str | None] | None = None) -> str:
+        return _build_url(self._base_url, path, query)
+
+    async def _send(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
+        # See _SyncResource._send for why InvalidURL is caught alongside
+        # RequestError.
+        try:
+            return await self._http.request(method, url, **kwargs)
+        except (httpx.RequestError, httpx.InvalidURL) as exc:
+            raise ShrtnrError(0, str(exc)) from exc
+
+    async def _request(self, method: str, url: str, **kwargs: Any) -> Any:
+        return parse_json_response(await self._send(method, url, **kwargs))
+
+    async def _request_text(self, method: str, url: str, **kwargs: Any) -> str:
+        return parse_text_response(await self._send(method, url, **kwargs))
