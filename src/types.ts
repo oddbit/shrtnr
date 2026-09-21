@@ -3,26 +3,35 @@
 
 import type { TIMELINE_RANGES } from "./constants";
 
-export interface Env {
-  DB: D1Database;
-  SLUG_KV?: KVNamespace;
+/*
+ * Bindings (DB, SLUG_KV, MCP_OBJECT) come from `yarn types`, which generates
+ * worker-configuration.d.ts from wrangler.jsonc, so their types cannot drift
+ * from the configuration. Secrets and dev vars are not in the config, so
+ * they are declared here by merging into the generated interface. The
+ * generation deliberately skips .dev.vars (see wrangler.types.env), which
+ * is what lets the dev-only fields stay optional.
+ */
+declare global {
+  namespace Cloudflare {
+    interface Env {
+      // Cloudflare Access JWT audience tags. Unset in local dev and tests,
+      // which is what switches the auth code into dev mode.
+      ACCESS_AUD: string; // AUD tag from the admin CF Access application
+      MCP_ACCESS_AUD: string; // AUD tag from the MCP CF Access application (Managed OAuth)
+      ACCESS_JWKS_URL: string; // https://<team>.cloudflareaccess.com/cdn-cgi/access/certs
 
-  // Cloudflare Access JWT audience tags
-  ACCESS_AUD: string;       // AUD tag from the admin CF Access application
-  MCP_ACCESS_AUD: string;   // AUD tag from the MCP CF Access application (Managed OAuth)
-  ACCESS_JWKS_URL: string;  // https://<team>.cloudflareaccess.com/cdn-cgi/access/certs
+      // Dev-only: set to bypass login and assume this identity (e.g. "dev@local")
+      DEV_IDENTITY?: string;
 
-  // Dev-only: set to bypass login and assume this identity (e.g. "dev@local")
-  DEV_IDENTITY?: string;
-
-  // Durable Object binding for MCP agent
-  MCP_OBJECT: DurableObjectNamespace;
-
-  // Optional secret used to derive the daily visitor-fingerprint salt.
-  // When unset, a deterministic per-day fallback is used. Set via
-  // `wrangler secret put FP_SALT` in production for unpredictability.
-  FP_SALT?: string;
+      // Optional secret used to derive the daily visitor-fingerprint salt.
+      // When unset, a deterministic per-day fallback is used. Set via
+      // `wrangler secret put FP_SALT` in production for unpredictability.
+      FP_SALT?: string;
+    }
+  }
 }
+
+export type Env = Cloudflare.Env;
 
 /**
  * Execution context narrowed to just the background-work scheduler.

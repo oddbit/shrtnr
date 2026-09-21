@@ -268,8 +268,8 @@ function showKeyRevealModal(rawKey) {
     '<div class="modal-title">' + esc(t('client.keyCreated')) + '</div>' +
     '<p style="font-size:0.875rem;color:var(--color-text-muted);margin-bottom:1rem">' + esc(t('client.keyCreatedDesc')) + '</p>' +
     '<div class="key-revealed" id="revealed-key">' + esc(rawKey) + '</div>' +
-    '<div class="key-warning"><span class="icon" style="font-size:18px">warning</span> ' + esc(t('client.keyWarning')) + '</div>' +
-    '<div class="modal-actions"><button class="btn btn-secondary" onclick="copyRawKey()"><span class="icon">content_copy</span> ' + esc(t('client.copy')) + '</button><button class="btn btn-ghost" onclick="closeKeyRevealModal()">' + esc(t('client.done')) + '</button></div>'
+    '<div class="key-warning"><span aria-hidden="true" class="icon" style="font-size:18px">warning</span> ' + esc(t('client.keyWarning')) + '</div>' +
+    '<div class="modal-actions"><button class="btn btn-secondary" onclick="copyRawKey()"><span aria-hidden="true" class="icon">content_copy</span> ' + esc(t('client.copy')) + '</button><button class="btn btn-ghost" onclick="closeKeyRevealModal()">' + esc(t('client.done')) + '</button></div>'
   );
 }
 
@@ -387,7 +387,7 @@ function showChangePrimaryModal(linkId) {
         var active = s.is_primary ? ' style="background:var(--color-selection);border-color:var(--color-accent)"' : '';
         html += '<button class="btn btn-ghost" ' + active + ' onclick="doSetPrimary(' + linkId + ',\\'' + s.slug + '\\')" style="justify-content:flex-start;font-family:var(--font-family-mono);font-size:0.875rem">';
         html += '/' + esc(s.slug);
-        if (s.is_primary) html += ' <span class="icon" style="font-size:14px;color:var(--color-accent);margin-left:auto">star</span>';
+        if (s.is_primary) html += ' <span aria-hidden="true" class="icon" style="font-size:14px;color:var(--color-accent);margin-left:auto">star</span>';
         html += '</button>';
       });
       html += '</div>';
@@ -535,10 +535,10 @@ function showQRModal(linkId, slug) {
     '<div class="modal-actions">' +
       '<button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.close')) + '</button>' +
       '<button class="btn btn-ghost btn-sm" onclick="downloadQrSvg()">' +
-        '<span class="icon">download</span> ' + esc(t('client.downloadSvg')) +
+        '<span aria-hidden="true" class="icon">download</span> ' + esc(t('client.downloadSvg')) +
       '</button>' +
       '<button class="btn btn-secondary btn-sm" onclick="downloadQrPng()">' +
-        '<span class="icon">download</span> ' + esc(t('client.downloadPng')) +
+        '<span aria-hidden="true" class="icon">download</span> ' + esc(t('client.downloadPng')) +
       '</button>' +
     '</div>'
   );
@@ -647,9 +647,9 @@ function checkForUpdates() {
       html += '<div><span style="font-family:var(--font-family-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--color-text-muted)">&rarr;</span> <span style="font-family:var(--font-family-mono);color:var(--color-success);font-weight:600">' + esc(latest) + '</span> <span style="color:var(--color-text-muted);font-size:0.8rem">' + esc(t('client.updateAvailable')) + '</span></div>';
       html += '</div>';
       html += '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">';
-      html += '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">open_in_new</span> ' + esc(t('client.releaseNotes')) + '</a>';
-      html += '<a href="' + REPO_URL + '" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span class="icon" style="font-size:16px">code</span> ' + esc(t('client.viewRepo')) + '</a>';
-      html += '<button id="install-app-btn" class="btn btn-secondary btn-sm" onclick="installApp()" style="display:none;align-items:center;gap:0.4rem"><span class="icon" style="font-size:16px">install_desktop</span> ' + esc(t('settings.installApp')) + '</button>';
+      html += '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span aria-hidden="true" class="icon" style="font-size:16px">open_in_new</span> ' + esc(t('client.releaseNotes')) + '</a>';
+      html += '<a href="' + REPO_URL + '" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span aria-hidden="true" class="icon" style="font-size:16px">code</span> ' + esc(t('client.viewRepo')) + '</a>';
+      html += '<button id="install-app-btn" class="btn btn-secondary btn-sm" onclick="installApp()" style="display:none;align-items:center;gap:0.4rem"><span aria-hidden="true" class="icon" style="font-size:16px">install_desktop</span> ' + esc(t('settings.installApp')) + '</button>';
       html += '</div>';
       html += '<div style="font-size:0.75rem;color:var(--color-text-muted);line-height:1.5">' + esc(t('client.updateHint')) + '</div>';
       html += '</div>';
@@ -660,14 +660,14 @@ function checkForUpdates() {
           '<div style="display:flex;align-items:center;gap:0.4rem">' +
             '<span style="font-family:var(--font-family-mono);font-weight:600">' + esc(APP_VERSION) + '</span>' +
             '<span style="color:var(--color-success);display:inline-flex;align-items:center;gap:0.2rem">' +
-              '<span class="icon" style="font-size:15px;vertical-align:text-bottom">check_circle</span> ' + esc(t('client.upToDate')) +
+              '<span aria-hidden="true" class="icon" style="font-size:15px;vertical-align:text-bottom">check_circle</span> ' + esc(t('client.upToDate')) +
             '</span>' +
           '</div>' +
           '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" ' +
             'style="color:var(--color-text-muted);font-size:0.8rem;text-decoration:none;display:inline-flex;align-items:center;gap:0.2rem">' +
-            esc(t('client.whatsNew')) + ' <span class="icon" style="font-size:13px">open_in_new</span>' +
+            esc(t('client.whatsNew')) + ' <span aria-hidden="true" class="icon" style="font-size:13px">open_in_new</span>' +
           '</a>' +
-          '<button id="install-app-btn" class="btn btn-secondary btn-sm" onclick="installApp()" style="display:none;align-items:center;gap:0.4rem"><span class="icon" style="font-size:14px">install_desktop</span> ' + esc(t('settings.installApp')) + '</button>' +
+          '<button id="install-app-btn" class="btn btn-secondary btn-sm" onclick="installApp()" style="display:none;align-items:center;gap:0.4rem"><span aria-hidden="true" class="icon" style="font-size:14px">install_desktop</span> ' + esc(t('settings.installApp')) + '</button>' +
         '</div>';
     }
   }).catch(function() {
@@ -753,7 +753,7 @@ function renderStatCard(containerId, items, color, opts, fixedMax) {
     var pct = maxVal > 0 ? Math.round((item.count / maxVal) * 100) : 0;
     var name = opts.mapName ? opts.mapName(item.name) : item.name;
     var flagStr = opts.flagFromName ? '<span class="flag">' + esc(item.name) + '</span>' : '';
-    var iconStr = opts.iconFn ? '<span class="icon">' + opts.iconFn(item.name) + '</span>' : '';
+    var iconStr = opts.iconFn ? '<span aria-hidden="true" class="icon">' + opts.iconFn(item.name) + '</span>' : '';
     html += '<div class="stat-row">';
     html += '<div class="name' + (opts.mono ? ' mono' : '') + '">' + flagStr + iconStr + '<span class="label">' + esc(name) + '</span></div>';
     html += '<div class="right"><span class="count">' + fmtCount(item.count) + '</span><span class="pct">' + pct + '%</span></div>';
@@ -814,13 +814,13 @@ function renderStatPagerFooter(containerId) {
   footer.innerHTML =
     '<button class="stat-pager-btn" aria-label="' + esc(t('pagination.prev')) + '"' +
       (prevDis ? ' disabled' : '') + ' onclick="statPageGo(\\'' + containerId + '\\',-1)">' +
-      '<span class="icon">chevron_left</span></button>' +
+      '<span aria-hidden="true" class="icon">chevron_left</span></button>' +
     '<span class="stat-pager-label">' +
       esc(t('linkDetail.statPager', { from: fmtNum(from), to: fmtNum(to), total: fmtNum(st.total) })) +
       '</span>' +
     '<button class="stat-pager-btn" aria-label="' + esc(t('pagination.next')) + '"' +
       (nextDis ? ' disabled' : '') + ' onclick="statPageGo(\\'' + containerId + '\\',1)">' +
-      '<span class="icon">chevron_right</span></button>';
+      '<span aria-hidden="true" class="icon">chevron_right</span></button>';
 }
 
 function statPageGo(containerId, delta) {
@@ -1231,7 +1231,7 @@ function renderIconPicker(selected) {
     // onclick argument: a bundle's icon is a free-text field (no charset
     // restriction like slugs have), so interpolating it into a JS string
     // literal would let a quote in the value break out into executable script.
-    html += '<button type="button" class="' + cls + '" data-icon="' + esc(name) + '" onclick="selectBundleIcon(this.dataset.icon)" aria-label="' + esc(name) + '"><span class="icon">' + esc(name) + '</span></button>';
+    html += '<button type="button" class="' + cls + '" data-icon="' + esc(name) + '" onclick="selectBundleIcon(this.dataset.icon)" aria-label="' + esc(name) + '"><span aria-hidden="true" class="icon">' + esc(name) + '</span></button>';
   });
   html += '</div>';
   html += '<input type="hidden" id="bundle-icon" value="' + esc(chosen) + '">';
@@ -1414,7 +1414,7 @@ function showAddToBundleModal(linkId) {
       allBundles.forEach(function(b) {
         var selectedCls = memberIds[b.id] ? ' selected' : '';
         html += '<button type="button" class="add-to-bundle-row accent-' + esc(b.accent || 'orange') + selectedCls + '" data-bundle-id="' + b.id + '" onclick="toggleAddToBundleRow(this)">';
-        html += '<span class="icon">' + esc(b.icon || 'inventory_2') + '</span>';
+        html += '<span aria-hidden="true" class="icon">' + esc(b.icon || 'inventory_2') + '</span>';
         html += '<div><div class="add-to-bundle-row-name">' + esc(b.name) + '</div>';
         if (b.description) html += '<div class="add-to-bundle-row-desc">' + esc(b.description) + '</div>';
         html += '</div></button>';

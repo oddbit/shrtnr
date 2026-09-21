@@ -4,6 +4,8 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "types": ["node", "@playwright/test"],
+    // page.evaluate callbacks run in the browser, so they type against the DOM.
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "jsx": "preserve",
     "jsxImportSource": null
   },

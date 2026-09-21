@@ -1,0 +1,26 @@
+# Cache-Control for the static assets Workers serves from this directory.
+# Without a rule here every asset ships as `public, max-age=0,
+# must-revalidate`, so each admin page load spent a conditional request
+# (and a round trip) on htmx and on every logo it showed.
+
+# Vendor bundles carry their version in the file name. A new release lands
+# under a new URL, so the old one can stay cached for a year.
+/htmx-*.min.js
+  Cache-Control: public, max-age=31536000, immutable
+
+# Self-hosted fonts carry the upstream version in the file name (see
+# src/styles.ts), so they can be immutable too.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Brand assets and icons change rarely. A day of caching removes the
+# revalidation round trip; stale-while-revalidate lets a change land
+# within a day without a blocking fetch.
+/*.svg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/*.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/favicon.ico
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/manifest.webmanifest
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800

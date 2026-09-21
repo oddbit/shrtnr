@@ -282,11 +282,14 @@ For full endpoint shapes, parameters, and example payloads, see the live API ref
 
 ```bash
 yarn install
+yarn types                       # binding and runtime types from wrangler.jsonc, git-ignored
 cp .dev.vars.example .dev.vars   # local identity settings, git-ignored
 yarn db:migrate                  # apply migrations to local D1
 yarn test
 yarn dev
 ```
+
+`yarn types` writes `worker-configuration.d.ts`, which the typecheck needs. Rerun it after changing `wrangler.jsonc`.
 
 ### Local sign-in
 

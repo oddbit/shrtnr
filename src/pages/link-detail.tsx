@@ -26,7 +26,7 @@ const StatBar: FC<{
     <div class="stat-row">
       <div class={`name${mono ? " mono" : ""}`}>
         {flag && <span class="flag">{flag}</span>}
-        {icon && <span class="icon">{icon}</span>}
+        {icon && <span aria-hidden="true" class="icon">{icon}</span>}
         <span class="label">{name}</span>
       </div>
       <div class="right">
@@ -94,10 +94,10 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
   return (
     <>
       <div class="detail-header">
-        <a href="/_/admin/links" class="detail-back">
-          <span class="icon icon-lg">arrow_back</span>
+        <a href="/_/admin/links" class="detail-back" aria-label={t("linkDetail.backToLinks")}>
+          <span aria-hidden="true" class="icon icon-lg">arrow_back</span>
         </a>
-        <div class="page-title">{t("linkDetail.title")}</div>
+        <h1 class="page-title">{t("linkDetail.title")}</h1>
         <div class="timeline-range-selector" id="timeline-range" data-link-id={link.id} data-initial-range={initialRange}>
           {(["24h", "7d", "30d", "90d", "1y", "all"] as const).map((r) => (
             <button
@@ -115,37 +115,37 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
             onclick="toggleDetailMenu()"
             aria-label={t("linkDetail.moreActions")}
           >
-            <span class="icon icon-lg">more_vert</span>
+            <span aria-hidden="true" class="icon icon-lg">more_vert</span>
           </button>
           <div class="detail-menu" id="detail-menu" style="display:none">
             <button class="detail-menu-item" onclick={`showAddSlugModal(${link.id})`}>
-              <span class="icon">add_link</span> {t("linkDetail.addCustomSlug")}
+              <span aria-hidden="true" class="icon">add_link</span> {t("linkDetail.addCustomSlug")}
             </button>
             <button class="detail-menu-item" onclick={`showAddToBundleModal(${link.id})`}>
-              <span class="icon">inventory_2</span> {t("linkDetail.addToBundle")}
+              <span aria-hidden="true" class="icon">inventory_2</span> {t("linkDetail.addToBundle")}
             </button>
             {hasMultipleSlugs && (
               <button class="detail-menu-item" onclick={`showChangePrimaryModal(${link.id})`}>
-                <span class="icon">star</span> {t("linkDetail.changePrimary")}
+                <span aria-hidden="true" class="icon">star</span> {t("linkDetail.changePrimary")}
               </button>
             )}
             <button class="detail-menu-item" data-duplicate-link={link.id} data-duplicate-url={link.url}>
-              <span class="icon">content_copy</span> {t("linkDetail.duplicate")}
+              <span aria-hidden="true" class="icon">content_copy</span> {t("linkDetail.duplicate")}
             </button>
             {isOwner && (
               <>
                 <div class="detail-menu-divider" />
                 {isExpired ? (
                   <button class="detail-menu-item" onclick={`showEnableLinkModal(${link.id})`}>
-                    <span class="icon">check_circle</span> {t("linkDetail.enable")}
+                    <span aria-hidden="true" class="icon">check_circle</span> {t("linkDetail.enable")}
                   </button>
                 ) : link.total_clicks === 0 ? (
                   <button class="detail-menu-item detail-menu-danger" onclick={`showDeleteLinkModal(${link.id})`}>
-                    <span class="icon">delete</span> {t("linkDetail.delete")}
+                    <span aria-hidden="true" class="icon">delete</span> {t("linkDetail.delete")}
                   </button>
                 ) : (
                   <button class="detail-menu-item detail-menu-danger" onclick={`showDisableLinkModal(${link.id})`}>
-                    <span class="icon">block</span> {t("linkDetail.disable")}
+                    <span aria-hidden="true" class="icon">block</span> {t("linkDetail.disable")}
                   </button>
                 )}
               </>
@@ -162,7 +162,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
               class={`bundle-chip accent-${b.accent}`}
               title={b.description || b.name}
             >
-              <span class="icon">{b.icon ?? "inventory_2"}</span>
+              <span aria-hidden="true" class="icon">{b.icon ?? "inventory_2"}</span>
               <span>{b.name}</span>
             </a>
           ))}
@@ -177,21 +177,22 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
             ) : (
               <span class="inline-edit-placeholder">{t("linkDetail.setLabel")}</span>
             )}
-            <span class="icon inline-edit-icon">edit</span>
+            <span aria-hidden="true" class="icon inline-edit-icon">edit</span>
           </div>
           <div class="inline-edit-form" id="label-form" style="display:none">
             <input
               class="form-input form-input-sm"
               id="detail-label"
+              aria-label={t("linkDetail.setLabel")}
               value={link.label || ""}
               placeholder={t("linkDetail.labelPlaceholder")}
               onkeydown={`if(event.key==='Enter')saveDetailLabel(${link.id});if(event.key==='Escape')cancelEditLabel();`}
             />
-            <button class="inline-edit-btn confirm" onclick={`saveDetailLabel(${link.id})`}>
-              <span class="icon">check</span>
+            <button class="inline-edit-btn confirm" onclick={`saveDetailLabel(${link.id})`} aria-label={t("linkDetail.save")}>
+              <span aria-hidden="true" class="icon">check</span>
             </button>
-            <button class="inline-edit-btn cancel" onclick="cancelEditLabel()">
-              <span class="icon">close</span>
+            <button class="inline-edit-btn cancel" onclick="cancelEditLabel()" aria-label={t("linkDetail.cancel")}>
+              <span aria-hidden="true" class="icon">close</span>
             </button>
           </div>
           {isExpired && (
@@ -202,42 +203,42 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
               class={`short-url${isExpired ? " dimmed" : ""}`}
               data-copy-slug={displaySlug}
             >
-              <span class="icon">link</span>{displaySlug}
+              <span aria-hidden="true" class="icon">link</span>{displaySlug}
             </span>
             <button
               class="btn-icon"
               data-copy-slug={displaySlug}
               title={t("linkDetail.copy")}
             >
-              <span class="icon">content_copy</span>
+              <span aria-hidden="true" class="icon">content_copy</span>
             </button>
             <button
               class="btn-icon"
               onclick={`showQRModal(${link.id}, '${escHtml(displaySlug)}')`}
               title={t("linkDetail.qr")}
             >
-              <span class="icon">qr_code_2</span>
+              <span aria-hidden="true" class="icon">qr_code_2</span>
             </button>
           </div>
           <a class="dest" href={link.url} target="_blank" rel="noopener noreferrer">
-            <span class="icon">open_in_new</span>{link.url}
+            <span aria-hidden="true" class="icon">open_in_new</span>{link.url}
           </a>
           <div class="meta-row">
             {link.created_by && link.created_by !== "anonymous" && (
               <span class="m">
-                <span class="icon">person</span>
+                <span aria-hidden="true" class="icon">person</span>
                 {t("linkDetail.createdBy")} <strong>{link.created_by}</strong>
               </span>
             )}
             <span class="m">
-              <span class="icon">schedule</span>
+              <span aria-hidden="true" class="icon">schedule</span>
               {t("linkDetail.createdOn")}{" "}
               <strong>
                 {new Date(link.created_at * 1000).toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric" })}
               </strong>
             </span>
             <span class="m inline-edit" id="expiry-display" onclick={`beginEditExpiry(${link.id})`}>
-              <span class="icon">event_busy</span>
+              <span aria-hidden="true" class="icon">event_busy</span>
               {link.expires_at ? (
                 <strong>
                   {new Date(link.expires_at * 1000).toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric" })}
@@ -245,17 +246,18 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
               ) : (
                 t("linkDetail.neverExpires")
               )}
-              <span class="icon inline-edit-icon">edit</span>
+              <span aria-hidden="true" class="icon inline-edit-icon">edit</span>
             </span>
             <div class="inline-edit-form expiry-form" id="expiry-form" style="display:none">
               <input
                 class="form-input form-input-sm"
                 id="detail-expires"
+                aria-label={t("linkDetail.expiresAt")}
                 type="datetime-local"
                 value={expVal}
               />
-              <button class="inline-edit-btn confirm" onclick={`saveDetailExpiry(${link.id})`}>
-                <span class="icon">check</span>
+              <button class="inline-edit-btn confirm" onclick={`saveDetailExpiry(${link.id})`} aria-label={t("linkDetail.save")}>
+                <span aria-hidden="true" class="icon">check</span>
               </button>
               {link.expires_at != null && (
                 <button
@@ -265,13 +267,13 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                   {t("linkDetail.clear")}
                 </button>
               )}
-              <button class="inline-edit-btn cancel" onclick="cancelEditExpiry()">
-                <span class="icon">close</span>
+              <button class="inline-edit-btn cancel" onclick="cancelEditExpiry()" aria-label={t("linkDetail.cancel")}>
+                <span aria-hidden="true" class="icon">close</span>
               </button>
             </div>
             {link.created_via && (
               <span class="m">
-                <span class="icon">api</span>
+                <span aria-hidden="true" class="icon">api</span>
                 {t("linkDetail.via")} <strong>{link.created_via}</strong>
               </span>
             )}
@@ -323,14 +325,14 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                         data-copy-slug={s.slug}
                         title={t("linkDetail.copy")}
                       >
-                        <span class="icon icon-md">content_copy</span>
+                        <span aria-hidden="true" class="icon icon-md">content_copy</span>
                       </button>
                       <button
                         class="btn-icon"
                         onclick={`showQRModal(${link.id}, '${escHtml(s.slug)}')`}
                         title={t("linkDetail.qr")}
                       >
-                        <span class="icon icon-md">qr_code_2</span>
+                        <span aria-hidden="true" class="icon icon-md">qr_code_2</span>
                       </button>
                     </>
                   )}
@@ -340,7 +342,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                   <span class="slug-row-text">{s.slug}</span>
                   {isPrimary && (
                     <span class="slug-badge-primary" title={t("linkDetail.primarySlug")}>
-                      <span class="icon icon-xxs">star</span>
+                      <span aria-hidden="true" class="icon icon-xxs">star</span>
                     </span>
                   )}
                   {!isCustom && (
@@ -367,7 +369,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                       onclick={`confirmDeleteSlug(${link.id}, '${escHtml(s.slug)}')`}
                       title={t("linkDetail.deleteSlug")}
                     >
-                      <span class="icon icon-md">delete</span>
+                      <span aria-hidden="true" class="icon icon-md">delete</span>
                     </button>
                   )}
                   {canDisable && (
@@ -376,7 +378,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                       onclick={`confirmDisableSlug(${link.id}, '${escHtml(s.slug)}')`}
                       title={t("linkDetail.disableSlug")}
                     >
-                      <span class="icon icon-md">block</span>
+                      <span aria-hidden="true" class="icon icon-md">block</span>
                     </button>
                   )}
                   {canEnable && (
@@ -385,7 +387,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
                       onclick={`confirmEnableSlug(${link.id}, '${escHtml(s.slug)}')`}
                       title={t("linkDetail.enableSlug")}
                     >
-                      <span class="icon icon-md">check_circle</span>
+                      <span aria-hidden="true" class="icon icon-md">check_circle</span>
                     </button>
                   )}
                 </div>

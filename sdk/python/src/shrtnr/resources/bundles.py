@@ -48,8 +48,8 @@ class Bundles(_SyncResource):
     ) -> list[BundleWithSummary]:
         """List bundles. Filter by archived status and click-count range."""
         url = self._url("/_/api/bundles", {"archived": archived, "range": range})
-        data = self._request("GET", url, headers=self._headers())
-        return [BundleWithSummary.from_dict(x) for x in (data or [])]
+        data = self._request("GET", url, shape="array", headers=self._headers())
+        return [BundleWithSummary.from_dict(x) for x in data]
 
     def create(
         self,
@@ -140,8 +140,8 @@ class Bundles(_SyncResource):
     def links(self, id: int) -> _list[Link]:
         """List links in a bundle."""
         url = self._url(f"/_/api/bundles/{id}/links")
-        data = self._request("GET", url, headers=self._headers())
-        return [Link.from_dict(x) for x in (data or [])]
+        data = self._request("GET", url, shape="array", headers=self._headers())
+        return [Link.from_dict(x) for x in data]
 
     def add_link(self, id: int, link_id: int) -> AddedResult:
         """Add a link to a bundle."""
@@ -172,8 +172,8 @@ class AsyncBundles(_AsyncResource):
     ) -> list[BundleWithSummary]:
         """List bundles. Filter by archived status and click-count range."""
         url = self._url("/_/api/bundles", {"archived": archived, "range": range})
-        data = await self._request("GET", url, headers=self._headers())
-        return [BundleWithSummary.from_dict(x) for x in (data or [])]
+        data = await self._request("GET", url, shape="array", headers=self._headers())
+        return [BundleWithSummary.from_dict(x) for x in data]
 
     async def create(
         self,
@@ -268,8 +268,8 @@ class AsyncBundles(_AsyncResource):
     async def links(self, id: int) -> _list[Link]:
         """List links in a bundle."""
         url = self._url(f"/_/api/bundles/{id}/links")
-        data = await self._request("GET", url, headers=self._headers())
-        return [Link.from_dict(x) for x in (data or [])]
+        data = await self._request("GET", url, shape="array", headers=self._headers())
+        return [Link.from_dict(x) for x in data]
 
     async def add_link(self, id: int, link_id: int) -> AddedResult:
         """Add a link to a bundle."""

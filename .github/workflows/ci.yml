@@ -30,6 +30,10 @@ jobs:
           node-version-file: package.json
       - name: Install dependencies
         run: yarn install --frozen-lockfile
+      # Binding and runtime types are generated from wrangler.jsonc, not
+      # committed, so the typecheck needs them first.
+      - name: Generate Worker types
+        run: yarn types
       - name: Typecheck
         run: yarn tsc --noEmit
       - name: Run vitest suite

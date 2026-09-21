@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { FC } from "hono/jsx";
-import type { TranslateFn } from "../i18n";
+import type { TranslateFn, TranslationKey } from "../i18n";
 import type { TimelineRange } from "../types";
 import { SUPPORTED_LANGUAGES } from "../i18n";
 import { fmtNumber } from "../i18n/format";
@@ -34,7 +34,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
   return (
     <>
       <div class="page-header">
-        <div class="page-title">{t("settings.title")}</div>
+        <h1 class="page-title">{t("settings.title")}</h1>
         <div class="page-subtitle">{t("settings.subtitle")}</div>
       </div>
 
@@ -42,7 +42,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
         <div class="settings-main">
           <div class="bento-card">
             <div class="form-group">
-              <label class="form-label">{t("settings.language")}</label>
+              <label class="form-label" for="language-picker">{t("settings.language")}</label>
               <div class="form-select">
                 <select
                   class="form-input"
@@ -50,8 +50,8 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
                   onchange="setLanguage(this.value)"
                 >
                   {SUPPORTED_LANGUAGES.map((code) => {
-                    const native = t(`lang.${code}` as any);
-                    const local = t(`langLocal.${code}` as any);
+                    const native = t(`lang.${code}` as TranslationKey);
+                    const local = t(`langLocal.${code}` as TranslationKey);
                     const label = lang === code ? native : `${native} · ${local}`;
                     return (
                       <option value={code} selected={lang === code}>
@@ -73,21 +73,21 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
                   data-theme="oddbit"
                   onclick="setTheme('oddbit')"
                 >
-                  <span class="icon">eco</span> {t("settings.themeOddbit")}
+                  <span aria-hidden="true" class="icon">eco</span> {t("settings.themeOddbit")}
                 </button>
                 <button
                   class={`theme-btn${theme === "dark" ? " active" : ""}`}
                   data-theme="dark"
                   onclick="setTheme('dark')"
                 >
-                  <span class="icon">dark_mode</span> {t("settings.themeDark")}
+                  <span aria-hidden="true" class="icon">dark_mode</span> {t("settings.themeDark")}
                 </button>
                 <button
                   class={`theme-btn${theme === "light" ? " active" : ""}`}
                   data-theme="light"
                   onclick="setTheme('light')"
                 >
-                  <span class="icon">light_mode</span> {t("settings.themeLight")}
+                  <span aria-hidden="true" class="icon">light_mode</span> {t("settings.themeLight")}
                 </button>
               </div>
             </div>
@@ -95,7 +95,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
 
           <div class="bento-card">
             <div class="form-group">
-              <label class="form-label">{t("settings.slugLength")}</label>
+              <label class="form-label" for="slug-length-input">{t("settings.slugLength")}</label>
               <div class="slug-length-row">
                 <input
                   class="form-input"
@@ -114,7 +114,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
 
           <div class="bento-card">
             <div class="form-group">
-              <label class="form-label">{t("settings.defaultRange")}</label>
+              <label class="form-label" for="default-range-picker">{t("settings.defaultRange")}</label>
               <div class="form-select">
                 <select
                   class="form-input"
@@ -174,7 +174,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
             <div class="form-group form-group-flush">
               <label class="form-label">{t("settings.version")}</label>
               <div id="version-status" class="version-status">
-                <span class="icon icon-spin">progress_activity</span>
+                <span aria-hidden="true" class="icon icon-spin">progress_activity</span>
                 <span>{t("settings.checkingUpdates")}</span>
               </div>
             </div>
@@ -186,11 +186,11 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
                 <label class="form-label">{t("settings.account")}</label>
                 <div class="account-row">
                   <div class="account-identity">
-                    <span class="icon">person</span>
+                    <span aria-hidden="true" class="icon">person</span>
                     <span class="email">{userEmail}</span>
                   </div>
                   <a href="/_/admin/logout" class="account-logout">
-                    <span class="icon">logout</span>
+                    <span aria-hidden="true" class="icon">logout</span>
                     {t("nav.logout")}
                   </a>
                 </div>
@@ -203,7 +203,7 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
           <div class="settings-side-label">{t("settings.integrations")}</div>
           <div class="bento-card integration-card">
             <div class="integration-card-head">
-              <span class="icon">terminal</span>
+              <span aria-hidden="true" class="icon">terminal</span>
               <span class="integration-card-title">{t("settings.sdksTitle")}</span>
             </div>
             <div class="integration-card-desc">{t("settings.sdksDesc")}</div>
@@ -214,12 +214,12 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
             class="bento-card integration-card"
           >
             <div class="integration-card-head">
-              <span class="icon">api</span>
+              <span aria-hidden="true" class="icon">api</span>
               <span class="integration-card-title">{t("settings.apiTitle")}</span>
             </div>
             <div class="integration-card-desc">{t("settings.apiDesc")}</div>
             <div class="integration-card-link">
-              <span class="icon">arrow_forward</span>
+              <span aria-hidden="true" class="icon">arrow_forward</span>
               {t("settings.apiDocsLink")}
             </div>
           </a>
@@ -230,12 +230,17 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
             class="bento-card integration-card"
           >
             <div class="integration-card-head">
-              <span class="icon">smart_toy</span>
+              <span aria-hidden="true" class="icon">smart_toy</span>
               <span class="integration-card-title">{t("settings.mcpTitle")}</span>
             </div>
             <div class="integration-card-desc">{t("settings.mcpDesc")}</div>
+            <div class={`integration-card-status ${mcpConfigured ? "is-configured" : "is-unconfigured"}`}>
+              <span aria-hidden="true" class="icon">{mcpConfigured ? "check_circle" : "warning"}</span>
+              <span class="integration-card-status-label">{t("settings.mcpOAuth")}</span>
+              {mcpConfigured ? t("settings.mcpConfigured") : t("settings.mcpNotConfigured")}
+            </div>
             <div class="integration-card-link">
-              <span class="icon">open_in_new</span>
+              <span aria-hidden="true" class="icon">open_in_new</span>
               {mcpConfigured ? t("settings.mcpDocsLink") : t("settings.mcpSetupLink")}
             </div>
           </a>

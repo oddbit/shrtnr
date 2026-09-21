@@ -18,7 +18,7 @@ export const DashboardPage: FC<Props> = ({ t, range }) => {
     <>
       <div class="page-header topbar">
         <div>
-          <div class="page-title">{t("dashboard.title")}</div>
+          <h1 class="page-title">{t("dashboard.title")}</h1>
           <div class="page-subtitle">{t("dashboard.subtitle")}</div>
         </div>
         <div class="topbar-actions">
@@ -32,9 +32,10 @@ export const DashboardPage: FC<Props> = ({ t, range }) => {
           id="quick-url"
           type="text"
           placeholder={t("links.inputPlaceholder")}
+          aria-label={t("links.inputPlaceholder")}
         />
         <button class="btn btn-primary btn-lg" id="quick-action-btn" onclick="quickShorten()">
-          <span class="icon" id="quick-action-icon">bolt</span> <span id="quick-action-label">{t("dashboard.shorten")}</span>
+          <span aria-hidden="true" class="icon" id="quick-action-icon">bolt</span> <span id="quick-action-label">{t("dashboard.shorten")}</span>
         </button>
       </div>
 

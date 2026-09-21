@@ -46,7 +46,7 @@ const StatBar: FC<{
     <div class="stat-row">
       <div class={`name${mono ? " mono" : ""}`}>
         {flag && <span class="flag">{flag}</span>}
-        {icon && <span class="icon">{icon}</span>}
+        {icon && <span aria-hidden="true" class="icon">{icon}</span>}
         <span class="label">{name}</span>
       </div>
       <div class="right">
@@ -90,9 +90,9 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
     <>
       <div class="detail-header">
         <a href="/_/admin/bundles" class="detail-back" aria-label={t("bundles.backToBundles")}>
-          <span class="icon icon-lg">arrow_back</span>
+          <span aria-hidden="true" class="icon icon-lg">arrow_back</span>
         </a>
-        <div class="page-title">{t("bundles.detailTitle")}</div>
+        <h1 class="page-title">{t("bundles.detailTitle")}</h1>
         <RangePicker current={range} basePath={`/_/admin/bundles/${b.id}`} t={t} />
         {isOwner && (
           <div class="detail-menu-anchor">
@@ -101,11 +101,11 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
               onclick="toggleDetailMenu()"
               aria-label={t("linkDetail.moreActions")}
             >
-              <span class="icon icon-lg">more_vert</span>
+              <span aria-hidden="true" class="icon icon-lg">more_vert</span>
             </button>
             <div class="detail-menu" id="detail-menu" style="display:none">
               <button class="detail-menu-item" onclick={`showEditBundleModal(${b.id})`}>
-                <span class="icon">edit</span> {t("bundles.editBundle")}
+                <span aria-hidden="true" class="icon">edit</span> {t("bundles.editBundle")}
               </button>
               {isArchived ? (
                 <button
@@ -113,7 +113,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
                   data-bundle-action="unarchive"
                   data-bundle-id={b.id}
                 >
-                  <span class="icon">unarchive</span> {t("bundles.unarchive")}
+                  <span aria-hidden="true" class="icon">unarchive</span> {t("bundles.unarchive")}
                 </button>
               ) : (
                 <button
@@ -122,7 +122,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
                   data-bundle-id={b.id}
                   data-bundle-name={b.name}
                 >
-                  <span class="icon">archive</span> {t("bundles.archive")}
+                  <span aria-hidden="true" class="icon">archive</span> {t("bundles.archive")}
                 </button>
               )}
               <div class="detail-menu-divider" />
@@ -132,7 +132,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
                 data-bundle-id={b.id}
                 data-bundle-name={b.name}
               >
-                <span class="icon">delete</span> {t("bundles.delete")}
+                <span aria-hidden="true" class="icon">delete</span> {t("bundles.delete")}
               </button>
             </div>
           </div>
@@ -143,7 +143,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
         <div class="left">
           <div class="bundle-hero-headline">
             <span class={`bundle-icon-badge accent-${b.accent}`}>
-              <span class="icon">{b.icon ?? "inventory_2"}</span>
+              <span aria-hidden="true" class="icon">{b.icon ?? "inventory_2"}</span>
             </span>
             <span class="bundle-hero-name">{b.name}</span>
           </div>
@@ -152,12 +152,12 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
           <div class="meta-row">
             {b.created_by && b.created_by !== "anonymous" && (
               <span class="m">
-                <span class="icon">person</span>
+                <span aria-hidden="true" class="icon">person</span>
                 {t("bundles.createdBy")} <strong>{b.created_by}</strong>
               </span>
             )}
             <span class="m">
-              <span class="icon">schedule</span>
+              <span aria-hidden="true" class="icon">schedule</span>
               {t("bundles.createdOn")}{" "}
               <strong>
                 {new Date(b.created_at * 1000).toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric" })}
@@ -165,19 +165,19 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
             </span>
             {b.created_via && (
               <span class="m">
-                <span class="icon">api</span>
+                <span aria-hidden="true" class="icon">api</span>
                 {t("linkDetail.via")} <strong>{b.created_via}</strong>
               </span>
             )}
             <span class="m">
-              <span class="icon">link</span>
+              <span aria-hidden="true" class="icon">link</span>
               {stats.link_count === 1
                 ? t("bundles.linksCount", { count: stats.link_count })
                 : t("bundles.linksCountPlural", { count: stats.link_count })}
             </span>
             {stats.link_count > 0 && (
               <span class="m">
-                <span class="icon">ads_click</span>
+                <span aria-hidden="true" class="icon">ads_click</span>
                 {t("bundles.clickedLinksHint", { count: stats.clicked_links, total: stats.link_count })}
               </span>
             )}
@@ -221,7 +221,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
                 <a href={`/_/admin/links/${row.link_id}`} class="bundle-link-row">
                   <div class="bundle-link-head">
                     <span class={`slug-chip accent-${b.accent}`}>
-                      <span class="icon">fiber_manual_record</span>
+                      <span aria-hidden="true" class="icon">fiber_manual_record</span>
                       {row.primary_slug}
                     </span>
                     <div class="bundle-link-count">
@@ -235,7 +235,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
                           onclick={`event.preventDefault();event.stopPropagation();removeLinkFromBundle(${b.id}, ${row.link_id})`}
                           title={t("bundles.removeFromBundle")}
                         >
-                          <span class="icon">close</span>
+                          <span aria-hidden="true" class="icon">close</span>
                         </button>
                       </div>
                     )}
@@ -255,7 +255,7 @@ export const BundleDetailPage: FC<Props> = ({ stats, identity, t, lang, range })
             onclick={`showAddLinkToBundlePicker(${b.id},[${stats.per_link.map((r) => r.link_id).join(",")}])`}
             type="button"
           >
-            <span class="icon">add</span> {t("bundles.addLinkToBundle")}
+            <span aria-hidden="true" class="icon">add</span> {t("bundles.addLinkToBundle")}
           </button>
         )}
       </div>

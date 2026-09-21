@@ -796,6 +796,18 @@ def test_empty_body_2xx_raises_shrtnr_error(client: Shrtnr) -> None:
 
 
 @respx.mock
+def test_204_on_list_raises_shrtnr_error(client: Shrtnr) -> None:
+    """A 204 on a list endpoint must raise ShrtnrError. The transport used to
+    return None for any 204 before the shape check ran, and the list
+    comprehension in links.list() turned that into a bare TypeError once the
+    `data or []` guard was gone."""
+    respx.get(f"{BASE_URL}/_/api/links").mock(return_value=httpx.Response(204))
+    with pytest.raises(ShrtnrError) as exc_info:
+        client.links.list()
+    assert exc_info.value.status == 204
+
+
+@respx.mock
 def test_null_body_2xx_raises_shrtnr_error(client: Shrtnr) -> None:
     """A non-204 2xx response whose body is the JSON literal `null` must also
     raise ShrtnrError. content is non-empty (4 bytes) and valid JSON, so it
@@ -839,6 +851,38 @@ def test_falsy_scalar_body_2xx_raises_shrtnr_error_on_list(client: Shrtnr) -> No
     with pytest.raises(ShrtnrError) as exc_info:
         client.links.list()
     assert exc_info.value.status == 200
+
+
+@respx.mock
+def test_array_body_2xx_raises_shrtnr_error_on_get(client: Shrtnr) -> None:
+    """A 2xx `[]` on a single-object endpoint must raise ShrtnrError rather
+    than reach Link.from_dict([]), which fails with a bare AttributeError
+    since a list has no .get(). The transport is told which container the
+    caller expects, so the wrong one is rejected before any model sees it."""
+    respx.get(f"{BASE_URL}/_/api/links/5").mock(
+        return_value=httpx.Response(
+            200, content=b"[]", headers={"content-type": "application/json"}
+        ),
+    )
+    with pytest.raises(ShrtnrError) as exc_info:
+        client.links.get(5)
+    assert exc_info.value.status == 200
+    assert "object" in exc_info.value.server_message
+
+
+@respx.mock
+def test_object_body_2xx_raises_shrtnr_error_on_list(client: Shrtnr) -> None:
+    """A 2xx `{}` on a list endpoint must raise ShrtnrError rather than
+    iterate the dict's keys and hand each key string to Link.from_dict."""
+    respx.get(f"{BASE_URL}/_/api/links").mock(
+        return_value=httpx.Response(
+            200, content=b'{"id": 1}', headers={"content-type": "application/json"}
+        ),
+    )
+    with pytest.raises(ShrtnrError) as exc_info:
+        client.links.list()
+    assert exc_info.value.status == 200
+    assert "array" in exc_info.value.server_message
 
 
 # ---- links.qr: size accepts int ----

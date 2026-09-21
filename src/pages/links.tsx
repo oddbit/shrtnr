@@ -276,7 +276,7 @@ export const LinksPage: FC<Props> = ({
     <>
       <div class="page-header topbar">
         <div>
-          <div class="page-title">{t("links.title")}</div>
+          <h1 class="page-title">{t("links.title")}</h1>
           <div class="page-subtitle">{t("links.subtitle")}</div>
         </div>
         <div class="topbar-actions">
@@ -290,10 +290,11 @@ export const LinksPage: FC<Props> = ({
           id="quick-url"
           type="text"
           placeholder={t("links.inputPlaceholder")}
+          aria-label={t("links.inputPlaceholder")}
           value={searchQuery || ""}
         />
         <button class="btn btn-primary btn-lg" id="quick-action-btn" onclick="quickShorten()">
-          <span class="icon" id="quick-action-icon">bolt</span> <span id="quick-action-label">{t("dashboard.shorten")}</span>
+          <span aria-hidden="true" class="icon" id="quick-action-icon">bolt</span> <span id="quick-action-label">{t("dashboard.shorten")}</span>
         </button>
       </div>
 
@@ -301,7 +302,7 @@ export const LinksPage: FC<Props> = ({
         <div class="search-results-bar">
           <span class="count">{t("links.searchResults", { count: total })}</span>
           <a href="/_/admin/links" class="btn btn-ghost btn-sm">
-            <span class="icon icon-xs">close</span> {t("links.clearSearch")}
+            <span aria-hidden="true" class="icon icon-xs">close</span> {t("links.clearSearch")}
           </a>
         </div>
       )}
@@ -314,7 +315,7 @@ export const LinksPage: FC<Props> = ({
                 class={`filter-chip${filter === chip.key ? " active" : ""}`}
                 href={filterUrl(chip.key)}
               >
-                <span class="icon">{chip.icon}</span>
+                <span aria-hidden="true" class="icon">{chip.icon}</span>
                 <span>{t(FILTER_LABEL[chip.key])}</span>
               </a>
             ))}
@@ -324,14 +325,14 @@ export const LinksPage: FC<Props> = ({
               class={`sort-btn${sort === "recent" ? " active" : ""}`}
               href={sortUrl("recent")}
             >
-              <span class="icon icon-sm">schedule</span>{" "}
+              <span aria-hidden="true" class="icon icon-sm">schedule</span>{" "}
               {t("links.recent")}
             </a>
             <a
               class={`sort-btn${sort === "popular" ? " active" : ""}`}
               href={sortUrl("popular")}
             >
-              <span class="icon icon-sm">trending_up</span>{" "}
+              <span aria-hidden="true" class="icon icon-sm">trending_up</span>{" "}
               {t("links.popular")}
             </a>
           </div>
@@ -343,7 +344,7 @@ export const LinksPage: FC<Props> = ({
 
       {links.length === 0 ? (
         <div class="empty-state">
-          <span class="icon">link_off</span>
+          <span aria-hidden="true" class="icon">link_off</span>
           <p>{emptyStateCopy(t, emptyReason, searchQuery || "", filter)}</p>
         </div>
       ) : (
@@ -353,10 +354,10 @@ export const LinksPage: FC<Props> = ({
               <table class="links-table">
                 <thead>
                   <tr>
-                    <th>{t("links.colLink")}</th>
-                    <th>{t("links.colShort")}</th>
-                    <th class="num">{t("links.colClicksRange", { range: rangeLabel })}</th>
-                    <th>{t("links.colCreated")}</th>
+                    <th scope="col">{t("links.colLink")}</th>
+                    <th scope="col">{t("links.colShort")}</th>
+                    <th scope="col" class="num">{t("links.colClicksRange", { range: rangeLabel })}</th>
+                    <th scope="col">{t("links.colCreated")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -376,14 +377,14 @@ export const LinksPage: FC<Props> = ({
                             </a>
                             {disabled && (
                               <span class="disabled-badge col-disabled-badge">
-                                <span class="icon icon-xs">block</span>{" "}
+                                <span aria-hidden="true" class="icon icon-xs">block</span>{" "}
                                 {t("links.disabled")}
                               </span>
                             )}
                           </div>
                           {link.label && (
                             <div class="col-link-url">
-                              <span class="icon icon-xs">open_in_new</span>
+                              <span aria-hidden="true" class="icon icon-xs">open_in_new</span>
                               <span>{link.url}</span>
                             </div>
                           )}
@@ -397,7 +398,7 @@ export const LinksPage: FC<Props> = ({
                             >
                               <span class="col-short-chip-dot" aria-hidden="true" />
                               <span class="col-short-chip-slug">{mainSlug.slug}</span>
-                              <span class="icon">content_copy</span>
+                              <span aria-hidden="true" class="icon">content_copy</span>
                             </span>
                           )}
                         </td>

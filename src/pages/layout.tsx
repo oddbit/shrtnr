@@ -2,20 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { FC, PropsWithChildren } from "hono/jsx";
-import { raw } from "hono/html";
-import { adminStyles } from "../styles";
-import { adminClientScript } from "../client";
+import { adminClientScriptPath, adminStylesheetPath } from "../assets";
 import { Topbar } from "../components/topbar";
 import type { TranslateFn } from "../i18n";
-import type { Translations } from "../i18n/types";
-import pkg from "../../package.json";
 
 type LayoutProps = {
   active: string;
   theme?: string;
   lang?: string;
   t: TranslateFn;
-  translations: Translations;
 };
 
 export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
@@ -23,7 +18,6 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
   theme,
   lang,
   t,
-  translations,
   children,
 }) => {
   const year = new Date().getFullYear();
@@ -60,18 +54,10 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
-          rel="stylesheet"
-        />
-        <style>{raw(adminStyles)}</style>
-        <script src="/htmx.min.js" defer></script>
+        {/* Content-hashed and immutable (src/assets.ts): one download per deploy, not per page. */}
+        <link rel="stylesheet" href={adminStylesheetPath()} />
+        {/* Version in the file name: public/_headers caches it as immutable. */}
+        <script src="/htmx-2.0.4.min.js" defer></script>
       </head>
       <body>
         <nav class="sidebar">
@@ -84,7 +70,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
                 class={`nav-item${active === item.id ? " active" : ""}`}
                 href={item.href}
               >
-                <span class="icon">{item.icon}</span> {item.label}
+                <span aria-hidden="true" class="icon">{item.icon}</span> {item.label}
               </a>
             ))}
           </div>
@@ -116,7 +102,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
               onclick="toggleDrawer()"
               aria-label={t("nav.openNavigation")}
             >
-              <span class="icon">menu</span>
+              <span aria-hidden="true" class="icon">menu</span>
             </button>
             <div class="mobile-brand">
               <img src={brandLogotype} alt="shrtnr." />
@@ -139,7 +125,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
 
         <div id="toast" class="toast" style="display:none" />
 
-        <script>{raw(adminClientScript(pkg.version, translations))}</script>
+        <script src={adminClientScriptPath(htmlLang)}></script>
       </body>
     </html>
   );

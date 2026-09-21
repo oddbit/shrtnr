@@ -49,7 +49,7 @@ export const recentLinksWidget: AdminWidget<{ range: TimelineRange }, RecentLink
                   title={t("dashboard.clickToCopy")}
                 >
                   {slug}{" "}
-                  <span class="icon">content_copy</span>
+                  <span aria-hidden="true" class="icon">content_copy</span>
                 </span>
                 <span class="recent-row-url">{link.url}</span>
                 <span class="recent-row-clicks">{link.total_clicks}</span>

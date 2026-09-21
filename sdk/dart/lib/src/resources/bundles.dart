@@ -30,6 +30,7 @@ class BundlesResource {
       'GET',
       '/_/api/bundles',
       query: {'archived': archived?.wireValue, 'range': range?.wireValue},
+      shape: JsonShape.list,
     );
     return (json! as List<dynamic>)
         .map((dynamic e) =>
@@ -68,8 +69,8 @@ class BundlesResource {
       'icon': bundle.icon,
       'accent': bundle.accent.wireValue,
     };
-    final json =
-        await _http.requestJson('PUT', '/_/api/bundles/${bundle.id}', body: body);
+    final json = await _http.requestJson('PUT', '/_/api/bundles/${bundle.id}',
+        body: body);
     return Bundle.fromJson(json! as Map<String, dynamic>);
   }
 
@@ -130,7 +131,11 @@ class BundlesResource {
 
   /// List links in a bundle.
   Future<List<Link>> links(int id) async {
-    final json = await _http.requestJson('GET', '/_/api/bundles/$id/links');
+    final json = await _http.requestJson(
+      'GET',
+      '/_/api/bundles/$id/links',
+      shape: JsonShape.list,
+    );
     return (json! as List<dynamic>)
         .map((dynamic e) => Link.fromJson(e as Map<String, dynamic>))
         .toList(growable: false);

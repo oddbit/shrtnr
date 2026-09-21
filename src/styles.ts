@@ -1,8 +1,103 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-export const GOOGLE_FONTS_HREF =
-  "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap";
+/*
+ * Fonts are self-hosted from public/fonts (see public/fonts/LICENSE-*.txt):
+ * the Google Fonts stylesheets were two render-blocking third-party
+ * requests on every cold load. File names carry the upstream version, and
+ * public/_headers caches them as immutable, so a font update means a new
+ * file name.
+ *
+ * Subsets follow Google's split (latin, latin-ext, vietnamese) with the
+ * same unicode-range values, so a page only downloads the file whose
+ * characters it shows. Cyrillic and Greek fall back to the system face.
+ */
+export const FONT_FILES = {
+  manropeLatin: "/fonts/manrope-v20-latin.woff2",
+  manropeLatinExt: "/fonts/manrope-v20-latin-ext.woff2",
+  manropeVietnamese: "/fonts/manrope-v20-vietnamese.woff2",
+  spaceGroteskLatin: "/fonts/space-grotesk-v22-latin.woff2",
+  spaceGroteskLatinExt: "/fonts/space-grotesk-v22-latin-ext.woff2",
+  spaceGroteskVietnamese: "/fonts/space-grotesk-v22-vietnamese.woff2",
+  /** Static instance (FILL 0, wght 400): 322 KB against 3.98 MB for the variable font with every axis. */
+  materialSymbols: "/fonts/material-symbols-outlined-v373.woff2",
+} as const;
+
+/*
+ * No <link rel="preload"> for any of these. Measured on a Fast 3G / 4x CPU
+ * profile, cold dashboard: preloading the three fonts put first paint at
+ * 772 to 836 ms, the text fonts alone at about 610 ms, none at 412 ms. A
+ * preload competes with the render-blocking stylesheet for bandwidth, and
+ * nothing waits for the fonts: text paints in the metric-matched fallback
+ * and swaps without a shift, icons stay hidden until their file lands.
+ */
+
+const UNICODE_RANGE = {
+  latin:
+    "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+  latinExt:
+    "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF",
+  vietnamese:
+    "U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB",
+};
+
+const textFace = (family: string, file: string, range: string) => `
+@font-face {
+  font-family: '${family}';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url(${file}) format('woff2');
+  unicode-range: ${range};
+}`;
+
+/*
+ * Metric-matched local fallbacks. display=swap paints text in the fallback
+ * face first, and every glyph then changes width when the web font lands:
+ * that swap was the whole of the remaining layout shift once icons had a
+ * fixed box. size-adjust scales the fallback to the web font's average
+ * advance (measured in Chromium against Arial over a 90-character sample),
+ * and the ascent/descent overrides match the line box. Liberation Sans is
+ * metric-compatible with Arial and is what Linux resolves it to.
+ */
+const fallbackFace = (family: string, sizeAdjust: number, ascent: number, descent: number) => `
+@font-face {
+  font-family: '${family} Fallback';
+  src: local('Arial'), local('Liberation Sans'), local('Helvetica');
+  size-adjust: ${sizeAdjust}%;
+  ascent-override: ${(ascent / (sizeAdjust / 100)).toFixed(2)}%;
+  descent-override: ${(descent / (sizeAdjust / 100)).toFixed(2)}%;
+  line-gap-override: 0%;
+}`;
+
+/** @font-face rules for the two text families and their fallbacks; part of every page's stylesheet. */
+export const textFontFaces = [
+  textFace("Manrope", FONT_FILES.manropeLatin, UNICODE_RANGE.latin),
+  textFace("Manrope", FONT_FILES.manropeLatinExt, UNICODE_RANGE.latinExt),
+  textFace("Manrope", FONT_FILES.manropeVietnamese, UNICODE_RANGE.vietnamese),
+  textFace("Space Grotesk", FONT_FILES.spaceGroteskLatin, UNICODE_RANGE.latin),
+  textFace("Space Grotesk", FONT_FILES.spaceGroteskLatinExt, UNICODE_RANGE.latinExt),
+  textFace("Space Grotesk", FONT_FILES.spaceGroteskVietnamese, UNICODE_RANGE.vietnamese),
+  // Manrope 400: 101.65% of Arial's width, ascent 1.07em, descent 0.30em.
+  fallbackFace("Manrope", 101.65, 107, 30),
+  // Space Grotesk 400: 107.68% of Arial's width, ascent 0.98em, descent 0.29em.
+  fallbackFace("Space Grotesk", 107.68, 98, 29),
+].join("\n");
+
+/** The icon font, admin only. display=block: an icon font's fallback rendering is its ligature text. */
+export const iconFontFace = `
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(${FONT_FILES.materialSymbols}) format('woff2');
+}`;
+
+const FONT_STACKS = `
+    --font-family-display: 'Space Grotesk', 'Space Grotesk Fallback', system-ui, sans-serif;
+    --font-family-body: 'Manrope', 'Manrope Fallback', system-ui, sans-serif;
+    --font-family-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;`;
 
 export const themes = {
   oddbit: {
@@ -159,15 +254,12 @@ const themeEntries = (theme: keyof typeof themes) =>
     .join("\n  ");
 
 // Design tokens and box-model reset shared by all standalone pages.
-export const standaloneBaseStyles = `
+export const standaloneBaseStyles = `${textFontFaces}
   :root {
     ${themeEntries("oddbit")}
     --radius-sm: 6px;
     --radius-md: 8px;
-    --radius-lg: 12px;
-    --font-family-display: 'Space Grotesk', system-ui, sans-serif;
-    --font-family-body: 'Manrope', system-ui, sans-serif;
-    --font-family-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+    --radius-lg: 12px;${FONT_STACKS}
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -194,15 +286,12 @@ export const standaloneCenteredStyles = `${standaloneBaseStyles}
 /** @deprecated Use standaloneBaseStyles or standaloneCenteredStyles */
 export const standalonePageStyles = standaloneCenteredStyles;
 
-export const adminStyles = `
+export const adminStyles = `${textFontFaces}${iconFontFace}
 :root, [data-theme="oddbit"] {
   ${themeEntries("oddbit")}
   --radius-sm: 6px;
   --radius-md: 8px;
-  --radius-lg: 12px;
-  --font-family-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-family-body: 'Manrope', system-ui, sans-serif;
-  --font-family-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  --radius-lg: 12px;${FONT_STACKS}
 }
 [data-theme="dark"] {
   ${themeEntries("dark")}
@@ -212,8 +301,11 @@ export const adminStyles = `
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: var(--font-family-body); background: var(--color-canvas); color: var(--color-text); min-height: 100vh; display: flex; }
-.icon { font-family: 'Material Symbols Outlined'; font-size: 20px; vertical-align: middle; font-variation-settings: 'FILL' 0, 'wght' 400; }
-.icon-fill { font-variation-settings: 'FILL' 1, 'wght' 400; }
+/* A fixed 1em box, whatever font is showing: until Material Symbols arrives
+   the span holds its ligature text ("content_copy"), and a box sized by that
+   text collapses to a glyph when the font loads, shifting everything beside
+   it (CLS 0.06 to 0.11 measured on the links and link detail pages). */
+.icon { font-family: 'Material Symbols Outlined'; font-size: 20px; vertical-align: middle; display: inline-block; width: 1em; height: 1em; line-height: 1; overflow: hidden; white-space: nowrap; letter-spacing: normal; text-transform: none; font-weight: 400; font-style: normal; }
 
 /* Sidebar */
 .sidebar { width: 240px; background: var(--color-surface); padding: 1.5rem 1rem; display: flex; flex-direction: column; min-height: 100vh; position: fixed; left: 0; top: 0; }
@@ -739,6 +831,12 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 .integration-card-head .icon { color: var(--color-accent); }
 .integration-card-title { font-weight: 600; }
 .integration-card-desc { font-size: 0.813rem; color: var(--color-text-muted); line-height: 1.45; }
+.integration-card-status { display: flex; align-items: flex-start; gap: 0.35rem; margin-top: 0.6rem; font-size: 0.75rem; line-height: 1.4; color: var(--color-text-muted); }
+.integration-card-status .icon { font-size: 16px; flex: none; }
+.integration-card-status.is-configured .icon { color: var(--color-success); }
+.integration-card-status.is-unconfigured .icon { color: var(--color-danger); }
+.integration-card-status-label { font-weight: 600; color: var(--color-text); }
+.integration-card-status-label::after { content: ":"; }
 .integration-card-link { font-size: 0.7rem; color: var(--color-success); margin-top: 0.6rem; display: inline-flex; align-items: center; gap: 0.25rem; }
 .integration-card-link .icon { font-size: 14px; }
 .integration-sdk-list { list-style: none; padding: 0; margin: 0.75rem 0 0 0; display: flex; flex-direction: column; gap: 0.25rem; }
@@ -767,7 +865,7 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 
 /* Empty state */
 .empty-state { text-align: center; padding: 4rem 2rem; color: var(--color-text-muted); }
-.empty-state .icon { font-size: 48px; margin-bottom: 1rem; display: block; }
+.empty-state .icon { font-size: 48px; margin: 0 auto 1rem; display: block; }
 .empty-state p { margin-bottom: 1rem; }
 
 /* Mobile navigation */

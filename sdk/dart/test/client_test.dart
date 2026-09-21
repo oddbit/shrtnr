@@ -133,7 +133,8 @@ Map<String, Object?> _bundleWithSummaryJson({
   double? deltaPct,
 }) =>
     <String, Object?>{
-      ..._bundleJson(id: id, name: name, accent: accent, archivedAt: archivedAt),
+      ..._bundleJson(
+          id: id, name: name, accent: accent, archivedAt: archivedAt),
       'link_count': 3,
       'total_clicks': 100,
       'sparkline': <int>[10, 20, 30],
@@ -221,13 +222,14 @@ void main() {
 
   group('Error handling', () {
     test('throws ShrtnrError on 4xx', () async {
-      final m = _mock(status: 404, body: <String, Object?>{'error': 'not found'});
+      final m =
+          _mock(status: 404, body: <String, Object?>{'error': 'not found'});
       expect(() => m.client.links.get(999), throwsA(isA<ShrtnrError>()));
     });
 
     test('populates status and serverMessage from error body', () async {
-      final m =
-          _mock(status: 409, body: <String, Object?>{'error': 'Slug already exists'});
+      final m = _mock(
+          status: 409, body: <String, Object?>{'error': 'Slug already exists'});
       try {
         await m.client.slugs.add(1, 'taken');
         fail('expected ShrtnrError');
@@ -238,7 +240,8 @@ void main() {
     });
 
     test('throws ShrtnrError on 401', () async {
-      final m = _mock(status: 401, body: <String, Object?>{'error': 'Unauthorized'});
+      final m =
+          _mock(status: 401, body: <String, Object?>{'error': 'Unauthorized'});
       expect(() => m.client.links.list(), throwsA(isA<ShrtnrError>()));
     });
 
@@ -265,8 +268,8 @@ void main() {
       // documented "network failures throw ShrtnrError with status: 0"
       // contract in README.md. Covers both request paths: links.list() goes
       // through requestJson, links.qrSvg() through requestText.
-      final client =
-          ShrtnrClient(baseUrl: 'https://example.com:notaport', apiKey: _apiKey);
+      final client = ShrtnrClient(
+          baseUrl: 'https://example.com:notaport', apiKey: _apiKey);
       try {
         await client.links.list();
         fail('expected ShrtnrError');
@@ -337,6 +340,20 @@ void main() {
       }
     });
 
+    test('throws ShrtnrError when a list endpoint answers 204', () async {
+      // The transport used to return null for any 204 before the shape
+      // check ran, so links.list() failed on `json! as List` with a
+      // null-check error instead of the documented ShrtnrError.
+      final m = _mock(status: 204);
+      try {
+        await m.client.links.list();
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 204);
+        expect(e.serverMessage, contains('Empty response body'));
+      }
+    });
+
     test('throws ShrtnrError when a non-204 2xx body is the literal JSON null',
         () async {
       // "null" is valid, non-empty JSON, so it passes both the empty-body
@@ -348,7 +365,8 @@ void main() {
         return http.Response('null', 200,
             headers: <String, String>{'content-type': 'application/json'});
       });
-      final client = ShrtnrClient(baseUrl: _base, apiKey: _apiKey, httpClient: mock);
+      final client =
+          ShrtnrClient(baseUrl: _base, apiKey: _apiKey, httpClient: mock);
       try {
         await client.links.list();
         fail('expected ShrtnrError');
@@ -365,12 +383,53 @@ void main() {
         return http.Response('5', 200,
             headers: <String, String>{'content-type': 'application/json'});
       });
-      final client = ShrtnrClient(baseUrl: _base, apiKey: _apiKey, httpClient: mock);
+      final client =
+          ShrtnrClient(baseUrl: _base, apiKey: _apiKey, httpClient: mock);
       try {
         await client.links.get(1);
         fail('expected ShrtnrError');
       } on ShrtnrError catch (e) {
         expect(e.status, 200);
+      }
+    });
+
+    test(
+        'throws ShrtnrError when a single-object method receives a 2xx JSON array',
+        () async {
+      // The transport is told which container the caller expects. `[]` on
+      // links.get() used to reach `json! as Map<String, dynamic>` and fail
+      // with a raw type error instead of the documented ShrtnrError.
+      final mock = MockClient((request) async {
+        return http.Response('[]', 200,
+            headers: <String, String>{'content-type': 'application/json'});
+      });
+      final client =
+          ShrtnrClient(baseUrl: _base, apiKey: _apiKey, httpClient: mock);
+      try {
+        await client.links.get(1);
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 200);
+        expect(e.serverMessage, contains('object'));
+      }
+    });
+
+    test('throws ShrtnrError when a list method receives a 2xx JSON object',
+        () async {
+      // `{}` on links.list() used to reach `json! as List<dynamic>` and fail
+      // with a raw type error instead of the documented ShrtnrError.
+      final mock = MockClient((request) async {
+        return http.Response('{"id": 1}', 200,
+            headers: <String, String>{'content-type': 'application/json'});
+      });
+      final client =
+          ShrtnrClient(baseUrl: _base, apiKey: _apiKey, httpClient: mock);
+      try {
+        await client.links.list();
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 200);
+        expect(e.serverMessage, contains('array'));
       }
     });
   });
@@ -566,8 +625,7 @@ void main() {
 
   group('links.delete', () {
     test('DELETEs /_/api/links/:id and returns DeletedResult', () async {
-      final m =
-          _mock(status: 200, body: <String, Object?>{'deleted': true});
+      final m = _mock(status: 200, body: <String, Object?>{'deleted': true});
       final result = await m.client.links.delete(1);
       expect(result.deleted, isTrue);
       expect(m.capture.request!.url.toString(), '$_base/_/api/links/1');
@@ -622,7 +680,8 @@ void main() {
   group('links.breakdown', () {
     test('GETs /_/api/links/:id/breakdown with only dimension', () async {
       final m = _mock(status: 200, body: _breakdownPageJson());
-      await m.client.links.breakdown(5, dimension: BreakdownDimension.countries);
+      await m.client.links
+          .breakdown(5, dimension: BreakdownDimension.countries);
       expect(
         m.capture.request!.url.toString(),
         '$_base/_/api/links/5/breakdown?dimension=countries',
@@ -646,8 +705,8 @@ void main() {
 
     test('parses items and total', () async {
       final m = _mock(status: 200, body: _breakdownPageJson());
-      final stats =
-          await m.client.links.breakdown(5, dimension: BreakdownDimension.countries);
+      final stats = await m.client.links
+          .breakdown(5, dimension: BreakdownDimension.countries);
       expect(stats.total, 42);
       expect(stats.items.first.name, 'US');
       expect(stats.items.first.count, 5);
@@ -771,8 +830,8 @@ void main() {
 
   group('slugs.disable', () {
     test('POSTs /_/api/links/:id/slugs/:slug/disable', () async {
-      final m = _mock(
-          status: 200, body: _slugJson(slug: 'abc', disabledAt: 9999999));
+      final m =
+          _mock(status: 200, body: _slugJson(slug: 'abc', disabledAt: 9999999));
       await m.client.slugs.disable(1, 'abc');
       expect(
         m.capture.request!.url.toString(),
@@ -801,8 +860,7 @@ void main() {
   group('slugs.remove', () {
     test('DELETEs /_/api/links/:id/slugs/:slug and returns RemovedResult',
         () async {
-      final m =
-          _mock(status: 200, body: <String, Object?>{'removed': true});
+      final m = _mock(status: 200, body: <String, Object?>{'removed': true});
       final result = await m.client.slugs.remove(1, 'abc');
       expect(result.removed, isTrue);
       expect(
@@ -871,7 +929,8 @@ void main() {
 
   group('bundles.create', () {
     test('POSTs /_/api/bundles with required and optional fields', () async {
-      final m = _mock(status: 201, body: _bundleJson(name: 'B', accent: 'blue'));
+      final m =
+          _mock(status: 201, body: _bundleJson(name: 'B', accent: 'blue'));
       await m.client.bundles.create(
           name: 'B',
           description: 'desc',
@@ -914,7 +973,8 @@ void main() {
       expect(body['accent'], 'orange');
     });
 
-    test('copyWith(description: null) sends description: null to clear', () async {
+    test('copyWith(description: null) sends description: null to clear',
+        () async {
       final m = _mock(status: 200, body: _bundleJson());
       final original = Bundle.fromJson(<String, Object?>{
         ..._bundleJson(id: 42),
@@ -939,7 +999,8 @@ void main() {
 
     test('accepts a BundleWithSummary (covariant)', () async {
       final m = _mock(status: 200, body: _bundleJson(name: 'Updated'));
-      final summary = BundleWithSummary.fromJson(_bundleWithSummaryJson(id: 42));
+      final summary =
+          BundleWithSummary.fromJson(_bundleWithSummaryJson(id: 42));
       await m.client.bundles.update(summary.copyWith(name: 'Updated'));
       final body = jsonDecode(m.capture.request!.body) as Map<String, Object?>;
       expect(body['name'], 'Updated');
@@ -976,9 +1037,11 @@ void main() {
       expect(copy.icon, isNull);
     });
 
-    test('BundleWithSummary.copyWith returns BundleWithSummary preserving summary',
+    test(
+        'BundleWithSummary.copyWith returns BundleWithSummary preserving summary',
         () {
-      final summary = BundleWithSummary.fromJson(_bundleWithSummaryJson(id: 42));
+      final summary =
+          BundleWithSummary.fromJson(_bundleWithSummaryJson(id: 42));
       final copy = summary.copyWith(name: 'Renamed');
       expect(copy, isA<BundleWithSummary>());
       expect(copy.name, 'Renamed');
@@ -991,8 +1054,7 @@ void main() {
 
   group('bundles.delete', () {
     test('DELETEs /_/api/bundles/:id and returns DeletedResult', () async {
-      final m =
-          _mock(status: 200, body: <String, Object?>{'deleted': true});
+      final m = _mock(status: 200, body: <String, Object?>{'deleted': true});
       final result = await m.client.bundles.delete(42);
       expect(result.deleted, isTrue);
       expect(m.capture.request!.url.toString(), '$_base/_/api/bundles/42');
@@ -1004,8 +1066,7 @@ void main() {
 
   group('bundles.archive', () {
     test('POSTs /_/api/bundles/:id/archive', () async {
-      final m = _mock(
-          status: 200, body: _bundleJson(archivedAt: 9999999));
+      final m = _mock(status: 200, body: _bundleJson(archivedAt: 9999999));
       await m.client.bundles.archive(42);
       expect(
         m.capture.request!.url.toString(),
@@ -1122,8 +1183,7 @@ void main() {
   group('bundles.addLink', () {
     test('POSTs /_/api/bundles/:id/links with link_id and returns AddedResult',
         () async {
-      final m =
-          _mock(status: 200, body: <String, Object?>{'added': true});
+      final m = _mock(status: 200, body: <String, Object?>{'added': true});
       final result = await m.client.bundles.addLink(42, 7);
       expect(result.added, isTrue);
       expect(
@@ -1139,11 +1199,9 @@ void main() {
   // ---- 29. bundles.removeLink ----
 
   group('bundles.removeLink', () {
-    test(
-        'DELETEs /_/api/bundles/:id/links/:linkId and returns RemovedResult',
+    test('DELETEs /_/api/bundles/:id/links/:linkId and returns RemovedResult',
         () async {
-      final m =
-          _mock(status: 200, body: <String, Object?>{'removed': true});
+      final m = _mock(status: 200, body: <String, Object?>{'removed': true});
       final result = await m.client.bundles.removeLink(42, 7);
       expect(result.removed, isTrue);
       expect(
@@ -1189,7 +1247,8 @@ void main() {
     test('Slug maps snake_case fields to camelCase', () async {
       final m = _mock(
         status: 201,
-        body: _slugJson(linkId: 5, slug: 'custom', isCustom: 1, disabledAt: null),
+        body:
+            _slugJson(linkId: 5, slug: 'custom', isCustom: 1, disabledAt: null),
       );
       final slug = await m.client.slugs.add(5, 'custom');
       expect(slug.linkId, 5);
@@ -1247,7 +1306,8 @@ void main() {
     });
 
     test('fromWire throws ArgumentError for unknown value', () {
-      expect(() => BundleAccent.fromWire('neon'), throwsA(isA<ArgumentError>()));
+      expect(
+          () => BundleAccent.fromWire('neon'), throwsA(isA<ArgumentError>()));
     });
 
     test('Bundle.fromJson defaults accent to orange when absent', () {
@@ -1301,7 +1361,8 @@ void main() {
     });
 
     test('fromWire parses known values', () {
-      expect(BundleArchivedFilter.fromWire('only'), BundleArchivedFilter.activeOnly);
+      expect(BundleArchivedFilter.fromWire('only'),
+          BundleArchivedFilter.activeOnly);
       expect(BundleArchivedFilter.fromWire('all'), BundleArchivedFilter.all);
     });
 

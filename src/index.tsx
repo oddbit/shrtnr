@@ -40,8 +40,10 @@ import {
   getBundleAnalytics,
 } from "./services";
 import { DEFAULT_SLUG_LENGTH, DEFAULT_THEME, LINKS_DEFAULT_PER_PAGE, THEMES } from "./constants";
-import { createTranslateFn, getTranslations, DEFAULT_LANGUAGE, isSupportedLanguage } from "./i18n";
+import { createTranslateFn, DEFAULT_LANGUAGE, isSupportedLanguage } from "./i18n";
 import { handleHealth } from "./api/health";
+import { assetsRouter } from "./assets";
+import { answersJson, logUnhandledError, negotiatedErrorFormat, onUnhandledError, unhandledErrorResponse } from "./unhandled";
 import {
   handleListLinks,
   handleGetLink,
@@ -107,10 +109,23 @@ const app = new Hono<HonoEnv>();
 
 app.get("/_/health", () => handleHealth());
 
+// ---- Hashed admin stylesheet and client script (public, immutable) ----
+
+app.route("/", assetsRouter);
+
 // ---- Dev-mode fake sign-in (404 whenever ACCESS_AUD is set) ----
 
 app.get("/_/dev/login", (c) => handleDevLogin(c.req.raw, c.env));
 app.get("/_/dev/logout", (c) => handleDevLogout(c.req.raw, c.env));
+
+// ---- JSON route groups ----
+
+// An unhandled exception under these prefixes answers the JSON error shape
+// the clients parse (src/unhandled.ts). Declared here, beside the mounts,
+// so a new API prefix is marked where it is added.
+app.use("/_/admin/api/*", answersJson);
+app.use("/_/admin/w/*", answersJson);
+app.use("/_/api/*", answersJson);
 
 // ---- Admin auth middleware ----
 
@@ -132,9 +147,11 @@ app.use("/_/admin/*", async (c, next) => {
   await next();
 });
 
-// Admin HTML pages inline their CSS and JS, so a cached document pins the
-// old styles after a deploy. Force revalidation on every HTML response under
-// /_/admin/* (JSON API responses under /_/admin/api/* are left untouched).
+// Admin HTML is rendered per account and per request, so it must not be
+// served from a cache. Its stylesheet and client script live on
+// content-hashed, immutable URLs (src/assets.ts). Force revalidation on
+// every HTML response under /_/admin/* (JSON API responses under
+// /_/admin/api/* are left untouched).
 app.use("/_/admin/*", async (c, next) => {
   await next();
   const contentType = c.res.headers.get("Content-Type") || "";
@@ -204,20 +221,19 @@ async function getPageData(c: { env: Env; req: { raw: Request } }, identity: str
   const filterBots = settings?.filter_bots ?? true;
   const filterSelfReferrers = settings?.filter_self_referrers ?? true;
   const t = createTranslateFn(lang);
-  const translations = getTranslations(lang);
-  return { theme, slugLength, lang, defaultRange, filterBots, filterSelfReferrers, t, translations };
+  return { theme, slugLength, lang, defaultRange, filterBots, filterSelfReferrers, t };
 }
 
 // ---- Admin pages ----
 
 app.get("/_/admin/dashboard", async (c) => {
   const identity = c.var.identity;
-  const { theme, t, lang, translations, defaultRange } = await getPageData(c, identity);
+  const { theme, t, lang, defaultRange } = await getPageData(c, identity);
   const rangeParam = c.req.query("range");
   const validRanges = new Set(["24h", "7d", "30d", "90d", "1y", "all"]);
   const range = (validRanges.has(rangeParam || "") ? rangeParam : defaultRange) as TimelineRange;
   return c.html(
-    <Layout active="dashboard" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="dashboard" theme={theme} t={t} lang={lang}>
       <DashboardPage t={t} lang={lang} range={range} />
     </Layout>,
   );
@@ -225,7 +241,7 @@ app.get("/_/admin/dashboard", async (c) => {
 
 app.get("/_/admin/links", async (c) => {
   const identity = c.var.identity;
-  const { theme, slugLength, t, lang, translations, defaultRange } = await getPageData(c, identity);
+  const { theme, slugLength, t, lang, defaultRange } = await getPageData(c, identity);
   // Trim before anything reads it. The repository treats a query that trims
   // to nothing as matching nothing (a bare LIKE "%%" would match every row),
   // so an untrimmed run of spaces empties the window and the empty state
@@ -260,7 +276,7 @@ app.get("/_/admin/links", async (c) => {
     range,
   });
   return c.html(
-    <Layout active="links" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="links" theme={theme} t={t} lang={lang}>
       <LinksPage
         links={data.links}
         total={data.total}
@@ -283,7 +299,7 @@ app.get("/_/admin/links/:id", async (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return notFoundResponse();
   const identity = c.var.identity;
-  const { theme, t, lang, translations, defaultRange } = await getPageData(c, identity);
+  const { theme, t, lang, defaultRange } = await getPageData(c, identity);
   const initialRange: TimelineRange = defaultRange;
   const filters = await resolveClickFilters(c.env, identity);
   const linkResult = await getLink(c.env, id, { filters, range: initialRange });
@@ -300,7 +316,7 @@ app.get("/_/admin/links/:id", async (c) => {
   };
   const bundles = bundlesResult.ok ? bundlesResult.data : [];
   return c.html(
-    <Layout active="links" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="links" theme={theme} t={t} lang={lang}>
       <LinkDetailPage link={linkResult.data} analytics={analytics} bundles={bundles} t={t} lang={lang} identity={identity} initialRange={initialRange} />
     </Layout>,
   );
@@ -308,7 +324,7 @@ app.get("/_/admin/links/:id", async (c) => {
 
 app.get("/_/admin/bundles", async (c) => {
   const identity = c.var.identity;
-  const { theme, t, lang, translations, defaultRange } = await getPageData(c, identity);
+  const { theme, t, lang, defaultRange } = await getPageData(c, identity);
   const filterParam = c.req.query("filter");
   const filter = filterParam === "archived" || filterParam === "all" ? filterParam : "active";
   const validRanges = new Set<TimelineRange>(["24h", "7d", "30d", "90d", "1y", "all"]);
@@ -322,7 +338,7 @@ app.get("/_/admin/bundles", async (c) => {
   });
   const bundles = listResult.ok ? listResult.data : [];
   return c.html(
-    <Layout active="bundles" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="bundles" theme={theme} t={t} lang={lang}>
       <BundlesPage bundles={bundles} t={t} lang={lang} filter={filter} range={range} />
     </Layout>,
   );
@@ -332,7 +348,7 @@ app.get("/_/admin/bundles/:id", async (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return notFoundResponse();
   const identity = c.var.identity;
-  const { theme, t, lang, translations, defaultRange } = await getPageData(c, identity);
+  const { theme, t, lang, defaultRange } = await getPageData(c, identity);
   const rangeParam = c.req.query("range");
   const validRanges = new Set(["24h", "7d", "30d", "90d", "1y", "all"]);
   const range = (validRanges.has(rangeParam || "") ? rangeParam : defaultRange) as TimelineRange;
@@ -340,7 +356,7 @@ app.get("/_/admin/bundles/:id", async (c) => {
   const statsResult = await getBundleAnalytics(c.env, id, range, identity, { filters });
   if (!statsResult.ok) return notFoundResponse();
   return c.html(
-    <Layout active="bundles" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="bundles" theme={theme} t={t} lang={lang}>
       <BundleDetailPage stats={statsResult.data} identity={identity} t={t} lang={lang} range={range} />
     </Layout>,
   );
@@ -348,12 +364,12 @@ app.get("/_/admin/bundles/:id", async (c) => {
 
 app.get("/_/admin/keys", async (c) => {
   const identity = c.var.identity;
-  const { theme, t, lang, translations } = await getPageData(c, identity);
+  const { theme, t, lang } = await getPageData(c, identity);
   const keysResult = await listAllApiKeys(c.env, identity);
   const keys = keysResult.ok ? keysResult.data : [];
   const origin = new URL(c.req.url).origin;
   return c.html(
-    <Layout active="keys" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="keys" theme={theme} t={t} lang={lang}>
       <KeysPage keys={keys as any} t={t} lang={lang} origin={origin} />
     </Layout>,
   );
@@ -361,11 +377,11 @@ app.get("/_/admin/keys", async (c) => {
 
 app.get("/_/admin/settings", async (c) => {
   const identity = c.var.identity;
-  const { theme, slugLength, t, lang, translations, defaultRange, filterBots, filterSelfReferrers } = await getPageData(c, identity);
+  const { theme, slugLength, t, lang, defaultRange, filterBots, filterSelfReferrers } = await getPageData(c, identity);
   const mcpConfigured = Boolean(c.env.MCP_ACCESS_AUD && c.env.ACCESS_JWKS_URL);
   const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="settings" theme={theme} t={t} lang={lang} translations={translations}>
+    <Layout active="settings" theme={theme} t={t} lang={lang}>
       <SettingsPage theme={theme} slugLength={slugLength} lang={lang} defaultRange={defaultRange} filterBots={filterBots} filterSelfReferrers={filterSelfReferrers} t={t} mcpConfigured={mcpConfigured} userEmail={userEmail} />
     </Layout>,
   );
@@ -592,6 +608,10 @@ app.get("/:slug", (c) => {
 
 app.notFound(() => notFoundResponse());
 
+// ---- Last-resort error handling ----
+
+app.onError(onUnhandledError);
+
 // ---- MCP transport handler ----
 
 export { ShrtnrMCP };
@@ -600,6 +620,19 @@ const mcpHandler = ShrtnrMCP.serve("/_/mcp");
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // The routing below the Hono app (host rewrite, MCP transport, OAuth
+    // metadata) runs outside app.onError; the same last-resort handling
+    // applies, so a failure there is a logged 500, not a bare exception.
+    try {
+      return await route(request, env, ctx);
+    } catch (err) {
+      logUnhandledError(err, request);
+      return unhandledErrorResponse(negotiatedErrorFormat(request));
+    }
+  },
+} satisfies ExportedHandler<Env>;
+
+async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     let url = new URL(request.url);
 
     // CF Access MCP-type applications cannot be scoped to a path — they must
@@ -634,22 +667,30 @@ export default {
     // distinct from the admin application (ACCESS_AUD). Pass it explicitly
     // so JWT validation uses the correct audience.
     if (url.pathname === "/_/mcp" || url.pathname.startsWith("/_/mcp/")) {
-      const identity = await extractIdentity(request, env, env.MCP_ACCESS_AUD);
-      // In production (MCP_ACCESS_AUD set), reject anonymous requests so
-      // MCP clients and the CF Access AI Controls portal correctly detect
-      // that this endpoint requires authentication.
-      if (identity === "anonymous" && env.MCP_ACCESS_AUD) {
-        return new Response("Unauthorized", {
-          status: 401,
-          headers: {
-            "WWW-Authenticate": `Bearer realm="shrtnr"`,
-          },
-        });
+      // JSON-RPC clients parse JSON whatever Accept they send, so a failure
+      // here answers the JSON error shape, declared beside the route like
+      // the answersJson groups on the Hono app.
+      try {
+        const identity = await extractIdentity(request, env, env.MCP_ACCESS_AUD);
+        // In production (MCP_ACCESS_AUD set), reject anonymous requests so
+        // MCP clients and the CF Access AI Controls portal correctly detect
+        // that this endpoint requires authentication.
+        if (identity === "anonymous" && env.MCP_ACCESS_AUD) {
+          return new Response("Unauthorized", {
+            status: 401,
+            headers: {
+              "WWW-Authenticate": `Bearer realm="shrtnr"`,
+            },
+          });
+        }
+        (ctx as unknown as { props: Record<string, unknown> }).props = {
+          email: identity,
+        };
+        return await mcpHandler.fetch!(request, env, ctx);
+      } catch (err) {
+        logUnhandledError(err, request);
+        return unhandledErrorResponse("json");
       }
-      (ctx as unknown as { props: Record<string, unknown> }).props = {
-        email: identity,
-      };
-      return mcpHandler.fetch!(request, env, ctx);
     }
 
     // OAuth Authorization Server Metadata (RFC 8414).
@@ -687,8 +728,7 @@ export default {
 
     // Everything else goes to the Hono app.
     return app.fetch(request, env, ctx);
-  },
-} satisfies ExportedHandler<Env>;
+}
 
 // ---- Auth helpers ----
 

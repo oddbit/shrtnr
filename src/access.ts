@@ -1,22 +1,31 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-import { jwtVerify, createRemoteJWKSet } from "jose";
+import { jwtVerify, createRemoteJWKSet, jwksCache, type JWKSCacheInput } from "jose";
 import type { Env } from "./types";
 
 export type AccessUser = {
   email: string;
 };
 
-// Cache the JWKS instance per JWKS URL to avoid re-fetching on every request.
-let cachedJwksUrl: string | null = null;
-let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+/*
+ * The fetched key set is shared across requests as plain data, keyed by
+ * JWKS URL, so the certificates download once per isolate rather than on
+ * every request. The resolver itself is created per request: a shared
+ * RemoteJWKSet would also share its in-flight fetch promise, and a request
+ * that awaits I/O started by another request fails in Workers with
+ * "Cannot perform I/O on behalf of a different request". jose fills the
+ * cache object in place after each fetch and reads it on the next call.
+ */
+const jwksCaches = new Map<string, JWKSCacheInput>();
 
 function getJwks(jwksUrl: string): ReturnType<typeof createRemoteJWKSet> {
-  if (cachedJwks && cachedJwksUrl === jwksUrl) return cachedJwks;
-  cachedJwksUrl = jwksUrl;
-  cachedJwks = createRemoteJWKSet(new URL(jwksUrl));
-  return cachedJwks;
+  let cache = jwksCaches.get(jwksUrl);
+  if (!cache) {
+    cache = {};
+    jwksCaches.set(jwksUrl, cache);
+  }
+  return createRemoteJWKSet(new URL(jwksUrl), { [jwksCache]: cache });
 }
 
 /**

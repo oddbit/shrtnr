@@ -14,6 +14,17 @@ import 'errors.dart';
 /// `src/api/bundles.ts`).
 const _clientHeader = 'sdk';
 
+/// The JSON container a resource method can consume: a single resource
+/// ([object]) or a list to map over ([list]). The transport cannot infer it
+/// from the response, so each call names it.
+enum JsonShape {
+  /// A single resource: the body must decode to a Map.
+  object,
+
+  /// A list of resources: the body must decode to a List.
+  list,
+}
+
 /// Low-level HTTP transport used by [ShrtnrClient].
 ///
 /// Handles base URL normalization, auth header injection, query-string
@@ -56,6 +67,7 @@ class ShrtnrBaseClient {
     String path, {
     Map<String, String?>? query,
     Object? body,
+    JsonShape shape = JsonShape.object,
   }) async {
     final uri = _buildUri(path, query);
     final headers = <String, String>{
@@ -90,12 +102,13 @@ class ShrtnrBaseClient {
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (response.statusCode == 204) return null;
-      // An empty body on a non-204 2xx is the same "truncated body served
-      // with a 200" case the jsonDecode branch below covers (a CDN or proxy
-      // that strips the body off some 2xx responses). Returning null only
-      // defers the failure to the caller's `json!`, which reports it as a
-      // null-check error instead of the documented ShrtnrError.
+      // Every JSON call feeds a model or a list, so no caller can consume a
+      // 204: it is a body of the wrong shape like any other empty body. The
+      // transport used to return null for it ahead of the shape check
+      // below, which the resource method's `json! as List` reported as a
+      // null-check error instead of the documented ShrtnrError. A stripped
+      // body on a 200 (a CDN or proxy that drops the body off some 2xx
+      // responses) lands here for the same reason.
       if (response.body.isEmpty) {
         throw ShrtnrError(response.statusCode, 'Empty response body');
       }
@@ -105,17 +118,23 @@ class ShrtnrBaseClient {
       } catch (e) {
         throw ShrtnrError(response.statusCode, 'Invalid JSON response: $e');
       }
-      // A body that is valid JSON but decodes to a bare scalar (null, a
-      // number, a string, or a bool) rather than a Map or List passes the
-      // decode above unchanged. Every resource method expects a Map (a
-      // single resource) or a List (a list to map over) here; a bare
-      // scalar reaching the caller's `json!.cast<...>()`/`Model.fromJson`
-      // fails as a raw null-check or type error instead of the documented
-      // ShrtnrError.
-      if (decoded is! Map && decoded is! List) {
+      // A body that is valid JSON but of the wrong container type (a bare
+      // scalar such as null, a number, a string or a bool; a List where a
+      // single resource is expected; a Map where a list is expected) passes
+      // the decode above unchanged. Left alone it reached the resource
+      // method's `json! as Map<String, dynamic>` or `as List<dynamic>` and
+      // failed as a raw type error instead of the documented ShrtnrError.
+      if (shape == JsonShape.list) {
+        if (decoded is! List) {
+          throw ShrtnrError(
+            response.statusCode,
+            'Response body is not a JSON array',
+          );
+        }
+      } else if (decoded is! Map) {
         throw ShrtnrError(
           response.statusCode,
-          'Response body is not a JSON object or array',
+          'Response body is not a JSON object',
         );
       }
       return decoded;
@@ -205,7 +224,8 @@ class ShrtnrBaseClient {
     });
     if (params.isEmpty) return Uri.parse(base);
     final qs = params.entries
-        .map((e) => '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
+        .map((e) =>
+            '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
         .join('&');
     return Uri.parse('$base?$qs');
   }

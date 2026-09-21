@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "wrangler dev",
+    "types": "wrangler types --env-file wrangler.types.env",
     "deploy": "bash scripts/resolve-bindings.sh && wrangler deploy",
     "wrangler-login": "wrangler login",
     "db:create": "wrangler d1 create shrtnr-db",
@@ -18,11 +19,11 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
+    "perf": "PERF_THROTTLE=1 playwright test e2e/perf.spec.ts",
     "emit-spec": "tsx scripts/emit-spec.ts"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",
-    "@cloudflare/workers-types": "^5.20260828.1",
     "@playwright/test": "1.62.1",
     "@types/node": "^26.4.0",
     "@vitest/runner": "^4.1.11",

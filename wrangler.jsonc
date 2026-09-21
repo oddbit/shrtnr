@@ -2,7 +2,17 @@
   "name": "shrtnr",
   "main": "src/index.tsx",
   "assets": { "directory": "public" },
-  "compatibility_date": "2026-04-01", // LOL
+  // Advance periodically after reviewing the flags that turn on between
+  // dates (developers.cloudflare.com/workers/configuration/compatibility-flags)
+  // and running `yarn test` and `yarn e2e`. The local runtime rejects a date
+  // newer than its own release, and wrangler and the vitest pool each bundle
+  // their own workerd, so the ceiling is the older of the two: `yarn test`
+  // names the newest date it supports when the value is too new. Last
+  // advanced 2026-09-21 from 2026-04-01: the intervening flags touch
+  // WebSocket close replies, error serialization, Workflows, Containers and
+  // Python, none of which this Worker's own code relies on. Rerun
+  // `yarn types` after changing it.
+  "compatibility_date": "2026-08-22",
   "compatibility_flags": ["nodejs_compat"],
   "upload_source_maps": true,
   "observability": {

@@ -40,8 +40,8 @@ class Links(_SyncResource):
     def list(self, *, owner: str | None = None, range: TimelineRange | None = None) -> list[Link]:
         """List all links. Filter by owner or click-count range."""
         url = self._url("/_/api/links", {"owner": owner, "range": range})
-        data = self._request("GET", url, headers=self._headers())
-        return [Link.from_dict(x) for x in (data or [])]
+        data = self._request("GET", url, shape="array", headers=self._headers())
+        return [Link.from_dict(x) for x in data]
 
     def create(
         self,
@@ -151,8 +151,8 @@ class Links(_SyncResource):
     def bundles(self, id: int) -> _list[Bundle]:
         """List bundles that contain this link."""
         url = self._url(f"/_/api/links/{id}/bundles")
-        data = self._request("GET", url, headers=self._headers())
-        return [Bundle.from_dict(x) for x in (data or [])]
+        data = self._request("GET", url, shape="array", headers=self._headers())
+        return [Bundle.from_dict(x) for x in data]
 
 
 class AsyncLinks(_AsyncResource):
@@ -168,8 +168,8 @@ class AsyncLinks(_AsyncResource):
     ) -> list[Link]:
         """List all links. Filter by owner or click-count range."""
         url = self._url("/_/api/links", {"owner": owner, "range": range})
-        data = await self._request("GET", url, headers=self._headers())
-        return [Link.from_dict(x) for x in (data or [])]
+        data = await self._request("GET", url, shape="array", headers=self._headers())
+        return [Link.from_dict(x) for x in data]
 
     async def create(
         self,
@@ -279,5 +279,5 @@ class AsyncLinks(_AsyncResource):
     async def bundles(self, id: int) -> _list[Bundle]:
         """List bundles that contain this link."""
         url = self._url(f"/_/api/links/{id}/bundles")
-        data = await self._request("GET", url, headers=self._headers())
-        return [Bundle.from_dict(x) for x in (data or [])]
+        data = await self._request("GET", url, shape="array", headers=self._headers())
+        return [Bundle.from_dict(x) for x in data]

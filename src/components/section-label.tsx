@@ -10,7 +10,7 @@ type SectionLabelProps = PropsWithChildren<{
 
 export const SectionLabel: FC<SectionLabelProps> = ({ icon, id, children }) => (
   <div class="section-label" id={id}>
-    {icon && <span class="icon">{icon}</span>}
+    {icon && <span aria-hidden="true" class="icon">{icon}</span>}
     <span>{children}</span>
   </div>
 );

@@ -24,7 +24,7 @@ export const SdkList: FC<Props> = ({ t }) => (
         <a href={sdk.href} target="_blank" rel="noopener" class="integration-sdk-link">
           <span class="integration-sdk-lang">{t(sdk.lang)}</span>
           <span class="integration-sdk-pkg">{t(sdk.pkg)}</span>
-          <span class="icon">open_in_new</span>
+          <span aria-hidden="true" class="icon">open_in_new</span>
         </a>
       </li>
     ))}
