@@ -82,6 +82,11 @@ Workflow on API change:
 - When recreating a table referenced by FKs with `ON DELETE CASCADE`: save and drop dependent tables first, then restore after rename. Dropping the referenced table cascades and silently deletes dependent rows.
 - Verify row counts unchanged in all affected tables post-migration.
 
+## Worker configuration
+
+- Binding and runtime types are generated, never hand-written: `yarn types` writes the git-ignored `worker-configuration.d.ts` from `wrangler.jsonc`, and CI runs it before the typecheck. Rerun it after any change to `wrangler.jsonc`. Secrets and dev-only vars are declared in `src/types.ts` by merging into `Cloudflare.Env`.
+- `compatibility_date` is capped by the older of the two bundled `workerd` binaries (wrangler and the vitest pool); `yarn test` names the newest supported date when the value is too new. Review the flags between the old and new date before advancing it.
+
 ## Repository
 
 - Never force push.

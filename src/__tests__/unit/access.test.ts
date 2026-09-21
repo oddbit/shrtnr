@@ -9,7 +9,7 @@ function fakeEnv(overrides: Partial<Env> = {}): Env {
     ACCESS_AUD: "",
     MCP_ACCESS_AUD: "",
     ACCESS_JWKS_URL: "",
-    MCP_OBJECT: {} as DurableObjectNamespace,
+    MCP_OBJECT: {} as Env["MCP_OBJECT"],
     ...overrides,
   };
 }
