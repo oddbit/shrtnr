@@ -11,6 +11,7 @@
 import { describe, expect, it } from "vitest";
 import { adminClientScript } from "../../client";
 import type { Translations } from "../../i18n/types";
+import { extractTopLevelChunk } from "../client-script";
 
 // Finds every `res.json().then(...)` call that reports the parsed body's
 // `error` field but has no `.catch(...)` immediately after it. Every such
@@ -21,10 +22,10 @@ import type { Translations } from "../../i18n/types";
 //
 // Regression: an earlier version of this guard matched line by line
 // (`/res\.json\(\)\.then\(/` and `/toast\(/` on the *same* line, with no
-// `.catch(` on that line). quickShorten, createLink, and createDuplicate all
-// spread the `.then(function(data) { ... })` call across three lines in the
-// project's usual multi-line style, so the line-based check could never see
-// `res.json().then(` and `toast(` together and missed all three being
+// `.catch(` on that line). quickShorten and createDuplicate both spread the
+// `.then(function(data) { ... })` call across three lines in the project's
+// usual multi-line style, so the line-based check could never see
+// `res.json().then(` and `toast(` together and missed them being
 // unguarded. This walks the balanced parentheses of the `.then(...)` call
 // instead, so it sees the whole call regardless of how it's wrapped.
 function findUnguardedJsonThenToast(script: string): string[] {
@@ -56,20 +57,6 @@ function findUnguardedJsonThenToast(script: string): string[] {
   return unguarded;
 }
 
-function extractTopLevelChunk(source: string, startPattern: RegExp): string {
-  const lines = source.split("\n");
-  const startIdx = lines.findIndex((l) => startPattern.test(l));
-  if (startIdx === -1) throw new Error(`chunk not found: ${startPattern}`);
-  let endIdx = lines.length;
-  for (let i = startIdx + 1; i < lines.length; i++) {
-    if (/^(function |var |if |window\.|document\.)/.test(lines[i])) {
-      endIdx = i;
-      break;
-    }
-  }
-  return lines.slice(startIdx, endIdx).join("\n");
-}
-
 type ToastCall = { message: string; level?: string };
 type Handlers = Record<string, (...args: unknown[]) => void>;
 
@@ -88,7 +75,6 @@ const HANDLERS: Array<{ name: string; invoke: (h: Handlers) => void }> = [
   { name: "doUpdateBundle", invoke: (h) => h.doUpdateBundle(1) },
   { name: "doAddLinkToBundle", invoke: (h) => h.doAddLinkToBundle(1, 2) },
   { name: "quickShorten", invoke: (h) => h.quickShorten() },
-  { name: "createLink", invoke: (h) => h.createLink() },
   { name: "createDuplicate", invoke: (h) => h.createDuplicate("https://example.com") },
 ];
 
@@ -98,7 +84,7 @@ const HANDLERS: Array<{ name: string; invoke: (h: Handlers) => void }> = [
 // field needs a real http(s) value; every other field just needs to be
 // non-empty.
 function fakeDocument() {
-  const urlIds = new Set(["quick-url", "m-url"]);
+  const urlIds = new Set(["quick-url"]);
   return {
     getElementById: (id: string) => ({
       value: urlIds.has(id) ? "https://example.com" : "x",

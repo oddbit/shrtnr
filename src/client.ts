@@ -34,7 +34,10 @@ function t(key, params) {
   var val = T[key] || key;
   if (params) {
     for (var k in params) {
-      val = val.replace(new RegExp('\\\\{' + k + '\\\\}', 'g'), String(params[k]));
+      // Replacer function, not a string: a string replacement treats
+      // "$&", "$\`", "$'", "$1" etc. in the value as special patterns
+      // instead of literal text.
+      val = val.replace(new RegExp('\\\\{' + k + '\\\\}', 'g'), function() { return String(params[k]); });
     }
   }
   return val;
@@ -207,69 +210,6 @@ function updateQuickActionButton() {
     iconEl.textContent = 'bolt';
     labelEl.textContent = t('dashboard.shorten');
   }
-}
-
-// ---- Create link (modal) ----
-function showCreateModal() {
-  var len = (document.getElementById('slug-length-default') || {}).value || '3';
-  openModal(
-    '<div class="modal-title">' + esc(t('client.modalNewLink')) + '</div>' +
-    '<div class="form-group"><label class="form-label">' + esc(t('client.destinationUrl')) + '</label><input class="form-input" id="m-url" placeholder="https://example.com/long/path"></div>' +
-    '<div class="form-group"><label class="form-label">' + esc(t('client.labelOptional')) + '</label><input class="form-input" id="m-label" placeholder="My Blog Post"></div>' +
-    '<div class="form-row"><div class="form-group"><label class="form-label">' + esc(t('client.slugLength')) + '</label><input class="form-input" id="m-len" type="number" min="3" value="' + esc(len) + '"></div>' +
-    '<div class="form-group"><label class="form-label">' + esc(t('client.customOptional')) + '</label><input class="form-input" id="m-custom" placeholder="my-post"></div></div>' +
-    '<div class="form-group"><label class="form-label">' + esc(t('client.expiresOptional')) + '</label><input class="form-input" id="m-expires" type="datetime-local"></div>' +
-    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + esc(t('client.cancel')) + '</button><button class="btn btn-primary" onclick="createLink()">' + esc(t('client.create')) + '</button></div>'
-  );
-}
-
-function createLink() {
-  var url = document.getElementById('m-url').value.trim();
-  if (!url) { toast(t('client.urlRequired'), 'error'); return; }
-  var body = { url: url };
-  var label = document.getElementById('m-label').value.trim();
-  if (label) body.label = label;
-  var len = parseInt(document.getElementById('m-len').value);
-  if (len >= 3) body.slug_length = len;
-  var custom = document.getElementById('m-custom').value.trim();
-  var exp = document.getElementById('m-expires').value;
-  if (exp) body.expires_at = Math.floor(new Date(exp).getTime() / 1000);
-
-  api('/links', { method: 'POST', body: JSON.stringify(body) }).then(function(res) {
-    if (res.ok) {
-      var isDuplicate = res.status === 200;
-      return res.json().then(function(link) {
-        if (isDuplicate) {
-          closeModal();
-          if (link.duplicate_count > 1) {
-            window.location.href = '/_/admin/links?search=' + encodeURIComponent(body.url);
-          } else {
-            window.location.href = '/_/admin/links/' + link.id;
-          }
-          return;
-        }
-        if (!custom) {
-          closeModal();
-          toast(t('client.linkCreated'));
-          window.location.href = '/_/admin/links/' + link.id;
-          return;
-        }
-        api('/links/' + link.id + '/slugs', { method: 'POST', body: JSON.stringify({ slug: custom }) }).then(function(slugRes) {
-          closeModal();
-          if (!slugRes.ok) {
-            toast(t('client.linkCreated'));
-          } else {
-            toast(t('client.linkCreated'));
-          }
-          window.location.href = '/_/admin/links/' + link.id;
-        });
-      });
-    } else {
-      return res.json().then(function(data) {
-        toast(data.error || t('client.createLinkError'), 'error');
-      }).catch(function() { toast(t('client.createLinkError'), 'error'); });
-    }
-  });
 }
 
 // ---- Duplicate link ----
