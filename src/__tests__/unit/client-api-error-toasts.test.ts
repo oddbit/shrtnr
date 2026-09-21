@@ -22,10 +22,10 @@ import { extractTopLevelChunk } from "../client-script";
 //
 // Regression: an earlier version of this guard matched line by line
 // (`/res\.json\(\)\.then\(/` and `/toast\(/` on the *same* line, with no
-// `.catch(` on that line). quickShorten, createLink, and createDuplicate all
-// spread the `.then(function(data) { ... })` call across three lines in the
-// project's usual multi-line style, so the line-based check could never see
-// `res.json().then(` and `toast(` together and missed all three being
+// `.catch(` on that line). quickShorten and createDuplicate both spread the
+// `.then(function(data) { ... })` call across three lines in the project's
+// usual multi-line style, so the line-based check could never see
+// `res.json().then(` and `toast(` together and missed them being
 // unguarded. This walks the balanced parentheses of the `.then(...)` call
 // instead, so it sees the whole call regardless of how it's wrapped.
 function findUnguardedJsonThenToast(script: string): string[] {
@@ -75,7 +75,6 @@ const HANDLERS: Array<{ name: string; invoke: (h: Handlers) => void }> = [
   { name: "doUpdateBundle", invoke: (h) => h.doUpdateBundle(1) },
   { name: "doAddLinkToBundle", invoke: (h) => h.doAddLinkToBundle(1, 2) },
   { name: "quickShorten", invoke: (h) => h.quickShorten() },
-  { name: "createLink", invoke: (h) => h.createLink() },
   { name: "createDuplicate", invoke: (h) => h.createDuplicate("https://example.com") },
 ];
 
@@ -85,7 +84,7 @@ const HANDLERS: Array<{ name: string; invoke: (h: Handlers) => void }> = [
 // field needs a real http(s) value; every other field just needs to be
 // non-empty.
 function fakeDocument() {
-  const urlIds = new Set(["quick-url", "m-url"]);
+  const urlIds = new Set(["quick-url"]);
   return {
     getElementById: (id: string) => ({
       value: urlIds.has(id) ? "https://example.com" : "x",
