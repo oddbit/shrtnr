@@ -261,6 +261,16 @@ describe("Error handling", () => {
     }
   });
 
+  it("throws ShrtnrError when a list endpoint answers 204", async () => {
+    // The transport used to return undefined for any 204 before the shape
+    // check ran, so links.list() resolved to undefined typed as Link[].
+    fetchSpy.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await expect(client().links.list()).rejects.toMatchObject({
+      status: 204,
+      serverMessage: expect.stringContaining("Empty response body"),
+    });
+  });
+
   it("throws ShrtnrError when a non-204 2xx body is the literal JSON null", async () => {
     // "null" is valid, non-empty JSON, so it passes both the empty-body and
     // JSON-parse checks and used to reach the caller as a bare `null` typed

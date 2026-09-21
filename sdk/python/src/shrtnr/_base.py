@@ -84,14 +84,12 @@ def parse_json_response(response: httpx.Response, shape: JsonShape = "object") -
     """
     if not response.is_success:
         _raise_from_response(response)
-    if response.status_code == 204:
-        return None
-    # An empty body on a non-204 2xx is the same "truncated body served with
-    # a 200" case the non-JSON branch below covers (e.g. a CDN/proxy that
-    # strips the body on some 2xx responses): treat it as invalid rather
-    # than silently returning None, which every resource method's
-    # `SomeModel.from_dict(...)` call would otherwise crash on with a bare
-    # AttributeError instead of the documented ShrtnrError.
+    # Every JSON call feeds a model constructor or a list comprehension, so
+    # no caller can consume a 204: it is a body of the wrong shape like any
+    # other empty body. Returning None here used to reach
+    # `[Model.from_dict(x) for x in data]` as a bare TypeError. A stripped
+    # body on a 200 (a CDN or proxy that drops the body off some 2xx
+    # responses) lands in the same branch for the same reason.
     if not response.content:
         raise ShrtnrError(response.status_code, "Empty response body")
     try:

@@ -96,8 +96,6 @@ export class HttpClient {
       throw new ShrtnrError(res.status, serverMessage);
     }
 
-    if (res.status === 204) return undefined as T;
-
     // fetch settles once headers arrive; the body streams afterward, so a
     // connection reset mid-transfer fails here rather than at the call
     // above. Read and parse in separate steps to keep the two apart: a
@@ -105,6 +103,15 @@ export class HttpClient {
     // and only a body that arrived intact but isn't JSON carries the
     // response status.
     const text = await this.readBody(res);
+    // Every JSON call feeds a model or a list, so no caller can consume a
+    // 204: it is a body of the wrong shape like any other empty body. The
+    // transport used to return undefined for it ahead of the shape check
+    // below, which a list method then handed to its caller typed as an
+    // array. A stripped body on a 200 (a proxy that drops the body off some
+    // 2xx responses) lands here for the same reason.
+    if (text === "") {
+      throw new ShrtnrError(res.status, "Empty response body");
+    }
     let json: unknown;
     try {
       json = JSON.parse(text);

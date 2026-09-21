@@ -340,6 +340,20 @@ void main() {
       }
     });
 
+    test('throws ShrtnrError when a list endpoint answers 204', () async {
+      // The transport used to return null for any 204 before the shape
+      // check ran, so links.list() failed on `json! as List` with a
+      // null-check error instead of the documented ShrtnrError.
+      final m = _mock(status: 204);
+      try {
+        await m.client.links.list();
+        fail('expected ShrtnrError');
+      } on ShrtnrError catch (e) {
+        expect(e.status, 204);
+        expect(e.serverMessage, contains('Empty response body'));
+      }
+    });
+
     test('throws ShrtnrError when a non-204 2xx body is the literal JSON null',
         () async {
       // "null" is valid, non-empty JSON, so it passes both the empty-body

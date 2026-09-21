@@ -796,6 +796,18 @@ def test_empty_body_2xx_raises_shrtnr_error(client: Shrtnr) -> None:
 
 
 @respx.mock
+def test_204_on_list_raises_shrtnr_error(client: Shrtnr) -> None:
+    """A 204 on a list endpoint must raise ShrtnrError. The transport used to
+    return None for any 204 before the shape check ran, and the list
+    comprehension in links.list() turned that into a bare TypeError once the
+    `data or []` guard was gone."""
+    respx.get(f"{BASE_URL}/_/api/links").mock(return_value=httpx.Response(204))
+    with pytest.raises(ShrtnrError) as exc_info:
+        client.links.list()
+    assert exc_info.value.status == 204
+
+
+@respx.mock
 def test_null_body_2xx_raises_shrtnr_error(client: Shrtnr) -> None:
     """A non-204 2xx response whose body is the JSON literal `null` must also
     raise ShrtnrError. content is non-empty (4 bytes) and valid JSON, so it
