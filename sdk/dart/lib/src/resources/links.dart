@@ -27,6 +27,7 @@ class LinksResource {
       'GET',
       '/_/api/links',
       query: {'owner': owner, 'range': range?.wireValue},
+      shape: JsonShape.list,
     );
     return (json! as List<dynamic>)
         .map((dynamic e) => Link.fromJson(e as Map<String, dynamic>))
@@ -64,7 +65,8 @@ class LinksResource {
       'label': link.label,
       'expires_at': link.expiresAt,
     };
-    final json = await _http.requestJson('PUT', '/_/api/links/${link.id}', body: body);
+    final json =
+        await _http.requestJson('PUT', '/_/api/links/${link.id}', body: body);
     return Link.fromJson(json! as Map<String, dynamic>);
   }
 
@@ -148,7 +150,11 @@ class LinksResource {
 
   /// List bundles that contain this link.
   Future<List<Bundle>> bundles(int id) async {
-    final json = await _http.requestJson('GET', '/_/api/links/$id/bundles');
+    final json = await _http.requestJson(
+      'GET',
+      '/_/api/links/$id/bundles',
+      shape: JsonShape.list,
+    );
     return (json! as List<dynamic>)
         .map((dynamic e) => Bundle.fromJson(e as Map<String, dynamic>))
         .toList(growable: false);
