@@ -209,9 +209,15 @@ describe("SlugRepository.disable", () => {
     // lifetime, so the primary-fallback query below (which promotes by
     // is_custom = 0) would re-select this very row and then immediately
     // demote it, leaving the link with no primary slug at all.
+    // It throws rather than returning null: null is what findByValue
+    // returns for a slug that does not exist, and disableSlug maps that to
+    // a 404 "Slug not found", which would be a lie about a slug sitting
+    // right there. A caller reaching here has made a programming error, so
+    // say so instead of overloading the miss.
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "onlyauto" });
-    const result = await SlugRepository.disable(env.DB, "onlyauto");
-    expect(result).toBeNull();
+    await expect(SlugRepository.disable(env.DB, "onlyauto")).rejects.toThrow(
+      /system-generated slug/i,
+    );
 
     const updated = await LinkRepository.getById(env.DB, link.id);
     expect(updated!.slugs.find((s) => s.slug === "onlyauto")!.disabled_at).toBeNull();
