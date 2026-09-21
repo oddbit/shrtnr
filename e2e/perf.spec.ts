@@ -30,6 +30,8 @@ const SINGLE_RESPONSE_BUDGET = 400 * 1024;
 const CLS_BUDGET = 0.1;
 /** Decoded bytes of an admin document. 170 KB while it inlined its CSS and JS; measured 11 KB after they moved to /_/assets. */
 const DOCUMENT_BUDGET = 60 * 1024;
+/** Wire bytes of a second admin page in the same session: its document plus fragments, nothing cached refetched. Was 38 KB of document alone. */
+const WARM_NAVIGATION_BUDGET = 60 * 1024;
 
 const ADMIN_PAGES: { name: string; path: () => string }[] = [
   { name: "dashboard", path: () => "/_/admin/dashboard" },
@@ -130,6 +132,40 @@ test.describe("cold load weight", () => {
 
     expect(records.filter((r) => r.status >= 400).map((r) => `${r.status} ${path(r.url)}`)).toEqual([]);
     expect(wire, "cold wire bytes").toBeLessThan(LANDING_COLD_BUDGET);
+    expect(vitals.cls).toBeLessThan(CLS_BUDGET);
+    errors.assertClean();
+    await context.close();
+  });
+});
+
+test.describe("warm navigation", () => {
+  test("a second admin page fetches only its document and fragments", async ({ browser }) => {
+    // The point of hashed assets: after the first page, the stylesheet,
+    // client script, htmx and fonts come from the browser cache, so a
+    // navigation costs the document plus the widget fragments it pulls.
+    const context = await browser.newContext({ storageState: AUTH_STATE });
+    await context.addInitScript(VITALS_INIT_SCRIPT);
+    const page = await context.newPage();
+    const errors = watchErrors(page);
+    const responses = await recordResponses(context, page);
+    if (THROTTLED) await throttle(context, page);
+
+    await page.goto("/_/admin/dashboard");
+    await settle(page);
+    const coldCount = responses().length;
+
+    await page.goto("/_/admin/links");
+    await settle(page);
+    const records = responses().slice(coldCount);
+    const wire = records.reduce((n, r) => n + r.encodedBytes, 0);
+    const vitals = await collectVitals(page);
+    console.log(formatVitals("links (warm)", vitals, wire));
+
+    const refetched = records
+      .filter((r) => r.encodedBytes > 0 && /\/_\/assets\/|\/fonts\/|\/htmx-/.test(r.url))
+      .map((r) => `${kb(r.encodedBytes)} ${path(r.url)}`);
+    expect(refetched, "cached assets fetched again on navigation").toEqual([]);
+    expect(wire, "warm navigation wire bytes").toBeLessThan(WARM_NAVIGATION_BUDGET);
     expect(vitals.cls).toBeLessThan(CLS_BUDGET);
     errors.assertClean();
     await context.close();

@@ -23,8 +23,14 @@ export const FONT_FILES = {
   materialSymbols: "/fonts/material-symbols-outlined-v373.woff2",
 } as const;
 
-/** Fonts every page preloads: the latin text files, which the first paint needs. */
-export const PRELOAD_TEXT_FONTS = [FONT_FILES.manropeLatin, FONT_FILES.spaceGroteskLatin] as const;
+/*
+ * No <link rel="preload"> for any of these. Measured on a Fast 3G / 4x CPU
+ * profile, cold dashboard: preloading the three fonts put first paint at
+ * 772 to 836 ms, the text fonts alone at about 610 ms, none at 412 ms. A
+ * preload competes with the render-blocking stylesheet for bandwidth, and
+ * nothing waits for the fonts: text paints in the metric-matched fallback
+ * and swaps without a shift, icons stay hidden until their file lands.
+ */
 
 const UNICODE_RANGE = {
   latin:

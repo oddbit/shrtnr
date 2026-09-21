@@ -68,14 +68,20 @@ describe("fonts: self-hosted, preloaded, with metric-matched fallbacks", () => {
     }
   });
 
-  it("every page declares the text fonts from /fonts with display=swap and preloads the latin files", async () => {
+  it("every page declares the text fonts from /fonts with display=swap", async () => {
     for (const path of PAGES) {
-      const html = await (await SELF.fetch(req(path))).text();
       const css = await pageCss(path);
       expect(css, path).toMatch(/@font-face\s*\{[^}]*font-family:\s*'Manrope'[^}]*font-display:\s*swap[^}]*url\(\/fonts\/manrope-v\d+-latin\.woff2\)/);
       expect(css, path).toMatch(/@font-face\s*\{[^}]*font-family:\s*'Space Grotesk'[^}]*font-display:\s*swap[^}]*url\(\/fonts\/space-grotesk-v\d+-latin\.woff2\)/);
-      expect(html, path).toMatch(/<link rel="preload" href="\/fonts\/manrope-v\d+-latin\.woff2" as="font" type="font\/woff2" crossorigin/);
-      expect(html, path).toMatch(/<link rel="preload" href="\/fonts\/space-grotesk-v\d+-latin\.woff2" as="font" type="font\/woff2" crossorigin/);
+    }
+  });
+
+  it("no page preloads a font: a preload competes with the stylesheet and nothing waits for the fonts", async () => {
+    // Measured on Fast 3G / 4x CPU: first paint at 412 ms without preloads
+    // against 772 to 836 ms with them (see src/styles.ts).
+    for (const path of PAGES) {
+      const html = await (await SELF.fetch(req(path))).text();
+      expect(html, path).not.toMatch(/<link rel="preload"[^>]*as="font"/);
     }
   });
 
@@ -94,14 +100,12 @@ describe("fonts: self-hosted, preloaded, with metric-matched fallbacks", () => {
     expect(css).toMatch(/--font-family-display:\s*'Space Grotesk',\s*'Space Grotesk Fallback'/);
   });
 
-  it("the admin shell self-hosts the Material Symbols static instance with display=block and preloads it", async () => {
-    const html = await fetchHtml("/_/admin/settings");
+  it("the admin shell self-hosts the Material Symbols static instance with display=block", async () => {
     const css = await pageCss("/_/admin/settings");
     // The static instance weighs 322 KB against 3.98 MB for the variable
     // font with every axis; display=block hides the ligature text ("menu")
     // that swap would flash until the file arrives.
     expect(css).toMatch(/@font-face\s*\{[^}]*font-family:\s*'Material Symbols Outlined'[^}]*font-display:\s*block[^}]*url\(\/fonts\/material-symbols-outlined-v\d+\.woff2\)/);
-    expect(html).toMatch(/<link rel="preload" href="\/fonts\/material-symbols-outlined-v\d+\.woff2" as="font" type="font\/woff2" crossorigin/);
   });
 
   it("standalone pages do not pull the icon font they never use", async () => {

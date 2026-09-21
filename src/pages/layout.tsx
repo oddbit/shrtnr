@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { FC, PropsWithChildren } from "hono/jsx";
-import { FONT_FILES, PRELOAD_TEXT_FONTS } from "../styles";
 import { adminClientScriptPath, adminStylesheetPath } from "../assets";
 import { Topbar } from "../components/topbar";
 import type { TranslateFn } from "../i18n";
@@ -55,10 +54,6 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
-        {/* Fonts are self-hosted and declared in the stylesheet; preloading starts the fetch before the CSS is parsed. */}
-        {[...PRELOAD_TEXT_FONTS, FONT_FILES.materialSymbols].map((href) => (
-          <link rel="preload" href={href} as="font" type="font/woff2" crossorigin="" />
-        ))}
         {/* Content-hashed and immutable (src/assets.ts): one download per deploy, not per page. */}
         <link rel="stylesheet" href={adminStylesheetPath()} />
         {/* Version in the file name: public/_headers caches it as immutable. */}

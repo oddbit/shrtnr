@@ -1,7 +1,7 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-import { PRELOAD_TEXT_FONTS, standaloneBaseStyles } from "../styles";
+import { standaloneBaseStyles } from "../styles";
 
 export function mcpLandingResponse(): Response {
   return new Response(MCP_LANDING_HTML, {
@@ -24,7 +24,6 @@ const MCP_LANDING_HTML = `<!DOCTYPE html>
   <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  ${PRELOAD_TEXT_FONTS.map((href) => `<link rel="preload" href="${href}" as="font" type="font/woff2" crossorigin>`).join("\n  ")}
   <style>${standaloneBaseStyles}
     body {
       min-height: 100vh;
