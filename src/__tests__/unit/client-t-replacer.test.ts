@@ -8,24 +8,11 @@
 // replacement as special patterns instead of literal text. t() in
 // client.ts reimplements the same interpolation client-side and needs the
 // same guard, or a param value containing one of those sequences (an API
-// key title, a bundle name — both free text) corrupts the rendered string.
+// key title, a bundle name, both free text) corrupts the rendered string.
 import { describe, expect, it } from "vitest";
 import { adminClientScript } from "../../client";
 import type { Translations } from "../../i18n/types";
-
-function extractTopLevelChunk(source: string, startPattern: RegExp): string {
-  const lines = source.split("\n");
-  const startIdx = lines.findIndex((l) => startPattern.test(l));
-  if (startIdx === -1) throw new Error(`chunk not found: ${startPattern}`);
-  let endIdx = lines.length;
-  for (let i = startIdx + 1; i < lines.length; i++) {
-    if (/^(function |var |if |window\.|document\.)/.test(lines[i])) {
-      endIdx = i;
-      break;
-    }
-  }
-  return lines.slice(startIdx, endIdx).join("\n");
-}
+import { extractTopLevelChunk } from "../client-script";
 
 function loadT(translations: Record<string, string>) {
   const script = adminClientScript("1.0.0", {} as unknown as Translations);

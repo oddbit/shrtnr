@@ -12,20 +12,7 @@
 import { describe, expect, it } from "vitest";
 import { adminClientScript } from "../../client";
 import type { Translations } from "../../i18n/types";
-
-function extractTopLevelChunk(source: string, startPattern: RegExp): string {
-  const lines = source.split("\n");
-  const startIdx = lines.findIndex((l) => startPattern.test(l));
-  if (startIdx === -1) throw new Error(`chunk not found: ${startPattern}`);
-  let endIdx = lines.length;
-  for (let i = startIdx + 1; i < lines.length; i++) {
-    if (/^(function |var |if |window\.|document\.)/.test(lines[i])) {
-      endIdx = i;
-      break;
-    }
-  }
-  return lines.slice(startIdx, endIdx).join("\n");
-}
+import { extractTopLevelChunk } from "../client-script";
 
 type ToastCall = { message: string; level?: string };
 

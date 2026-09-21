@@ -11,6 +11,7 @@
 import { describe, expect, it } from "vitest";
 import { adminClientScript } from "../../client";
 import type { Translations } from "../../i18n/types";
+import { extractTopLevelChunk } from "../client-script";
 
 // Finds every `res.json().then(...)` call that reports the parsed body's
 // `error` field but has no `.catch(...)` immediately after it. Every such
@@ -54,20 +55,6 @@ function findUnguardedJsonThenToast(script: string): string[] {
     }
   }
   return unguarded;
-}
-
-function extractTopLevelChunk(source: string, startPattern: RegExp): string {
-  const lines = source.split("\n");
-  const startIdx = lines.findIndex((l) => startPattern.test(l));
-  if (startIdx === -1) throw new Error(`chunk not found: ${startPattern}`);
-  let endIdx = lines.length;
-  for (let i = startIdx + 1; i < lines.length; i++) {
-    if (/^(function |var |if |window\.|document\.)/.test(lines[i])) {
-      endIdx = i;
-      break;
-    }
-  }
-  return lines.slice(startIdx, endIdx).join("\n");
 }
 
 type ToastCall = { message: string; level?: string };
