@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { FC } from "hono/jsx";
-import type { TranslateFn } from "../i18n";
+import type { TranslateFn, TranslationKey } from "../i18n";
 import type { TimelineRange } from "../types";
 import { SUPPORTED_LANGUAGES } from "../i18n";
 import { fmtNumber } from "../i18n/format";
@@ -50,8 +50,8 @@ export const SettingsPage: FC<Props> = ({ theme, slugLength, lang, defaultRange,
                   onchange="setLanguage(this.value)"
                 >
                   {SUPPORTED_LANGUAGES.map((code) => {
-                    const native = t(`lang.${code}` as any);
-                    const local = t(`langLocal.${code}` as any);
+                    const native = t(`lang.${code}` as TranslationKey);
+                    const local = t(`langLocal.${code}` as TranslationKey);
                     const label = lang === code ? native : `${native} · ${local}`;
                     return (
                       <option value={code} selected={lang === code}>

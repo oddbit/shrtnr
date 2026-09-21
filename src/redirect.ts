@@ -46,7 +46,10 @@ export async function handleRedirect(
 
   // 5. Record click (background, does not block redirect)
   const rawReferrer = request.headers.get("Referer") || null;
-  const country = (request as unknown as { cf?: { country?: string } }).cf?.country ?? request.headers.get("cf-ipcountry") ?? null;
+  // request.cf is typed as a union with the outbound RequestInit shape, which
+  // has no country; narrow to the incoming-request properties.
+  const cf = (request as Request<unknown, IncomingRequestCfProperties>).cf;
+  const country = cf?.country ?? request.headers.get("cf-ipcountry") ?? null;
   const ua = request.headers.get("User-Agent") || "";
   const clientIp = request.headers.get("CF-Connecting-IP") || request.headers.get("X-Forwarded-For") || null;
 

@@ -13,14 +13,8 @@ export async function handleGetSettings(env: Env, identity: string): Promise<Res
 }
 
 export async function handleUpdateSettings(request: Request, env: Env, identity: string): Promise<Response> {
-  let body: {
-    slug_default_length?: number;
-    theme?: string;
-    lang?: string;
-    default_range?: string | null;
-    filter_bots?: boolean;
-    filter_self_referrers?: boolean;
-  };
+  // The service validates every field; the type is its parameter type.
+  let body: Parameters<typeof updateAppSettings>[2];
 
   try {
     body = await request.json();
@@ -28,5 +22,5 @@ export async function handleUpdateSettings(request: Request, env: Env, identity:
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  return fromServiceResult(await updateAppSettings(env, identity, body as any));
+  return fromServiceResult(await updateAppSettings(env, identity, body));
 }
