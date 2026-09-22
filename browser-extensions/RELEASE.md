@@ -30,7 +30,7 @@ Load `dist/chrome/` as an unpacked extension via `chrome://extensions/`.
 - [ ] Type a custom slug, click **Add slug** → short URL swaps to the slug and is copied. Add the same slug again → "already taken".
 - [ ] Type `-bad-` as a slug → the slug rule appears, no request is sent.
 - [ ] Open the popup on a second page → the first link appears under **Recent**.
-- [ ] Press `Alt+Shift+L` on a normal page → popup opens and shortens.
+- [ ] Press the shortcut the options page names on a normal page → popup opens and shortens.
 - [ ] Configure a key with scope `create` only → **Test connection** reports connected with the scope note; **Show QR** reports the missing read scope.
 - [ ] Click **View in admin** → opens `${baseUrl}/_/admin/links/<id>` in a new tab.
 - [ ] Open popup on `chrome://newtab` → shows "shrtnr can't shorten internal browser pages."

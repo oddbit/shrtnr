@@ -34,7 +34,7 @@ The recent list is stored in `chrome.storage.local` on this device only. It neve
 | `storage` | Persist your shrtnr URL and API key across browser sessions, and keep the on-device recent list. |
 | Host permission for your shrtnr URL | Granted at runtime against the exact origin you enter on the options page. The extension cannot reach any other origin. Saving drops every other granted origin, including one a connection test granted but never saved. |
 
-The keyboard shortcut (`Alt+Shift+L`) is a manifest declaration and grants no data access.
+The keyboard shortcut is a manifest declaration and grants no data access. The options page shows the combination your browser assigned.
 
 ## What this extension does not do
 

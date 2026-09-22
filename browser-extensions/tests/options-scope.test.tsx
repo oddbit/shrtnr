@@ -22,8 +22,17 @@ vi.mock("../src/api", async () => {
 beforeEach(() => {
   mockedTest = vi.fn(async () => undefined);
   delete (chrome.permissions as unknown as Record<string, unknown>).getAll;
+  delete (chrome as unknown as Record<string, unknown>).commands;
   cleanup();
 });
+
+function installCommands(shortcut: string): void {
+  (chrome as unknown as Record<string, unknown>).commands = {
+    getAll: vi.fn(async () => [
+      { name: "_execute_action", description: "Shorten the current tab with shrtnr", shortcut },
+    ]),
+  };
+}
 
 async function renderOptions() {
   const { Options } = await import("../src/options/Options");
@@ -139,11 +148,31 @@ describe("Options: about section", () => {
       expect(screen.getByText(/version 9\.9\.9/i)).toBeTruthy();
     });
   });
+});
 
-  it("describes the keyboard shortcut", async () => {
+describe("Options: keyboard shortcut", () => {
+  it("names the binding the browser actually assigned", async () => {
+    // suggested_key in the manifest is a request. Read the live binding so a
+    // rebound or browser-reassigned combination is the one on screen.
+    installCommands("Ctrl+Shift+K");
     await renderOptions();
     await waitFor(() => {
-      expect(screen.getByText(/alt\+shift\+l/i)).toBeTruthy();
+      expect(screen.getByText(/ctrl\+shift\+k/i)).toBeTruthy();
     });
+  });
+
+  it("says so when the browser left the command unassigned", async () => {
+    installCommands("");
+    await renderOptions();
+    await waitFor(() => {
+      expect(screen.getByText(/no shortcut is assigned/i)).toBeTruthy();
+    });
+  });
+
+  it("renders no shortcut line when the browser exposes no commands API", async () => {
+    await renderOptions();
+    await waitFor(() => screen.getByText(/keyboard shortcut/i));
+    expect(screen.queryByText(/opens the popup/i)).toBeNull();
+    expect(screen.queryByText(/no shortcut is assigned/i)).toBeNull();
   });
 });
