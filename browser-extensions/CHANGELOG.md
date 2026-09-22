@@ -12,7 +12,7 @@ Repairs the extension in real browsers, adds the parity features a shortener ext
 - **Keyboard shortcut** `Alt+Shift+L` opens the popup and shortens the current tab.
 - **Scope-aware connection test.** A key scoped to `create` only used to fail the test with a message about creating links. The test now reports connected and says that QR codes need the `read` scope. The options page explains the scope choice.
 - **QR failures are visible.** A forbidden or failed QR fetch used to reset the button silently. Both now show a message, naming the missing scope when that is the cause.
-- **Host permission hygiene.** Saving a different server URL revokes the previous origin's runtime host permission.
+- **Host permission hygiene.** Saving drops every granted host permission except the saved origin, including one a connection test granted for a URL that was then edited before saving.
 - **Firefox minimum is 140** (Android 142). The AMO data-collection declaration the manifest carries is only honoured from 140; declaring it with a lower floor drew two lint warnings and left older profiles without it.
 - Options page shows the installed version. README pointed at `/_/admin/api-keys`; the page is `/_/admin/keys`.
 - `yarn typecheck` runs `tsc`. esbuild strips types without checking them, which is how the 1.1.0 pin and a stale `qr()` argument type went unnoticed. Not yet wired into CI: see the QR size type note in the extension report.

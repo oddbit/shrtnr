@@ -21,6 +21,7 @@ vi.mock("../src/api", async () => {
 
 beforeEach(() => {
   mockedTest = vi.fn(async () => undefined);
+  delete (chrome.permissions as unknown as Record<string, unknown>).getAll;
   cleanup();
 });
 
@@ -61,6 +62,11 @@ describe("Options: host permission hygiene", () => {
     chrome.permissions.request = vi.fn(async () => true);
     const remove = vi.fn(async () => true);
     (chrome.permissions as unknown as { remove: unknown }).remove = remove;
+    // What the browser holds once the save has requested the new origin.
+    (chrome.permissions as unknown as { getAll: unknown }).getAll = vi.fn(async () => ({
+      permissions: ["storage"],
+      origins: ["https://old.example/*", "https://new.example/*"],
+    }));
     await renderOptions();
     await fillForm("https://new.example/admin", "sk_new");
     fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
@@ -84,6 +90,32 @@ describe("Options: host permission hygiene", () => {
       expect((await getConfig())?.apiKey).toBe("sk_new");
     });
     expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("drops an origin the connection test granted but the user never saved", async () => {
+    // Test grants whatever is in the field at the time. Editing the field
+    // and saving leaves that origin granted unless the save reads the
+    // grants back rather than the previous config.
+    setStorageItem("config", { baseUrl: "https://old.example", apiKey: "sk_old" });
+    chrome.permissions.request = vi.fn(async () => true);
+    const remove = vi.fn(async () => true);
+    (chrome.permissions as unknown as { remove: unknown }).remove = remove;
+    (chrome.permissions as unknown as { getAll: unknown }).getAll = vi.fn(async () => ({
+      permissions: ["storage"],
+      origins: ["https://old.example/*", "https://a.example/*", "https://b.example/*"],
+    }));
+    await renderOptions();
+    await fillForm("https://a.example", "sk_new");
+    fireEvent.click(screen.getByRole("button", { name: /test/i }));
+    await waitFor(() => expect(mockedTest).toHaveBeenCalled());
+    fireEvent.input(screen.getByLabelText(/server url/i), {
+      target: { value: "https://b.example" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() => expect(remove).toHaveBeenCalled());
+    expect(remove).toHaveBeenCalledWith({
+      origins: ["https://old.example/*", "https://a.example/*"],
+    });
   });
 
   it("saves even when the browser has no permissions.remove", async () => {

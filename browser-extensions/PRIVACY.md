@@ -32,7 +32,7 @@ The recent list is stored in `chrome.storage.local` on this device only. It neve
 | `activeTab` | Read the active tab URL when you click the toolbar icon, so the extension can shorten it. The extension does not read tab content. |
 | `clipboardWrite` | Copy the generated short URL to your clipboard so you can paste it elsewhere. |
 | `storage` | Persist your shrtnr URL and API key across browser sessions, and keep the on-device recent list. |
-| Host permission for your shrtnr URL | Granted at runtime against the exact origin you enter on the options page. The extension cannot reach any other origin. Saving a different URL revokes the previous one. |
+| Host permission for your shrtnr URL | Granted at runtime against the exact origin you enter on the options page. The extension cannot reach any other origin. Saving drops every other granted origin, including one a connection test granted but never saved. |
 
 The keyboard shortcut (`Alt+Shift+L`) is a manifest declaration and grants no data access.
 

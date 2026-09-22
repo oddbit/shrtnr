@@ -7,10 +7,11 @@
 
 import { useState } from "preact/hooks";
 import type { Config } from "../storage";
-import { getConfig, setConfig } from "../storage";
+import { setConfig } from "../storage";
 import { testConnection } from "../api";
 import { ExtensionError } from "../errors";
 import type { TranslateFn } from "../i18n";
+import { hostFromUrl } from "../url";
 
 type TestState =
   | { kind: "idle" }
@@ -31,14 +32,6 @@ type Props = {
   showCancel?: boolean;
   onCancel?: () => void;
 };
-
-function hostFromBaseUrl(baseUrl: string): string {
-  try {
-    return new URL(baseUrl).host;
-  } catch {
-    return baseUrl;
-  }
-}
 
 function categoryToMessage(category: string): {
   messageKey: string;
@@ -62,17 +55,31 @@ function categoryToMessage(category: string): {
   }
 }
 
-// A saved server URL that changes leaves the previous origin's host
-// permission granted for nothing. Drop it so the extension only ever holds
-// access to the deployment it is pointed at. Best effort: a browser that
-// declines the removal keeps working, it merely holds one stale grant.
-async function revokeOriginPermission(origin: string): Promise<void> {
+/**
+ * Drops every granted host permission except the one the saved config points
+ * at, so the extension only ever holds access to its own deployment.
+ *
+ * Reading the grants rather than the previous config is what makes this
+ * complete: Test grants an origin for whatever URL is in the field at the
+ * time, and those origins are never written to storage. Testing
+ * `https://a.example`, editing to `https://b.example` and saving would
+ * otherwise leave A granted forever.
+ *
+ * Best effort: a browser that declines the removal keeps working, it merely
+ * holds a stale grant.
+ */
+async function pruneOriginPermissions(keepOrigin: string): Promise<void> {
   const permissions = typeof chrome !== "undefined" ? chrome.permissions : undefined;
   if (!permissions || typeof permissions.remove !== "function") return;
+  if (typeof permissions.getAll !== "function") return;
   try {
-    await permissions.remove({ origins: [`${origin}/*`] });
+    const granted = await permissions.getAll();
+    const keep = `${keepOrigin}/*`;
+    const stale = (granted.origins ?? []).filter((o) => o !== keep);
+    if (stale.length === 0) return;
+    await permissions.remove({ origins: stale });
   } catch {
-    // Nothing to recover: the stale grant is harmless without a matching config.
+    // Nothing to recover: a stale grant is harmless without a matching config.
   }
 }
 
@@ -111,7 +118,7 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
       setTestState({
         kind: "error",
         messageKey: "error.permissionDeniedTest",
-        params: { host: hostFromBaseUrl(origin) },
+        params: { host: hostFromUrl(origin) },
       });
       return;
     }
@@ -120,7 +127,7 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
       await testConnection({ baseUrl: origin, apiKey: trimmedKey });
       setTestState({ kind: "ok" });
     } catch (err) {
-      const host = hostFromBaseUrl(origin);
+      const host = hostFromUrl(origin);
       if (err instanceof ExtensionError) {
         // The probe is a read call. A 403 means the server accepted the key
         // and only its scope stops the read: the connection itself works.
@@ -168,16 +175,9 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
       setSaveState({
         kind: "error",
         messageKey: "error.permissionDenied",
-        params: { host: hostFromBaseUrl(normalizedOrigin) },
+        params: { host: hostFromUrl(normalizedOrigin) },
       });
       return;
-    }
-
-    let previous: Config | null = null;
-    try {
-      previous = await getConfig();
-    } catch {
-      previous = null;
     }
 
     try {
@@ -191,9 +191,7 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
       return;
     }
 
-    if (previous && previous.baseUrl !== normalizedOrigin) {
-      await revokeOriginPermission(previous.baseUrl);
-    }
+    await pruneOriginPermissions(normalizedOrigin);
   }
 
   return (
