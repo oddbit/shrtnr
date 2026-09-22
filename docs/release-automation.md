@@ -1,6 +1,6 @@
 # SDK release automation
 
-Every SDK release track is driven by a version bump on `main`. Each track has its own self-contained workflow under `.github/workflows/`: version detection, tag-existence idempotency, changelog extraction, OIDC trusted publishing, tag creation, and GitHub release creation all live in one file per track. The tracks are intentionally not sharing a reusable workflow — the OIDC claims used by npm provenance, PyPI trusted publishing, and pub.dev publishing all diverge when a reusable is in play, and the shared logic is small enough that duplication costs less than the indirection.
+Every SDK release track is driven by a version bump on `main`. Each track has its own self-contained workflow under `.github/workflows/`: version detection, tag-existence idempotency, OIDC trusted publishing, and tag creation all live in one file per track. Only the app track (`release.yml`) creates a GitHub Release, and it claims the repo's Latest release slot with `--latest`. SDK tracks tag and publish; the registry page is the SDK's release notes, so an SDK version never appears in the repo sidebar. The tracks are intentionally not sharing a reusable workflow — the OIDC claims used by npm provenance, PyPI trusted publishing, and pub.dev publishing all diverge when a reusable is in play, and the shared logic is small enough that duplication costs less than the indirection.
 
 ## Current tracks
 
@@ -15,7 +15,7 @@ Shared bash lives in `scripts/read-version.sh` and `scripts/extract-changelog.sh
 
 ## How it works
 
-**main-push mode (npm, Python).** The workflow fires on any push to `main` that touches the SDK's path. It compares the manifest file across the triggering push range (`github.event.before..github.sha`) and exits cleanly if the manifest wasn't touched — a multi-commit push where the version bump isn't the last commit is still detected correctly. If the manifest changed, it runs the SDK's setup + build + test, publishes to the registry via OIDC, then creates the `<prefix>-v<version>` tag and a matching GitHub Release. Idempotency has two layers: the push-range check above, plus a tag-exists check that catches reruns of a successful release.
+**main-push mode (npm, Python).** The workflow fires on any push to `main` that touches the SDK's path. It compares the manifest file across the triggering push range (`github.event.before..github.sha`) and exits cleanly if the manifest wasn't touched — a multi-commit push where the version bump isn't the last commit is still detected correctly. If the manifest changed, it runs the SDK's setup + build + test, publishes to the registry via OIDC, then creates and pushes the `<prefix>-v<version>` tag. No GitHub Release is created. Idempotency has two layers: the push-range check above, plus a tag-exists check that catches reruns of a successful release.
 
 **tag-push mode (pub.dev).** pub.dev's trusted-publishing configuration validates the `ref` claim in the GitHub-issued OIDC token against a configured tag pattern. That means the workflow that publishes has to be triggered by a tag push. GitHub explicitly does not fire downstream workflows from tags pushed via `GITHUB_TOKEN`, so we cannot tag from one workflow and have a second workflow pick up the event — the chain breaks by design. Until the developer adds a non-`GITHUB_TOKEN` credential (deploy key or GitHub App), the pub.dev track uses a manual tag push:
 
@@ -29,6 +29,12 @@ git push origin main pub-v0.2.3
 ```
 
 Pushing main + tag together hands the tag event to a user identity (not `GITHUB_TOKEN`), so `release-sdk-pub.yml` starts correctly.
+
+## GitHub Releases
+
+The app is the only track that produces a GitHub Release. `release.yml` guards the tag prefix (`app-v<semver>`) before tagging and fails the job on anything else, then passes `--latest` to `gh release create` so the sidebar always shows the app version.
+
+SDK and extension workflows only push a tag. Their release notes live in the matching `CHANGELOG.md` and on the registry page (npm, PyPI, pub.dev). Releases created before this rule can be cleaned up with `scripts/prune-sdk-releases.sh`, which lists every release under an SDK prefix and, with `--apply`, deletes it or marks it non-latest. It never deletes a tag, so published versions stay resolvable.
 
 ## One-time registry setup
 

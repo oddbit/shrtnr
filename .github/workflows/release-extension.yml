@@ -5,6 +5,10 @@ name: Release browser extension
 # in the push range; changelog-only edits run the workflow and exit
 # cleanly. The tag-exists check is a second idempotency layer that makes
 # reruns of a successful release a no-op.
+#
+# Store upload and tag push are the whole release. No GitHub Release is
+# created here; only the app track (release.yml) owns the repo's Latest
+# release slot.
 
 on:
   push:
@@ -12,7 +16,6 @@ on:
     paths:
       - 'browser-extensions/**'
       - '.github/workflows/release-extension.yml'
-      - 'scripts/extract-changelog.sh'
       - 'scripts/read-version.sh'
   workflow_dispatch:
 
@@ -57,14 +60,6 @@ jobs:
           fi
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Extract changelog for version
-        if: steps.version.outputs.should_run == 'true'
-        run: |
-          bash scripts/extract-changelog.sh \
-            "${{ steps.version.outputs.current }}" \
-            browser-extensions/CHANGELOG.md \
-            /tmp/release-notes.md
 
       - uses: actions/setup-node@v7
         if: steps.version.outputs.should_run == 'true'
@@ -117,12 +112,3 @@ jobs:
           TAG="${{ steps.version.outputs.tag }}"
           git tag "$TAG"
           git push origin "$TAG"
-
-      - name: Create GitHub release
-        if: steps.version.outputs.should_run == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "${{ steps.version.outputs.tag }}" \
-            --title "${{ steps.version.outputs.tag }}" \
-            --notes-file /tmp/release-notes.md

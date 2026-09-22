@@ -7,6 +7,11 @@ name: Release Python SDK
 # PyPI trusted publishing (OIDC, no token). The PyPI project needs a
 # one-time configuration pointing at this workflow — see
 # docs/release-automation.md.
+#
+# Publishing to PyPI and pushing the tag is the whole release. No
+# GitHub Release is created here: the registry page carries the release
+# notes, and only the app track (release.yml) owns the repo's Latest
+# release slot.
 
 on:
   push:
@@ -14,7 +19,6 @@ on:
     paths:
       - 'sdk/python/**'
       - '.github/workflows/release-sdk-python.yml'
-      - 'scripts/extract-changelog.sh'
       - 'scripts/read-version.sh'
   workflow_dispatch:
 
@@ -76,14 +80,6 @@ jobs:
         with:
           sdk: python
 
-      - name: Extract changelog for version
-        if: steps.version.outputs.should_run == 'true'
-        run: |
-          bash scripts/extract-changelog.sh \
-            "${{ steps.version.outputs.current }}" \
-            sdk/python/CHANGELOG.md \
-            /tmp/release-notes.md
-
       - uses: actions/setup-python@v7
         if: steps.version.outputs.should_run == 'true'
         with:
@@ -110,12 +106,3 @@ jobs:
           TAG="${{ steps.version.outputs.tag }}"
           git tag "$TAG"
           git push origin "$TAG"
-
-      - name: Create GitHub release
-        if: steps.version.outputs.should_run == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "${{ steps.version.outputs.tag }}" \
-            --title "${{ steps.version.outputs.tag }}" \
-            --notes-file /tmp/release-notes.md

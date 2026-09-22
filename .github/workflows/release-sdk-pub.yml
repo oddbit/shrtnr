@@ -4,7 +4,9 @@ name: Release pub.dev SDK
 # main-push mode because its trusted-publishing config requires the OIDC
 # token to carry the tag's ref. The developer bumps the version and
 # changelog locally, creates the tag, and pushes main + tag together.
-# This workflow fires on the tag push and publishes.
+# This workflow fires on the tag push and publishes. It creates no
+# GitHub Release: the pub.dev package page carries the release notes,
+# and only the app track (release.yml) owns the repo's Latest release.
 
 on:
   push:
@@ -12,7 +14,7 @@ on:
       - 'pub-v*'
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
 
 concurrency:
@@ -49,13 +51,6 @@ jobs:
         with:
           sdk: dart
 
-      - name: Extract changelog for version
-        run: |
-          bash scripts/extract-changelog.sh \
-            "${{ steps.version.outputs.current }}" \
-            sdk/dart/CHANGELOG.md \
-            /tmp/release-notes.md
-
       - uses: dart-lang/setup-dart@v1
 
       - name: dart pub get + analyze + test
@@ -68,11 +63,3 @@ jobs:
       - name: Publish to pub.dev
         working-directory: sdk/dart
         run: dart pub publish --force
-
-      - name: Create GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "${{ steps.version.outputs.tag }}" \
-            --title "${{ steps.version.outputs.tag }}" \
-            --notes-file /tmp/release-notes.md
