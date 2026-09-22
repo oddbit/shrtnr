@@ -92,6 +92,16 @@ The first request creates the schema. To apply it ahead of that request from you
 
 Cloudflare [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) redeploys the Worker on every push to your production branch. Schema changes need no separate step: the deployed Worker carries its migrations and applies the pending ones on the first request.
 
+The build settings the project expects, under **Workers & Pages > shrtnr > Settings > Build** in the dashboard:
+
+| Field | Value |
+|---|---|
+| Build command | empty |
+| Deploy command | `yarn deploy` (or `npx wrangler deploy`) |
+| Version command | `npx wrangler versions upload` |
+
+A fork created by the deploy button gets these from `package.json`. Both commands work with the bindings declared by name in `wrangler.jsonc`: wrangler links to the Worker's existing KV namespace and D1 database by binding name. A project set up before this repo dropped its id placeholders may still carry `bash scripts/resolve-bindings.sh && ...` in one of these fields; that script no longer exists, so remove that prefix or the build fails with "No such file or directory".
+
 Two optional ways to apply migrations before the Worker takes traffic, for deployments that want the schema in place ahead of the first request:
 
 - **GitHub Actions.** `.github/workflows/migrate.yml` runs `wrangler d1 migrations apply` after Cloudflare's check suite succeeds on `main`. It needs two repository secrets under **Settings > Secrets and variables > Actions**: `CLOUDFLARE_API_TOKEN` with **Workers Scripts: Edit** and **D1: Edit**, and `CLOUDFLARE_ACCOUNT_ID`. A fork created by the deploy button can add the workflow and the secrets the same way.
