@@ -46,14 +46,37 @@ jobs:
             CHANGELOG.md \
             /tmp/release_notes.md
 
+      # Only the app track creates a GitHub Release. The SDK and extension
+      # workflows tag and publish to their registries but never call
+      # `gh release create`, so this release is the only candidate for the
+      # repo's "Latest release" slot. The guard fails loudly if the tag ever
+      # carries anything other than the app prefix, rather than silently
+      # publishing a release under a foreign name.
+      - name: Guard release tag prefix
+        if: steps.version.outputs.exists == 'false'
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if [[ ! "$TAG" =~ ^app-v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::refusing to release tag '$TAG': the app release job only handles app-v<semver> tags" >&2
+            exit 1
+          fi
+
       - name: Create tag and release
         if: steps.version.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ steps.version.outputs.tag }}"
+          CURRENT="${{ steps.version.outputs.current }}"
           git tag "$TAG"
           git push origin "$TAG"
+          # The tag keeps the app- prefix, since sdk-v/npm-v/py-v/pub-v tags
+          # share the tag namespace. The release title drops it: with SDK
+          # releases removed from the release page, "app-" on every title is
+          # redundant, so the title is just the version.
+          # --latest pins the sidebar slot to the app release no matter what
+          # else exists in the release list.
           gh release create "$TAG" \
-            --title "$TAG" \
-            --notes-file /tmp/release_notes.md
+            --title "v$CURRENT" \
+            --notes-file /tmp/release_notes.md \
+            --latest
