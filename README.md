@@ -167,7 +167,11 @@ Every shrtnr deployment includes a built-in [MCP](https://modelcontextprotocol.i
 
 The MCP endpoint authenticates through [Cloudflare Access Managed OAuth](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/). CF Access acts as the OAuth Authorization Server: it handles client registration, token issuance, and validation at the edge. The Worker receives authenticated requests with identity headers and does not implement any OAuth endpoints itself.
 
-> **Authorization model.** The MCP endpoint does not split read from write today. Anyone whose email matches the CF Access policy on the MCP application can call every registered tool, including destructive ones (`delete_link`, `delete_bundle`, `remove_slug`, `archive_bundle`). Per-resource ownership still applies: a user cannot mutate another user's links or bundles. To grant a read-only audience, gate them through a separate MCP application or a separate Worker deployment with the write tools removed.
+> **Authorization model.** The MCP endpoint has no read/write scope split: anyone whose email matches the CF Access policy on the MCP application can call every registered tool. What a tool does once called is bounded by the same rules the admin UI and the API apply, because all three go through one service layer.
+>
+> A caller reads anything in the deployment and changes only what they own. `update_link`, `disable_link`, `enable_link`, `delete_link`, `disable_slug`, `enable_slug`, `remove_slug`, `update_bundle`, `archive_bundle`, `unarchive_bundle`, `delete_bundle` and `remove_link_from_bundle` all refuse on another user's resource. `delete_link` additionally refuses on any link that has recorded a click, and `remove_slug` on any slug that has; disable is the operation that works there. Two tools are open to every caller by design and carry no owner check: `add_custom_slug` adds a slug to any link, and `add_link_to_bundle` files any link into any bundle.
+>
+> To grant a read-only audience, gate them through a separate MCP application or a separate Worker deployment with the write tools removed. Full rules: [Permissions and ownership](#permissions-and-ownership).
 
 <br clear="all">
 
@@ -264,6 +268,54 @@ All clients connect to `https://mcp.your-domain.com`. The OAuth handshake is aut
 **Other clients:** Point at `https://mcp.your-domain.com` with Streamable HTTP transport. The server advertises its OAuth endpoints via `/.well-known/oauth-authorization-server`.
 
 Replace `your-domain.com` with your actual short domain.
+
+## Permissions and ownership
+
+shrtnr assumes one team on one deployment. Everyone who gets past your access control sees the whole catalog; each person changes only what they created. The admin UI, the `/_/api/*` key path and the `/_/mcp` OAuth path all call the same service layer, so the rules below hold identically on all three.
+
+### Read is shared, write is owned
+
+| Operation | Who can do it |
+|---|---|
+| List and read links, slugs, bundles | Any authenticated caller, whoever owns them |
+| Read analytics, timelines, breakdowns, dashboard | Any authenticated caller, whoever owns them |
+| Create a link or a bundle | Any authenticated caller; the creator becomes the owner |
+| Update, disable, enable, delete a link | Owner only |
+| Set the primary slug; disable, enable or remove a slug | Owner of the parent link only |
+| Update, archive, unarchive, delete a bundle | Owner only |
+| Remove a link from a bundle | Bundle owner only, whoever owns the link |
+| Add a custom slug to a link | Any authenticated caller, including on someone else's link |
+| Add a link to a bundle | Any authenticated caller, on any bundle, with any link |
+
+The two open rows are deliberate: they let a colleague file your link into their campaign bundle, or hand it a memorable slug, without asking you first. Neither can redirect, disable or destroy anything.
+
+A refused write answers `403` with a sentence naming the rule. A request for something that is not there answers `404`, so the two cases stay distinguishable.
+
+### Ownership
+
+Ownership is a single column: `links.created_by` and `bundles.created_by`, set once at creation from the caller's identity and never reassigned. There is no transfer, no sharing and no admin override: a deployment-wide administrator who did not create a link cannot delete it either. A link created with no identity at all is stored as owner `anonymous`, which is also the identity every unidentified caller arrives with, so on a deployment without access control everyone shares that one bucket.
+
+### Delete only while unclicked, disable after that
+
+A link or a custom slug can be deleted only while it has recorded zero clicks. The count is lifetime and unfiltered: one click from a bot is enough. After that, delete answers `400` with `Cannot delete a link with clicks, disable it instead`, and disable is the operation that works.
+
+The reason is that a clicked short link exists in the wild. It is in sent email, in print, on a slide, inside a QR code on a sticker nobody can recall. Deleting it frees the slug for reuse and turns every one of those into a `404` or, worse, a redirect to whatever claims the slug next. Disabling keeps the row, keeps its click history, and stops the redirect. The same rule protects a custom slug: removing it would orphan or cascade away its click rows.
+
+The system-generated slug is a special case. It can be neither removed nor disabled, whatever its click count, since it is the link's canonical address. Disable the whole link instead.
+
+Bundles carry no click rule. A bundle is a grouping, not an address: deleting one removes memberships and leaves every member link and its history untouched. Archiving is the reversible alternative, which hides a bundle from the default listing without deleting anything.
+
+### How identity is established
+
+| Surface | Identity comes from | Notes |
+|---|---|---|
+| Admin UI and `/_/admin/api/*` | Cloudflare Access JWT (`email`, then `phone`, then `sub`) | Verified against `ACCESS_JWKS_URL` when `ACCESS_AUD` is set. Without it, the local `dev_identity` cookie or `DEV_IDENTITY` stands in. |
+| `/_/api/*` | The API key's issuer | Each key stores the identity that created it. A key is that person, so its writes are owner-checked exactly like theirs. |
+| `/_/mcp` | Cloudflare Access Managed OAuth, validated against `MCP_ACCESS_AUD` | The Worker reads the identity Access forwards and passes it to the MCP agent. |
+
+Scopes are a separate gate, and only the API key path has them. A key is issued `read`, `create`, or both, and a `read` key is refused on every write with `403` before ownership is consulted. The admin UI and MCP have no scope split.
+
+MCP reports a refusal as an error message rather than a status code, so an assistant sees the sentence, not the `403` or `400` behind it.
 
 ## API
 
