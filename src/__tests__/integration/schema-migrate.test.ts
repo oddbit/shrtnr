@@ -8,15 +8,18 @@
  * that may create the schema.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { env } from "cloudflare:test";
 import {
   ensureSchema,
   migrate,
+  retrySchema,
   resetSchemaGuard,
+  lastSchemaFailure,
   schemaStatus,
   MigrationError,
   MIGRATIONS_TABLE,
+  RETRY_INTERVAL_MS,
   SCHEMA_VERSION_KEY,
 } from "../../db/migrate";
 import { MIGRATIONS, SCHEMA_VERSION } from "../../db/migrations.generated";
@@ -166,6 +169,21 @@ describe("migrate() under concurrency", () => {
   });
 });
 
+/** A D1 binding whose first prepare() throws and every later call works. */
+function brokenOnce(): D1Database {
+  let failOnce = true;
+  return new Proxy(env.DB, {
+    get(target, prop, receiver) {
+      if (prop === "prepare" && failOnce) {
+        failOnce = false;
+        throw new Error("D1 is warming up");
+      }
+      const value = Reflect.get(target, prop, receiver);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  }) as D1Database;
+}
+
 describe("ensureSchema()", () => {
   it("runs the migration once for concurrent callers in the same isolate", async () => {
     const log: string[] = [];
@@ -184,7 +202,7 @@ describe("ensureSchema()", () => {
     expect(log).toEqual([]);
   });
 
-  it("forgets a failed attempt so the next call tries again", async () => {
+  it("remembers a failure and rejects again without touching D1 inside the retry window", async () => {
     let failOnce = true;
     const flaky = new Proxy(env.DB, {
       get(target, prop, receiver) {
@@ -198,7 +216,29 @@ describe("ensureSchema()", () => {
     }) as D1Database;
 
     await expect(ensureSchema({ ...env, DB: flaky })).rejects.toThrow(/warming up/);
-    await ensureSchema({ ...env, DB: flaky });
+    expect(lastSchemaFailure()?.message).toMatch(/warming up/);
+    const log: string[] = [];
+    await expect(ensureSchema({ ...env, DB: spyDb(log) })).rejects.toThrow(/warming up/);
+    expect(log).toEqual([]);
+  });
+
+  it("tries again once the retry window has passed", async () => {
+    await expect(ensureSchema({ ...env, DB: brokenOnce() })).rejects.toThrow(/warming up/);
+    vi.useFakeTimers();
+    try {
+      vi.advanceTimersByTime(RETRY_INTERVAL_MS + 1);
+      await ensureSchema(env);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(lastSchemaFailure()).toBeNull();
+    expect(await appliedNames()).toEqual(ALL_NAMES);
+  });
+
+  it("retrySchema() ignores the window and clears the failure on success", async () => {
+    await expect(ensureSchema({ ...env, DB: brokenOnce() })).rejects.toThrow(/warming up/);
+    await retrySchema(env);
+    expect(lastSchemaFailure()).toBeNull();
     expect(await appliedNames()).toEqual(ALL_NAMES);
   });
 });
@@ -217,6 +257,19 @@ describe("a migration that fails", () => {
     expect(me.migration).toBe("0002_broken.sql");
     expect(me.message).toContain("0002_broken.sql");
     expect(me.message).toMatch(/syntax error|incomplete input/i);
+  });
+
+  it("marks the failure as happening on a database with no prior schema", async () => {
+    const err = (await migrate(env, broken).catch((e: unknown) => e)) as MigrationError;
+    expect(err.baselinePresent).toBe(false);
+  });
+
+  it("marks the failure as happening on an established schema when rows were recorded before", async () => {
+    await migrate(env, MIGRATIONS.slice(0, 1));
+    const err = (await migrate(env, broken).catch((e: unknown) => e)) as MigrationError;
+    expect(err).toBeInstanceOf(MigrationError);
+    expect(err.migration).toBe("0002_broken.sql");
+    expect(err.baselinePresent).toBe(true);
   });
 
   it("records nothing for the failed migration or the ones after it", async () => {

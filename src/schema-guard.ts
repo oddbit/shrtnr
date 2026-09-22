@@ -53,11 +53,11 @@ export function schemaErrorResponse(err: unknown, request: Request): Response {
   <main class="notice">
     <p class="eyebrow">shrtnr: database setup</p>
     <h1>This deployment's database is not ready yet</h1>
-    <p>${step} Nothing is broken beyond repair: the Worker applies its schema on the first request and will try again on the next one.</p>
+    <p>${step} Nothing is broken beyond repair: the Worker applies its schema itself and tries again about every 30 seconds, and a POST to <code>/_/setup</code> retries at once.</p>
     <pre class="error">${escHtml(reason)}</pre>
     <h2>What to do</h2>
     <ol>
-      <li>Open <a href="/_/setup"><code>/_/setup</code></a> to see which migrations are applied and which are pending, or send it a POST to retry now.</li>
+      <li>Open <a href="/_/setup"><code>/_/setup</code></a> to see which migrations are applied and which are pending.</li>
       <li>Check that the Worker has a D1 binding named <code>DB</code> in the Cloudflare dashboard under Settings, Bindings.</li>
       <li>Read the <a href="${SCHEMA_DOCS_URL}">database schema section of the README</a> for the CLI path and the workflow that applies migrations from CI.</li>
     </ol>

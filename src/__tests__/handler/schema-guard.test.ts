@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { env, SELF, createExecutionContext } from "cloudflare:test";
 import worker from "../../index";
-import { resetSchemaGuard, MigrationError, MIGRATIONS_TABLE, SCHEMA_VERSION_KEY } from "../../db/migrate";
+import { resetSchemaGuard, migrate, MigrationError, MIGRATIONS_TABLE, SCHEMA_VERSION_KEY } from "../../db/migrate";
 import { MIGRATIONS, SCHEMA_VERSION } from "../../db/migrations.generated";
 import { schemaErrorResponse } from "../../schema-guard";
 import { resetRateLimits } from "../../rate-limit";
@@ -54,6 +54,50 @@ function brokenDb(message: string): D1Database {
   }) as D1Database;
 }
 
+/**
+ * A D1 binding that serves every statement except a migration batch, the one
+ * whose last statement records a name in the bookkeeping table. Stands in
+ * for a migration that fails against a live database.
+ */
+function failingMigrationDb(message: string): D1Database {
+  const RECORD = new RegExp(`INSERT INTO "${MIGRATIONS_TABLE}"`);
+  // Statements are wrapped so the SQL text travels with them through bind(),
+  // which returns a fresh statement; batch() unwraps before calling D1.
+  const real = new WeakMap<object, D1PreparedStatement>();
+  const sqlOf = new WeakMap<object, string>();
+  const tag = (stmt: D1PreparedStatement, sql: string): D1PreparedStatement => {
+    const wrapped = new Proxy(stmt, {
+      get(t, p, r) {
+        if (p === "bind") return (...args: unknown[]) => tag(t.bind(...args), sql);
+        const v = Reflect.get(t, p, r);
+        return typeof v === "function" ? v.bind(t) : v;
+      },
+    });
+    real.set(wrapped, stmt);
+    sqlOf.set(wrapped, sql);
+    return wrapped;
+  };
+  return new Proxy(env.DB, {
+    get(target, prop, receiver) {
+      if (prop === "prepare") return (sql: string) => tag(target.prepare(sql), sql);
+      if (prop === "batch") {
+        return (stmts: D1PreparedStatement[]) => {
+          if (stmts.some((st) => RECORD.test(sqlOf.get(st) ?? ""))) return Promise.reject(new Error(message));
+          return target.batch(stmts.map((st) => real.get(st) ?? st));
+        };
+      }
+      const value = Reflect.get(target, prop, receiver);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  }) as D1Database;
+}
+
+/** Applies the schema the way any first request would, without going through /_/health. */
+async function warmSchema(): Promise<void> {
+  const res = await SELF.fetch(req("/_/setup", { method: "POST" }));
+  expect(res.status).toBe(200);
+}
+
 beforeEach(async () => {
   resetSchemaGuard();
   resetRateLimits();
@@ -82,7 +126,7 @@ describe("cold start on an empty database", () => {
 
 describe("redirect hot path", () => {
   it("issues no bookkeeping statements once the isolate has checked the schema", async () => {
-    await SELF.fetch(req("/_/health"));
+    await warmSchema();
     const log: string[] = [];
     const res = await worker.fetch(req("/nothing-here"), { ...env, DB: spyDb(log) }, createExecutionContext());
     expect(res.status).toBe(404);
@@ -90,7 +134,7 @@ describe("redirect hot path", () => {
   });
 
   it("reads one KV key and no D1 bookkeeping when a fresh isolate finds the version in KV", async () => {
-    await SELF.fetch(req("/_/health"));
+    await warmSchema();
     resetSchemaGuard();
     expect(await env.SLUG_KV.get(SCHEMA_VERSION_KEY)).toBe(SCHEMA_VERSION);
     const log: string[] = [];
@@ -115,6 +159,86 @@ describe("when the schema cannot be created", () => {
     expect(body).toContain("/_/setup");
     expect(body).toMatch(/href="https:\/\/github\.com\/oddbit\/shrtnr#/);
     expect(body).not.toMatch(/error 1101/i);
+  });
+
+  it("answers a redirect with the 503 page too when the database never had a schema", async () => {
+    const res = await worker.fetch(
+      req("/some-slug", { headers: { Accept: "text/html" } }),
+      { ...env, DB: failingMigrationDb("disk I/O error") },
+      createExecutionContext(),
+    );
+    expect(res.status).toBe(503);
+    expect(await res.text()).toContain("0001_initial.sql");
+  });
+
+  it("remembers the failure and does not run the migration again within the retry window", async () => {
+    const broken = { ...env, DB: brokenDb("D1 is unavailable right now") };
+    await worker.fetch(req("/x"), broken, createExecutionContext());
+    const log: string[] = [];
+    const res = await worker.fetch(req("/x"), { ...env, DB: spyDb(log) }, createExecutionContext());
+    expect(res.status).toBe(503);
+    expect(await res.text()).toContain("D1 is unavailable right now");
+    expect(log).toEqual([]);
+  });
+
+  it("POST /_/setup retries at once and clears the remembered failure", async () => {
+    await worker.fetch(req("/x"), { ...env, DB: brokenDb("D1 is unavailable right now") }, createExecutionContext());
+    await warmSchema();
+    const res = await SELF.fetch(req("/nothing-here"), { redirect: "manual" });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("when a later migration fails on a database that already has a schema", () => {
+  const failing = () => ({ ...env, DB: failingMigrationDb("disk I/O error") });
+
+  beforeEach(async () => {
+    await migrate(env, MIGRATIONS.slice(0, -1));
+    await env.SLUG_KV.delete(SCHEMA_VERSION_KEY);
+    await env.DB.prepare("INSERT INTO links (id, url, created_at, created_by) VALUES (1, 'https://example.com/kept', 1, 'x')").run();
+    await env.DB.prepare("INSERT INTO slugs (link_id, slug, is_primary, created_at) VALUES (1, 'kept', 1, 1)").run();
+  });
+
+  it("keeps redirecting short links", async () => {
+    const res = await worker.fetch(req("/kept"), failing(), createExecutionContext());
+    expect(res.status).toBe(301);
+    expect(res.headers.get("Location")).toBe("https://example.com/kept");
+  });
+
+  it("answers 404 for an unknown slug, not a schema error", async () => {
+    const res = await worker.fetch(req("/unknown"), failing(), createExecutionContext());
+    expect(res.status).toBe(404);
+  });
+
+  it("shows the operator the 503 page on admin routes, naming the migration", async () => {
+    const res = await worker.fetch(req("/_/admin/dashboard", { headers: { Accept: "text/html" } }), failing(), createExecutionContext());
+    expect(res.status).toBe(503);
+    const body = await res.text();
+    expect(body).toContain(SCHEMA_VERSION);
+    expect(body).toContain("disk I/O error");
+  });
+
+  it("answers API routes with the 503 JSON", async () => {
+    const res = await worker.fetch(req("/_/api/links"), failing(), createExecutionContext());
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { migration: string };
+    expect(body.migration).toBe(SCHEMA_VERSION);
+  });
+
+  it("answers the MCP host with the 503 JSON", async () => {
+    const res = await worker.fetch(new Request("https://mcp.shrtnr.test/mcp", { method: "POST" }), failing(), createExecutionContext());
+    expect(res.status).toBe(503);
+  });
+
+  it("reports degraded on /_/health with the error", async () => {
+    await worker.fetch(req("/kept"), failing(), createExecutionContext());
+    const res = await SELF.fetch(req("/_/health"));
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { status: string; schema: { ready: boolean; error: string; applied: string } };
+    expect(body.status).toBe("degraded");
+    expect(body.schema.ready).toBe(false);
+    expect(body.schema.error).toContain("disk I/O error");
+    expect(body.schema.applied).toBe(MIGRATIONS[MIGRATIONS.length - 2].name);
   });
 
   it("answers API clients with a 503 JSON body", async () => {
@@ -147,7 +271,18 @@ describe("when the schema cannot be created", () => {
 });
 
 describe("GET /_/health", () => {
+  it("reports ready false on an untouched database and applies nothing", async () => {
+    const res = await SELF.fetch(req("/_/health"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string; schema: { version: string; applied: string | null; ready: boolean } };
+    expect(body.status).toBe("ok");
+    expect(body.schema).toEqual({ version: SCHEMA_VERSION, applied: null, ready: false });
+    const links = await env.DB.prepare("SELECT name FROM sqlite_master WHERE name = 'links'").first();
+    expect(links).toBeNull();
+  });
+
   it("reports the schema version and readiness once migrated", async () => {
+    await warmSchema();
     const res = await SELF.fetch(req("/_/health"));
     expect(res.status).toBe(200);
     const body = (await res.json()) as { status: string; schema: { version: string; applied: string | null; ready: boolean } };
@@ -155,13 +290,22 @@ describe("GET /_/health", () => {
     expect(body.schema).toEqual({ version: SCHEMA_VERSION, applied: SCHEMA_VERSION, ready: true });
   });
 
-  it("answers 503 with the error when the schema cannot be created, instead of the generic page", async () => {
-    const res = await worker.fetch(req("/_/health"), { ...env, DB: brokenDb("D1 is unavailable right now") }, createExecutionContext());
+  it("answers 503 degraded after a failed attempt, quoting the error", async () => {
+    await worker.fetch(req("/x"), { ...env, DB: brokenDb("D1 is unavailable right now") }, createExecutionContext());
+    const res = await SELF.fetch(req("/_/health"));
     expect(res.status).toBe(503);
     const body = (await res.json()) as { status: string; version: string; schema: { ready: boolean; error: string } };
     expect(body.status).toBe("degraded");
     expect(body.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(body.schema.ready).toBe(false);
+    expect(body.schema.error).toContain("D1 is unavailable right now");
+  });
+
+  it("answers 503 degraded when it cannot read the bookkeeping table at all", async () => {
+    const res = await worker.fetch(req("/_/health"), { ...env, DB: brokenDb("D1 is unavailable right now") }, createExecutionContext());
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { status: string; schema: { error: string } };
+    expect(body.status).toBe("degraded");
     expect(body.schema.error).toContain("D1 is unavailable right now");
   });
 });

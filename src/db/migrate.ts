@@ -47,15 +47,25 @@ const RECORD_APPLIED = `INSERT INTO "${MIGRATIONS_TABLE}" (name) VALUES (?)`;
 export class MigrationError extends Error {
   /** File name of the migration that failed, or null when the bookkeeping itself failed. */
   readonly migration: string | null;
+  /**
+   * True when the bookkeeping table already held rows before this attempt:
+   * the database has a schema an older build was serving. False on a fresh
+   * database, and when the bookkeeping could not be read at all.
+   */
+  readonly baselinePresent: boolean;
 
-  constructor(migration: string | null, cause: unknown) {
+  constructor(migration: string | null, cause: unknown, baselinePresent = false) {
     const reason = cause instanceof Error ? cause.message : String(cause);
     super(migration ? `Migration ${migration} failed: ${reason}` : `Schema bookkeeping failed: ${reason}`);
     this.name = "MigrationError";
     this.migration = migration;
+    this.baselinePresent = baselinePresent;
     this.cause = cause;
   }
 }
+
+/** How long a failed attempt is remembered before a request triggers another one. */
+export const RETRY_INTERVAL_MS = 30_000;
 
 export interface AppliedMigration {
   name: string;
@@ -74,25 +84,47 @@ export interface SchemaStatus {
  * Module-level, so one isolate migrates once and every later request
  * awaits an already settled promise. The promise resolves to void: no I/O
  * object from the first request crosses into a later one, which is what
- * Workers forbid. A rejection clears the slot so the next request retries
- * instead of serving the same stale failure for the isolate's lifetime.
+ * Workers forbid.
+ *
+ * A rejection is remembered for RETRY_INTERVAL_MS. Inside that window
+ * every request gets the same error at once, without another D1 attempt,
+ * so a migration that fails against live data costs one failed batch per
+ * half minute per isolate, not one per request. POST /_/setup skips the
+ * window through retrySchema().
  */
 let inflight: Promise<void> | null = null;
+let lastFailure: { error: MigrationError; at: number } | null = null;
 
 export function ensureSchema(env: Env): Promise<void> {
-  inflight ??= migrate(env).catch((err: unknown) => {
-    inflight = null;
-    throw err;
-  });
+  if (inflight) return inflight;
+  if (lastFailure && Date.now() - lastFailure.at < RETRY_INTERVAL_MS) {
+    return Promise.reject(lastFailure.error);
+  }
+  inflight = migrate(env)
+    .then(() => {
+      lastFailure = null;
+    })
+    .catch((err: unknown) => {
+      inflight = null;
+      const error = err instanceof MigrationError ? err : new MigrationError(null, err);
+      lastFailure = { error, at: Date.now() };
+      throw error;
+    });
   return inflight;
 }
 
-/** Drops the once-per-isolate memo, so the next ensureSchema() goes back to storage. */
-export function resetSchemaGuard(): void {
-  inflight = null;
+/** The failure the isolate remembers, or null when the last attempt succeeded or none ran. */
+export function lastSchemaFailure(): MigrationError | null {
+  return lastFailure?.error ?? null;
 }
 
-/** Forgets the memo and migrates again: the retry behind POST /_/setup. */
+/** Drops the once-per-isolate memo and any remembered failure. */
+export function resetSchemaGuard(): void {
+  inflight = null;
+  lastFailure = null;
+}
+
+/** Forgets the memo and migrates again at once: the retry behind POST /_/setup. */
 export function retrySchema(env: Env): Promise<void> {
   resetSchemaGuard();
   return ensureSchema(env);
@@ -122,6 +154,7 @@ export async function migrate(env: Env, migrations: readonly BundledMigration[] 
   } catch (err) {
     throw new MigrationError(null, err);
   }
+  const baselinePresent = applied.size > 0;
 
   for (const migration of migrations) {
     if (applied.has(migration.name)) continue;
@@ -136,7 +169,7 @@ export async function migrate(env: Env, migrations: readonly BundledMigration[] 
       // Its batch committed the schema and the row together, so a recorded
       // name means the work is done and the failure was ours to lose.
       if (await isRecorded(env.DB, migration.name)) continue;
-      throw new MigrationError(migration.name, err);
+      throw new MigrationError(migration.name, err, baselinePresent);
     }
   }
 

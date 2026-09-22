@@ -68,8 +68,8 @@ Click the **Deploy to Cloudflare** button. Cloudflare forks the repo into your G
 
 The Worker creates its own database schema on the first request, so there is no command to run afterwards. To confirm the deploy:
 
-1. Open `https://<your-worker>.workers.dev/_/health`. It answers `"schema": { "ready": true }` once the schema is in place.
-2. Open `https://<your-worker>.workers.dev/_/admin/dashboard` and create a link.
+1. Open `https://<your-worker>.workers.dev/_/admin/dashboard` and create a link. That first visit creates the schema.
+2. Open `https://<your-worker>.workers.dev/_/health`. It answers `"schema": { "ready": true }`.
 3. Protect the admin pages before you share the domain: see [Access Control](#access-control).
 
 Every later push to your fork redeploys through Workers Builds, and the Worker applies any new migration on the first request after the deploy. See [Database schema](#database-schema) for how that works and what to check when it does not.
@@ -103,12 +103,15 @@ Migrations live in `migrations/*.sql`. `yarn migrations:bundle` (run for you by 
 
 On the first request an isolate receives, the Worker applies every migration that is not yet recorded in D1's `d1_migrations` table, the same table with the same file names that `wrangler d1 migrations apply` uses. Each migration runs as one transaction with its bookkeeping row, so a race between isolates on a fresh deploy ends with each migration applied once. After that first request the check is a settled promise, and a fresh isolate reads the recorded schema version from KV before it touches D1, so redirects pay nothing for it.
 
-Two routes report on the schema:
+Two routes report on the schema, and neither changes it on a GET:
 
-- `GET /_/health` includes `schema.version` (what this build expects), `schema.applied` (the last recorded migration) and `schema.ready`. It answers 503 with `"status": "degraded"` and the error when the schema could not be created.
-- `GET /_/setup` lists applied and pending migrations without changing anything. `POST /_/setup` retries the migration. Both require a Cloudflare Access identity once `ACCESS_AUD` is set, and are rate-limited to ten requests a minute per client before that.
+- `GET /_/health` includes `schema.version` (what this build expects), `schema.applied` (the last recorded migration) and `schema.ready`. A database no request has reached yet reports `ready: false` with 200. After a failed migration attempt it answers 503 with `"status": "degraded"` and the error.
+- `GET /_/setup` lists applied and pending migrations. `POST /_/setup` retries the migration at once. Both require a Cloudflare Access identity once `ACCESS_AUD` is set, and are rate-limited to ten requests a minute per client before that.
 
-While the schema is missing, every other route answers a 503 page that names the failing migration and the database error. The usual causes are a Worker without a D1 binding named `DB` (check **Settings > Bindings** in the dashboard) or a migration that fails against data the original schema did not anticipate.
+When a migration fails, the Worker remembers the failure for 30 seconds before a request triggers another attempt, so a migration that fails against live data costs one failed statement batch per half minute, not one per request. What visitors see depends on the database:
+
+- **No schema yet** (a fresh deploy): every route answers a 503 page that names the failing migration and the database error. The usual cause is a Worker without a D1 binding named `DB` (check **Settings > Bindings** in the dashboard).
+- **An older schema in place** (an upgrade whose new migration fails): short links keep redirecting, since they read tables that already exist. The admin pages, the API and the MCP endpoint answer the 503 page instead, and `/_/health` reports degraded, so the operator sees the failure and visitors do not.
 
 ## Access Control
 
