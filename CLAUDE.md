@@ -63,6 +63,17 @@ Workflow on API change:
 - **Tests pass.** Full SDK test suite. New methods/fields require new tests.
 - **Cross-SDK parity holds.** Surface changes apply to all three SDKs in the same PR series. Hash advances on all three together. Mismatched hashes on `main` = open issue, not steady state.
 
+## Authorization model
+
+Settled decisions. Do not raise them for confirmation, do not flag them as gaps, do not add gates.
+
+- **Reads are open across owners.** Any authenticated identity lists and reads every link, bundle and analytics figure, including `GET /_/api/links?owner=`.
+- **Two writes are open by design.** Adding a custom slug to any link (`addCustomSlugToLink`) and filing any link into any bundle (`addLinkToBundle`) carry no owner check. A colleague hands a link a memorable slug or files it into their campaign bundle without asking the owner first. Neither call redirects, disables or destroys anything.
+- **Every other write is owner-only.** Update, disable, enable, delete on links and bundles, and slug disable, enable, remove, set-primary.
+- Tests in `src/__tests__/service/authorization-model.test.ts` and `src/__tests__/handler/authorization-surfaces.test.ts` assert the open behavior. A failure there after a change means the change is wrong, not the test.
+
+Full description: [docs/access-control.md](docs/access-control.md).
+
 ## Testing
 
 - Write tests first. Ask the developer for behavior details; if trivial, write directly. Implement to pass.

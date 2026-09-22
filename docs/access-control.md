@@ -69,7 +69,7 @@ The table is what `src/services/link-management.ts` and `src/services/bundle-man
 | Create or delete API keys | Each identity manages its own keys |
 | Theme, language, default range, analytics filters, default slug length | Stored per identity |
 
-The two open rows are deliberate: they let a colleague file your link into their campaign bundle, or hand it a memorable slug, without asking you first. Neither can redirect, disable or destroy anything.
+The two open rows are a settled design decision, not an oversight: they let a colleague file your link into their campaign bundle, or hand it a memorable slug, without asking you first. Neither can redirect, disable or destroy anything.
 
 A refused write answers `403` with a sentence naming the rule. A request for something that is not there answers `404`, so the two cases stay distinguishable. MCP reports a refusal as an error message rather than a status code, so an assistant sees the sentence, not the `403` or `400` behind it.
 
