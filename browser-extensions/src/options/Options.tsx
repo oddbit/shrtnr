@@ -17,9 +17,24 @@ type LoadState =
   | { kind: "ready"; config: Config | null }
   | { kind: "saved"; config: Config };
 
+// The manifest version is the one number support asks for first. The
+// getManifest guard covers test environments that mock only part of the
+// runtime namespace.
+function installedVersion(): string | null {
+  if (typeof chrome === "undefined") return null;
+  const runtime = chrome.runtime as { getManifest?: () => { version?: string } } | undefined;
+  if (!runtime || typeof runtime.getManifest !== "function") return null;
+  try {
+    return runtime.getManifest().version ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function Options() {
   const [loadState, setLoadState] = useState<LoadState>({ kind: "loading" });
   const t = createTranslateFn(detectLanguage());
+  const version = installedVersion();
 
   useEffect(() => {
     getConfig().then((config) => {
@@ -49,6 +64,7 @@ export function Options() {
           {t("options.section.connection")}
         </h2>
         <p class="options-section-body">{t("options.section.connection.body")}</p>
+        <p class="options-section-body">{t("options.section.connection.scope")}</p>
         {loadState.kind !== "loading" && (
           <ConfigForm
             t={t}
@@ -65,11 +81,21 @@ export function Options() {
         )}
       </section>
 
+      <section class="options-section" aria-labelledby="shortcut-heading">
+        <h2 id="shortcut-heading" class="options-section-heading">
+          {t("options.section.shortcut")}
+        </h2>
+        <p class="options-section-body">{t("options.section.shortcut.body")}</p>
+      </section>
+
       <section class="options-section" aria-labelledby="about-heading">
         <h2 id="about-heading" class="options-section-heading">
           {t("options.section.about")}
         </h2>
         <p class="options-section-body">{t("options.section.about.body")}</p>
+        {version && (
+          <p class="options-section-body">{t("options.section.about.version", { version })}</p>
+        )}
         <p class="options-section-body">
           <a class="link" href={PROJECT_INFO_URL} target="_blank" rel="noopener noreferrer">
             {t("options.section.about.website")}

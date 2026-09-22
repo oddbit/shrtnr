@@ -12,9 +12,11 @@ export type ErrorCategory =
   | "unauthorized"
   | "forbidden"
   | "not-found"
+  | "conflict"
   | "rate-limited"
   | "server"
-  | "validation";
+  | "validation"
+  | "slug-invalid";
 
 export class ExtensionError extends Error {
   constructor(
@@ -32,6 +34,7 @@ export function categorizeStatus(status: number): ErrorCategory {
   if (status === 401) return "unauthorized";
   if (status === 403) return "forbidden";
   if (status === 404) return "not-found";
+  if (status === 409) return "conflict";
   if (status === 429) return "rate-limited";
   if (status === 400 || status === 422) return "validation";
   if (status >= 500) return "server";

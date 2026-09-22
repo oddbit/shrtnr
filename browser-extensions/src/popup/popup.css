@@ -145,3 +145,79 @@ body {
   border-radius: var(--radius-2);
   color: var(--color-text);
 }
+
+.slug-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.slug-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.slug-prefix {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slug-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.recent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+}
+
+.recent h2 {
+  margin: 0;
+}
+
+.recent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.recent-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 13px;
+}
+
+.recent-slug {
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.recent-slug:hover {
+  text-decoration: underline;
+}
+
+.recent-host {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

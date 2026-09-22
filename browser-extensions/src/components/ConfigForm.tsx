@@ -7,7 +7,7 @@
 
 import { useState } from "preact/hooks";
 import type { Config } from "../storage";
-import { setConfig } from "../storage";
+import { getConfig, setConfig } from "../storage";
 import { testConnection } from "../api";
 import { ExtensionError } from "../errors";
 import type { TranslateFn } from "../i18n";
@@ -16,6 +16,7 @@ type TestState =
   | { kind: "idle" }
   | { kind: "running" }
   | { kind: "ok" }
+  | { kind: "ok-limited" }
   | { kind: "error"; messageKey: string; params?: Record<string, string> };
 
 type SaveState =
@@ -58,6 +59,20 @@ function categoryToMessage(category: string): {
       return { messageKey: "error.validation" };
     default:
       return { messageKey: "error.server" };
+  }
+}
+
+// A saved server URL that changes leaves the previous origin's host
+// permission granted for nothing. Drop it so the extension only ever holds
+// access to the deployment it is pointed at. Best effort: a browser that
+// declines the removal keeps working, it merely holds one stale grant.
+async function revokeOriginPermission(origin: string): Promise<void> {
+  const permissions = typeof chrome !== "undefined" ? chrome.permissions : undefined;
+  if (!permissions || typeof permissions.remove !== "function") return;
+  try {
+    await permissions.remove({ origins: [`${origin}/*`] });
+  } catch {
+    // Nothing to recover: the stale grant is harmless without a matching config.
   }
 }
 
@@ -107,6 +122,12 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
     } catch (err) {
       const host = hostFromBaseUrl(origin);
       if (err instanceof ExtensionError) {
+        // The probe is a read call. A 403 means the server accepted the key
+        // and only its scope stops the read: the connection itself works.
+        if (err.category === "forbidden") {
+          setTestState({ kind: "ok-limited" });
+          return;
+        }
         const mapped = categoryToMessage(err.category);
         setTestState({
           kind: "error",
@@ -152,6 +173,13 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
       return;
     }
 
+    let previous: Config | null = null;
+    try {
+      previous = await getConfig();
+    } catch {
+      previous = null;
+    }
+
     try {
       await setConfig({ baseUrl: baseUrl.trim(), apiKey: trimmedKey });
       setSaveState({ kind: "idle" });
@@ -160,6 +188,11 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
       // chrome.storage rejections carry English-only browser strings
       // (quota, write-rate). Report a localized message instead.
       setSaveState({ kind: "error", messageKey: "error.saveFailed" });
+      return;
+    }
+
+    if (previous && previous.baseUrl !== normalizedOrigin) {
+      await revokeOriginPermission(previous.baseUrl);
     }
   }
 
@@ -230,6 +263,11 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
       {testState.kind === "ok" && (
         <p class="form-status form-status-ok" role="status">
           ✓ {t("form.testOk")}
+        </p>
+      )}
+      {testState.kind === "ok-limited" && (
+        <p class="form-status form-status-ok" role="status">
+          ✓ {t("form.testOkCreateOnly")}
         </p>
       )}
       {testState.kind === "error" && (

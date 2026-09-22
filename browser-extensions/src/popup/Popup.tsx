@@ -2,30 +2,56 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Toolbar popup. State machine driven by the shorten flow: every popup
-// open re-runs config check + active tab read + shortenUrl(). Errors
-// are terminal until the user clicks Retry or Open settings.
+// open re-runs config check + active tab read + shortenUrl(). The server
+// returns the existing link for a URL it already knows, so reopening the
+// popup on the same page never creates a duplicate. Errors are terminal
+// until the user clicks Retry or Open settings.
 
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { getConfig } from "../storage";
-import { shortenUrl, getQrSvg, isShortenable, type ShortenResult } from "../api";
+import { shortenUrl, getQrSvg, addCustomSlug, isShortenable, type ShortenResult } from "../api";
 import { ExtensionError, logError, type ErrorCategory } from "../errors";
 import { copyText } from "../clipboard";
-import { COPY_CONFIRM_DURATION_MS } from "../constants";
+import { COPY_CONFIRM_DURATION_MS, MAX_SLUG_LENGTH } from "../constants";
+import { listRecent, recordRecent, type RecentLink } from "../recent";
 import { ConfigForm } from "../components/ConfigForm";
 import { DeployCta } from "../components/DeployCta";
 import { createTranslateFn, detectLanguage, type TranslateFn } from "../i18n";
 
+type QrState = {
+  visible: boolean;
+  svg: string | null;
+  loading: boolean;
+  error: ErrorCategory | null;
+};
+
+type SlugState =
+  | { kind: "idle" }
+  | { kind: "running" }
+  | { kind: "error"; category: ErrorCategory; serverMessage?: string };
+
+type SuccessState = {
+  kind: "success";
+  link: ShortenResult;
+  /** The page that was shortened. Shown in the recent list. */
+  pageUrl: string;
+  baseUrl: string;
+  qr: QrState;
+  /** Set once a custom slug is added, so the QR encodes that slug rather than the primary one. */
+  qrSlug?: string;
+  copyStatus: "fresh" | "stale" | "failed";
+  slugDraft: string;
+  slugState: SlugState;
+  recent: RecentLink[];
+};
+
 type State =
   | { kind: "loading" }
   | { kind: "not-configured" }
-  | {
-      kind: "success";
-      link: ShortenResult;
-      baseUrl: string;
-      qr: { visible: boolean; svg: string | null; loading: boolean };
-      copyStatus: "fresh" | "stale" | "failed";
-    }
+  | SuccessState
   | { kind: "error"; category: ErrorCategory; serverMessage?: string; baseUrl?: string };
+
+const IDLE_QR: QrState = { visible: false, svg: null, loading: false, error: null };
 
 async function getActiveTabUrl(): Promise<string | null> {
   try {
@@ -50,22 +76,30 @@ function categoryToMessageKey(category: ErrorCategory): string {
       return "error.forbidden";
     case "not-found":
       return "error.notFound";
+    case "conflict":
+      return "error.conflict";
     case "rate-limited":
       return "error.rateLimited";
     case "server":
       return "error.server";
     case "validation":
       return "error.validation";
+    case "slug-invalid":
+      return "error.slugInvalid";
   }
 }
 
-function hostFromBaseUrl(baseUrl: string | undefined): string {
-  if (!baseUrl) return "";
+function hostFromUrl(url: string | undefined): string {
+  if (!url) return "";
   try {
-    return new URL(baseUrl).host;
+    return new URL(url).host;
   } catch {
-    return baseUrl;
+    return url;
   }
+}
+
+function toRecent(link: ShortenResult, pageUrl: string): RecentLink {
+  return { id: link.id, slug: link.slug, shortUrl: link.shortUrl, url: pageUrl, createdAt: Date.now() };
 }
 
 export function Popup() {
@@ -92,17 +126,21 @@ export function Popup() {
       setState({
         kind: "success",
         link,
+        pageUrl: tabUrl,
         baseUrl: config.baseUrl,
-        qr: { visible: false, svg: null, loading: false },
+        qr: IDLE_QR,
         copyStatus: "fresh",
+        slugDraft: "",
+        slugState: { kind: "idle" },
+        recent: [],
       });
-      try {
-        await copyText(link.shortUrl);
-      } catch {
-        setState((prev) =>
-          prev.kind === "success" ? { ...prev, copyStatus: "failed" } : prev,
-        );
-      }
+      const [recent] = await Promise.all([
+        recordRecent(toRecent(link, tabUrl)),
+        copyText(link.shortUrl).catch(() => {
+          setState((prev) => (prev.kind === "success" ? { ...prev, copyStatus: "failed" } : prev));
+        }),
+      ]);
+      setState((prev) => (prev.kind === "success" ? { ...prev, recent } : prev));
     } catch (err) {
       if (err instanceof ExtensionError) {
         logError(err.category, err.status);
@@ -156,22 +194,73 @@ export function Popup() {
       return;
     }
     if (state.qr.svg) {
-      setState({ ...state, qr: { ...state.qr, visible: true } });
+      setState({ ...state, qr: { ...state.qr, visible: true, error: null } });
       return;
     }
-    setState({ ...state, qr: { visible: true, svg: null, loading: true } });
+    setState({ ...state, qr: { visible: true, svg: null, loading: true, error: null } });
+    const { id } = state.link;
+    const qrSlug = state.qrSlug;
     try {
-      const svg = await getQrSvg(state.link.id);
+      const svg = qrSlug ? await getQrSvg(id, qrSlug) : await getQrSvg(id);
       setState((prev) =>
         prev.kind === "success"
-          ? { ...prev, qr: { visible: true, svg, loading: false } }
+          ? { ...prev, qr: { visible: true, svg, loading: false, error: null } }
           : prev,
       );
-    } catch {
+    } catch (err) {
+      const category: ErrorCategory = err instanceof ExtensionError ? err.category : "server";
+      logError(category, err instanceof ExtensionError ? err.status : undefined);
       setState((prev) =>
         prev.kind === "success"
-          ? { ...prev, qr: { visible: false, svg: null, loading: false } }
+          ? { ...prev, qr: { visible: false, svg: null, loading: false, error: category } }
           : prev,
+      );
+    }
+  }
+
+  function setSlugDraft(value: string) {
+    setState((prev) =>
+      prev.kind === "success"
+        ? { ...prev, slugDraft: value, slugState: prev.slugState.kind === "error" ? { kind: "idle" } : prev.slugState }
+        : prev,
+    );
+  }
+
+  async function submitSlug(e?: Event) {
+    e?.preventDefault();
+    if (state.kind !== "success" || state.slugState.kind === "running") return;
+    const draft = state.slugDraft.trim();
+    if (!draft) return;
+    const { link, pageUrl } = state;
+    setState({ ...state, slugState: { kind: "running" } });
+    try {
+      const updated = await addCustomSlug(link.id, draft);
+      const recent = await recordRecent(toRecent(updated, pageUrl));
+      setState((prev) =>
+        prev.kind === "success"
+          ? {
+              ...prev,
+              link: updated,
+              qr: IDLE_QR,
+              qrSlug: updated.slug,
+              copyStatus: "fresh",
+              slugDraft: "",
+              slugState: { kind: "idle" },
+              recent,
+            }
+          : prev,
+      );
+      try {
+        await copyText(updated.shortUrl);
+      } catch {
+        setState((prev) => (prev.kind === "success" ? { ...prev, copyStatus: "failed" } : prev));
+      }
+    } catch (err) {
+      const category: ErrorCategory = err instanceof ExtensionError ? err.category : "server";
+      const serverMessage = err instanceof ExtensionError ? err.serverMessage : undefined;
+      logError(category, err instanceof ExtensionError ? err.status : undefined);
+      setState((prev) =>
+        prev.kind === "success" ? { ...prev, slugState: { kind: "error", category, serverMessage } } : prev,
       );
     }
   }
@@ -211,6 +300,8 @@ export function Popup() {
           onCopyAgain={copyAgain}
           onToggleQr={toggleQr}
           onOpenSettings={openOptions}
+          onSlugInput={setSlugDraft}
+          onSlugSubmit={submitSlug}
         />
       )}
 
@@ -232,15 +323,25 @@ function SuccessView({
   onCopyAgain,
   onToggleQr,
   onOpenSettings,
+  onSlugInput,
+  onSlugSubmit,
 }: {
   t: TranslateFn;
-  state: Extract<State, { kind: "success" }>;
+  state: SuccessState;
   onCopyAgain: () => void;
   onToggleQr: () => void;
   onOpenSettings: () => void;
+  onSlugInput: (value: string) => void;
+  onSlugSubmit: (e?: Event) => void;
 }) {
-  const { link, baseUrl, qr, copyStatus } = state;
+  const { link, baseUrl, qr, copyStatus, slugDraft, slugState, recent } = state;
   const adminUrl = `${baseUrl}/_/admin/links/${link.id}`;
+  const otherRecent = recent.filter((r) => r.id !== link.id);
+  const slugBusy = slugState.kind === "running";
+  const slugErrorParams: Record<string, string> = {};
+  if (slugState.kind === "error" && slugState.category === "validation" && slugState.serverMessage) {
+    slugErrorParams.message = slugState.serverMessage;
+  }
   return (
     <section class="popup-state popup-state-success">
       <div class="short-url-wrap">
@@ -275,14 +376,89 @@ function SuccessView({
           {t("popup.qrLoading")}
         </p>
       )}
+      {qr.error && (
+        <p class="form-status form-status-error" role="alert">
+          {t(qr.error === "forbidden" ? "error.qrForbidden" : "error.qrFailed")}
+        </p>
+      )}
       {qr.visible && qr.svg && (
         <div class="qr-container">
           <img
             class="qr-image"
             src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr.svg)}`}
-            alt="QR code"
+            alt={t("popup.qrAlt")}
           />
         </div>
+      )}
+
+      <form
+        class="slug-form"
+        onSubmit={(e) => {
+          onSlugSubmit(e);
+        }}
+        noValidate
+      >
+        <div class="field slug-field">
+          <label class="field-label" for="slug-input">
+            {t("popup.slug.label")}
+          </label>
+          <div class="slug-row">
+            <span class="slug-prefix" aria-hidden="true">
+              {hostFromUrl(baseUrl)}/
+            </span>
+            <input
+              id="slug-input"
+              type="text"
+              class="field-input field-input-mono slug-input"
+              placeholder={t("popup.slug.placeholder")}
+              value={slugDraft}
+              maxLength={MAX_SLUG_LENGTH}
+              onInput={(e) => onSlugInput((e.currentTarget as HTMLInputElement).value)}
+              autoComplete="off"
+              spellcheck={false}
+              disabled={slugBusy}
+            />
+            <button
+              type="submit"
+              class="button button-secondary"
+              disabled={slugBusy || slugDraft.trim() === ""}
+            >
+              {slugBusy ? t("popup.slug.adding") : t("popup.slug.add")}
+            </button>
+          </div>
+          <span class="field-help">{t("popup.slug.help")}</span>
+        </div>
+        {slugState.kind === "error" && (
+          <p class="form-status form-status-error" role="alert">
+            {t(categoryToMessageKey(slugState.category) as never, slugErrorParams)}
+          </p>
+        )}
+      </form>
+
+      {otherRecent.length > 0 && (
+        <section class="recent" aria-labelledby="recent-heading">
+          <h2 id="recent-heading" class="field-label">
+            {t("popup.recent.heading")}
+          </h2>
+          <ul class="recent-list">
+            {otherRecent.map((item) => (
+              <li class="recent-item" key={item.id}>
+                <a
+                  class="recent-slug"
+                  href={item.shortUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={item.shortUrl}
+                >
+                  /{item.slug}
+                </a>
+                <span class="recent-host" title={item.url}>
+                  {hostFromUrl(item.url)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <footer class="popup-footer">
@@ -310,7 +486,7 @@ function ErrorView({
 }) {
   const messageKey = categoryToMessageKey(state.category);
   const params: Record<string, string> = {};
-  if (state.baseUrl) params.host = hostFromBaseUrl(state.baseUrl);
+  if (state.baseUrl) params.host = hostFromUrl(state.baseUrl);
   if (state.category === "validation" && state.serverMessage) params.message = state.serverMessage;
 
   const showRetry =
