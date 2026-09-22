@@ -65,12 +65,20 @@ Workflow on API change:
 
 ## Authorization model
 
-Settled decisions. Do not raise them for confirmation, do not flag them as gaps, do not add gates.
+Settled. Do not raise these for confirmation, do not flag them as gaps, do not add gates.
 
-- **Reads are open across owners.** Any authenticated identity lists and reads every link, bundle and analytics figure, including `GET /_/api/links?owner=`.
-- **Two writes are open by design.** Adding a custom slug to any link (`addCustomSlugToLink`) and filing any link into any bundle (`addLinkToBundle`) carry no owner check. A colleague hands a link a memorable slug or files it into their campaign bundle without asking the owner first. Neither call redirects, disables or destroys anything.
-- **Every other write is owner-only.** Update, disable, enable, delete on links and bundles, and slug disable, enable, remove, set-primary.
-- Tests in `src/__tests__/service/authorization-model.test.ts` and `src/__tests__/handler/authorization-surfaces.test.ts` assert the open behavior. A failure there after a change means the change is wrong, not the test.
+1. Anyone can create a link.
+2. Anyone can see everyone's links, bundles and analytics, including `GET /_/api/links?owner=`.
+3. Anyone can add a custom slug to anyone's link.
+4. The owner can delete a link or a custom slug while it has zero clicks.
+5. Once a link or slug has clicks, the owner disables it instead. The admin UI offers exactly one of the two, chosen by click count. Delete is refused server-side after the first click.
+6. The link owner owns its slugs: set primary, disable, enable, remove.
+7. The bundle owner updates, archives and deletes the bundle, and removes links from it.
+8. Anyone can contribute links to any bundle. The link page's "Add to bundle" is the entry point; the bundle page's "Add link" is the owner's shortcut.
+
+The system-generated slug is never removed or disabled on its own; disable the whole link.
+
+**Source of truth is how the app has been working, in the UI first.** When code, docs, tests or comments disagree, the behavior the admin UI has offered users (or was clearly built to offer) wins. Do not derive rules from the database schema or from what a column would permit. Tests in `src/__tests__/service/authorization-model.test.ts` and `src/__tests__/handler/authorization-surfaces.test.ts` pin these rules; a failure there after a change means the change is wrong, not the test.
 
 Full description: [docs/access-control.md](docs/access-control.md).
 

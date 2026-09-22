@@ -79,7 +79,7 @@ Ownership is a single column: `links.created_by` and `bundles.created_by`, set o
 
 ### Delete only while unclicked, disable after that
 
-A link can be deleted only while it has recorded zero clicks. The rule binds the owner too: a link with clicks cannot be deleted by anyone. The count is lifetime and unfiltered: one click from a bot is enough. After that, delete answers `400` with `Cannot delete a link with clicks, disable it instead`, and disabling the link is the operation that works: every slug stops redirecting, the click history stays, and the owner can enable it again later.
+A link can be deleted only while it has recorded zero clicks. The rule binds the owner too: a link with clicks cannot be deleted by anyone. The admin UI offers the owner exactly one of the two actions, delete at zero clicks and disable after the first, and the server refuses delete after that point on every surface. The count is lifetime and unfiltered: one click from a bot is enough. After that, delete answers `400` with `Cannot delete a link with clicks, disable it instead`, and disabling the link is the operation that works: every slug stops redirecting, the click history stays, and the owner can enable it again later.
 
 The same rule protects a custom slug. Removing one answers `400` with `Cannot remove a slug with clicks, disable it instead` once it has recorded a click, and disabling that slug is the remedy: it stops that one slug resolving while the link's other slugs keep working, and its click history stays.
 
