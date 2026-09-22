@@ -17,6 +17,7 @@ import { listRecent, recordRecent, type RecentLink } from "../recent";
 import { ConfigForm } from "../components/ConfigForm";
 import { DeployCta } from "../components/DeployCta";
 import { createTranslateFn, detectLanguage, type TranslateFn } from "../i18n";
+import { hostFromUrl } from "../url";
 
 type QrState = {
   visible: boolean;
@@ -49,7 +50,13 @@ type State =
   | { kind: "loading" }
   | { kind: "not-configured" }
   | SuccessState
-  | { kind: "error"; category: ErrorCategory; serverMessage?: string; baseUrl?: string };
+  | {
+      kind: "error";
+      category: ErrorCategory;
+      serverMessage?: string;
+      baseUrl?: string;
+      recent: RecentLink[];
+    };
 
 const IDLE_QR: QrState = { visible: false, svg: null, loading: false, error: null };
 
@@ -89,15 +96,6 @@ function categoryToMessageKey(category: ErrorCategory): string {
   }
 }
 
-function hostFromUrl(url: string | undefined): string {
-  if (!url) return "";
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
-}
-
 function toRecent(link: ShortenResult, pageUrl: string): RecentLink {
   return { id: link.id, slug: link.slug, shortUrl: link.shortUrl, url: pageUrl, createdAt: Date.now() };
 }
@@ -114,11 +112,21 @@ export function Popup() {
       return;
     }
     if (!tabUrl) {
-      setState({ kind: "error", category: "unparseable-url", baseUrl: config.baseUrl });
+      setState({
+        kind: "error",
+        category: "unparseable-url",
+        baseUrl: config.baseUrl,
+        recent: await listRecent(),
+      });
       return;
     }
     if (!isShortenable(tabUrl)) {
-      setState({ kind: "error", category: "internal-page", baseUrl: config.baseUrl });
+      setState({
+        kind: "error",
+        category: "internal-page",
+        baseUrl: config.baseUrl,
+        recent: await listRecent(),
+      });
       return;
     }
     try {
@@ -142,6 +150,10 @@ export function Popup() {
       ]);
       setState((prev) => (prev.kind === "success" ? { ...prev, recent } : prev));
     } catch (err) {
+      // The shorten failed, so nothing was recorded this time. Load the
+      // stored list anyway: the earlier links stay reachable from the
+      // error screen instead of vanishing with the failure.
+      const recent = await listRecent();
       if (err instanceof ExtensionError) {
         logError(err.category, err.status);
         setState({
@@ -149,10 +161,11 @@ export function Popup() {
           category: err.category,
           serverMessage: err.serverMessage,
           baseUrl: config.baseUrl,
+          recent,
         });
       } else {
         logError("server", undefined);
-        setState({ kind: "error", category: "server", baseUrl: config.baseUrl });
+        setState({ kind: "error", category: "server", baseUrl: config.baseUrl, recent });
       }
     }
   }
@@ -177,31 +190,45 @@ export function Popup() {
     void chrome.runtime.openOptionsPage();
   }
 
+  // Every write after an await goes through the updater form. The QR fetch
+  // and the recent-list write land concurrently, so spreading the render
+  // closure's `state` here would roll their results back.
   async function copyAgain() {
     if (state.kind !== "success") return;
+    const shortUrl = state.link.shortUrl;
     try {
-      await copyText(state.link.shortUrl);
-      setState({ ...state, copyStatus: "fresh" });
+      await copyText(shortUrl);
+      setState((prev) => (prev.kind === "success" ? { ...prev, copyStatus: "fresh" } : prev));
     } catch {
-      setState({ ...state, copyStatus: "failed" });
+      setState((prev) => (prev.kind === "success" ? { ...prev, copyStatus: "failed" } : prev));
     }
   }
 
   async function toggleQr() {
     if (state.kind !== "success") return;
     if (state.qr.visible) {
-      setState({ ...state, qr: { ...state.qr, visible: false } });
+      setState((prev) =>
+        prev.kind === "success" ? { ...prev, qr: { ...prev.qr, visible: false } } : prev,
+      );
       return;
     }
     if (state.qr.svg) {
-      setState({ ...state, qr: { ...state.qr, visible: true, error: null } });
+      setState((prev) =>
+        prev.kind === "success"
+          ? { ...prev, qr: { ...prev.qr, visible: true, error: null } }
+          : prev,
+      );
       return;
     }
-    setState({ ...state, qr: { visible: true, svg: null, loading: true, error: null } });
+    setState((prev) =>
+      prev.kind === "success"
+        ? { ...prev, qr: { visible: true, svg: null, loading: true, error: null } }
+        : prev,
+    );
     const { id } = state.link;
     const qrSlug = state.qrSlug;
     try {
-      const svg = qrSlug ? await getQrSvg(id, qrSlug) : await getQrSvg(id);
+      const svg = await getQrSvg(id, qrSlug);
       setState((prev) =>
         prev.kind === "success"
           ? { ...prev, qr: { visible: true, svg, loading: false, error: null } }
@@ -232,7 +259,9 @@ export function Popup() {
     const draft = state.slugDraft.trim();
     if (!draft) return;
     const { link, pageUrl } = state;
-    setState({ ...state, slugState: { kind: "running" } });
+    setState((prev) =>
+      prev.kind === "success" ? { ...prev, slugState: { kind: "running" } } : prev,
+    );
     try {
       const updated = await addCustomSlug(link.id, draft);
       const recent = await recordRecent(toRecent(updated, pageUrl));
@@ -435,31 +464,7 @@ function SuccessView({
         )}
       </form>
 
-      {otherRecent.length > 0 && (
-        <section class="recent" aria-labelledby="recent-heading">
-          <h2 id="recent-heading" class="field-label">
-            {t("popup.recent.heading")}
-          </h2>
-          <ul class="recent-list">
-            {otherRecent.map((item) => (
-              <li class="recent-item" key={item.id}>
-                <a
-                  class="recent-slug"
-                  href={item.shortUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={item.shortUrl}
-                >
-                  /{item.slug}
-                </a>
-                <span class="recent-host" title={item.url}>
-                  {hostFromUrl(item.url)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <RecentList t={t} items={otherRecent} />
 
       <footer class="popup-footer">
         <a class="link" href={adminUrl} target="_blank" rel="noopener noreferrer">
@@ -469,6 +474,36 @@ function SuccessView({
           {t("popup.openSettings")}
         </button>
       </footer>
+    </section>
+  );
+}
+
+/** Shared by the success and error screens: the links shortened earlier from this browser. */
+function RecentList({ t, items }: { t: TranslateFn; items: RecentLink[] }) {
+  if (items.length === 0) return null;
+  return (
+    <section class="recent" aria-labelledby="recent-heading">
+      <h2 id="recent-heading" class="field-label">
+        {t("popup.recent.heading")}
+      </h2>
+      <ul class="recent-list">
+        {items.map((item) => (
+          <li class="recent-item" key={item.id}>
+            <a
+              class="recent-slug"
+              href={item.shortUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={item.shortUrl}
+            >
+              /{item.slug}
+            </a>
+            <span class="recent-host" title={item.url}>
+              {hostFromUrl(item.url)}
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -522,6 +557,8 @@ function ErrorView({
           </button>
         )}
       </div>
+
+      <RecentList t={t} items={state.recent} />
     </section>
   );
 }

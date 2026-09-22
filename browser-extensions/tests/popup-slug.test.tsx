@@ -200,3 +200,65 @@ describe("Popup: recent links", () => {
     });
   });
 });
+
+describe("Popup: concurrent state writes", () => {
+  it("keeps a QR that arrived while a copy was in flight", async () => {
+    // Repro for the stale-closure write: Show QR, then Copy. The QR fetch
+    // resolves first; the copy handler must not spread a render closure
+    // captured before it and roll the SVG back to the loading state.
+    let resolveQr: (svg: string) => void = () => {};
+    mockedQr.mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveQr = resolve;
+        }),
+    );
+    await renderPopup();
+    await waitFor(() => screen.getByRole("button", { name: /show qr/i }));
+
+    const clipboard = getClipboardMock();
+    let resolveCopy: () => void = () => {};
+    clipboard.writeText.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCopy = resolve;
+        }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /show qr/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^copy|^copied/i }));
+
+    resolveQr("<svg/>");
+    await waitFor(() => screen.getByAltText(/qr code/i));
+
+    resolveCopy();
+    await waitFor(() => expect(screen.queryByText(/generating qr/i)).toBeNull());
+    expect(screen.getByAltText(/qr code/i)).toBeTruthy();
+  });
+});
+
+describe("Popup: recent list on the error screen", () => {
+  it("lists earlier links when the shorten fails", async () => {
+    local.recent = [
+      {
+        id: 7,
+        slug: "earlier",
+        shortUrl: "https://x.com/earlier",
+        url: "https://news.example/story",
+        createdAt: 1,
+      },
+    ];
+    mockedShorten.mockRejectedValue(new ExtensionError("network"));
+    await renderPopup();
+    await waitFor(() => screen.getByRole("alert"));
+    expect(screen.getByText("/earlier")).toBeTruthy();
+    expect(screen.getByText("news.example")).toBeTruthy();
+  });
+
+  it("renders no recent section when nothing was shortened before", async () => {
+    mockedShorten.mockRejectedValue(new ExtensionError("network"));
+    await renderPopup();
+    await waitFor(() => screen.getByRole("alert"));
+    expect(screen.queryByText(/recent from this browser/i)).toBeNull();
+  });
+});
