@@ -8,9 +8,9 @@
  * reads from disk has to travel inside the bundle for the Worker to apply it
  * at a cold start. The output is committed: the fork a "Deploy to Cloudflare"
  * click creates builds with whatever command Cloudflare's defaults hand it,
- * and a committed module needs no build step there. `yarn build`, `yarn
- * deploy`, `yarn dev` and `yarn test` regenerate it through their pre-hooks,
- * and the vitest drift test fails when the committed module is stale.
+ * and a committed module needs no build step there. `yarn dev` regenerates
+ * it through its pre-hook, and the vitest drift test fails when the
+ * committed module is stale, so a change lands or the suite says so.
  *
  * Usage: tsx scripts/generate-migrations.ts [--check]
  *   --check  exit 1 instead of writing when the module is out of date
