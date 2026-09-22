@@ -9,6 +9,8 @@ shrtnr is a self-hosted URL shortener you drive from code and from AI assistants
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://oddb.it/shrtnr-deploy-top)
 
+![Claude creating and managing short links through the shrtnr MCP server](docs/images/claude-mcp.webp)
+
 ## Who this is for
 
 - **Teams that need per-person permissions, not a shared password.** Sign-in runs through Cloudflare Access, so every teammate arrives with their own identity. Links and bundles record who created them, and only the creator can edit, disable or delete them. Everyone can read everything. API keys are issued per person and act as that person. [Permission model](docs/access-control.md#permission-model).
