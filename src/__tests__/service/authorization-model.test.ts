@@ -9,6 +9,14 @@
 // is more permissive than the surrounding prose suggests. Nothing here
 // changes behavior; it records it so the README and the OpenAPI text can be
 // written from evidence.
+//
+// Split of responsibility with ownership.test.ts: that file owns the
+// per-function owner and non-owner cases for links and slugs, plus the race
+// and repository-guard paths. The owner-gate tables below restate a subset of
+// those rows so the full matrix reads in one place next to what this file
+// adds: the system-slug rule, the owner gate ordered before the click rule,
+// bundles carrying no click rule, the shared anonymous bucket, and the open
+// reads. A regression in an owner gate fails in both files by design.
 
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
@@ -371,34 +379,45 @@ describe("bundles: create and read", () => {
 });
 
 describe("bundles: update, archive, unarchive and delete are owner-only", () => {
+  /** Create a link and file it into the bundle, returning the link id. */
+  async function seedMember(bundleId: number): Promise<number> {
+    const link = await newLink();
+    const added = await addLinkToBundle(env as never, bundleId, link.id, OWNER);
+    if (!added.ok) throw new Error(`membership setup failed: ${added.error}`);
+    return link.id;
+  }
+
   const table: {
     name: string;
-    call: (bundleId: number, identity: string) => Promise<{ ok: boolean; status: number; error?: string }>;
+    /** Rows that act on a membership seed one first; the rest ignore linkId. */
+    seed?: (bundleId: number) => Promise<number>;
+    call: (bundleId: number, linkId: number, identity: string) => Promise<{ ok: boolean; status: number; error?: string }>;
     message: string;
   }[] = [
     {
       name: "update",
-      call: (id, who) => updateBundle(env as never, id, { name: "Renamed" }, who),
+      call: (id, _linkId, who) => updateBundle(env as never, id, { name: "Renamed" }, who),
       message: "Only the bundle owner can update this bundle",
     },
     {
       name: "archive",
-      call: (id, who) => archiveBundle(env as never, id, who),
+      call: (id, _linkId, who) => archiveBundle(env as never, id, who),
       message: "Only the bundle owner can archive this bundle",
     },
     {
       name: "unarchive",
-      call: (id, who) => unarchiveBundle(env as never, id, who),
+      call: (id, _linkId, who) => unarchiveBundle(env as never, id, who),
       message: "Only the bundle owner can unarchive this bundle",
     },
     {
       name: "delete",
-      call: (id, who) => deleteBundle(env as never, id, who),
+      call: (id, _linkId, who) => deleteBundle(env as never, id, who),
       message: "Only the bundle owner can delete this bundle",
     },
     {
       name: "remove link",
-      call: (id, who) => removeLinkFromBundle(env as never, id, 1, who),
+      seed: seedMember,
+      call: (id, linkId, who) => removeLinkFromBundle(env as never, id, linkId, who),
       message: "Only the bundle owner can remove links from this bundle",
     },
   ];
@@ -406,13 +425,15 @@ describe("bundles: update, archive, unarchive and delete are owner-only", () => 
   for (const row of table) {
     it(`${row.name} by the owner succeeds`, async () => {
       const bundle = await newBundle();
-      const result = await row.call(bundle.id, OWNER);
+      const linkId = row.seed ? await row.seed(bundle.id) : 0;
+      const result = await row.call(bundle.id, linkId, OWNER);
       expect(result.ok).toBe(true);
     });
 
     it(`${row.name} by a non-owner returns 403`, async () => {
       const bundle = await newBundle();
-      const result = await row.call(bundle.id, OTHER);
+      const linkId = row.seed ? await row.seed(bundle.id) : 0;
+      const result = await row.call(bundle.id, linkId, OTHER);
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.status).toBe(403);
@@ -421,11 +442,35 @@ describe("bundles: update, archive, unarchive and delete are owner-only", () => 
     });
 
     it(`${row.name} on a bundle that does not exist returns 404, distinct from 403`, async () => {
-      const result = await row.call(999999, OTHER);
+      const result = await row.call(999999, 0, OTHER);
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.status).toBe(404);
     });
   }
+
+  it("remove link by the owner removes the membership rather than reporting a no-op", async () => {
+    const bundle = await newBundle();
+    const linkId = await seedMember(bundle.id);
+
+    const result = await removeLinkFromBundle(env as never, bundle.id, linkId, OWNER);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.removed).toBe(true);
+
+    const remaining = await listBundleLinks(env as never, bundle.id, OWNER);
+    expect(remaining.ok).toBe(true);
+    if (remaining.ok) expect(remaining.data).toHaveLength(0);
+  });
+
+  it("remove link by a non-owner leaves the membership in place", async () => {
+    const bundle = await newBundle();
+    const linkId = await seedMember(bundle.id);
+
+    await removeLinkFromBundle(env as never, bundle.id, linkId, OTHER);
+
+    const remaining = await listBundleLinks(env as never, bundle.id, OWNER);
+    expect(remaining.ok).toBe(true);
+    if (remaining.ok) expect(remaining.data).toHaveLength(1);
+  });
 });
 
 describe("bundles: archive is reversible hiding, delete has no click rule", () => {
