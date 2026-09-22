@@ -8,21 +8,26 @@ const en = {
   "brand.name": "shrtnr",
   "brand.tagline": "Self-hosted URL shortener",
 
-  // Popup — generic
+  // Popup: generic
   "popup.loading": "Shortening...",
   "popup.shortUrlLabel": "Short URL",
   "popup.copy": "Copy",
-  "popup.copyAgain": "Copy again",
   "popup.copied": "Copied",
   "popup.qrShow": "Show QR",
   "popup.qrHide": "Hide QR",
   "popup.qrLoading": "Generating QR...",
+  "popup.qrAlt": "QR code for the short URL",
+  "popup.slug.label": "Custom slug",
+  "popup.slug.placeholder": "my-link",
+  "popup.slug.add": "Add slug",
+  "popup.slug.adding": "Adding...",
+  "popup.slug.help": "Optional. Letters, numbers and hyphens. Added slugs are copied right away.",
+  "popup.recent.heading": "Recent from this browser",
   "popup.viewInAdmin": "View in admin",
   "popup.openSettings": "Settings",
   "popup.retry": "Retry",
-  "popup.openAdmin": "Open admin",
 
-  // Popup — not configured
+  // Popup: not configured
   "popup.notConfigured.heading": "Set up shrtnr",
   "popup.notConfigured.body": "shrtnr is self-hosted. Point this extension at your server to start shortening.",
 
@@ -38,6 +43,7 @@ const en = {
   "form.cancel": "Cancel",
   "form.testing": "Testing...",
   "form.testOk": "Connected",
+  "form.testOkCreateOnly": "Connected. This key can create links but not read them, so QR codes need a key with the read scope.",
   "form.saving": "Saving...",
   "form.saved": "Saved",
 
@@ -53,6 +59,10 @@ const en = {
   "error.unauthorized": "Your API key was rejected. Update it in settings.",
   "error.forbidden": "This API key isn't allowed to create links.",
   "error.notFound": "shrtnr API not found at {host}. Did you mistype the host?",
+  "error.conflict": "That slug is already taken. Try another.",
+  "error.slugInvalid": "Slugs use letters, numbers and hyphens, and can't start or end with a hyphen.",
+  "error.qrForbidden": "This API key can't read links, so it can't fetch the QR code. Use a key with the read scope.",
+  "error.qrFailed": "Couldn't fetch the QR code. Try again.",
   "error.rateLimited": "Too many requests. Try again in a moment.",
   "error.server": "Your shrtnr server returned an error.",
   "error.validation": "{message}",
@@ -61,20 +71,22 @@ const en = {
   "error.clipboard": "Copy failed. Select the link above to copy it.",
   "error.permissionDenied": "shrtnr needs permission to talk to {host}. Click Save again and accept.",
   "error.permissionDeniedTest": "shrtnr needs permission to talk to {host}. Click Test again and accept.",
-  "error.tabUnknown": "Couldn't read the active tab.",
 
   // Options page
   "options.title": "shrtnr settings",
   "options.subtitle": "Connect this extension to your shrtnr deployment.",
   "options.section.connection": "Connection",
   "options.section.connection.body": "These values are stored in your browser's synced settings and never sent to Oddbit.",
+  "options.section.connection.scope": "A key with the create scope is enough to shorten. Add the read scope if you want QR codes.",
+  "options.section.shortcut": "Keyboard shortcut",
+  "options.section.shortcut.body": "{shortcut} opens the popup and shortens the current tab. Change it on your browser's extension shortcuts page.",
+  "options.section.shortcut.unassigned": "No shortcut is assigned. Another extension may have claimed the suggested one. Assign it on your browser's extension shortcuts page.",
   "options.section.about": "About",
   "options.section.about.body": "shrtnr is open source and self-hosted. Source: github.com/oddbit/shrtnr.",
   "options.section.about.website": "oddbit.id",
   "options.section.about.version": "Version {version}",
 
   // Footer
-  "footer.poweredBy": "Powered by shrtnr by Oddbit",
 };
 
 export default en;

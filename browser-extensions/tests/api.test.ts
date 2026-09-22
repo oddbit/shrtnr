@@ -4,6 +4,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { setStorageItem } from "./setup";
 import { isShortenable, ShortenResult } from "../src/api";
+import { QR_SIZE_PX } from "../src/constants";
 
 let mockedClient: {
   links: {
@@ -152,7 +153,10 @@ describe("api.getQrSvg", () => {
     const { getQrSvg } = await import("../src/api");
     const svg = await getQrSvg(42);
     expect(svg).toBe("<svg/>");
-    expect(mockedClient.links.qr).toHaveBeenCalledWith(42, expect.objectContaining({ size: "256" }));
+    expect(mockedClient.links.qr).toHaveBeenCalledWith(
+      42,
+      expect.objectContaining({ size: QR_SIZE_PX }),
+    );
   });
 
   it("throws when no config is saved", async () => {

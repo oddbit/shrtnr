@@ -39,7 +39,7 @@ The rest of the shortener:
 - **QR codes** as SVG for any slug, from the admin UI, the API, the SDKs and MCP. Scans are tracked separately from link clicks.
 - **Edge redirects.** Slug lookups are cached in Workers KV in front of D1, and click recording runs after the redirect is sent.
 - **Admin dashboard** in English, Indonesian and Swedish, with three themes, per-link and per-bundle analytics, API key management and settings.
-- **Browser extension** for Chrome and Firefox that shortens the current tab against your own deployment. Source in [`browser-extensions/`](browser-extensions/).
+- **Browser extension** for Chrome and Firefox that shortens the current tab against your own deployment. Source and store status in [browser-extensions/README.md](browser-extensions/README.md).
 - **One-click deploy** with automatic provisioning of the database and KV namespace, and migrations that the Worker applies on its first request.
 
 Not yet: password-protected links, link import and export, routing by device or country, tags, social preview overrides, click webhooks, and a read-only MCP scope. UTM parameters are stored on every click but not yet reported in the dashboard.
