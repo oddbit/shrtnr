@@ -17,7 +17,12 @@ apiRouter.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
   description: "API key issued from the admin dashboard. Pass as `Authorization: Bearer sk_...`.",
 });
 
-apiRouter.doc31("/openapi.json", {
+/**
+ * The one `info` block for the public API document. `doc31` serves it at
+ * `/_/api/openapi.json` and `scripts/emit-spec.ts` hashes it, so both read
+ * this object rather than carrying their own copy.
+ */
+export const openApiConfig: Parameters<typeof apiRouter.getOpenAPI31Document>[0] = {
   openapi: "3.1.0",
   info: {
     title: "shrtnr API",
@@ -43,7 +48,9 @@ apiRouter.doc31("/openapi.json", {
   },
   servers: [{ url: "/" }],
   security: [{ bearerAuth: [] }],
-});
+};
+
+apiRouter.doc31("/openapi.json", openApiConfig);
 
 apiRouter.get("/docs", (_c) => scalarResponse());
 
