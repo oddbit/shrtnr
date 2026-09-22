@@ -62,7 +62,7 @@ We're an Indonesian-based studio with roots in Sweden. [**shrtnr**](https://oddb
 
 ### One-click
 
-Click the **Deploy to Cloudflare** button. Cloudflare forks the repo into your GitHub or GitLab account, provisions a D1 database and a KV namespace, writes their IDs into the fork's `wrangler.jsonc`, and deploys the Worker through [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/).
+Click the **Deploy to Cloudflare** button. Cloudflare forks the repo into your GitHub or GitLab account, provisions the D1 database and KV namespace that `wrangler.jsonc` declares, and deploys the Worker through [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/).
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://oddb.it/shrtnr-deploy-howto)
 
@@ -81,9 +81,10 @@ git clone https://github.com/oddbit/shrtnr
 cd shrtnr
 yarn install
 yarn wrangler-login
-yarn db:create
 yarn deploy
 ```
+
+`wrangler.jsonc` declares the D1 database and KV namespace by name only. The first `yarn deploy` creates both in your account through wrangler's [resource provisioning](https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-resource-provisioning) and later deploys link to them by binding name. Wrangler also writes the new IDs into `wrangler.jsonc` on your machine; discard that change, the IDs are specific to your account and the deploy works without them.
 
 The first request creates the schema. To apply it ahead of that request from your terminal, run `yarn db:migrate:remote`; the Worker and the CLI record their work in the same table, so either can go first.
 
@@ -286,7 +287,7 @@ yarn test
 yarn dev
 ```
 
-`yarn types` writes `worker-configuration.d.ts`, which the typecheck needs. Rerun it after changing `wrangler.jsonc`. `yarn dev` creates the local D1 schema on the first request; `yarn db:migrate:local` applies it from the CLI instead.
+`yarn types` writes `worker-configuration.d.ts`, which the typecheck needs. Rerun it after changing `wrangler.jsonc`. `yarn dev` creates the local D1 database and KV namespace on start and the schema on the first request; `yarn db:migrate:local` applies the schema from the CLI instead.
 
 ### Local sign-in
 
