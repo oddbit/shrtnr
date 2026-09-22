@@ -1,6 +1,6 @@
-# Privacy policy — shrtnr browser extension
+# Privacy policy: shrtnr browser extension
 
-_Last updated: 2026-05-01_
+_Last updated: 2026-09-22_
 
 The shrtnr browser extension is open-source software published by [Oddbit](https://oddbit.id). This document describes what data the extension collects, what it transmits, and where it goes.
 
@@ -11,7 +11,9 @@ The extension collects two pieces of data, both provided by you on the options p
 1. The **URL of your shrtnr deployment** that you want to shorten links into.
 2. An **API key** you generated from your shrtnr admin dashboard.
 
-It also reads the **URL of the active browser tab** at the exact moment you click the toolbar icon. That URL is sent to your shrtnr deployment to be shortened, then discarded.
+It also reads the **URL of the active browser tab** at the exact moment you click the toolbar icon or press the keyboard shortcut. That URL is sent to your shrtnr deployment to be shortened. If you type a custom slug, that slug is sent as well.
+
+After a link is shortened, the extension keeps a **recent list** of the last five links it created (link id, slug, short URL, the page URL, and the time) so the popup can show them again.
 
 ## Where data is sent
 
@@ -19,7 +21,9 @@ The extension transmits data only to the shrtnr URL you configured. Oddbit opera
 
 ## Where data is stored
 
-Your `baseUrl` and `apiKey` are stored in `chrome.storage.sync`, the browser's native synced settings store: readable only by this extension, encrypted at rest by the browser, and synchronised with your other browser profiles signed into the same account. The active tab URL is never stored. No browsing history or activity log is kept.
+Your `baseUrl` and `apiKey` are stored in `chrome.storage.sync`, the browser's native synced settings store: readable only by this extension, encrypted at rest by the browser, and synchronised with your other browser profiles signed into the same account.
+
+The recent list is stored in `chrome.storage.local` on this device only. It never syncs and never leaves the browser. It holds the URLs you chose to shorten and nothing else: no browsing history or activity log is kept.
 
 ## Permissions explained
 
@@ -27,8 +31,10 @@ Your `baseUrl` and `apiKey` are stored in `chrome.storage.sync`, the browser's n
 |---|---|
 | `activeTab` | Read the active tab URL when you click the toolbar icon, so the extension can shorten it. The extension does not read tab content. |
 | `clipboardWrite` | Copy the generated short URL to your clipboard so you can paste it elsewhere. |
-| `storage` | Persist your shrtnr URL and API key across browser sessions. |
-| Host permission for your shrtnr URL | Granted at runtime against the exact origin you enter on the options page. The extension cannot reach any other origin. |
+| `storage` | Persist your shrtnr URL and API key across browser sessions, and keep the on-device recent list. |
+| Host permission for your shrtnr URL | Granted at runtime against the exact origin you enter on the options page. The extension cannot reach any other origin. Saving a different URL revokes the previous one. |
+
+The keyboard shortcut (`Alt+Shift+L`) is a manifest declaration and grants no data access.
 
 ## What this extension does not do
 
@@ -39,7 +45,7 @@ Your `baseUrl` and `apiKey` are stored in `chrome.storage.sync`, the browser's n
 
 ## Removing your data
 
-Uninstalling the extension removes its `chrome.storage.sync` entry on the next sync. To erase the corresponding server-side data, use the admin dashboard on your own shrtnr deployment to delete API keys and any links you created from the extension.
+Uninstalling the extension removes its `chrome.storage.local` data at once and its `chrome.storage.sync` entry on the next sync. To erase the corresponding server-side data, use the admin dashboard on your own shrtnr deployment to delete API keys and any links you created from the extension.
 
 ## Source code
 

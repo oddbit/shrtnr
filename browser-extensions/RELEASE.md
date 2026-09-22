@@ -8,6 +8,7 @@ Run before bumping `package.json` and tagging `ext-v*`.
 cd browser-extensions
 yarn install --frozen-lockfile
 yarn test
+yarn typecheck
 yarn build
 yarn lint:firefox
 node scripts/verify-build.mjs
@@ -15,26 +16,35 @@ node scripts/verify-build.mjs
 
 All must exit 0. Two `UNSAFE_VAR_ASSIGNMENT` warnings from `web-ext lint` are expected (Preact's runtime). `errors=0` is required.
 
-## 2. Smoke test — Chrome
+Check that `yarn.lock` resolves `@oddbit/shrtnr` to the newest published 1.x. The lockfile pins the SDK; a browser-affecting SDK fix reaches users only through a lockfile bump.
+
+## 2. Smoke test: Chrome
 
 Load `dist/chrome/` as an unpacked extension via `chrome://extensions/`.
 
 - [ ] Fresh install opens `options.html` automatically. Deploy CTA banner is visible.
 - [ ] Save with valid URL + key persists the config. Banner disappears.
 - [ ] Click toolbar on a normal page → popup opens, shortens, auto-copies, "Copied" indicator fades after ~1.5s.
-- [ ] Re-open popup → repeat shorten succeeds (or returns the same link if `allowDuplicate` is false on the server — server's call).
+- [ ] Re-open popup → repeat shorten succeeds (or returns the same link if `allowDuplicate` is false on the server; the server decides).
 - [ ] Click **QR** → SVG appears, click again hides without refetching.
+- [ ] Type a custom slug, click **Add slug** → short URL swaps to the slug and is copied. Add the same slug again → "already taken".
+- [ ] Type `-bad-` as a slug → the slug rule appears, no request is sent.
+- [ ] Open the popup on a second page → the first link appears under **Recent**.
+- [ ] Press `Alt+Shift+L` on a normal page → popup opens and shortens.
+- [ ] Configure a key with scope `create` only → **Test connection** reports connected with the scope note; **Show QR** reports the missing read scope.
 - [ ] Click **View in admin** → opens `${baseUrl}/_/admin/links/<id>` in a new tab.
 - [ ] Open popup on `chrome://newtab` → shows "shrtnr can't shorten internal browser pages."
 - [ ] Open popup on `about:blank` → same internal-page error.
 - [ ] Edit options to a wrong host → popup shows network error → **Retry** + **Settings**.
 - [ ] Enter a wrong API key → popup shows "Your API key was rejected." → **Settings**.
 
-## 3. Smoke test — Firefox
+## 3. Smoke test: Firefox
 
 ```bash
 npx web-ext run --source-dir dist/firefox
 ```
+
+Firefox 140 or newer (`strict_min_version`), so the data-collection declaration AMO requires is honoured.
 
 - [ ] Fresh install opens `options.html`. Banner visible.
 - [ ] Same flows as Chrome above, including QR, retry, and settings recovery.

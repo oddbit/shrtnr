@@ -45,6 +45,7 @@ It takes one click to deploy. You get a full admin UI, click analytics, SDKs for
 - **Multi-language admin UI** with English, Indonesian, and Swedish built in
 - **API key authentication** with scoped Bearer tokens for programmatic access
 - **SDKs** for TypeScript ([`@oddbit/shrtnr`](https://oddb.it/shrtnr-npm-readme)), Python ([`shrtnr`](https://oddb.it/shrtnr-pypi-readme)), and Dart/Flutter ([`shrtnr`](https://oddb.it/shrtnr-pub-readme))
+- **Browser extension** for Chrome and Firefox that shortens the active tab into your own deployment. Source and store status in [browser-extensions/README.md](browser-extensions/README.md).
 - **Built-in MCP server** at `/_/mcp` with OAuth via Cloudflare Access, so Claude, Copilot, and other AI assistants can shorten URLs
 - **One-click deploy** with automatic database provisioning and migrations
 
