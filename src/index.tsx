@@ -42,6 +42,9 @@ import {
 import { DEFAULT_SLUG_LENGTH, DEFAULT_THEME, LINKS_DEFAULT_PER_PAGE, THEMES } from "./constants";
 import { createTranslateFn, DEFAULT_LANGUAGE, isSupportedLanguage } from "./i18n";
 import { handleHealth } from "./api/health";
+import { handleSetup } from "./api/setup";
+import { ensureSchema } from "./db/migrate";
+import { schemaErrorResponse } from "./schema-guard";
 import { assetsRouter } from "./assets";
 import { answersJson, logUnhandledError, negotiatedErrorFormat, onUnhandledError, unhandledErrorResponse } from "./unhandled";
 import {
@@ -105,9 +108,10 @@ import { bumpCacheVersion } from "./admin/widgets/cache";
 
 const app = new Hono<HonoEnv>();
 
-// ---- Health check (public) ----
+// ---- Health check (public) and schema diagnostic ----
 
-app.get("/_/health", () => handleHealth());
+app.get("/_/health", (c) => handleHealth(c.env));
+app.all("/_/setup", (c) => handleSetup(c.req.raw, c.env));
 
 // ---- Hashed admin stylesheet and client script (public, immutable) ----
 
@@ -618,8 +622,26 @@ export { ShrtnrMCP };
 
 const mcpHandler = ShrtnrMCP.serve("/_/mcp");
 
+// Routes that answer about the schema rather than through it. They run
+// their own guard and report a failure in their own shape.
+const SCHEMA_EXEMPT_PATHS = new Set(["/_/health", "/_/setup"]);
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // A one-click deploy hands the first request an empty D1. ensureSchema()
+    // applies the bundled migrations once per isolate and is a settled
+    // promise on every request after that, so the redirect path pays a
+    // microtask, not a round trip. A failure answers a 503 that names the
+    // migration and the error, never a bare 1101.
+    if (!SCHEMA_EXEMPT_PATHS.has(new URL(request.url).pathname)) {
+      try {
+        await ensureSchema(env);
+      } catch (err) {
+        logUnhandledError(err, request);
+        return schemaErrorResponse(err, request);
+      }
+    }
+
     // The routing below the Hono app (host rewrite, MCP transport, OAuth
     // metadata) runs outside app.onError; the same last-resort handling
     // applies, so a failure there is a logged 500, not a bare exception.
