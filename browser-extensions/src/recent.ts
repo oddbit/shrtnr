@@ -54,17 +54,21 @@ export async function listRecent(): Promise<RecentLink[]> {
   }
 }
 
-/** Puts the entry first, replacing any earlier entry for the same link id. */
+/**
+ * Puts the entry first, replacing any earlier entry for the same link id.
+ * A rejected write (quota, write-rate) degrades to the list already stored:
+ * the caller renders a stale list rather than blanking one that is on screen.
+ */
 export async function recordRecent(entry: RecentLink): Promise<RecentLink[]> {
   const area = localArea();
   if (!area) return [];
+  const current = await listRecent();
   try {
-    const current = await listRecent();
     const next = [entry, ...current.filter((l) => l.id !== entry.id)].slice(0, RECENT_LIMIT);
     await area.set({ [STORAGE_KEY]: next });
     return next;
   } catch {
-    return [];
+    return current;
   }
 }
 

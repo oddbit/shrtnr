@@ -79,6 +79,15 @@ describe("recent", () => {
     await expect(clearRecent()).resolves.toBeUndefined();
   });
 
+  it("keeps the stored list when the write fails", async () => {
+    await recordRecent(entry(1));
+    (chrome.storage as unknown as { local: { set: unknown } }).local.set = vi.fn(async () => {
+      throw new Error("quota exceeded");
+    });
+    // A rejected write must not blank a list the popup is already showing.
+    expect(await recordRecent(entry(2))).toEqual([entry(1)]);
+  });
+
   it("swallows a storage failure instead of throwing", async () => {
     (chrome.storage as unknown as { local: { get: unknown } }).local.get = vi.fn(async () => {
       throw new Error("storage unavailable");
