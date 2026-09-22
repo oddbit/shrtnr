@@ -1,3 +1,9 @@
+# Optional. The Worker applies its own migrations on the first request
+# after a deploy (see README, "Database schema"), so this workflow is not
+# needed for a working deployment. It exists for forks that want the
+# schema in place before the Worker takes traffic, applied from CI with
+# an audit trail. It needs the CLOUDFLARE_API_TOKEN (Workers Scripts:
+# Edit and D1: Edit) and CLOUDFLARE_ACCOUNT_ID repository secrets.
 name: Migrate
 
 on:
