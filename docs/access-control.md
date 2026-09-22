@@ -79,9 +79,11 @@ Ownership is a single column: `links.created_by` and `bundles.created_by`, set o
 
 ### Delete only while unclicked, disable after that
 
-A link or a custom slug can be deleted only while it has recorded zero clicks, by anyone. The count is lifetime and unfiltered: one click from a bot is enough. After that, delete answers `400` with `Cannot delete a link with clicks, disable it instead`, and disable is the operation that works: every slug stops redirecting, the click history stays, and the owner can enable it again later.
+A link can be deleted only while it has recorded zero clicks. The rule binds the owner too: a link with clicks cannot be deleted by anyone. The count is lifetime and unfiltered: one click from a bot is enough. After that, delete answers `400` with `Cannot delete a link with clicks, disable it instead`, and disabling the link is the operation that works: every slug stops redirecting, the click history stays, and the owner can enable it again later.
 
-The reason is that a clicked short link exists in the wild. It is in sent email, in print, on a slide, inside a QR code on a sticker nobody can recall. Deleting it frees the slug for reuse and turns every one of those into a `404` or, worse, a redirect to whatever claims the slug next. Disabling keeps the row, keeps its click history, and stops the redirect. The same rule protects a custom slug: removing it would orphan or cascade away its click rows.
+The same rule protects a custom slug. Removing one answers `400` with `Cannot remove a slug with clicks, disable it instead` once it has recorded a click, and disabling that slug is the remedy: it stops that one slug resolving while the link's other slugs keep working, and its click history stays.
+
+The reason is that a clicked short link exists in the wild. It is in sent email, in print, on a slide, inside a QR code on a sticker nobody can recall. Deleting it frees the slug for reuse and turns every one of those into a `404` or, worse, a redirect to whatever claims the slug next. Disabling keeps the row, keeps its click history, and stops the redirect. Removing a clicked slug would orphan or cascade away its click rows in the same way.
 
 The system-generated slug is a special case. It can be neither removed nor disabled, whatever its click count, since it is the link's canonical address. Disable the whole link instead.
 
