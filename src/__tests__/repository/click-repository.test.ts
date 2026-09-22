@@ -33,6 +33,50 @@ async function recordClick(
     .run();
 }
 
+// Slug fixtures past the D1 bind cap need 100+ rows per link, and
+// SlugRepository.addCustom() spends three D1 round trips on each one: a
+// first-custom probe, the insert-plus-handover batch, then a read-back. A
+// hundred of those ran ~450ms locally and was the whole cost of the over-cap
+// tests, so a loaded CI runner stretched one past vitest's 5s budget and the
+// suite went red on timing alone. These helpers queue the same rows in a
+// single batch. "seeds the slug rows SlugRepository.addCustom would write"
+// pins the result to the repository path so the shortcut cannot drift.
+function customSlugWrites(linkId: number, slugs: string[], now: number): D1PreparedStatement[] {
+  const writes: D1PreparedStatement[] = [];
+  slugs.forEach((slug, i) => {
+    // These links carry no custom slug yet, so the first one seeded is the
+    // link's first custom slug and takes the primary flag from the auto slug.
+    const takesPrimary = i === 0;
+    writes.push(
+      env.DB
+        .prepare("INSERT INTO slugs (link_id, slug, is_custom, is_primary, created_at) VALUES (?, ?, 1, ?, ?)")
+        .bind(linkId, slug, takesPrimary ? 1 : 0, now),
+    );
+    if (takesPrimary) {
+      writes.push(
+        env.DB.prepare("UPDATE slugs SET is_primary = 0 WHERE link_id = ? AND slug != ?").bind(linkId, slug),
+      );
+    }
+  });
+  return writes;
+}
+
+async function seedCustomSlugs(linkId: number, slugs: string[]) {
+  await env.DB.batch(customSlugWrites(linkId, slugs, Math.floor(Date.now() / 1000)));
+}
+
+// Every slug of a link keyed by its numeric suffix, so two links seeded by
+// different routes compare row for row regardless of slug naming.
+async function slugShape(linkId: number, prefix: string) {
+  const rows = await env.DB
+    .prepare("SELECT slug, is_custom, is_primary FROM slugs WHERE link_id = ?")
+    .bind(linkId)
+    .all<{ slug: string; is_custom: number; is_primary: number }>();
+  return (rows.results ?? [])
+    .map((r) => ({ n: Number(r.slug.slice(prefix.length + 1)), is_custom: r.is_custom, is_primary: r.is_primary }))
+    .sort((a, b) => a.n - b.n);
+}
+
 describe("ClickRepository.record", () => {
   it("click_count is aggregated from clicks table", async () => {
     const link = await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
@@ -587,17 +631,29 @@ describe("ClickRepository.getBundleStats", () => {
 describe("ClickRepository bundle analytics past the D1 bind cap", () => {
   const LINKS = 51; // 2 slugs per link => 102 slugs, past D1's 100-parameter cap
 
+  // The alternate slug and the bundle membership go in one batch rather than
+  // two awaited calls per link. addCustom() costs three D1 round trips and
+  // addLink() one, so the loop used to spend over half the fixture waiting on
+  // round trips it can just as well queue. See seedCustomSlugs() for why that
+  // matters and for the test that pins the shortcut to the repository path.
   async function bigBundle() {
     const bundle = await BundleRepository.create(env.DB, { name: "Wide", createdBy: "a@b" });
+    const now = Math.floor(Date.now() / 1000);
     const linkIds: number[] = [];
     const slugs: string[] = [];
+    const writes: D1PreparedStatement[] = [];
     for (let i = 0; i < LINKS; i++) {
       const link = await LinkRepository.create(env.DB, { url: `https://a.com/${i}`, slug: `wide-${i}`, createdBy: "a@b" });
-      await SlugRepository.addCustom(env.DB, link.id, `wide-${i}-alt`);
-      await BundleRepository.addLink(env.DB, bundle.id, link.id);
+      writes.push(
+        ...customSlugWrites(link.id, [`wide-${i}-alt`], now),
+        env.DB
+          .prepare("INSERT OR IGNORE INTO bundle_links (bundle_id, link_id, added_at) VALUES (?, ?, ?)")
+          .bind(bundle.id, link.id, now),
+      );
       linkIds.push(link.id);
       slugs.push(`wide-${i}`, `wide-${i}-alt`);
     }
+    await env.DB.batch(writes);
     return { bundle, linkIds, slugs };
   }
 
@@ -664,15 +720,22 @@ describe("ClickRepository bundle analytics past the D1 bind cap", () => {
 describe("ClickRepository per-link analytics past the D1 bind cap", () => {
   const SLUGS = 101; // 1 auto slug + 100 custom => 101 slugs, past D1's 100-parameter cap
 
-  async function wideLink() {
-    const link = await LinkRepository.create(env.DB, { url: "https://a.com/wide", slug: "wide-0", createdBy: "a@b" });
-    const slugs = ["wide-0"];
-    for (let i = 1; i < SLUGS; i++) {
-      await SlugRepository.addCustom(env.DB, link.id, `wide-${i}`);
-      slugs.push(`wide-${i}`);
-    }
+  async function wideLink(prefix = "wide", count = SLUGS) {
+    const link = await LinkRepository.create(env.DB, { url: "https://a.com/wide", slug: `${prefix}-0`, createdBy: "a@b" });
+    const slugs = [`${prefix}-0`];
+    for (let i = 1; i < count; i++) slugs.push(`${prefix}-${i}`);
+    await seedCustomSlugs(link.id, slugs.slice(1));
     return { link, slugs };
   }
+
+  it("seeds the slug rows SlugRepository.addCustom would write", async () => {
+    const { link: batched } = await wideLink("batched", 5);
+
+    const sequential = await LinkRepository.create(env.DB, { url: "https://a.com/seq", slug: "seq-0", createdBy: "a@b" });
+    for (let i = 1; i < 5; i++) await SlugRepository.addCustom(env.DB, sequential.id, `seq-${i}`);
+
+    expect(await slugShape(batched.id, "batched")).toEqual(await slugShape(sequential.id, "seq"));
+  });
 
   it("getStats aggregates a link whose slug count exceeds the cap", async () => {
     const { link, slugs } = await wideLink();

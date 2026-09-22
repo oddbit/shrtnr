@@ -32,8 +32,7 @@ case "$(basename "$MANIFEST")" in
   package.json)
     # Use node instead of jq: node is already a hard requirement (wrangler)
     # and ships with every SDK dev machine, while jq needs a separate install
-    # on fresh macOS (brew) and some minimal Linux images. Mirrors the
-    # approach in scripts/resolve-bindings.sh.
+    # on fresh macOS (brew) and some minimal Linux images.
     VERSION=$(node -e "
       const v = JSON.parse(require('fs').readFileSync('$MANIFEST','utf8')).version;
       if (v) process.stdout.write(v);

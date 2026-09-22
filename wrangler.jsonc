@@ -24,11 +24,17 @@
       "enabled": true
     }
   },
-  // KV namespace ID is resolved at deploy time by scripts/resolve-bindings.sh
+  // No resource IDs on purpose. Wrangler provisions bindings that carry no
+  // id: `wrangler deploy` creates the KV namespace (named after the Worker
+  // and binding) and the D1 database (named database_name) on the first
+  // deploy, links later deploys to them by binding name, and the Deploy to
+  // Cloudflare flow provisions the same way in a fork. `wrangler dev`
+  // creates local copies. After a deploy from your machine wrangler writes
+  // the new IDs into this file: discard that change, the IDs are account
+  // specific and the deploy works without them.
   "kv_namespaces": [
     {
-      "binding": "SLUG_KV",
-      "id": "SLUG_KV"
+      "binding": "SLUG_KV"
     }
   ],
   "d1_databases": [

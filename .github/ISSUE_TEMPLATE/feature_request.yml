@@ -1,0 +1,53 @@
+name: Feature request
+description: Propose a new feature or an improvement to an existing one.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For anything beyond a small change, filing this first saves you from building something that conflicts with the project's direction. See [CONTRIBUTING.md](https://github.com/oddbit/shrtnr/blob/main/CONTRIBUTING.md).
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of shrtnr does this affect?
+      options:
+        - Worker app (admin UI, redirects, API)
+        - TypeScript/npm SDK
+        - Python/PyPI SDK
+        - Dart/pub.dev SDK
+        - Browser extension
+        - MCP server
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve
+      description: What are you trying to do that shrtnr doesn't support today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How you'd like it to work. Include API shape, UI sketch, or SDK method signature if relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you've thought about, and why you'd rather not use them.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else worth knowing.

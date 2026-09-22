@@ -1,3 +1,9 @@
+# Optional. The Worker applies its own migrations on the first request
+# after a deploy (see README, "Database schema"), so this workflow is not
+# needed for a working deployment. It exists for forks that want the
+# schema in place before the Worker takes traffic, applied from CI with
+# an audit trail. It needs the CLOUDFLARE_API_TOKEN (Workers Scripts:
+# Edit and D1: Edit) and CLOUDFLARE_ACCOUNT_ID repository secrets.
 name: Migrate
 
 on:
@@ -22,12 +28,8 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Resolve Cloudflare bindings (D1 + KV)
-        run: bash scripts/resolve-bindings.sh
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
+      # The D1 binding carries no database_id; wrangler resolves the
+      # database by its database_name through the API.
       - name: Apply database migrations
         run: yarn db:migrate:remote
         env:

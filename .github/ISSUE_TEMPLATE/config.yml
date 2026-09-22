@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/oddbit/shrtnr/security/policy
+    about: Do not file vulnerabilities as public issues. Email hello@oddbit.id per SECURITY.md.
+  - name: Ask a question
+    url: https://github.com/oddbit/shrtnr/discussions
+    about: Usage questions and general discussion belong in Discussions, not the issue tracker.

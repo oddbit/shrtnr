@@ -4,7 +4,7 @@ version: 2.2.1
 homepage: https://oddb.it/shrtnr-website-pub
 repository: https://github.com/oddbit/shrtnr
 issue_tracker: https://github.com/oddbit/shrtnr/issues
-# x-spec-hash: sha256:d2dc385c1817e0d1c960ebe5587d000dc2a8bd7af2d7bc570a219c3661839cf1
+# x-spec-hash: sha256:32f04b8a3768be6fc60527a2f110fdd6479b9e74aee9f474316813f968979c57
 # Stored as a comment rather than a top-level key to avoid a pana score deduction for unknown manifest fields.
 
 topics:
