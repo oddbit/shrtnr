@@ -2,7 +2,7 @@
   "name": "@oddbit/shrtnr-browser-extensions",
   "version": "0.1.1",
   "private": true,
-  "description": "Chrome and Firefox browser extensions for shrtnr — shorten the active tab into your self-hosted shrtnr deployment.",
+  "description": "Chrome and Firefox browser extensions for shrtnr \u2014 shorten the active tab into your self-hosted shrtnr deployment.",
   "license": "Apache-2.0",
   "homepage": "https://oddb.it/shrtnr-info",
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
@@ -24,7 +24,7 @@
     "verify-build": "node scripts/verify-build.mjs"
   },
   "dependencies": {
-    "@oddbit/shrtnr": "^1.1.0",
+    "@oddbit/shrtnr": "^1.2.1",
     "preact": "^10.29.3"
   },
   "devDependencies": {
