@@ -84,6 +84,7 @@ Full description: [docs/access-control.md](docs/access-control.md).
 
 ## Testing
 
+- Tests are the requirements and the functional documentation. A rule about how the app behaves is written down as a test, not as a question to the developer. UI/UX rules (which control a visitor is offered, what a click does) go in Playwright under `e2e/`; server answers go in vitest. `e2e/authorization.spec.ts` is the model: the eight authorization rules from the section above, each as a browser step.
 - Write tests first. Ask the developer for behavior details; if trivial, write directly. Implement to pass.
 - Write tests for every requested behavior or change.
 - Never modify or remove tests to accommodate code changes. If a new feature breaks an existing test, stop and notify the developer. Only adding new tests is permitted.
