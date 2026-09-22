@@ -157,12 +157,13 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "health",
       {
         title: "Health check",
-        description: "Check the shrtnr server health and current version",
+        description:
+          "Check that the shrtnr server is reachable and read its version and database schema state. Takes no arguments. Use it to diagnose a failing connection, not to look up links.",
         inputSchema: {},
         annotations: { title: "Health check", ...READ_ONLY },
       },
       async () => {
-        const res = handleHealth();
+        const res = await handleHealth(this.env);
         return ok(await res.json());
       },
     );
@@ -259,7 +260,8 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "update_link",
       {
         title: "Update link",
-        description: "Update the destination URL, label, or expiry of an existing short link.",
+        description:
+          "Change the destination URL, label or expiry of an existing short link. Slugs are separate: use add_custom_slug, disable_slug or remove_slug for those. Only the link owner can update it.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link to update"),
           url: z.string().url().optional().describe("New destination URL"),
@@ -279,7 +281,8 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "disable_link",
       {
         title: "Disable link",
-        description: "Disable a short link so it stops redirecting. Only the link owner can disable it.",
+        description:
+          "Stop every slug on a short link from redirecting, without deleting anything. Reversible with enable_link, and the click history is kept. This is the right tool for retiring a link that has clicks, since delete_link refuses those. Only the link owner can disable it.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link to disable"),
         },
@@ -296,7 +299,8 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "enable_link",
       {
         title: "Enable link",
-        description: "Re-enable a disabled short link so it starts redirecting again. Only the link owner can enable it.",
+        description:
+          "Resume redirecting on a short link that disable_link stopped. Only the link owner can enable it.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link to enable"),
         },
@@ -313,7 +317,8 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "add_custom_slug",
       {
         title: "Add custom slug",
-        description: "Add a custom slug to an existing link.",
+        description:
+          "Attach an additional slug to an existing link so one destination answers on several short URLs, for example one slug per channel or campaign. Clicks are tracked per slug. Any authenticated caller can add a slug to any link; ownership is not required. Fails with a conflict when the slug is already in use anywhere.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link"),
           slug: CustomSlugStringSchema.describe("Custom slug to add, e.g. 'my-post'"),
@@ -370,7 +375,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "Remove slug",
         description:
-          "Permanently remove a custom slug from a link. Only zero-click slugs can be removed; slugs with clicks should be disabled instead. The system-generated slug cannot be removed. Only the link owner can remove a slug.",
+          "Permanently remove a custom slug from a link. Irreversible. Only zero-click slugs can be removed; for a slug with clicks use disable_slug, which keeps the history and can be undone. The system-generated slug cannot be removed. Only the link owner can remove a slug.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link"),
           slug: CustomSlugStringSchema.describe("The slug to remove"),
@@ -389,7 +394,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "Link analytics",
         description:
-          "Get click analytics for a short link: countries, referrers, devices, browsers, and daily click history. Results cover ONLY the requested time range; clicks outside this window are not included. Always read `range_used` in the response and reuse the same range across follow-up calls so numbers stay comparable. Defaults to the user's `default_range` setting (or 30d) when no range is given.",
+          "Get click analytics for a short link: countries, referrers, devices, operating systems, browsers, QR scans versus link clicks, per-slug counts, and click history. Results cover ONLY the requested time range; clicks outside this window are not included. Always read `range_used` in the response and reuse the same range across follow-up calls so numbers stay comparable. Defaults to the user's `default_range` setting (or 30d) when no range is given.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link"),
           range: optionalRangeSchema,
@@ -703,7 +708,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "Delete link",
         description:
-          "Delete a short link. Only links with zero clicks can be deleted. Links with clicks should be disabled instead. Only the link owner can delete it.",
+          "Permanently delete a short link and all of its slugs. Irreversible. Refused for any link with recorded clicks; use disable_link for those. Only the link owner can delete it.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link to delete"),
         },
@@ -772,7 +777,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "Create bundle",
         description:
-          "Create a new bundle. Bundles are owned by the caller. Use add_link_to_bundle to populate them.",
+          "Create a bundle: a named group of links whose clicks roll up into one combined report (see get_bundle_analytics), for example every link in one campaign. A link can belong to several bundles. The caller becomes the bundle owner. Use add_link_to_bundle to populate it.",
         inputSchema: {
           name: z.string().min(1).max(120).describe("Display name"),
           description: z.string().nullable().optional().describe("Optional short description"),
@@ -819,7 +824,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "Archive bundle",
         description:
-          "Archive a bundle. It stays in the database but is hidden from the default list. Only the owner can archive.",
+          "Archive a bundle to hide it from the default list while keeping its links and click history. Reversible with unarchive_bundle. Use delete_bundle only to remove the bundle for good. Only the owner can archive.",
         inputSchema: {
           bundle_id: z.number().int().positive(),
         },
@@ -855,7 +860,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "Delete bundle",
         description:
-          "Permanently delete a bundle. Member links are not deleted, only their membership in this bundle. Only the owner can delete.",
+          "Permanently delete a bundle. Irreversible. Member links are not deleted, only their membership in this bundle. To hide a finished campaign while keeping its report, use archive_bundle instead. Only the owner can delete.",
         inputSchema: {
           bundle_id: z.number().int().positive(),
         },
@@ -910,7 +915,8 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "list_bundle_links",
       {
         title: "List bundle links",
-        description: "List every link in a given bundle, with slugs and total click counts.",
+        description:
+          "List every link in a bundle with its slugs and click counts. Use it to see membership; use get_bundle_analytics for the rolled-up numbers.",
         inputSchema: {
           bundle_id: z.number().int().positive(),
         },
@@ -945,7 +951,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "Bundle analytics",
         description:
-          "Combined analytics across every link in a bundle. Stats cover ONLY the requested range; reuse the same range across follow-up calls to keep numbers comparable. Defaults to the user's `default_range` setting (or 30d). Response includes `range_used`.",
+          "Combined analytics across every link in a bundle: total clicks, timeline, countries, referrers, devices, operating systems, browsers, QR scans versus link clicks, and each link's share of the total. Stats cover ONLY the requested range; reuse the same range across follow-up calls to keep numbers comparable. Defaults to the user's `default_range` setting (or 30d). Response includes `range_used`.",
         inputSchema: {
           bundle_id: z.number().int().positive(),
           range: optionalRangeSchema,

@@ -541,9 +541,35 @@ describe("Links listing page", () => {
 });
 
 describe("Links listing page windowing", () => {
+  // LinkRepository.create() spends two D1 round trips per link: the
+  // insert-plus-slug batch, then the getById read-back it returns. Seeding 120
+  // links one call at a time made those round trips the whole cost of the
+  // windowing tests, so a loaded CI runner stretched one past vitest's 5s
+  // budget and the suite went red on timing alone. Same mechanism as the
+  // over-cap slug fixtures in click-repository.test.ts. Queue the same rows in
+  // one batch per chunk instead: the statements still run in order, so s0 keeps
+  // the lowest id, which is the tiebreak ORDER BY created_at DESC, id DESC
+  // falls back to when every seeded row shares a timestamp.
   async function seed(count: number): Promise<void> {
-    for (let i = 0; i < count; i++) {
-      await LinkRepository.create(env.DB, { url: `https://example${i}.com`, slug: `s${i}` });
+    const now = Math.floor(Date.now() / 1000);
+    const CHUNK = 50;
+    for (let start = 0; start < count; start += CHUNK) {
+      const writes: D1PreparedStatement[] = [];
+      for (let i = start; i < Math.min(start + CHUNK, count); i++) {
+        writes.push(
+          env.DB
+            .prepare(
+              "INSERT INTO links (url, label, created_at, expires_at, created_via, created_by) VALUES (?, NULL, ?, NULL, 'app', 'anonymous')",
+            )
+            .bind(`https://example${i}.com`, now),
+          env.DB
+            .prepare(
+              "INSERT INTO slugs (link_id, slug, is_custom, is_primary, created_at) VALUES (last_insert_rowid(), ?, 0, 1, ?)",
+            )
+            .bind(`s${i}`, now),
+        );
+      }
+      await env.DB.batch(writes);
     }
   }
 

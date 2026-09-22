@@ -25,6 +25,8 @@ On "update the version" / "bump version" / "create a release":
 4. Commit. Do not push.
 5. Dart only: also create the tag locally, do not push: `git tag pub-v<version>`. pub.dev publishes on tag push. App/npm/Python tag from CI after publish.
 
+Only the app track creates a GitHub Release (with `--latest`). SDK and extension tracks tag and publish to their registry; never add `gh release create` to those workflows.
+
 Full details: [docs/release-automation.md](docs/release-automation.md).
 
 ## SDKs
