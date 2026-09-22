@@ -42,6 +42,9 @@ import {
 import { DEFAULT_SLUG_LENGTH, DEFAULT_THEME, LINKS_DEFAULT_PER_PAGE, THEMES } from "./constants";
 import { createTranslateFn, DEFAULT_LANGUAGE, isSupportedLanguage } from "./i18n";
 import { handleHealth } from "./api/health";
+import { handleSetup } from "./api/setup";
+import { ensureSchema, MigrationError } from "./db/migrate";
+import { schemaErrorResponse } from "./schema-guard";
 import { assetsRouter } from "./assets";
 import { answersJson, logUnhandledError, negotiatedErrorFormat, onUnhandledError, unhandledErrorResponse } from "./unhandled";
 import {
@@ -105,9 +108,10 @@ import { bumpCacheVersion } from "./admin/widgets/cache";
 
 const app = new Hono<HonoEnv>();
 
-// ---- Health check (public) ----
+// ---- Health check (public) and schema diagnostic ----
 
-app.get("/_/health", () => handleHealth());
+app.get("/_/health", (c) => handleHealth(c.env));
+app.all("/_/setup", (c) => handleSetup(c.req.raw, c.env));
 
 // ---- Hashed admin stylesheet and client script (public, immutable) ----
 
@@ -618,8 +622,42 @@ export { ShrtnrMCP };
 
 const mcpHandler = ShrtnrMCP.serve("/_/mcp");
 
+// Routes that answer about the schema rather than through it. They run
+// their own guard and report a failure in their own shape.
+const SCHEMA_EXEMPT_PATHS = new Set(["/_/health", "/_/setup"]);
+
+/**
+ * Whether a request belongs to the operator (admin pages, the API, the MCP
+ * transport on its own host) rather than to a visitor following a short link.
+ */
+function isOperatorRequest(url: URL): boolean {
+  return url.pathname.startsWith("/_/") || url.host.startsWith("mcp.");
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // A one-click deploy hands the first request an empty D1. ensureSchema()
+    // applies the bundled migrations once per isolate and is a settled
+    // promise on every request after that, so the redirect path pays a
+    // microtask, not a round trip.
+    //
+    // On failure the answer depends on what the database holds. With no
+    // schema at all there is nothing to serve, so every route gets the 503
+    // page that names the migration and the error, never a bare 1101. When
+    // an older schema is in place and a newer migration failed, the short
+    // links keep redirecting, since they read tables that already exist,
+    // and the operator sees the page on the routes only they visit.
+    const url = new URL(request.url);
+    if (!SCHEMA_EXEMPT_PATHS.has(url.pathname)) {
+      try {
+        await ensureSchema(env);
+      } catch (err) {
+        logUnhandledError(err, request);
+        const failOpen = err instanceof MigrationError && err.baselinePresent && !isOperatorRequest(url);
+        if (!failOpen) return schemaErrorResponse(err, request);
+      }
+    }
+
     // The routing below the Hono app (host rewrite, MCP transport, OAuth
     // metadata) runs outside app.onError; the same last-resort handling
     // applies, so a failure there is a logged 500, not a bare exception.

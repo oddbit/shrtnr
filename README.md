@@ -62,28 +62,17 @@ We're an Indonesian-based studio with roots in Sweden. [**shrtnr**](https://oddb
 
 ### One-click
 
-Click the **Deploy to Cloudflare** button above. Cloudflare will fork the repo, provision a D1 database and KV namespace, and deploy the Worker.
+Click the **Deploy to Cloudflare** button. Cloudflare forks the repo into your GitHub or GitLab account, provisions the D1 database and KV namespace that `wrangler.jsonc` declares, and deploys the Worker through [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/).
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://oddb.it/shrtnr-deploy-howto)
 
+The Worker creates its own database schema on the first request, so there is no command to run afterwards. To confirm the deploy:
 
-**⚠️ Important: GitHub Actions workflows are not copied when Cloudflare forks your repo.** This means the automatic migration workflow (`.github/workflows/migrate.yml`) does not exist in your fork after the initial deploy. You must set up migrations yourself. Without running migrations, the database schema will be missing and the app will not work.
+1. Open `https://<your-worker>.workers.dev/_/admin/dashboard` and create a link. That first visit creates the schema.
+2. Open `https://<your-worker>.workers.dev/_/health`. It answers `"schema": { "ready": true }`.
+3. Protect the admin pages before you share the domain: see [Access Control](#access-control).
 
-After the initial deploy, apply the database migrations immediately:
-
-```bash
-cd shrtnr
-yarn install
-npx wrangler d1 migrations apply DB --remote
-```
-
-Then, every time you pull updates and push them to your fork, re-run migrations to apply any new schema changes:
-
-```bash
-npx wrangler d1 migrations apply DB --remote
-```
-
-To automate this, copy `.github/workflows/migrate.yml` from the source repo into your fork and add the required secrets (see [Continuous deployment](#continuous-deployment) below).
+Every later push to your fork redeploys through Workers Builds, and the Worker applies any new migration on the first request after the deploy. See [Database schema](#database-schema) for how that works and what to check when it does not.
 
 ### Manual
 
@@ -92,24 +81,47 @@ git clone https://github.com/oddbit/shrtnr
 cd shrtnr
 yarn install
 yarn wrangler-login
-yarn db:create
 yarn deploy
-yarn db:migrate:remote
 ```
+
+`wrangler.jsonc` declares the D1 database and KV namespace by name only. The first `yarn deploy` creates both in your account through wrangler's [resource provisioning](https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-resource-provisioning) and later deploys link to them by binding name. Wrangler also writes the new IDs into `wrangler.jsonc` on your machine; discard that change, the IDs are specific to your account and the deploy works without them.
+
+The first request creates the schema. To apply it ahead of that request from your terminal, run `yarn db:migrate:remote`; the Worker and the CLI record their work in the same table, so either can go first.
 
 ### Continuous deployment
 
-Cloudflare [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) redeploys the Worker on every push to your production branch. Database migrations are handled separately by the included GitHub Actions workflow at `.github/workflows/migrate.yml`, which triggers when Cloudflare's check suite completes successfully.
+Cloudflare [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) redeploys the Worker on every push to your production branch. Schema changes need no separate step: the deployed Worker carries its migrations and applies the pending ones on the first request.
 
-**If you used one-click deploy:** Cloudflare forks the repo but does not copy GitHub Actions workflows. To get automatic migrations, copy the file manually:
+The build settings the project expects, under **Workers & Pages > shrtnr > Settings > Build** in the dashboard:
 
-1. In your forked repo, create `.github/workflows/migrate.yml` with the contents from the [source repo](https://github.com/oddbit/shrtnr/blob/main/.github/workflows/migrate.yml).
-2. Add two repository secrets in GitHub under **Settings > Secrets and variables > Actions**:
+| Field | Value |
+|---|---|
+| Build command | empty |
+| Deploy command | `yarn deploy` (or `npx wrangler deploy`) |
+| Version command | `npx wrangler versions upload` |
 
-- `CLOUDFLARE_API_TOKEN`: a Cloudflare API token with **Workers Scripts: Edit** and **D1: Edit** permissions
-- `CLOUDFLARE_ACCOUNT_ID`: your Cloudflare account ID (visible in the dashboard URL or the right sidebar of any zone page)
+A fork created by the deploy button gets these from `package.json`. Both commands work with the bindings declared by name in `wrangler.jsonc`: wrangler links to the Worker's existing KV namespace and D1 database by binding name. A project set up before this repo dropped its id placeholders may still carry `bash scripts/resolve-bindings.sh && ...` in one of these fields; that script no longer exists, so remove that prefix or the build fails with "No such file or directory".
 
-Without these secrets, you can still deploy: Workers Builds handles the code, and you run `yarn db:migrate:remote` manually when pushing schema changes.
+Two optional ways to apply migrations before the Worker takes traffic, for deployments that want the schema in place ahead of the first request:
+
+- **GitHub Actions.** `.github/workflows/migrate.yml` runs `wrangler d1 migrations apply` after Cloudflare's check suite succeeds on `main`. It needs two repository secrets under **Settings > Secrets and variables > Actions**: `CLOUDFLARE_API_TOKEN` with **Workers Scripts: Edit** and **D1: Edit**, and `CLOUDFLARE_ACCOUNT_ID`. A fork created by the deploy button can add the workflow and the secrets the same way.
+- **Workers Builds deploy command.** Set the project's deploy command to `npx wrangler d1 migrations apply DB --remote && npx wrangler deploy`. The token Workers Builds creates for itself holds Workers Scripts, KV and R2 edit rights; [its documented permission list](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/) does not include D1, so add **D1: Edit** to that token under **My Profile > API Tokens** first, or the migration step fails with an authentication error.
+
+### Database schema
+
+Migrations live in `migrations/*.sql`. `yarn migrations:bundle` (run for you by `yarn dev`) writes them into `src/db/migrations.generated.ts`, which ships inside the Worker; the vitest suite fails when the two disagree, so add a migration, run the bundler, and commit both.
+
+On the first request an isolate receives, the Worker applies every migration that is not yet recorded in D1's `d1_migrations` table, the same table with the same file names that `wrangler d1 migrations apply` uses. Each migration runs as one transaction with its bookkeeping row, so a race between isolates on a fresh deploy ends with each migration applied once. After that first request the check is a settled promise, and a fresh isolate reads the recorded schema version from KV before it touches D1, so redirects pay nothing for it.
+
+Two routes report on the schema, and neither changes it on a GET:
+
+- `GET /_/health` includes `schema.version` (what this build expects), `schema.applied` (the last recorded migration) and `schema.ready`. A database no request has reached yet reports `ready: false` with 200. After a failed migration attempt it answers 503 with `"status": "degraded"` and the error.
+- `GET /_/setup` lists applied and pending migrations. `POST /_/setup` retries the migration at once. Both require a Cloudflare Access identity once `ACCESS_AUD` is set, and are rate-limited to ten requests a minute per client before that.
+
+When a migration fails, the Worker remembers the failure for 30 seconds before a request triggers another attempt, so a migration that fails against live data costs one failed statement batch per half minute, not one per request. What visitors see depends on the database:
+
+- **No schema yet** (a fresh deploy): every route answers a 503 page that names the failing migration and the database error. The usual cause is a Worker without a D1 binding named `DB` (check **Settings > Bindings** in the dashboard).
+- **An older schema in place** (an upgrade whose new migration fails): short links keep redirecting, since they read tables that already exist. The admin pages, the API and the MCP endpoint answer the 503 page instead, and `/_/health` reports degraded, so the operator sees the failure and visitors do not.
 
 ## Access Control
 
@@ -284,12 +296,11 @@ For full endpoint shapes, parameters, and example payloads, see the live API ref
 yarn install
 yarn types                       # binding and runtime types from wrangler.jsonc, git-ignored
 cp .dev.vars.example .dev.vars   # local identity settings, git-ignored
-yarn db:migrate                  # apply migrations to local D1
 yarn test
 yarn dev
 ```
 
-`yarn types` writes `worker-configuration.d.ts`, which the typecheck needs. Rerun it after changing `wrangler.jsonc`.
+`yarn types` writes `worker-configuration.d.ts`, which the typecheck needs. Rerun it after changing `wrangler.jsonc`. `yarn dev` creates the local D1 database and KV namespace on start and the schema on the first request; `yarn db:migrate:local` applies the schema from the CLI instead.
 
 ### Local sign-in
 

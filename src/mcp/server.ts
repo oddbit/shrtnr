@@ -162,7 +162,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         annotations: { title: "Health check", ...READ_ONLY },
       },
       async () => {
-        const res = handleHealth();
+        const res = await handleHealth(this.env);
         return ok(await res.json());
       },
     );

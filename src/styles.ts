@@ -1468,3 +1468,36 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   .shimmer::after, .widget-slot.htmx-request::after { animation: none; }
 }
 `;
+
+// The 503 page shown while the database schema is missing (src/schema-guard.ts).
+// Extends standaloneBaseStyles: a readable column, not a centered splash.
+export const schemaErrorStyles = `${standaloneBaseStyles}
+  body { padding: 2rem 1rem; }
+  .notice { max-width: 40rem; margin: 0 auto; }
+  .eyebrow {
+    font-family: var(--font-family-display);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--color-accent);
+  }
+  h1 { font-family: var(--font-family-display); font-size: 1.75rem; line-height: 1.2; margin: 0.5rem 0 1rem; }
+  h2 { font-family: var(--font-family-display); font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
+  p, li { color: var(--color-text-muted); }
+  ol { padding-left: 1.25rem; }
+  li { margin: 0.4rem 0; }
+  a { color: var(--color-accent); }
+  code { font-family: var(--font-family-mono, ui-monospace, monospace); font-size: 0.95em; }
+  .error {
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background: var(--color-surface, rgba(0, 0, 0, 0.05));
+    color: var(--color-text);
+    font-family: var(--font-family-mono, ui-monospace, monospace);
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+`;

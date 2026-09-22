@@ -7,11 +7,12 @@
     "node": "^22.18.0"
   },
   "scripts": {
+    "migrations:bundle": "tsx scripts/generate-migrations.ts",
+    "predev": "yarn migrations:bundle",
     "dev": "wrangler dev",
     "types": "wrangler types --env-file wrangler.types.env",
-    "deploy": "bash scripts/resolve-bindings.sh && wrangler deploy",
+    "deploy": "wrangler deploy",
     "wrangler-login": "wrangler login",
-    "db:create": "wrangler d1 create shrtnr-db",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "secret:put": "wrangler secret put",
