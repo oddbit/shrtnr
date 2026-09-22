@@ -118,7 +118,11 @@ export async function addCustomSlug(linkId: number, slug: string): Promise<Short
   }
 }
 
-/** Fetches the QR SVG for a link. Without a slug the server picks the link's primary slug. */
+/**
+ * Fetches the QR SVG for a link. Without a slug the server picks the link's
+ * primary slug: the SDK drops an undefined query parameter, so an absent
+ * slug needs no branch here.
+ */
 export async function getQrSvg(linkId: number, slug?: string): Promise<string> {
   const config = await getConfig();
   if (!config) {
@@ -126,8 +130,7 @@ export async function getQrSvg(linkId: number, slug?: string): Promise<string> {
   }
   const client = buildClient(config);
   try {
-    const options = slug ? { size: String(QR_SIZE_PX), slug } : { size: String(QR_SIZE_PX) };
-    return await client.links.qr(linkId, options);
+    return await client.links.qr(linkId, { size: QR_SIZE_PX, slug });
   } catch (err) {
     rethrow(err);
   }
