@@ -80,14 +80,14 @@ const clickRuleDelete = {
 /** 400 on slug removal: click rule, plus the system-slug rule. */
 const clickRuleRemoveSlug = {
   description:
-    "Refused. Either the slug has recorded at least one click (`Cannot remove a slug with clicks, disable it instead`), or it is the link's system-generated slug, which can never be removed. Disable the slug instead to stop it resolving while keeping its click history.",
+    "Refused. Either the slug has recorded at least one click (`Cannot remove a slug with clicks, disable it instead`), or it is the link's system-generated slug, which can never be removed. For a clicked custom slug, call `POST /links/{id}/slugs/{slug}/disable` instead: it stops that slug resolving and keeps its click history. For the system-generated slug, disable the whole link with `POST /links/{id}/disable`. Also returned for a malformed request.",
   content: { "application/json": { schema: ErrorResponseSchema } },
 };
 
 /** 400 on slug disable: the system slug is not disableable either. */
 const systemSlugRule = {
   description:
-    "Refused. The system-generated slug cannot be disabled, only custom slugs can. Disable the whole link instead.",
+    "Refused. The system-generated slug cannot be disabled, only custom slugs can. Disable the whole link instead. Also returned for a malformed request.",
   content: { "application/json": { schema: ErrorResponseSchema } },
 };
 
@@ -237,7 +237,7 @@ const enableLinkRoute = createRoute({
   path: "/{id}/enable",
   tags: ["links"],
   summary: "Re-enable a disabled link",
-  description: "Owner only. Clears the expiry set by disable so the link resolves again.",
+  description: "Owner only. Clears `expires_at` outright, including an expiry set at create or update, so the link resolves again and no longer expires.",
   middleware: [requireScope("create")] as const,
   request: { params: IdParamSchema },
   responses: {
