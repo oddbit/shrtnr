@@ -27,5 +27,11 @@
     "128": "assets/icon-128.png"
   },
   "permissions": ["activeTab", "storage", "clipboardWrite"],
-  "optional_host_permissions": ["*://*/*"]
+  "optional_host_permissions": ["*://*/*"],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+Shift+L" },
+      "description": "Shorten the current tab with shrtnr"
+    }
+  }
 }

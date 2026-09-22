@@ -63,7 +63,7 @@ async function buildEntries(target, outdir, watch) {
     bundle: true,
     outdir,
     format: "esm",
-    target: ["chrome120", "firefox128"],
+    target: ["chrome120", "firefox140"],
     platform: "browser",
     sourcemap: watch ? "inline" : false,
     minify: !watch,

@@ -21,7 +21,8 @@
     "lint:firefox": "web-ext lint --source-dir dist/firefox --self-hosted",
     "package": "node build.mjs --target=all",
     "clean": "rm -rf dist",
-    "verify-build": "node scripts/verify-build.mjs"
+    "verify-build": "node scripts/verify-build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@oddbit/shrtnr": "^1.2.1",
