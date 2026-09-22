@@ -1,0 +1,74 @@
+name: Bug report
+description: Something in the app, an SDK, the browser extension, or the MCP server is not working as documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Found a security vulnerability instead? Do not file it here. See [SECURITY.md](https://github.com/oddbit/shrtnr/blob/main/SECURITY.md) for how to report it privately.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of shrtnr is affected?
+      options:
+        - Worker app (admin UI, redirects, API)
+        - TypeScript/npm SDK
+        - Python/PyPI SDK
+        - Dart/pub.dev SDK
+        - Browser extension
+        - MCP server
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release tag or package version you're on (for example, app-v0.40.0, or the npm/PyPI/pub.dev version).
+      placeholder: app-v0.40.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: A clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps, request, or code that reproduces it.
+      placeholder: |
+        1. Deploy with '...'
+        2. Call '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error output
+      description: Paste relevant output. This field renders as a code block, so no need to fence it yourself.
+      render: shell
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that might be relevant (deployment setup, browser, OS).
