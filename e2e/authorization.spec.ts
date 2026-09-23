@@ -242,7 +242,10 @@ test.describe("rules 7 and 8: bundles", () => {
     await moreActions(otherPage).click();
     await menuItem(otherPage, "Add to bundle").click();
     await otherPage.locator(`.add-to-bundle-row[data-bundle-id="${bundle.id}"]`).click();
-    await modalButton(otherPage, "Save").click();
+    // Save reloads the page once the POST lands (saveAddToBundle in
+    // src/client.ts). Wait for that reload, or the goto below can race it
+    // and abort with net::ERR_ABORTED.
+    await Promise.all([otherPage.waitForEvent("load"), modalButton(otherPage, "Save").click()]);
     await expect
       .poll(async () => {
         const res = await otherApi.get(`/_/admin/api/bundles/${bundle.id}/links`);
