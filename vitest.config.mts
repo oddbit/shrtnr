@@ -8,10 +8,12 @@ export default defineConfig({
       miniflare: {
         d1Databases: { DB: "test-db" },
         kvNamespaces: ["SLUG_KV"],
-        // Tests assume DEV_IDENTITY is set to "dev@local". Locally this
-        // flows in via .dev.vars, but that file is git-ignored and absent
-        // in CI. Bind it here so behavior is identical in both places.
-        bindings: { DEV_IDENTITY: "dev@local" },
+        // Tests assume dev mode (DEV_MODE, see isDevMode in src/access.ts)
+        // and DEV_IDENTITY set to "dev@local". Locally these flow in via
+        // .dev.vars, but that file is git-ignored and absent in CI. Bind
+        // them here so behavior is identical in both places. Tests of a
+        // deployment override DEV_MODE per request.
+        bindings: { DEV_MODE: "true", DEV_IDENTITY: "dev@local" },
         // Keep the suite off the network. Every link a handler test creates
         // schedules autoLabelLink() in waitUntil, which fetches the link's
         // URL for a <title>. Without this, that fetch left the sandbox for

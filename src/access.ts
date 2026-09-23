@@ -41,8 +41,28 @@ function extractToken(request: Request): string | null {
 }
 
 /**
+ * Whether this Worker runs as a local development or test server, where no
+ * Cloudflare Access sits in front of it and the identity comes from the
+ * dev_identity cookie, DEV_IDENTITY or a hand-written header.
+ *
+ * Dev mode is opt-in: DEV_MODE=true lives in .dev.vars and the test pools,
+ * which a deploy never uploads. A missing ACCESS_AUD alone is not dev mode.
+ * It is a deployment that has not finished its Access setup, and the admin
+ * and MCP surfaces refuse it (src/access-required.ts) instead of trusting an
+ * identity any caller can write into a request. A configured ACCESS_AUD
+ * always wins over DEV_MODE.
+ *
+ * Callers gate on this before reaching the unverified branch of
+ * extractIdentity() and verifyAccessJwt(), which runs whenever the audience
+ * they are given is empty.
+ */
+export function isDevMode(env: Env): boolean {
+  return env.DEV_MODE === "true" && !env.ACCESS_AUD;
+}
+
+/**
  * Name of the cookie that carries a fake identity in dev mode. Set by
- * /_/dev/login, cleared by /_/dev/logout, read only while ACCESS_AUD is unset.
+ * /_/dev/login, cleared by /_/dev/logout, read only in dev mode.
  */
 export const DEV_IDENTITY_COOKIE = "dev_identity";
 
@@ -82,9 +102,10 @@ function parseJwtPayload(token: string): Record<string, unknown> | null {
 /**
  * Extract a stable identity string from a request.
  *
- * In dev/test mode (aud not set), reads from an unverified JWT or the
- * Cf-Access-Authenticated-User-Email header. In production mode, reads from
- * the verified JWT payload.
+ * With an empty aud, reads from an unverified JWT or the
+ * Cf-Access-Authenticated-User-Email header, so callers reach that branch
+ * only in dev mode (see isDevMode). With an aud, reads from the verified JWT
+ * payload.
  *
  * Tries claims in order: email -> phone -> sub. Falls back to "anonymous" so
  * the return value is always a non-empty string safe to use as a DB key.
@@ -163,7 +184,7 @@ export async function isSignedIn(request: Request, env: Env): Promise<boolean> {
  * Behavior depends on whether the aud is configured:
  * - Not configured (dev/test): extracts email from unverified JWT or
  *   the Cf-Access-Authenticated-User-Email header. Returns null if
- *   neither is present.
+ *   neither is present. Callers reach this only in dev mode (see isDevMode).
  * - Configured (production): validates the JWT signature and audience
  *   using the JWKS endpoint. Returns null on any validation failure.
  */

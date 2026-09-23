@@ -1,7 +1,7 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-import { DEV_IDENTITY_COOKIE } from "./access";
+import { DEV_IDENTITY_COOKIE, isDevMode } from "./access";
 import { escHtml } from "./escape";
 import type { Env } from "./types";
 
@@ -9,23 +9,21 @@ import type { Env } from "./types";
  * Fake sign-in for local development and browser tests.
  *
  * Production never reaches this code path: Cloudflare Access fronts the admin
- * pages and the worker verifies its JWT. Locally there is no Access, and the
+ * pages and the worker verifies its JWT, and a deployment still missing its
+ * ACCESS_AUD serves the access setup page instead (src/access-required.ts). Locally there is no Access, and the
  * admin pages still need an identity because every write is owner-gated and
  * every settings row is keyed by it. DEV_IDENTITY in .dev.vars gives the whole
  * server one identity; these routes give each browser its own, so a second
  * browser (or a second Playwright context) can act as a second owner.
  *
- * Both routes answer 404 whenever ACCESS_AUD is set, so a deployment carrying
- * the code exposes nothing.
+ * Both routes answer 404 outside dev mode (see isDevMode): DEV_MODE=true lives
+ * in .dev.vars and the test pools, which a deploy never uploads, so a
+ * deployment carrying the code exposes nothing, with or without ACCESS_AUD.
  */
 
 /** Anything a cookie can carry without a parser tripping on it, capped at a DNS-length email. */
 const IDENTITY_MAX_LENGTH = 254;
 const IDENTITY_PATTERN = /^[^\s;\x00-\x1f\x7f]+$/;
-
-function isDevMode(env: Env): boolean {
-  return !env.ACCESS_AUD;
-}
 
 /**
  * Same-origin path only. Anything that could leave the origin falls back to the dashboard.

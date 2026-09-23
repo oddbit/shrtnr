@@ -15,12 +15,15 @@
 //   props to the McpAgent Durable Object via ctx.props.
 // - The admin dashboard (/_/admin/*) is protected by a separate Access
 //   application with its own policies.
-// - In dev mode (no ACCESS_AUD), identity falls back to DEV_IDENTITY
-//   or "anonymous" so MCP and admin routes work without Access.
+// - In dev mode (DEV_MODE=true and no ACCESS_AUD, see isDevMode), identity
+//   falls back to the dev_identity cookie, DEV_IDENTITY or "anonymous" so
+//   MCP and admin routes work without Access. Outside dev mode a missing
+//   ACCESS_AUD shuts the admin pages and a missing MCP_ACCESS_AUD shuts MCP.
 
 import { Hono } from "hono";
 import type { Env, TimelineRange } from "./types";
-import { verifyAccessJwt, extractIdentity, isSignedIn, type AccessUser } from "./access";
+import { verifyAccessJwt, extractIdentity, isSignedIn, isDevMode, type AccessUser } from "./access";
+import { accessNotConfiguredResponse } from "./access-required";
 import { handleDevLogin, handleDevLogout } from "./dev-login";
 import { handleRedirect } from "./redirect";
 import { unauthorizedResponse, hasScope, forbiddenResponse } from "./auth";
@@ -117,7 +120,7 @@ app.all("/_/setup", (c) => handleSetup(c.req.raw, c.env));
 
 app.route("/", assetsRouter);
 
-// ---- Dev-mode fake sign-in (404 whenever ACCESS_AUD is set) ----
+// ---- Dev-mode fake sign-in (404 outside dev mode) ----
 
 app.get("/_/dev/login", (c) => handleDevLogin(c.req.raw, c.env));
 app.get("/_/dev/logout", (c) => handleDevLogout(c.req.raw, c.env));
@@ -134,6 +137,10 @@ app.use("/_/api/*", answersJson);
 // ---- Admin auth middleware ----
 
 app.use("/_/admin/*", async (c, next) => {
+  // Without an AUD tag the Worker cannot tell a real Access session from a
+  // header or cookie the caller wrote, so outside dev mode it serves no
+  // admin page and no admin write at all.
+  if (!c.env.ACCESS_AUD && !isDevMode(c.env)) return accessNotConfiguredResponse(c.req.raw);
   const user = await verifyAccessJwt(c.req.raw, c.env);
   // When ACCESS_AUD is configured, redirect unauthenticated visitors to
   // the landing page rather than showing a raw 403. API clients get a 401
@@ -709,10 +716,18 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
       // here answers the JSON error shape, declared beside the route like
       // the answersJson groups on the Hono app.
       try {
-        const identity = await extractIdentity(request, env, env.MCP_ACCESS_AUD);
-        // In production (MCP_ACCESS_AUD set), reject anonymous requests so
-        // MCP clients and the CF Access AI Controls portal correctly detect
-        // that this endpoint requires authentication.
+        // Without MCP_ACCESS_AUD there is no Access application to verify
+        // against, and an unverified identity is whatever the caller wrote.
+        // Outside dev mode the transport does not exist until it is set up;
+        // the admin AUD is no stand-in, since the MCP application signs
+        // with its own tag.
+        if (!env.MCP_ACCESS_AUD && !isDevMode(env)) {
+          return Response.json({ error: "MCP is not configured on this deployment" }, { status: 404 });
+        }
+        const identity = await extractIdentity(request, env, env.MCP_ACCESS_AUD || "");
+        // With MCP_ACCESS_AUD set, reject anonymous requests so MCP clients
+        // and the CF Access AI Controls portal correctly detect that this
+        // endpoint requires authentication.
         if (identity === "anonymous" && env.MCP_ACCESS_AUD) {
           return new Response("Unauthorized", {
             status: 401,

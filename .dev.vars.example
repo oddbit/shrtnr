@@ -1,9 +1,11 @@
 # Local development variables. Copy to .dev.vars (git-ignored) and edit.
 #
 # The admin pages are protected by Cloudflare Access in production. Locally
-# ACCESS_AUD is unset, so the worker skips JWT verification and needs another
-# source of identity: every write is owner-gated and every settings row is
-# keyed by it.
+# ACCESS_AUD is unset and DEV_MODE=true, so the worker skips JWT verification
+# and needs another source of identity: every write is owner-gated and every
+# settings row is keyed by it. Without DEV_MODE the worker treats itself as a
+# deployment that has not configured Access and shuts the admin pages.
+DEV_MODE=true
 #
 # Two ways to supply one:
 #
