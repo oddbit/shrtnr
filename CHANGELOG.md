@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.42.1 (2026-09-23)
+
+The authorization model is now written down as tests, and the API reference, the MCP tool descriptions and the access guide are rewritten from them (PR #69). No behavior changed.
+
+- **Tests pin every ownership rule on every surface.** `src/__tests__/service/authorization-model.test.ts` walks the service layer. `src/__tests__/handler/authorization-surfaces.test.ts` runs the same matrix through the admin JWT path, the API key path and the MCP tools, which shows the rules live in one shared layer. `e2e/authorization.spec.ts` checks each rule as a browser step, in its own Playwright project that runs after the counting specs.
+- **The OpenAPI descriptions name the rule behind each refusal.** Link, slug and bundle routes state which writes are owner only, which are open to every caller, and which answer 400 once a link or slug has clicks. The info block now comes from the router itself, so the served spec and the hashed spec cannot drift apart.
+- **MCP tool descriptions match the rules.** `add_custom_slug` says disabling or removing the slug afterwards is owner only, `remove_slug` says the system-generated slug can be neither removed nor disabled, and `delete_bundle` says no click rule applies to a bundle.
+- **The access guide and the MCP guide describe the model from the tests.** They cover ownership, the delete-while-unclicked rule for links and slugs, why the two open writes are open, and how scopes gate API keys before ownership is checked.
+- The spec descriptions change no SDK surface. The bump refreshes the recorded spec hash in all three SDKs, which ship no code change in this release.
+
 ## 0.42.0 (2026-09-23)
 
 Security release. A deployment that had not stored its Access audience tag trusted any identity a request named, and the MCP transport answered on every deployment that never set it up. The Worker now fails closed on both, and a fresh deploy reaches its first sign-in through Cloudflare's one-click Access on the `workers.dev` URL.
