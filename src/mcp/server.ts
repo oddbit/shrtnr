@@ -318,7 +318,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "Add custom slug",
         description:
-          "Attach an additional slug to an existing link so one destination answers on several short URLs, for example one slug per channel or campaign. Clicks are tracked per slug. Any authenticated caller can add a slug to any link; ownership is not required. Fails with a conflict when the slug is already in use anywhere.",
+          "Attach an additional slug to an existing link so one destination answers on several short URLs, for example one slug per channel or campaign. Clicks are tracked per slug. Any authenticated caller can add a slug to any link; ownership is not required, though disabling or removing that slug afterwards is owner only. Fails with a conflict when the slug is already in use anywhere.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link"),
           slug: CustomSlugStringSchema.describe("Custom slug to add, e.g. 'my-post'"),
@@ -375,7 +375,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "Remove slug",
         description:
-          "Permanently remove a custom slug from a link. Irreversible. Only zero-click slugs can be removed; for a slug with clicks use disable_slug, which keeps the history and can be undone. The system-generated slug cannot be removed. Only the link owner can remove a slug.",
+          "Permanently remove a custom slug from a link. Irreversible. Only zero-click slugs can be removed; for a slug with clicks use disable_slug, which keeps the history and can be undone. The system-generated slug can be neither removed nor disabled: disable the whole link instead. Only the link owner can remove a slug.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link"),
           slug: CustomSlugStringSchema.describe("The slug to remove"),
@@ -802,7 +802,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "update_bundle",
       {
         title: "Update bundle",
-        description: "Update a bundle's metadata. Only fields provided are changed. Only the owner can update.",
+        description: "Update a bundle's metadata. Only fields provided are changed. Owner only: the call is refused for a bundle created by someone else.",
         inputSchema: {
           bundle_id: z.number().int().positive().describe("Numeric ID of the bundle"),
           name: z.string().min(1).max(120).optional(),
@@ -860,7 +860,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       {
         title: "Delete bundle",
         description:
-          "Permanently delete a bundle. Irreversible. Member links are not deleted, only their membership in this bundle. To hide a finished campaign while keeping its report, use archive_bundle instead. Only the owner can delete.",
+          "Permanently delete a bundle. Irreversible. Member links are not deleted, only their membership in this bundle, and no zero-click rule applies since a bundle is a grouping rather than an address. To hide a finished campaign while keeping its report, use archive_bundle instead. Only the owner can delete.",
         inputSchema: {
           bundle_id: z.number().int().positive(),
         },

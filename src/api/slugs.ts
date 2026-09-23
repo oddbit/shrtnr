@@ -92,6 +92,7 @@ const getLinkBySlugRoute = createRoute({
   path: "/{slug}",
   tags: ["slugs"],
   summary: "Look up a link by its slug",
+  description: "Open to every authenticated key, whoever owns the link. Reads are not owner-scoped.",
   middleware: [requireScope("read")] as const,
   request: { params: SlugParamSchema },
   responses: {

@@ -40,6 +40,16 @@ describe("OpenAPI surface", () => {
     expect(typeof doc.paths).toBe("object");
   });
 
+  it("the served info.description carries the permissions summary", async () => {
+    // scripts/emit-spec.ts hashes the same openApiConfig the router serves.
+    // This pins the served side, so a second copy of the info block that
+    // drops the summary fails here rather than drifting silently.
+    const res = await SELF.fetch("https://shrtnr.test/_/api/openapi.json");
+    const doc = (await res.json()) as { info: { description: string } };
+    expect(doc.info.description).toContain("## Permissions");
+    expect(doc.info.description).toContain("Writes are owner-scoped");
+  });
+
   it("GET /_/api/docs returns HTML referencing the spec endpoint", async () => {
     const res = await SELF.fetch("https://shrtnr.test/_/api/docs");
     expect(res.status).toBe(200);

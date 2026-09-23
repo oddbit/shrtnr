@@ -63,8 +63,28 @@ Workflow on API change:
 - **Tests pass.** Full SDK test suite. New methods/fields require new tests.
 - **Cross-SDK parity holds.** Surface changes apply to all three SDKs in the same PR series. Hash advances on all three together. Mismatched hashes on `main` = open issue, not steady state.
 
+## Authorization model
+
+Settled. Do not raise these for confirmation, do not flag them as gaps, do not add gates.
+
+1. Anyone can create a link.
+2. Anyone can see everyone's links, bundles and analytics, including `GET /_/api/links?owner=`.
+3. Anyone can add a custom slug to anyone's link.
+4. The owner can delete a link or a custom slug while it has zero clicks.
+5. Once a link or slug has clicks, the owner disables it instead. The admin UI offers exactly one of the two, chosen by click count. Delete is refused server-side after the first click.
+6. The link owner owns its slugs: set primary, disable, enable, remove.
+7. The bundle owner updates, archives and deletes the bundle, and removes links from it.
+8. Anyone can contribute links to any bundle. The link page's "Add to bundle" is the entry point; the bundle page's "Add link" is the owner's shortcut.
+
+The system-generated slug is never removed or disabled on its own; disable the whole link.
+
+**Source of truth is how the app has been working, in the UI first.** When code, docs, tests or comments disagree, the behavior the admin UI has offered users (or was clearly built to offer) wins. Do not derive rules from the database schema or from what a column would permit. Tests in `src/__tests__/service/authorization-model.test.ts` and `src/__tests__/handler/authorization-surfaces.test.ts` pin these rules; a failure there after a change means the change is wrong, not the test.
+
+Full description: [docs/access-control.md](docs/access-control.md).
+
 ## Testing
 
+- Tests are the requirements and the functional documentation. A rule about how the app behaves is written down as a test, not as a question to the developer. UI/UX rules (which control a visitor is offered, what a click does) go in Playwright under `e2e/`; server answers go in vitest. `e2e/authorization.spec.ts` is the model: the eight authorization rules from the section above, each as a browser step.
 - Write tests first. Ask the developer for behavior details; if trivial, write directly. Implement to pass.
 - Write tests for every requested behavior or change.
 - Never modify or remove tests to accommodate code changes. If a new feature breaks an existing test, stop and notify the developer. Only adding new tests is permitted.

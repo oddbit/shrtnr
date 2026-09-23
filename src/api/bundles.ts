@@ -146,6 +146,17 @@ const errorResponses = {
   404: { description: "Not found.", content: { "application/json": { schema: ErrorResponseSchema } } },
 };
 
+/**
+ * 403 on an owner-gated bundle route. The gate lives in
+ * src/services/bundle-management.ts, so the admin UI, this API and the MCP
+ * tools all answer the same way.
+ */
+const forbiddenBundleOwner = {
+  description:
+    "Refused. Either the key lacks the `create` scope, or the caller is not the bundle owner. Ownership is fixed at creation and is not transferable: only the identity that created a bundle can change it. Reading a bundle, its links and its analytics is open to every authenticated key.",
+  content: { "application/json": { schema: ErrorResponseSchema } },
+};
+
 // ---- GET / (list bundles) ----
 
 const listBundlesQuery = ArchivedQuerySchema.merge(RangeQuerySchema);
@@ -155,6 +166,7 @@ const listBundlesRoute = createRoute({
   path: "/",
   tags: ["bundles"],
   summary: "List bundles",
+  description: "Every bundle on the deployment, not only the caller's. Reads are open across owners.",
   middleware: [requireScope("read")] as const,
   request: { query: listBundlesQuery },
   responses: {
@@ -178,6 +190,7 @@ const createBundleRoute = createRoute({
   path: "/",
   tags: ["bundles"],
   summary: "Create a bundle",
+  description: "The identity behind the API key becomes the bundle's owner and is the only one who can later change it.",
   middleware: [requireScope("create")] as const,
   request: { body: { content: { "application/json": { schema: CreateBundleBodySchema } } } },
   responses: {
@@ -201,6 +214,7 @@ const getBundleRoute = createRoute({
   path: "/{id}",
   tags: ["bundles"],
   summary: "Get a bundle",
+  description: "Open to every authenticated key, whoever owns the bundle.",
   middleware: [requireScope("read")] as const,
   request: { params: IdParamSchema, query: RangeQuerySchema },
   responses: {
@@ -225,6 +239,7 @@ const updateBundleRoute = createRoute({
   path: "/{id}",
   tags: ["bundles"],
   summary: "Update a bundle",
+  description: "Owner only. Refused with 403 for any other identity.",
   middleware: [requireScope("create")] as const,
   request: {
     params: IdParamSchema,
@@ -234,7 +249,7 @@ const updateBundleRoute = createRoute({
     200: { description: "Updated.", content: { "application/json": { schema: BundleSchema } } },
     400: errorResponses[400],
     401: errorResponses[401],
-    403: errorResponses[403],
+    403: forbiddenBundleOwner,
     404: errorResponses[404],
   },
 });
@@ -252,12 +267,14 @@ const deleteBundleRoute = createRoute({
   path: "/{id}",
   tags: ["bundles"],
   summary: "Delete a bundle permanently",
+  description:
+    "Owner only. Unlike a link, a bundle carries no zero-click rule: a bundle is a grouping, not an address, so deleting one drops the memberships and leaves every member link and its click history in place. Archive instead when you only want it out of the default listing.",
   middleware: [requireScope("create")] as const,
   request: { params: IdParamSchema },
   responses: {
     200: { description: "Deleted.", content: { "application/json": { schema: z.object({ deleted: z.boolean() }) } } },
     401: errorResponses[401],
-    403: errorResponses[403],
+    403: forbiddenBundleOwner,
     404: errorResponses[404],
   },
 });
@@ -274,12 +291,13 @@ const archiveBundleRoute = createRoute({
   path: "/{id}/archive",
   tags: ["bundles"],
   summary: "Archive a bundle",
+  description: "Owner only. Hides the bundle from the default listing without deleting anything. Reversible through unarchive.",
   middleware: [requireScope("create")] as const,
   request: { params: IdParamSchema },
   responses: {
     200: { description: "Archived.", content: { "application/json": { schema: BundleSchema } } },
     401: errorResponses[401],
-    403: errorResponses[403],
+    403: forbiddenBundleOwner,
     404: errorResponses[404],
   },
 });
@@ -296,12 +314,13 @@ const unarchiveBundleRoute = createRoute({
   path: "/{id}/unarchive",
   tags: ["bundles"],
   summary: "Unarchive a bundle",
+  description: "Owner only. Returns an archived bundle to the default listing.",
   middleware: [requireScope("create")] as const,
   request: { params: IdParamSchema },
   responses: {
     200: { description: "Unarchived.", content: { "application/json": { schema: BundleSchema } } },
     401: errorResponses[401],
-    403: errorResponses[403],
+    403: forbiddenBundleOwner,
     404: errorResponses[404],
   },
 });
@@ -369,6 +388,7 @@ const listBundleLinksRoute = createRoute({
   path: "/{id}/links",
   tags: ["bundles"],
   summary: "List links in a bundle",
+  description: "Open to every authenticated key, whoever owns the bundle or its links.",
   middleware: [requireScope("read")] as const,
   request: { params: IdParamSchema },
   responses: {
@@ -391,6 +411,8 @@ const addLinkToBundleRoute = createRoute({
   path: "/{id}/links",
   tags: ["bundles"],
   summary: "Add a link to a bundle",
+  description:
+    "Open to any authenticated caller with the `create` scope: adding requires owning neither the bundle nor the link. Idempotent. Removing the link again is owner-gated.",
   middleware: [requireScope("create")] as const,
   request: {
     params: IdParamSchema,
@@ -422,12 +444,14 @@ const removeLinkFromBundleRoute = createRoute({
   path: "/{id}/links/{linkId}",
   tags: ["bundles"],
   summary: "Remove a link from a bundle",
+  description:
+    "Bundle owner only, whoever owns the link. Owning the link does not grant removal from someone else's bundle. The link itself is not deleted.",
   middleware: [requireScope("create")] as const,
   request: { params: BundleLinkParamsSchema },
   responses: {
     200: { description: "Removed.", content: { "application/json": { schema: z.object({ removed: z.boolean() }) } } },
     401: errorResponses[401],
-    403: errorResponses[403],
+    403: forbiddenBundleOwner,
     404: errorResponses[404],
   },
 });

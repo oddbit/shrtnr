@@ -39,7 +39,16 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: AUTH_STATE },
       dependencies: ["setup"],
-      testIgnore: /setup\.ts$/,
+      testIgnore: [/setup\.ts$/, /authorization\.spec\.ts$/],
+    },
+    {
+      // Runs after the counting specs: it signs in a second identity and
+      // adds slugs and bundle memberships to seeded links, which the listing
+      // spec's exact counts and chip assertions must never observe mid-flight.
+      name: "authorization",
+      testMatch: /authorization\.spec\.ts$/,
+      use: { ...devices["Desktop Chrome"], storageState: AUTH_STATE },
+      dependencies: ["chromium"],
     },
   ],
 });

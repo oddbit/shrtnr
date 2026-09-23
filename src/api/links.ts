@@ -55,6 +55,42 @@ const errorResponses = {
   500: { description: "Server error.", content: { "application/json": { schema: ErrorResponseSchema } } },
 };
 
+// ---- Permission responses ----
+//
+// The owner gate and the zero-click rule live in the service layer
+// (src/services/link-management.ts), so the admin UI, this API and the MCP
+// tools all meet the same answers. Spelled out per route rather than folded
+// into the shared map above, so the generated SDK docs and /_/api/docs carry
+// the rule and not just the status code.
+
+/** 403 on an owner-gated route: scope gate first, then the ownership check. */
+const forbiddenOwner = {
+  description:
+    "Refused. Either the key lacks the `create` scope, or the caller is not the link owner. Ownership is fixed at creation and is not transferable: only the identity that created a link can change it. Reading is open to every authenticated key.",
+  content: { "application/json": { schema: ErrorResponseSchema } },
+};
+
+/** 400 on a delete route, where the click rule is the likely cause. */
+const clickRuleDelete = {
+  description:
+    "Refused. The link has recorded at least one click, so it cannot be deleted: `Cannot delete a link with clicks, disable it instead`. A clicked short link is already in circulation, in email, in print and in QR codes, and deleting it frees the slug for reuse. Call `POST /links/{id}/disable` instead, which stops the redirect and keeps the history. The lifetime count is unfiltered, so a single bot click is enough. Also returned for a malformed request.",
+  content: { "application/json": { schema: ErrorResponseSchema } },
+};
+
+/** 400 on slug removal: click rule, plus the system-slug rule. */
+const clickRuleRemoveSlug = {
+  description:
+    "Refused. Either the slug has recorded at least one click (`Cannot remove a slug with clicks, disable it instead`), or it is the link's system-generated slug, which can never be removed. For a clicked custom slug, call `POST /links/{id}/slugs/{slug}/disable` instead: it stops that slug resolving and keeps its click history. For the system-generated slug, disable the whole link with `POST /links/{id}/disable`. Also returned for a malformed request.",
+  content: { "application/json": { schema: ErrorResponseSchema } },
+};
+
+/** 400 on slug disable: the system slug is not disableable either. */
+const systemSlugRule = {
+  description:
+    "Refused. The system-generated slug cannot be disabled, only custom slugs can. Disable the whole link instead. Also returned for a malformed request.",
+  content: { "application/json": { schema: ErrorResponseSchema } },
+};
+
 // ---- POST / (create link) ----
 
 const createLinkRoute = createRoute({
@@ -148,6 +184,8 @@ const updateLinkRoute = createRoute({
   path: "/{id}",
   tags: ["links"],
   summary: "Update a link's URL, label, or expiry",
+  description:
+    "Owner only. The identity behind the API key must be the link's `created_by`, otherwise the call is refused with 403.",
   middleware: [requireScope("create")] as const,
   request: {
     params: IdParamSchema,
@@ -157,7 +195,7 @@ const updateLinkRoute = createRoute({
     200: { description: "Updated.", content: { "application/json": { schema: LinkSchema } } },
     400: errorResponses[400],
     401: errorResponses[401],
-    403: errorResponses[403],
+    403: forbiddenOwner,
     404: errorResponses[404],
   },
 });
@@ -175,12 +213,14 @@ const disableLinkRoute = createRoute({
   path: "/{id}/disable",
   tags: ["links"],
   summary: "Disable a link",
+  description:
+    "Owner only. Stops every slug on the link from redirecting while keeping the link and its click history. This is the correct operation for a link that is already in circulation, and the only one available once the link has recorded a click.",
   middleware: [requireScope("create")] as const,
   request: { params: IdParamSchema },
   responses: {
     200: { description: "Disabled.", content: { "application/json": { schema: LinkSchema } } },
     401: errorResponses[401],
-    403: errorResponses[403],
+    403: forbiddenOwner,
     404: errorResponses[404],
   },
 });
@@ -197,12 +237,13 @@ const enableLinkRoute = createRoute({
   path: "/{id}/enable",
   tags: ["links"],
   summary: "Re-enable a disabled link",
+  description: "Owner only. Clears `expires_at` outright, including an expiry set at create or update, so the link resolves again and no longer expires.",
   middleware: [requireScope("create")] as const,
   request: { params: IdParamSchema },
   responses: {
     200: { description: "Enabled.", content: { "application/json": { schema: LinkSchema } } },
     401: errorResponses[401],
-    403: errorResponses[403],
+    403: forbiddenOwner,
     404: errorResponses[404],
   },
 });
@@ -219,13 +260,15 @@ const deleteLinkRoute = createRoute({
   path: "/{id}",
   tags: ["links"],
   summary: "Delete a link permanently",
+  description:
+    "Owner only, and only while the link has recorded zero clicks. Once any click exists the link is permanent and this call returns 400; disable it instead. Deleting removes the link, its slugs, and frees those slugs for reuse by anyone.",
   middleware: [requireScope("create")] as const,
   request: { params: IdParamSchema },
   responses: {
     200: { description: "Deleted.", content: { "application/json": { schema: z.object({ deleted: z.boolean() }) } } },
-    400: errorResponses[400],
+    400: clickRuleDelete,
     401: errorResponses[401],
-    403: errorResponses[403],
+    403: forbiddenOwner,
     404: errorResponses[404],
   },
 });
@@ -242,6 +285,8 @@ const addSlugRoute = createRoute({
   path: "/{id}/slugs",
   tags: ["slugs"],
   summary: "Add a custom slug to a link",
+  description:
+    "Open to any authenticated caller with the `create` scope, including on a link owned by someone else. Adding a slug creates an additional address for the existing destination; it cannot change, disable or delete anything. Removing or disabling that slug afterwards is owner-gated.",
   middleware: [requireScope("create")] as const,
   request: {
     params: IdParamSchema,
@@ -276,13 +321,15 @@ const disableSlugRoute = createRoute({
   path: "/{id}/slugs/{slug}/disable",
   tags: ["slugs"],
   summary: "Disable a specific slug on a link",
+  description:
+    "Owner of the parent link only. Custom slugs only: the system-generated slug cannot be disabled. The slug stops resolving and keeps its click history.",
   middleware: [requireScope("create")] as const,
   request: { params: LinkSlugParamsSchema },
   responses: {
     200: { description: "Disabled.", content: { "application/json": { schema: SlugSchema } } },
-    400: errorResponses[400],
+    400: systemSlugRule,
     401: errorResponses[401],
-    403: errorResponses[403],
+    403: forbiddenOwner,
     404: errorResponses[404],
   },
 });
@@ -299,13 +346,14 @@ const enableSlugRoute = createRoute({
   path: "/{id}/slugs/{slug}/enable",
   tags: ["slugs"],
   summary: "Re-enable a disabled slug on a link",
+  description: "Owner of the parent link only.",
   middleware: [requireScope("create")] as const,
   request: { params: LinkSlugParamsSchema },
   responses: {
     200: { description: "Enabled.", content: { "application/json": { schema: SlugSchema } } },
     400: errorResponses[400],
     401: errorResponses[401],
-    403: errorResponses[403],
+    403: forbiddenOwner,
     404: errorResponses[404],
   },
 });
@@ -322,13 +370,15 @@ const removeSlugRoute = createRoute({
   path: "/{id}/slugs/{slug}",
   tags: ["slugs"],
   summary: "Remove a custom slug from a link",
+  description:
+    "Owner of the parent link only, custom slugs only, and only while the slug has recorded zero clicks. Once any click exists the slug is permanent and this call returns 400; disable it instead.",
   middleware: [requireScope("create")] as const,
   request: { params: LinkSlugParamsSchema },
   responses: {
     200: { description: "Removed.", content: { "application/json": { schema: z.object({ removed: z.boolean() }) } } },
-    400: errorResponses[400],
+    400: clickRuleRemoveSlug,
     401: errorResponses[401],
-    403: errorResponses[403],
+    403: forbiddenOwner,
     404: errorResponses[404],
   },
 });

@@ -62,7 +62,7 @@ A Worker with a custom domain still answers on its `workers.dev` URL. The Worker
 
 Every link and bundle records the identity that created it. Reads are open to every authenticated identity. Writes that change or remove something belong to the creator. Two writes stay open to everyone on purpose, because they add without taking away: attaching a custom slug to a link, and adding a link to a bundle.
 
-The table is what `src/services/link-management.ts` and `src/services/bundle-management.ts` enforce. The suite in `src/__tests__/service/ownership.test.ts` pins each row.
+The table is what `src/services/link-management.ts` and `src/services/bundle-management.ts` enforce. The admin UI, the `/_/api/*` key path and the MCP endpoint all call that one service layer, so the rules hold identically on all three. `src/__tests__/service/ownership.test.ts` and `src/__tests__/service/authorization-model.test.ts` pin each row at the service; `src/__tests__/handler/authorization-surfaces.test.ts` pins the same answers through each of the three surfaces.
 
 | Action | Who may do it |
 |---|---|
@@ -81,7 +81,29 @@ The table is what `src/services/link-management.ts` and `src/services/bundle-man
 | Create or delete API keys | Each identity manages its own keys |
 | Theme, language, default range, analytics filters, default slug length | Stored per identity |
 
-A link with recorded clicks cannot be deleted, by anyone. Disable it instead: every slug stops redirecting, the click history stays, and the owner can enable it again later. The same rule applies to slugs.
+The two open rows are a settled design decision, not an oversight: they let a colleague file your link into their campaign bundle, or hand it a memorable slug, without asking you first. Neither can redirect, disable or destroy anything.
+
+A refused write answers `403` with a sentence naming the rule. A request for something that is not there answers `404`, so the two cases stay distinguishable. MCP reports a refusal as an error message rather than a status code, so an assistant sees the sentence, not the `403` or `400` behind it.
+
+### Ownership
+
+Ownership is a single column: `links.created_by` and `bundles.created_by`, set once at creation from the caller's identity and never reassigned. There is no transfer, no sharing and no admin override: a deployment-wide administrator who did not create a link cannot delete it either. A link created with no identity at all is stored as owner `anonymous`, which is also the identity an unidentified caller arrives with. A deployment verifies every admin and MCP request against Access and every API request against its key, and refuses the rest, so the shared bucket only appears in local dev mode.
+
+### Delete only while unclicked, disable after that
+
+A link can be deleted only while it has recorded zero clicks. The rule binds the owner too: a link with clicks cannot be deleted by anyone. The admin UI offers the owner exactly one of the two actions, delete at zero clicks and disable after the first, and the server refuses delete after that point on every surface. The count is lifetime and unfiltered: one click from a bot is enough. After that, delete answers `400` with `Cannot delete a link with clicks, disable it instead`, and disabling the link is the operation that works: every slug stops redirecting, the click history stays, and the owner can enable it again later.
+
+The same rule protects a custom slug. Removing one answers `400` with `Cannot remove a slug with clicks, disable it instead` once it has recorded a click, and disabling that slug is the remedy: it stops that one slug resolving while the link's other slugs keep working, and its click history stays.
+
+The reason is that a clicked short link exists in the wild. It is in sent email, in print, on a slide, inside a QR code on a sticker nobody can recall. Deleting it frees the slug for reuse and turns every one of those into a `404` or, worse, a redirect to whatever claims the slug next. Disabling keeps the row, keeps its click history, and stops the redirect. Removing a clicked slug would orphan or cascade away its click rows in the same way.
+
+The system-generated slug is a special case. It can be neither removed nor disabled, whatever its click count, since it is the link's canonical address. Disable the whole link instead.
+
+Bundles carry no click rule. A bundle is a grouping, not an address: deleting one removes memberships and leaves every member link and its history untouched. Archiving is the reversible alternative, which hides a bundle from the default listing without deleting anything.
+
+### Scopes and ownership
+
+Scopes are a separate gate, and only the API key path has them. A key is issued `read`, `create`, or both, and a `read` key is refused on every write with `403` before ownership is consulted. The admin UI and MCP have no scope split.
 
 What the model does not do:
 
