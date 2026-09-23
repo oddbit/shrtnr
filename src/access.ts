@@ -61,6 +61,16 @@ export function isDevMode(env: Env): boolean {
 }
 
 /**
+ * The AUD tags an Access secret lists. One deployment can sit behind two
+ * Access applications, the one-click application on its workers.dev URL and
+ * a self-hosted one on its custom domain, and each signs with its own tag,
+ * so the secret takes a comma-separated list.
+ */
+function audiences(aud: string): string[] {
+  return aud.split(",").map((tag) => tag.trim()).filter(Boolean);
+}
+
+/**
  * Name of the cookie that carries a fake identity in dev mode. Set by
  * /_/dev/login, cleared by /_/dev/logout, read only in dev mode.
  */
@@ -113,6 +123,7 @@ function parseJwtPayload(token: string): Record<string, unknown> | null {
  * Pass the AUD for the Access application protecting the current route:
  * - Admin routes: env.ACCESS_AUD
  * - MCP routes:   env.MCP_ACCESS_AUD
+ * Either may list several tags, separated by commas.
  */
 export async function extractIdentity(request: Request, env: Env, aud = env.ACCESS_AUD): Promise<string> {
   function fromPayload(payload: Record<string, unknown>): string | null {
@@ -147,7 +158,7 @@ export async function extractIdentity(request: Request, env: Env, aud = env.ACCE
   try {
     const jwks = getJwks(env.ACCESS_JWKS_URL);
     const { payload } = await jwtVerify(token, jwks, {
-      audience: aud,
+      audience: audiences(aud),
       algorithms: ["RS256", "ES256"],
     });
     const id = fromPayload(payload as Record<string, unknown>);
@@ -216,7 +227,7 @@ export async function verifyAccessJwt(
   try {
     const jwks = getJwks(env.ACCESS_JWKS_URL);
     const { payload } = await jwtVerify(token, jwks, {
-      audience: aud,
+      audience: audiences(aud),
       algorithms: ["RS256", "ES256"],
     });
     const email = payload.email as string | undefined;
