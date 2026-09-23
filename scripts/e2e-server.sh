@@ -10,7 +10,9 @@
 # and the specs assert exact counts against it.
 #
 # Identity comes from the dev_identity cookie the setup project obtains
-# through /_/dev/login, not from .dev.vars.
+# through /_/dev/login, not from .dev.vars. CI has no .dev.vars, so the
+# server gets DEV_MODE on its command line: without it /_/dev/login answers
+# 404 and the admin pages answer the access setup page.
 
 set -euo pipefail
 
@@ -24,4 +26,4 @@ npx --no-install wrangler d1 migrations apply DB --local --persist-to "$STATE" >
 
 # exec so the PID Playwright tracks is wrangler itself and its shutdown
 # signal reaches the server, not a shell wrapper.
-exec npx --no-install wrangler dev --port "$PORT" --persist-to "$STATE"
+exec npx --no-install wrangler dev --port "$PORT" --persist-to "$STATE" --var DEV_MODE:true

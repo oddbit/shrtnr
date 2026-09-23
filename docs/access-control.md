@@ -4,11 +4,17 @@ shrtnr separates two questions. Cloudflare Access decides who may reach the admi
 
 ## Protect the admin UI
 
-The admin UI (`/_/admin/*`) ships without built-in authentication. Protecting it is your responsibility. The app makes no assumptions about which method you use. Cloudflare Access fits most deployments because it also supplies the per-user identity that the ownership model runs on. IP allowlists, firewall rules, Cloudflare Tunnel or a private network work too, but every request then arrives as the same anonymous identity, so ownership checks cannot tell users apart.
+The admin UI (`/_/admin/*`) takes its identity from Cloudflare Access, and the Worker verifies the Access JWT on every request. Access handles login, sessions and SSO at the edge before a request reaches the Worker. It supports Google, GitHub, Microsoft, Okta, SAML, OIDC and a built-in one-time PIN, and the free plan covers up to 50 users.
 
-### Cloudflare Access
+Until the Worker has an Access audience tag to verify against, the admin pages stay shut. Every page answers a setup page that lists the steps below, and the admin API answers 503. Short links keep redirecting throughout. The Worker refuses rather than guesses because every other identity source is text any caller can write: an email header, an unsigned token, a cookie.
 
-Cloudflare Access handles login, sessions and SSO at the edge before requests reach your Worker. It supports Google, GitHub, Microsoft, Okta, SAML, OIDC and a built-in one-time PIN.
+### 1. Put Access in front of the Worker
+
+Pick the route that matches how visitors reach the Worker. A deployment that answers on both a `workers.dev` URL and a custom domain needs both.
+
+**workers.dev URL, one click.** Go to **Workers & Pages**, select the Worker, open **Settings > Domains & Routes** and select **Enable Cloudflare Access** next to `workers.dev`. Cloudflare creates an Access application for the URL. Select **Manage Cloudflare Access** to choose who its policy admits.
+
+**Custom domain, self-hosted application.**
 
 1. Open **Zero Trust** in the [Cloudflare dashboard](https://one.dash.cloudflare.com/).
 2. Go to **Access > Applications > Add an application**.
@@ -19,23 +25,29 @@ Cloudflare Access handles login, sessions and SSO at the edge before requests re
    - **Include rule:** Emails ending in `@yourcompany.com`
 6. Under **Authentication**, enable at least one login method. "One-time PIN" works without an external identity provider.
 
-Visit `https://yourdomain.com/_/admin` and Cloudflare Access prompts you to log in before the dashboard loads. See [Cloudflare's IdP guides](https://developers.cloudflare.com/cloudflare-one/identity/idp-integration/) for provider setup.
+See [Cloudflare's IdP guides](https://developers.cloudflare.com/cloudflare-one/identity/idp-integration/) for provider setup.
 
-### JWT verification in the Worker
+### 2. Give the Worker the audience tag
 
-Without further configuration the Worker trusts whatever Cloudflare Access lets through, which is network-layer protection. For defense in depth, enable cryptographic JWT verification so the Worker validates every request on its own:
-
-1. In Zero Trust, open your application's **Overview** tab and copy the **Application Audience (AUD) Tag**.
-2. Store it as a Worker secret, together with the JWKS URL of your team:
+1. In Zero Trust, open each application's **Overview** tab and copy its **Application Audience (AUD) Tag**.
+2. Store the tag and the JWKS URL of your team as Worker secrets:
 
 ```bash
 npx wrangler secret put ACCESS_AUD
 npx wrangler secret put ACCESS_JWKS_URL
 ```
 
-`ACCESS_JWKS_URL` follows the pattern `https://<your-team-name>.cloudflareaccess.com/cdn-cgi/access/certs`.
+`ACCESS_JWKS_URL` follows the pattern `https://<your-team-name>.cloudflareaccess.com/cdn-cgi/access/certs`. When the Worker sits behind two applications, store both tags in `ACCESS_AUD`, separated by a comma. The dashboard route works as well: **Workers & Pages > shrtnr > Settings > Variables and Secrets**, type **Secret**.
 
-When `ACCESS_AUD` is set, the Worker validates the JWT signature and audience claim on every admin and MCP request. The key set downloads once per isolate and is reused. When `ACCESS_AUD` is absent, as in local development, the Worker skips verification and takes the identity from the `dev_identity` cookie or `DEV_IDENTITY` instead. See [Local sign-in](../README.md#local-sign-in).
+Open `/_/admin/dashboard` and sign in through Access. The Worker validates the JWT signature and audience claim on every admin request. The key set downloads once per isolate and is reused.
+
+### 3. Close the routes you do not use
+
+A Worker with a custom domain still answers on its `workers.dev` URL. The Worker's own check keeps the admin pages shut on any host whose Access application it does not know. `wrangler.jsonc` ships with `"preview_urls": false`, so per-version preview URLs stay off; set it to `true` in your fork to preview branch builds. The repository leaves `workers_dev` unset, because a fresh one-click deploy has no other URL, and wrangler then turns `workers.dev` back on at every deploy even after you switch it off in the dashboard. Once a custom domain serves the Worker, either enable Access on `workers.dev` and add its AUD tag to `ACCESS_AUD`, or add `"workers_dev": false` to `wrangler.jsonc` in your fork.
+
+### Local development
+
+`wrangler dev` runs without Access. `DEV_MODE=true` in `.dev.vars` tells the Worker it runs on a developer machine, and only then does it take the identity from the `dev_identity` cookie or `DEV_IDENTITY`. A deploy never uploads `.dev.vars`, and a configured `ACCESS_AUD` always wins over `DEV_MODE`. See [Local sign-in](../README.md#local-sign-in).
 
 ## Where identity comes from
 
@@ -44,7 +56,7 @@ When `ACCESS_AUD` is set, the Worker validates the JWT signature and audience cl
 | Admin UI and admin API (`/_/admin/*`) | Email from the Cloudflare Access JWT, read from the `Cf-Access-Jwt-Assertion` header or the `CF_Authorization` cookie |
 | MCP endpoint (`mcp.<your-domain>`) | Email from the Access JWT that Managed OAuth issues to the MCP client |
 | Public API (`/_/api/*`) | The identity that created the API key. A key acts as its creator. |
-| Local development (`ACCESS_AUD` unset) | The `dev_identity` cookie set by `/_/dev/login`, else `DEV_IDENTITY` from `.dev.vars`, else `anonymous` |
+| Local development (`DEV_MODE=true`, `ACCESS_AUD` unset) | The `dev_identity` cookie set by `/_/dev/login`, else `DEV_IDENTITY` from `.dev.vars`, else `anonymous` |
 
 ## Permission model
 
@@ -75,7 +87,7 @@ A refused write answers `403` with a sentence naming the rule. A request for som
 
 ### Ownership
 
-Ownership is a single column: `links.created_by` and `bundles.created_by`, set once at creation from the caller's identity and never reassigned. There is no transfer, no sharing and no admin override: a deployment-wide administrator who did not create a link cannot delete it either. A link created with no identity at all is stored as owner `anonymous`, which is also the identity every unidentified caller arrives with, so on a deployment without access control everyone shares that one bucket.
+Ownership is a single column: `links.created_by` and `bundles.created_by`, set once at creation from the caller's identity and never reassigned. There is no transfer, no sharing and no admin override: a deployment-wide administrator who did not create a link cannot delete it either. A link created with no identity at all is stored as owner `anonymous`, which is also the identity an unidentified caller arrives with. A deployment verifies every admin and MCP request against Access and every API request against its key, and refuses the rest, so the shared bucket only appears in local dev mode.
 
 ### Delete only while unclicked, disable after that
 

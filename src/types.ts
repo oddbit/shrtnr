@@ -14,11 +14,16 @@ import type { TIMELINE_RANGES } from "./constants";
 declare global {
   namespace Cloudflare {
     interface Env {
-      // Cloudflare Access JWT audience tags. Unset in local dev and tests,
-      // which is what switches the auth code into dev mode.
-      ACCESS_AUD: string; // AUD tag from the admin CF Access application
+      // Cloudflare Access JWT audience tags, each a comma-separated list.
+      // Unset in local dev and tests. A deployment without ACCESS_AUD refuses
+      // the admin pages, and one without MCP_ACCESS_AUD serves no MCP.
+      ACCESS_AUD: string; // AUD tag(s) from the admin CF Access application(s)
       MCP_ACCESS_AUD: string; // AUD tag from the MCP CF Access application (Managed OAuth)
       ACCESS_JWKS_URL: string; // https://<team>.cloudflareaccess.com/cdn-cgi/access/certs
+
+      // Dev-only: "true" in .dev.vars and the test pools. Lets the Worker take
+      // an unverified identity while ACCESS_AUD is unset (see isDevMode).
+      DEV_MODE?: string;
 
       // Dev-only: set to bypass login and assume this identity (e.g. "dev@local")
       DEV_IDENTITY?: string;

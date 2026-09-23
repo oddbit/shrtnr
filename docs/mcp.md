@@ -50,6 +50,8 @@ npx wrangler secret put ACCESS_JWKS_URL   # https://<your-team>.cloudflareaccess
 yarn deploy
 ```
 
+Until `MCP_ACCESS_AUD` is set, the Worker serves no MCP transport: `/_/mcp` answers 404 on every host. The admin application's `ACCESS_AUD` does not stand in for it, because the MCP application signs its tokens with its own tag.
+
 ### 4. Turn off "Block AI bots" for the zone
 
 Cloudflare's managed bot rule blocks requests from AI assistants at the edge before they reach your Worker. MCP clients connect from cloud infrastructure that Cloudflare classifies as AI bot traffic. With the rule active, the OAuth handshake completes but the MCP connection itself is dropped without an error.

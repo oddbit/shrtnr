@@ -2,6 +2,21 @@
 
 All notable changes to the shrtnr browser extensions are documented in this file.
 
+## Unreleased
+
+Repairs the extension in real browsers, adds the parity features a shortener extension is expected to have, and hardens permissions. No new permissions.
+
+- **Every request works again.** The lockfile pinned `@oddbit/shrtnr` 1.1.0, which calls `fetch` with the client object as receiver. Browsers reject that with `Illegal invocation`, the SDK reported it as a network failure, and the popup and the connection test showed "Can't reach your shrtnr" for every deployment. Verified in Chromium: zero requests left the browser. The floor is now 1.2.1, which also restores the `X-Client` header so links show as created via the SDK.
+- **Custom slug** field in the popup. Adds the slug to the link just created, swaps the short URL, copies it, and re-targets the QR code at the new slug. 409 shows "already taken" inline; a slug that breaks the rule is rejected before any request.
+- **Recent** list of the last five links shortened from this browser, kept on the device in `chrome.storage.local`.
+- **Keyboard shortcut** opens the popup and shortens the current tab. The options page names the combination the browser assigned, which is the manifest's suggested key unless another extension already held it or the user rebound it.
+- **Scope-aware connection test.** A key scoped to `create` only used to fail the test with a message about creating links. The test now reports connected and says that QR codes need the `read` scope. The options page explains the scope choice.
+- **QR failures are visible.** A forbidden or failed QR fetch used to reset the button silently. Both now show a message, naming the missing scope when that is the cause.
+- **Host permission hygiene.** Saving drops every granted host permission except the saved origin, including one a connection test granted for a URL that was then edited before saving.
+- **Firefox minimum is 140** (Android 142). The AMO data-collection declaration the manifest carries is only honoured from 140; declaring it with a lower floor drew two lint warnings and left older profiles without it.
+- Options page shows the installed version. README pointed at `/_/admin/api-keys`; the page is `/_/admin/keys`.
+- `yarn typecheck` runs `tsc`. esbuild strips types without checking them, which is how the 1.1.0 pin and a stale `qr()` argument type went unnoticed. Not yet wired into CI: see the QR size type note in the extension report.
+
 ## 0.1.1 (2026-08-27)
 
 Defect-fix release. No new permissions and no manifest changes beyond the version.

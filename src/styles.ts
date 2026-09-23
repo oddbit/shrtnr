@@ -1469,8 +1469,10 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 }
 `;
 
-// The 503 page shown while the database schema is missing (src/schema-guard.ts).
-// Extends standaloneBaseStyles: a readable column, not a centered splash.
+// The 503 pages an operator meets before the admin pages open: the database
+// schema is missing (src/schema-guard.ts) or Access verification is not set
+// up (src/access-required.ts). Extends standaloneBaseStyles: a readable
+// column, not a centered splash.
 export const schemaErrorStyles = `${standaloneBaseStyles}
   body { padding: 2rem 1rem; }
   .notice { max-width: 40rem; margin: 0 auto; }

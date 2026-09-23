@@ -11,11 +11,13 @@ import { setConfig } from "../storage";
 import { testConnection } from "../api";
 import { ExtensionError } from "../errors";
 import type { TranslateFn } from "../i18n";
+import { hostFromUrl } from "../url";
 
 type TestState =
   | { kind: "idle" }
   | { kind: "running" }
   | { kind: "ok" }
+  | { kind: "ok-limited" }
   | { kind: "error"; messageKey: string; params?: Record<string, string> };
 
 type SaveState =
@@ -30,14 +32,6 @@ type Props = {
   showCancel?: boolean;
   onCancel?: () => void;
 };
-
-function hostFromBaseUrl(baseUrl: string): string {
-  try {
-    return new URL(baseUrl).host;
-  } catch {
-    return baseUrl;
-  }
-}
 
 function categoryToMessage(category: string): {
   messageKey: string;
@@ -58,6 +52,34 @@ function categoryToMessage(category: string): {
       return { messageKey: "error.validation" };
     default:
       return { messageKey: "error.server" };
+  }
+}
+
+/**
+ * Drops every granted host permission except the one the saved config points
+ * at, so the extension only ever holds access to its own deployment.
+ *
+ * Reading the grants rather than the previous config is what makes this
+ * complete: Test grants an origin for whatever URL is in the field at the
+ * time, and those origins are never written to storage. Testing
+ * `https://a.example`, editing to `https://b.example` and saving would
+ * otherwise leave A granted forever.
+ *
+ * Best effort: a browser that declines the removal keeps working, it merely
+ * holds a stale grant.
+ */
+async function pruneOriginPermissions(keepOrigin: string): Promise<void> {
+  const permissions = typeof chrome !== "undefined" ? chrome.permissions : undefined;
+  if (!permissions || typeof permissions.remove !== "function") return;
+  if (typeof permissions.getAll !== "function") return;
+  try {
+    const granted = await permissions.getAll();
+    const keep = `${keepOrigin}/*`;
+    const stale = (granted.origins ?? []).filter((o) => o !== keep);
+    if (stale.length === 0) return;
+    await permissions.remove({ origins: stale });
+  } catch {
+    // Nothing to recover: a stale grant is harmless without a matching config.
   }
 }
 
@@ -96,7 +118,7 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
       setTestState({
         kind: "error",
         messageKey: "error.permissionDeniedTest",
-        params: { host: hostFromBaseUrl(origin) },
+        params: { host: hostFromUrl(origin) },
       });
       return;
     }
@@ -105,8 +127,14 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
       await testConnection({ baseUrl: origin, apiKey: trimmedKey });
       setTestState({ kind: "ok" });
     } catch (err) {
-      const host = hostFromBaseUrl(origin);
+      const host = hostFromUrl(origin);
       if (err instanceof ExtensionError) {
+        // The probe is a read call. A 403 means the server accepted the key
+        // and only its scope stops the read: the connection itself works.
+        if (err.category === "forbidden") {
+          setTestState({ kind: "ok-limited" });
+          return;
+        }
         const mapped = categoryToMessage(err.category);
         setTestState({
           kind: "error",
@@ -147,7 +175,7 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
       setSaveState({
         kind: "error",
         messageKey: "error.permissionDenied",
-        params: { host: hostFromBaseUrl(normalizedOrigin) },
+        params: { host: hostFromUrl(normalizedOrigin) },
       });
       return;
     }
@@ -160,7 +188,10 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
       // chrome.storage rejections carry English-only browser strings
       // (quota, write-rate). Report a localized message instead.
       setSaveState({ kind: "error", messageKey: "error.saveFailed" });
+      return;
     }
+
+    await pruneOriginPermissions(normalizedOrigin);
   }
 
   return (
@@ -230,6 +261,11 @@ export function ConfigForm({ t, initial, onSaved, showCancel, onCancel }: Props)
       {testState.kind === "ok" && (
         <p class="form-status form-status-ok" role="status">
           ✓ {t("form.testOk")}
+        </p>
+      )}
+      {testState.kind === "ok-limited" && (
+        <p class="form-status form-status-ok" role="status">
+          ✓ {t("form.testOkCreateOnly")}
         </p>
       )}
       {testState.kind === "error" && (
