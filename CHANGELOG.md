@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.42.0 (2026-09-23)
+
+Security release. A deployment that had not stored its Access audience tag trusted any identity a request named, and the MCP transport answered on every deployment that never set it up. The Worker now fails closed on both, and a fresh deploy reaches its first sign-in through Cloudflare's one-click Access on the `workers.dev` URL.
+
+**Breaking for deployments without `ACCESS_AUD`.** The admin pages answer a setup page until `ACCESS_AUD` and `ACCESS_JWKS_URL` are set. Local setups need `DEV_MODE=true` in `.dev.vars`.
+
+- **Missing `ACCESS_AUD` no longer means dev mode.** The admin middleware used to take the caller's identity from the `Cf-Access-Authenticated-User-Email` header, an unsigned JWT or the `dev_identity` cookie whenever the secret was unset, and `/_/dev/login` answered. The Worker stays reachable on its `workers.dev` URL, which a custom-domain Access application does not cover, so one header let a stranger retarget any owner's links or mint API keys in their name. Outside dev mode, `/_/admin/*` now answers a 503 page that names the secrets to set (JSON on `/_/admin/api/*`), and `/_/dev/*` answers 404. Short links keep redirecting.
+- **`/_/mcp` answers 404 until `MCP_ACCESS_AUD` is set.** The transport used to reject anonymous callers only when the secret existed. A deployment without it served every tool on `<short-domain>/_/mcp`: as `anonymous` when only `ACCESS_AUD` was set, and as any identity the caller named when neither was. The admin tag no longer stands in for the MCP tag.
+- **Dev mode is opt-in through `DEV_MODE=true`.** It lives in `.dev.vars`, the vitest bindings and the e2e server command line, none of which a deploy uploads. A configured `ACCESS_AUD` always wins over it.
+- **`ACCESS_AUD` takes a comma-separated list.** The one-click Access application on `workers.dev` and a self-hosted application on a custom domain sign with different tags, and the Worker now accepts a token issued for any tag on the list.
+- **The deploy steps and the access guide treat Access as required.** The README walks a one-click deploy through the setup page and the one-click Access toggle before the first sign-in. `docs/access-control.md` drops the IP-allowlist alternative, covers both Access routes, and shows how to turn off `workers.dev` and preview URLs. `docs/mcp.md` states the 404 until `MCP_ACCESS_AUD` is set.
+- The links-page windowing fixture queues its rows in one batch, so CI timing no longer fails it. No assertion changed.
+- OpenAPI paths and schemas are unchanged from 0.41.0; only `info.version` moves. The bump refreshes the recorded spec hash in all three SDKs, which ship no code change in this release.
+
 ## 0.41.0 (2026-09-22)
 
 A deploy no longer needs a terminal. The Worker carries its own migrations and applies them on the first request, wrangler provisions the D1 database and KV namespace from their binding names, and two routes report what the schema is doing without changing it. The release also repositions the repo-facing material around the MCP server, bundles and ownership, and rewrites the MCP tool descriptions that decide which tool an assistant reaches for.
