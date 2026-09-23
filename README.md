@@ -66,9 +66,10 @@ Click the **Deploy to Cloudflare** button. Cloudflare forks the repo into your G
 
 The Worker creates its own database schema on the first request, so there is no command to run afterwards. To confirm the deploy:
 
-1. Open `https://<your-worker>.workers.dev/_/admin/dashboard` and create a link. That first visit creates the schema.
+1. Open `https://<your-worker>.workers.dev/_/admin/dashboard`. That first visit creates the schema. The page answers with the Access setup steps, since nothing protects the Worker yet.
 2. Open `https://<your-worker>.workers.dev/_/health`. It answers `"schema": { "ready": true }`.
-3. Protect the admin pages before you share the domain: see [Protect the admin UI](#protect-the-admin-ui).
+3. Follow [Protect the admin UI](#protect-the-admin-ui): enable Access on the `workers.dev` URL in one click, then store the `ACCESS_AUD` and `ACCESS_JWKS_URL` secrets.
+4. Reload the dashboard, sign in through Access and create a link.
 
 Every later push to your fork redeploys through Workers Builds, and the Worker applies any new migration on the first request after the deploy. See [Database schema](#database-schema) for how that works and what to check when it does not.
 
@@ -123,7 +124,7 @@ When a migration fails, the Worker remembers the failure for 30 seconds before a
 
 ## Protect the admin UI
 
-The admin pages ship without built-in authentication. Put [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/) in front of `/_/admin/*`: one self-hosted application, one allow policy for your email domain, and any login method from Google and GitHub to SAML or a one-time PIN. Access also supplies the per-user identity that ownership, API keys and settings run on. For defense in depth, store the application's AUD tag as the `ACCESS_AUD` secret and the Worker verifies every JWT itself. Step-by-step instructions, the identity table and the full permission model are in [docs/access-control.md](docs/access-control.md).
+The admin pages open only behind [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/). Access supplies the login and the per-user identity that ownership, API keys and settings run on, and the Worker verifies every Access JWT itself. Enable Access on the `workers.dev` URL in one click, or add a self-hosted application for `/_/admin/*` on your custom domain. Then store the application's AUD tag as the `ACCESS_AUD` secret and your team's key URL as `ACCESS_JWKS_URL`. Until both are set, the admin pages answer a setup page and short links keep redirecting. Step-by-step instructions, the identity table and the full permission model are in [docs/access-control.md](docs/access-control.md).
 
 ## MCP server
 
@@ -137,7 +138,7 @@ Authentication is determined by route prefix:
 |---|---|---|
 | `/_/api/*` | Bearer token | Public link-management API. Create keys from the admin UI under **API Keys** and pass them as `Authorization: Bearer sk_...`. |
 | `/_/mcp` (and `mcp.<your-domain>`) | OAuth | MCP endpoint for AI assistants. Auth handled by Cloudflare Access. See [MCP server](docs/mcp.md). |
-| `/_/admin/*` | None built in | Admin UI and admin-only API. Protect externally (see [Protect the admin UI](#protect-the-admin-ui)). Not callable with API keys. |
+| `/_/admin/*` | Cloudflare Access | Admin UI and admin-only API. The Worker verifies the Access JWT against `ACCESS_AUD` (see [Protect the admin UI](#protect-the-admin-ui)). Not callable with API keys. |
 | `/_/health` | Public | Health check. |
 
 For full endpoint shapes, parameters, and example payloads, see the live API reference at **`/_/api/docs`** on your deployment, or fetch the OpenAPI 3.1 spec directly at **`/_/api/openapi.json`**. The spec is the source of truth: SDKs ([TypeScript](sdk/typescript/README.md), [Python](sdk/python/README.md), [Dart](sdk/dart/README.md)) regenerate from it when the API changes.
@@ -164,13 +165,13 @@ yarn dev
 
 ### Local sign-in
 
-Cloudflare Access protects the admin pages in production. `wrangler dev` runs without it, and the admin pages still need an identity: writes are owner-gated and settings are stored per user. Pick one per browser:
+Cloudflare Access protects the admin pages in production. `wrangler dev` runs without it, and the admin pages still need an identity: writes are owner-gated and settings are stored per user. `DEV_MODE=true` in `.dev.vars` (copied from `.dev.vars.example`) tells the Worker it runs on a developer machine. Without it, the local admin pages answer the Access setup page. Pick one identity per browser:
 
 ```
 http://localhost:8787/_/dev/login?as=you@example.com
 ```
 
-This sets a `dev_identity` cookie for that browser only, so a second browser or a second Playwright context can act as a second owner. `/_/dev/login` without `as` shows a form; `/_/dev/logout` clears the cookie. Requests carrying no cookie fall back to `DEV_IDENTITY` from `.dev.vars`. Both routes answer 404 whenever `ACCESS_AUD` is set, so a deployment exposes nothing.
+This sets a `dev_identity` cookie for that browser only, so a second browser or a second Playwright context can act as a second owner. `/_/dev/login` without `as` shows a form; `/_/dev/logout` clears the cookie. Requests carrying no cookie fall back to `DEV_IDENTITY` from `.dev.vars`. Both routes answer 404 outside dev mode. A deploy never uploads `.dev.vars`, and a configured `ACCESS_AUD` wins over `DEV_MODE`, so a deployment exposes nothing.
 
 ### SDK development
 
