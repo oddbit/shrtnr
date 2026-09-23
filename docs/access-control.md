@@ -43,7 +43,7 @@ Open `/_/admin/dashboard` and sign in through Access. The Worker validates the J
 
 ### 3. Close the routes you do not use
 
-A Worker with a custom domain still answers on its `workers.dev` URL and on per-version preview URLs. The Worker's own check keeps the admin pages shut on any host whose Access application it does not know. To stop serving a host altogether, turn off `workers.dev` and Preview URLs under **Settings > Domains & Routes**. Alternatively, add `"workers_dev": false` and `"preview_urls": false` to `wrangler.jsonc` in your fork. The repository leaves both on, because a fresh one-click deploy has no other URL.
+A Worker with a custom domain still answers on its `workers.dev` URL. The Worker's own check keeps the admin pages shut on any host whose Access application it does not know. `wrangler.jsonc` ships with `"preview_urls": false`, so per-version preview URLs stay off; set it to `true` in your fork to preview branch builds. The repository leaves `workers_dev` unset, because a fresh one-click deploy has no other URL, and wrangler then turns `workers.dev` back on at every deploy even after you switch it off in the dashboard. Once a custom domain serves the Worker, either enable Access on `workers.dev` and add its AUD tag to `ACCESS_AUD`, or add `"workers_dev": false` to `wrangler.jsonc` in your fork.
 
 ### Local development
 

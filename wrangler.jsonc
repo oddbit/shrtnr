@@ -15,6 +15,12 @@
   "compatibility_date": "2026-08-22",
   "compatibility_flags": ["nodejs_compat"],
   "upload_source_maps": true,
+  // Per-version preview URLs (<version>-shrtnr.<account>.workers.dev) sit on
+  // hostnames no Access application covers, and wrangler turns them back on
+  // at every deploy unless this is set. The workers.dev URL itself stays on
+  // (workers_dev is unset): a one-click deploy has no other URL. Set this to
+  // true to preview branch builds from Workers Builds.
+  "preview_urls": false,
   "observability": {
     "logs": {
       "enabled": true,
