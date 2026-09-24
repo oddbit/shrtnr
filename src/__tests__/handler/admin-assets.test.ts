@@ -10,6 +10,7 @@ import { SELF } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
 import { adminStyles } from "../../styles";
 import id from "../../i18n/id";
+import zh from "../../i18n/zh";
 
 function req(path: string, headers: Record<string, string> = {}): Request {
   return new Request(`https://shrtnr.test${path}`, { headers });
@@ -85,7 +86,19 @@ describe("GET /_/assets/*", () => {
   it("gives each language its own script URL", async () => {
     const en = (await pageHtml("/_/admin/settings")).match(SCRIPT)![1];
     const sv = (await pageHtml("/_/admin/settings", { Cookie: "lang=sv" })).match(SCRIPT)![1];
+    const zh = (await pageHtml("/_/admin/settings", { Cookie: "lang=zh" })).match(SCRIPT)![1];
     expect(en).not.toBe(sv);
+    expect(en).not.toBe(zh);
+    expect(sv).not.toBe(zh);
+  });
+
+  it("serves the Simplified Chinese client script to a lang=zh viewer", async () => {
+    const html = await pageHtml("/_/admin/settings", { Cookie: "lang=zh" });
+    const m = html.match(SCRIPT);
+    expect(m![2]).toBe("zh");
+    const res = await SELF.fetch(req(m![1]));
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain(zh["client.themeUpdated"]);
   });
 
   it("serves this build's content for a hash from another build, uncached, so a deploy window never leaves a page unstyled", async () => {

@@ -66,6 +66,19 @@ describe("Settings page analytics filter toggles", () => {
   });
 });
 
+describe("Settings page language picker", () => {
+  it("offers Simplified Chinese and names the other languages in the viewer's language", async () => {
+    const res = await SELF.fetch(
+      new Request("https://shrtnr.test/_/admin/settings", { headers: { Cookie: "lang=zh" } }),
+    );
+    const html = await res.text();
+    expect(html).toMatch(/<option value="zh"[^>]*selected[^>]*>简体中文/);
+    expect(html).toContain("English · 英语");
+    expect(html).toContain("Svenska · 瑞典语");
+    expect(html).toContain("Bahasa Indonesia · 印度尼西亚语");
+  });
+});
+
 describe("Settings page MCP OAuth status row", () => {
   it("renders the status as its own row with a decorative icon and the MCP OAuth label", async () => {
     // Before this row existed, "Not configured" reached the document only

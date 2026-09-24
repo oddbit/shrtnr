@@ -406,11 +406,13 @@ const en = {
   "lang.en": "English",
   "lang.id": "Bahasa Indonesia",
   "lang.sv": "Svenska",
+  "lang.zh": "简体中文",
 
   // Language names (translated into this locale)
   "langLocal.en": "English",
   "langLocal.id": "Indonesian",
   "langLocal.sv": "Swedish",
+  "langLocal.zh": "Chinese (Simplified)",
 };
 
 export default en;

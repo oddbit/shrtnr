@@ -20,6 +20,13 @@ describe("fmtNumber", () => {
     expect(out).toMatch(/1.234.567/); // any single separator character
   });
 
+  it("groups thousands for zh", () => {
+    // Chinese groups with commas like en. Pinned so a locale whose ICU data is
+    // missing, and which therefore falls back to the runtime default, is a
+    // deliberate decision rather than a surprise.
+    expect(fmtNumber(1234567, "zh")).toBe("1,234,567");
+  });
+
   it("formats zero and negative values", () => {
     expect(fmtNumber(0, "en")).toBe("0");
     expect(fmtNumber(-12345, "en")).toBe("-12,345");

@@ -12,8 +12,9 @@
  *
  * The hash covers the whole body, so it moves with the app version (the
  * client script embeds it) and with the translations (one script per
- * language). The four assets are fixed for the life of the isolate, so they
- * are built once at module init and served from a map.
+ * language). The asset set is fixed for the life of the isolate, so each
+ * asset is built once at module init and served from a map: every language
+ * registered in SUPPORTED_LANGUAGES costs one script built here.
  *
  * A deploy reaches colos one at a time, so for a short window a document
  * from the new build can request its assets from an isolate on the old one

@@ -410,11 +410,13 @@ const id: Translations = {
   "lang.en": "English",
   "lang.id": "Bahasa Indonesia",
   "lang.sv": "Svenska",
+  "lang.zh": "简体中文",
 
   // Language names (translated into this locale)
   "langLocal.en": "Inggris",
   "langLocal.id": "Indonesia",
   "langLocal.sv": "Swedia",
+  "langLocal.zh": "Tionghoa (Sederhana)",
 };
 
 export default id;
