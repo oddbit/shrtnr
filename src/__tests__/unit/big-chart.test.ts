@@ -134,4 +134,20 @@ describe("formatBucketLabel", () => {
     expect(out).toContain("2026");
     expect(out).toContain("09:00");
   });
+
+  it("formats a daily bucket with the Chinese month name", () => {
+    // "7月" only comes from zh ICU data. An English fallback would render
+    // "Jul", so this pins the locale reaching the formatter.
+    const out = formatBucketLabel("2026-07-16", "zh");
+    expect(out).toContain("7月");
+    expect(out).toContain("16");
+    expect(out).toContain("2026");
+  });
+
+  it("formats a monthly bucket with the Chinese month name and year only", () => {
+    const out = formatBucketLabel("2026-07", "zh");
+    expect(out).toContain("7月");
+    expect(out).toContain("2026");
+    expect(out).not.toBe(formatBucketLabel("2026-07-01", "zh"));
+  });
 });

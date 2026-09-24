@@ -38,7 +38,7 @@ The rest of the shortener:
 - **Labels from the page title.** A link created without a label gets the destination page's title fetched in the background, with private and internal hosts refused.
 - **QR codes** as SVG for any slug, from the admin UI, the API, the SDKs and MCP. Scans are tracked separately from link clicks.
 - **Edge redirects.** Slug lookups are cached in Workers KV in front of D1, and click recording runs after the redirect is sent.
-- **Admin dashboard** in English, Indonesian and Swedish, with three themes, per-link and per-bundle analytics, API key management and settings.
+- **Admin dashboard** in English, Indonesian, Swedish and Simplified Chinese, with three themes, per-link and per-bundle analytics, API key management and settings.
 - **Browser extension** for Chrome and Firefox that shortens the current tab against your own deployment. Source and store status in [browser-extensions/README.md](browser-extensions/README.md).
 - **One-click deploy** with automatic provisioning of the database and KV namespace, and migrations that the Worker applies on its first request.
 

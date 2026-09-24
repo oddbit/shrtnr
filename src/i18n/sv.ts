@@ -410,11 +410,13 @@ const sv: Translations = {
   "lang.en": "English",
   "lang.id": "Bahasa Indonesia",
   "lang.sv": "Svenska",
+  "lang.zh": "简体中文",
 
   // Language names (translated into this locale)
   "langLocal.en": "Engelska",
   "langLocal.id": "Indonesiska",
   "langLocal.sv": "Svenska",
+  "langLocal.zh": "Kinesiska (förenklad)",
 };
 
 export default sv;
