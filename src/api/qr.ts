@@ -6,6 +6,7 @@ import { Env } from "../types";
 import { getLink } from "../services/link-management";
 import { renderQrSvg } from "../qr";
 import { pickPrimarySlug } from "../slugs";
+import { resolveShortOrigin } from "../short-origin";
 import { json } from "./response";
 
 export async function handleLinkQr(request: Request, env: Env, linkId: number): Promise<Response> {
@@ -36,7 +37,7 @@ export async function handleLinkQr(request: Request, env: Env, linkId: number): 
 
   if (!slug) return json({ error: "Slug not found" }, 404);
 
-  const qrUrl = `${url.origin}/${slug.slug}?utm_medium=qr`;
+  const qrUrl = `${resolveShortOrigin(env, url)}/${slug.slug}?utm_medium=qr`;
   const svg = renderQrSvg(qrUrl, { size });
 
   if (!svg) return json({ error: "Failed to generate QR code" }, 500);

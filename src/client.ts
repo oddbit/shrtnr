@@ -95,8 +95,18 @@ function api(path, opts) {
 }
 
 // ---- Copy ----
+// The origin short URLs are built from. The server pins it on <html> when
+// SHORT_ORIGIN is set (src/short-origin.ts); without that the host the admin
+// was opened on is the answer. Read per call rather than cached at load: the
+// script is one cached asset shared by every deployment, and the value lives
+// on the document.
+function shortOrigin() {
+  var pinned = document.documentElement.getAttribute('data-short-origin');
+  return pinned || location.origin;
+}
+
 function copyUrl(slug) {
-  var url = location.origin + '/' + slug;
+  var url = shortOrigin() + '/' + slug;
   navigator.clipboard.writeText(url);
   toast(t('client.copied', {url: url}));
 }
@@ -525,7 +535,7 @@ var _qrSrc = '';
 function showQRModal(linkId, slug) {
   _qrSlug = slug;
   _qrSrc = API + '/links/' + linkId + '/qr?slug=' + encodeURIComponent(slug);
-  var shortUrl = location.origin + '/' + slug;
+  var shortUrl = shortOrigin() + '/' + slug;
   openModal(
     '<div class="modal-title">' + esc(t('client.qrCode')) + '</div>' +
     '<p style="text-align:center;font-size:0.85rem;color:var(--color-text-muted);margin:0 0 1.25rem">' + esc(shortUrl) + '</p>' +

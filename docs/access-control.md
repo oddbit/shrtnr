@@ -45,6 +45,18 @@ Open `/_/admin/dashboard` and sign in through Access. The Worker validates the J
 
 A Worker with a custom domain still answers on its `workers.dev` URL. The Worker's own check keeps the admin pages shut on any host whose Access application it does not know. `wrangler.jsonc` ships with `"preview_urls": false`, so per-version preview URLs stay off; set it to `true` in your fork to preview branch builds. The repository leaves `workers_dev` unset, because a fresh one-click deploy has no other URL, and wrangler then turns `workers.dev` back on at every deploy even after you switch it off in the dashboard. Once a custom domain serves the Worker, either enable Access on `workers.dev` and add its AUD tag to `ACCESS_AUD`, or add `"workers_dev": false` to `wrangler.jsonc` in your fork.
 
+### Which domain the links are handed out on
+
+A deployment that answers on several domains hands out whichever one the operator opened the admin on: the copy button, the QR modal and the QR code all follow the request host. Set `SHORT_ORIGIN` to pin one instead:
+
+```bash
+npx wrangler secret put SHORT_ORIGIN   # c.example, or https://c.example
+```
+
+It takes a bare host or a full origin, and must not carry a path, a query string or credentials: short links live at the root, where the `/:slug` route is. Unset is the default and keeps the request origin, so a deployment that never sets it behaves as before. A value that is not a bare http(s) origin is ignored, the request origin is used instead, and the Worker logs a warning once per isolate.
+
+The domain still has to be attached to the Worker and reachable: this setting changes which URL is handed out, it does not create the domain. Admin access is a separate question, so an operator can open the admin on one domain and hand out links on another. The identity behind every write still comes from whichever Access application covers the host the admin was opened on.
+
 ### Local development
 
 `wrangler dev` runs without Access. `DEV_MODE=true` in `.dev.vars` tells the Worker it runs on a developer machine, and only then does it take the identity from the `dev_identity` cookie or `DEV_IDENTITY`. A deploy never uploads `.dev.vars`, and a configured `ACCESS_AUD` always wins over `DEV_MODE`. See [Local sign-in](../README.md#local-sign-in).
