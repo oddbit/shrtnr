@@ -308,6 +308,22 @@ describe("GET /_/health", () => {
     expect(body.status).toBe("degraded");
     expect(body.schema.error).toContain("D1 is unavailable right now");
   });
+
+  it("recovers once a fresh live read reports the schema ready, even with a failure remembered from before", async () => {
+    // This isolate's first attempt hits a transient error and remembers it.
+    await worker.fetch(req("/x"), { ...env, DB: brokenDb("D1 is unavailable right now") }, createExecutionContext());
+    // The schema is then genuinely applied for real, the way another isolate
+    // racing the same cold start would: through migrate() directly, without
+    // this isolate's ensureSchema() ever running again to clear its memo.
+    await migrate(env);
+
+    const res = await SELF.fetch(req("/_/health"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string; schema: { ready: boolean; error?: string } };
+    expect(body.status).toBe("ok");
+    expect(body.schema.ready).toBe(true);
+    expect(body.schema.error).toBeUndefined();
+  });
 });
 
 describe("/_/setup", () => {
