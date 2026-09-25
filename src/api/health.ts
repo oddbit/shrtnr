@@ -25,6 +25,11 @@ export async function handleHealth(env: Env): Promise<Response> {
     const status = await schemaStatus(env);
     applied = status.applied.length > 0 ? status.applied[status.applied.length - 1].name : null;
     ready = status.ready;
+    // A live read that finds every migration applied is direct proof the
+    // schema is fine right now, even on an isolate that still remembers an
+    // earlier attempt failing (its own, or one it never repeated because
+    // health is exempt from ensureSchema()).
+    if (ready) error = null;
   } catch (err) {
     error = err instanceof Error ? err.message : String(err);
   }
