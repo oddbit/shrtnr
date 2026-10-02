@@ -140,28 +140,31 @@ export async function updateAppSettings(
     filter_self_referrers?: boolean;
   },
 ): Promise<ServiceResult<AppSettings>> {
+  // Validate every field before storing any, so a request rejected with 400
+  // leaves the settings as they were instead of half applied.
+  const writes: [key: string, value: string][] = [];
   if (body.slug_default_length !== undefined) {
     const err = validateSlugLength(body.slug_default_length);
     if (err) return fail(400, err);
-    await SettingRepository.set(env.DB, identity, "slug_default_length", String(body.slug_default_length));
+    writes.push(["slug_default_length", String(body.slug_default_length)]);
   }
   if (body.theme !== undefined) {
     if (typeof body.theme !== "string" || !(THEMES as readonly string[]).includes(body.theme)) {
       return fail(400, `theme must be one of: ${THEMES.join(", ")}`);
     }
-    await SettingRepository.set(env.DB, identity, "theme", body.theme);
+    writes.push(["theme", body.theme]);
   }
   if (body.lang !== undefined) {
     if (typeof body.lang !== "string" || !(SUPPORTED_LANGUAGES as readonly string[]).includes(body.lang)) {
       return fail(400, `lang must be one of: ${SUPPORTED_LANGUAGES.join(", ")}`);
     }
-    await SettingRepository.set(env.DB, identity, "lang", body.lang);
+    writes.push(["lang", body.lang]);
   }
   if (body.default_range !== undefined) {
     if (body.default_range === null || body.default_range === "") {
-      await SettingRepository.set(env.DB, identity, "default_range", "");
+      writes.push(["default_range", ""]);
     } else if (isValidRange(body.default_range)) {
-      await SettingRepository.set(env.DB, identity, "default_range", body.default_range);
+      writes.push(["default_range", body.default_range]);
     } else {
       return fail(400, `default_range must be one of: ${TIMELINE_RANGES.join(", ")}`);
     }
@@ -170,13 +173,16 @@ export async function updateAppSettings(
     if (typeof body.filter_bots !== "boolean") {
       return fail(400, "filter_bots must be a boolean");
     }
-    await SettingRepository.set(env.DB, identity, "filter_bots", String(body.filter_bots));
+    writes.push(["filter_bots", String(body.filter_bots)]);
   }
   if (body.filter_self_referrers !== undefined) {
     if (typeof body.filter_self_referrers !== "boolean") {
       return fail(400, "filter_self_referrers must be a boolean");
     }
-    await SettingRepository.set(env.DB, identity, "filter_self_referrers", String(body.filter_self_referrers));
+    writes.push(["filter_self_referrers", String(body.filter_self_referrers)]);
+  }
+  for (const [key, value] of writes) {
+    await SettingRepository.set(env.DB, identity, key, value);
   }
 
   return getAppSettings(env, identity);

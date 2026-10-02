@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
+import { DEFAULT_SLUG_LENGTH } from "../../constants";
 import {
   createNewApiKey,
   getAppSettings,
@@ -276,5 +277,26 @@ describe("API key title validation", () => {
       scope: "create",
     });
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("settings update is all or nothing", () => {
+  it("stores no field when a later field in the same request is invalid", async () => {
+    // Fields used to be validated and written one at a time, so a request
+    // that failed with 400 on its theme had already stored its slug length.
+    const result = await updateAppSettings(env as any, TEST_IDENTITY, {
+      slug_default_length: 9,
+      filter_bots: false,
+      theme: "neon",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(400);
+
+    const settings = await getAppSettings(env as any, TEST_IDENTITY);
+    expect(settings.ok).toBe(true);
+    if (settings.ok) {
+      expect(settings.data.slug_default_length).toBe(DEFAULT_SLUG_LENGTH);
+      expect(settings.data.filter_bots).toBe(true);
+    }
   });
 });
