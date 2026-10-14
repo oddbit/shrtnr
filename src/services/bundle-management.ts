@@ -87,12 +87,12 @@ export async function listBundles(
 
   const filters = await resolveClickFilters(env, identity);
   const range = opts.range ?? "all";
+  // Counted per bundle without binding the ids: an IN list past D1's
+  // 100-parameter cap fails the whole listing, and the table is one row per
+  // membership, so grouping it whole costs no more than a long IN list.
   const [linkCounts, summaries] = await Promise.all([
     env.DB
-      .prepare(
-        `SELECT bundle_id, COUNT(*) as cnt FROM bundle_links WHERE bundle_id IN (${bundleIds.map(() => "?").join(",")}) GROUP BY bundle_id`,
-      )
-      .bind(...bundleIds)
+      .prepare("SELECT bundle_id, COUNT(*) as cnt FROM bundle_links GROUP BY bundle_id")
       .all<{ bundle_id: number; cnt: number }>(),
     ClickRepository.getBundleSummariesBulk(env.DB, bundleIds, undefined, filters, range, opts.cardExtras),
   ]);

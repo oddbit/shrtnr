@@ -87,6 +87,38 @@ describe("listBundles", () => {
   });
 });
 
+describe("listBundles past D1's bound-parameter cap", () => {
+  it("lists and summarises more bundles than one statement can bind", async () => {
+    // D1 rejects a statement with more than 100 bound parameters. The listing
+    // used to bind one id per bundle, so the 100th bundle broke the page and
+    // GET /bundles with SQLITE_ERROR.
+    const count = 120;
+    const link = await LinkRepository.create(env.DB, { url: "https://a.com", slug: "aaa", createdBy: "a@b" });
+    const ids: number[] = [];
+    for (let i = 0; i < count; i++) {
+      const b = await BundleRepository.create(env.DB, { name: `B${i}`, createdBy: "a@b" });
+      ids.push(b.id);
+    }
+    // Last bundle sits beyond the first 100 ids and must still get its numbers.
+    await BundleRepository.addLink(env.DB, ids[count - 1], link.id);
+    const now = Math.floor(Date.now() / 1000);
+    await env.DB.prepare("INSERT INTO clicks (slug, clicked_at, link_mode) VALUES (?, ?, 'link')")
+      .bind("aaa", now).run();
+
+    for (const range of [undefined, "7d" as const]) {
+      const res = await svc.listBundles(e, "a@b", { range, cardExtras: true });
+      expect(res.ok).toBe(true);
+      if (!res.ok) continue;
+      expect(res.data).toHaveLength(count);
+      const last = res.data.find((b) => b.id === ids[count - 1])!;
+      expect(last.link_count).toBe(1);
+      expect(last.total_clicks).toBe(1);
+      expect(last.clicked_links).toBe(1);
+      expect(last.top_links).toEqual([{ slug: "aaa", click_count: 1 }]);
+    }
+  });
+});
+
 describe("getBundle / updateBundle", () => {
   it("returns 404 for unknown id", async () => {
     const res = await svc.getBundle(e, 99999, "a@b");
