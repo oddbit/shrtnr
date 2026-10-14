@@ -958,24 +958,28 @@ function fmtAvgPerDay(totalClicks, range, createdAt) {
   return String(Math.round(avg));
 }
 
-var MONTH_KEYS = ['month.jan','month.feb','month.mar','month.apr','month.may','month.jun','month.jul','month.aug','month.sep','month.oct','month.nov','month.dec'];
-function monthName(m) { return t(MONTH_KEYS[m - 1]); }
-
+// The chart's x-axis label for one bucket. Bucket labels are canonical and
+// UTC: "YYYY-MM-DD HH" for hourly, "YYYY-MM-DD" for daily and weekly, and
+// "YYYY-MM" for monthly.
+//
+// The label is composed by Intl rather than by gluing a translated month name
+// onto a day number, because which of the two comes first, and what sits
+// between them, are locale decisions: en puts the month first ("Jul 16"), sv
+// and id put the day first ("16 juli", "16 Jul"), and zh needs a day counter
+// ("7月16日"). The glue rendered a monthly bucket as "7月 26", which reads as
+// the 26th of July rather than July 2026, and a two-digit year is not the fix
+// either, because zh renders that as "26年7月", the year 26.
 function fmtLabel(label, range) {
   if (range === '24h') {
     // "YYYY-MM-DD HH" → "HH:00"
     return label.slice(11) + ':00';
   }
-  if (range === '7d' || range === '30d' || range === '90d' || range === '1y') {
-    var parts = label.split('-');
-    return monthName(parseInt(parts[1], 10)) + ' ' + parseInt(parts[2], 10);
-  }
-  // "all": label can be YYYY-MM-DD (daily/weekly) or YYYY-MM (monthly)
   var parts = label.split('-');
-  if (parts.length === 3) {
-    return monthName(parseInt(parts[1], 10)) + ' ' + parseInt(parts[2], 10);
-  }
-  return monthName(parseInt(parts[1], 10)) + ' ' + parts[0].slice(2);
+  var monthly = parts.length === 2;
+  var day = monthly ? 1 : parseInt(parts[2], 10);
+  var dt = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, day));
+  if (monthly) return dt.toLocaleDateString(UI_LANG, { year: 'numeric', month: 'short', timeZone: 'UTC' });
+  return dt.toLocaleDateString(UI_LANG, { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
 // Humanizes a canonical bucket label ("YYYY-MM", "YYYY-MM-DD", or
