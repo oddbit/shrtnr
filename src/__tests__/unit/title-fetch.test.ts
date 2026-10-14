@@ -2,6 +2,15 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import { extractTitle, fetchPageTitle, isPublicHttpUrl } from "../../title-fetch";
 
 describe("extractTitle", () => {
+  it("decodes entities once, not recursively", () => {
+    expect(extractTitle("<title>a &amp;lt; b</title>")).toBe("a &lt; b");
+    expect(extractTitle("<title>&amp;amp;</title>")).toBe("&amp;");
+  });
+
+  it("decodes astral numeric references to a single code point", () => {
+    expect(extractTitle("<title>Hi &#128512;</title>")).toBe("Hi \u{1F600}");
+  });
+
   it("extracts a plain title", () => {
     expect(extractTitle("<html><head><title>Hello World</title></head></html>")).toBe("Hello World");
   });
