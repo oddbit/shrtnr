@@ -14,7 +14,7 @@ import httpx
 import pytest
 import respx
 
-from shrtnr import Shrtnr, ShrtnrError
+from shrtnr import Config, Shrtnr, ShrtnrError
 from shrtnr.models import Bundle, BundleWithSummary
 
 from .conftest import (
@@ -24,6 +24,7 @@ from .conftest import (
     make_bundle_dict,
     make_bundle_with_summary_dict,
     make_click_stats_dict,
+    make_config_dict,
     make_link_dict,
     make_slug_dict,
     make_timeline_dict,
@@ -191,6 +192,35 @@ def test_links_get_no_range_param_when_none(client: Shrtnr) -> None:
     )
     client.links.get(3)
     assert "range" not in str(route.calls[0].request.url)
+
+
+@respx.mock
+def test_links_get_exposes_short_origin(client: Shrtnr) -> None:
+    """Every link response carries the origin the deployment hands short URLs
+    out on, so a client can build f"{link.short_origin}/{slug}" itself."""
+    respx.get(f"{BASE_URL}/_/api/links/3").mock(
+        return_value=httpx.Response(
+            200, json=make_link_dict(link_id=3, short_origin="https://c.example")
+        ),
+    )
+    link = client.links.get(3)
+    assert link.short_origin == "https://c.example"
+
+
+@respx.mock
+def test_links_list_exposes_short_origin(client: Shrtnr) -> None:
+    """One response's links all share the same short_origin."""
+    respx.get(f"{BASE_URL}/_/api/links").mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                make_link_dict(link_id=1, short_origin="https://c.example"),
+                make_link_dict(link_id=2, short_origin="https://c.example"),
+            ],
+        ),
+    )
+    links = client.links.list()
+    assert [link.short_origin for link in links] == ["https://c.example", "https://c.example"]
 
 
 # ---- links.list ----
@@ -714,6 +744,27 @@ def test_bundles_remove_link(client: Shrtnr) -> None:
     result = client.bundles.remove_link(42, 7)
     assert result.removed is True
     assert route.calls[0].request.method == "DELETE"
+
+
+# ---- config.get ----
+
+
+@respx.mock
+def test_config_get(client: Shrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/config").mock(
+        return_value=httpx.Response(200, json=make_config_dict(short_origin="https://c.example")),
+    )
+    config = client.config.get()
+    assert config.short_origin == "https://c.example"
+    assert route.calls[0].request.method == "GET"
+    assert route.calls[0].request.headers["Authorization"] == f"Bearer {API_KEY}"
+
+
+def test_config_from_dict_raises_on_missing_short_origin() -> None:
+    """Config.short_origin is required; a missing key must raise KeyError,
+    not silently default."""
+    with pytest.raises(KeyError):
+        Config.from_dict({})
 
 
 # ---- Context manager ----

@@ -136,13 +136,32 @@ stats = client.bundles.analytics(bundle.id, range="7d")
 print(stats.total_clicks)
 ```
 
+### Config (`client.config`)
+
+Deployment settings a client needs to build short URLs.
+
+| Method | Description |
+|---|---|
+| `get()` | Origin short URLs are handed out on |
+
+```python
+# Build a short URL on the origin the deployment hands links out on
+config = client.config.get()
+short_url = f"{config.short_origin}/{link.slugs[0].slug}"
+```
+
 ## Models
 
 All model fields use snake_case, matching the wire format. Types are frozen dataclasses.
 
+Every `Link` carries `short_origin`: the origin this deployment hands short URLs out on (its
+`SHORT_ORIGIN` when set, otherwise the origin of the request). Build short URLs as
+`f"{short_origin}/{slug}"` so they match the copy button, the QR code and the redirects.
+
 Key types exported from `shrtnr`:
 
 - `Link`, `Slug`, `Bundle`, `BundleWithSummary`, `BundleTopLink`
+- `Config`
 - `ClickStats`, `TimelineData`, `TimelineBucket`, `NameCount`, `TimelineSummary`
 - `DateCount`, `SlugCount`
 - `DeletedResult`, `AddedResult`, `RemovedResult`

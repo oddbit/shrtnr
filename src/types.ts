@@ -21,6 +21,12 @@ declare global {
       MCP_ACCESS_AUD: string; // AUD tag from the MCP CF Access application (Managed OAuth)
       ACCESS_JWKS_URL: string; // https://<team>.cloudflareaccess.com/cdn-cgi/access/certs
 
+      // Optional: the origin short URLs are built from, for a deployment that
+      // answers on several domains. A bare host or a full origin ("c.example",
+      // "https://c.example"). Unset keeps the origin of the request that
+      // rendered the page (see src/short-origin.ts).
+      SHORT_ORIGIN?: string;
+
       // Dev-only: "true" in .dev.vars and the test pools. Lets the Worker take
       // an unverified identity while ACCESS_AUD is unset (see isDevMode).
       DEV_MODE?: string;

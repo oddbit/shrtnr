@@ -23,8 +23,9 @@ import { listBundlesForLink } from "../services/bundle-management";
 import { handleLinkQr } from "./qr";
 import { handlePublicLinkAnalytics, handlePublicLinkBreakdown, handlePublicLinkTimeline } from "./analytics";
 import { fetchPageTitle } from "../title-fetch";
-import { fromServiceResult, json } from "./response";
+import { fromLinkResult, fromServiceResult, json } from "./response";
 import { requireScope } from "./scope";
+import { resolveShortOrigin } from "../short-origin";
 import { DEFAULT_QR_SIZE, MAX_QR_SIZE, MIN_QR_SIZE } from "../constants";
 import type { Env, TimelineRange, WaitUntilContext } from "../types";
 import {
@@ -120,7 +121,7 @@ linksApp.openapi(createLinkRoute, async (c) => {
   if (result.ok && result.status === 201 && !body.label) {
     c.executionCtx.waitUntil(autoLabelLink(c.env.DB, result.data.id, result.data.url, fetchPageTitle));
   }
-  return fromServiceResult(result) as never;
+  return fromLinkResult(result, resolveShortOrigin(c.env, c.req.url)) as never;
 });
 
 // ---- GET / (list links) ----
@@ -149,7 +150,7 @@ linksApp.openapi(listLinksRoute, async (c) => {
   const { owner, range } = c.req.valid("query") as { owner?: string; range?: TimelineRange };
   const opts = range ? { range, withDeltaRange: range } : undefined;
   const result = owner ? await listLinksByOwner(c.env, owner, opts) : await listLinks(c.env, opts);
-  return fromServiceResult(result) as never;
+  return fromLinkResult(result, resolveShortOrigin(c.env, c.req.url)) as never;
 });
 
 // ---- GET /:id (get link) ----
@@ -174,7 +175,7 @@ const getLinkRoute = createRoute({
 linksApp.openapi(getLinkRoute, async (c) => {
   const { id } = c.req.valid("param") as { id: number };
   const { range } = c.req.valid("query") as { range?: TimelineRange };
-  return fromServiceResult(await getLink(c.env, id, range ? { range } : undefined)) as never;
+  return fromLinkResult(await getLink(c.env, id, range ? { range } : undefined), resolveShortOrigin(c.env, c.req.url)) as never;
 }, paramHook);
 
 // ---- PUT /:id (update link) ----
@@ -203,7 +204,7 @@ const updateLinkRoute = createRoute({
 linksApp.openapi(updateLinkRoute, async (c) => {
   const { id } = c.req.valid("param") as { id: number };
   const body = c.req.valid("json") as { url?: string; label?: string | null; expires_at?: number | null };
-  return fromServiceResult(await updateLink(c.env, id, body, c.var.auth.identity)) as never;
+  return fromLinkResult(await updateLink(c.env, id, body, c.var.auth.identity), resolveShortOrigin(c.env, c.req.url)) as never;
 }, paramHook);
 
 // ---- POST /:id/disable ----
@@ -227,7 +228,7 @@ const disableLinkRoute = createRoute({
 
 linksApp.openapi(disableLinkRoute, async (c) => {
   const { id } = c.req.valid("param") as { id: number };
-  return fromServiceResult(await disableLink(c.env, id, c.var.auth.identity)) as never;
+  return fromLinkResult(await disableLink(c.env, id, c.var.auth.identity), resolveShortOrigin(c.env, c.req.url)) as never;
 }, paramHook);
 
 // ---- POST /:id/enable ----
@@ -250,7 +251,7 @@ const enableLinkRoute = createRoute({
 
 linksApp.openapi(enableLinkRoute, async (c) => {
   const { id } = c.req.valid("param") as { id: number };
-  return fromServiceResult(await enableLink(c.env, id, c.var.auth.identity)) as never;
+  return fromLinkResult(await enableLink(c.env, id, c.var.auth.identity), resolveShortOrigin(c.env, c.req.url)) as never;
 }, paramHook);
 
 // ---- DELETE /:id ----

@@ -45,6 +45,7 @@ def make_link_dict(
     created_by: str = "owner@example.com",
     slugs: list[dict[str, Any]] | None = None,
     total_clicks: int = 0,
+    short_origin: str = "https://shrtnr.test",
     delta_pct: float | None = None,
 ) -> dict[str, Any]:
     d: dict[str, Any] = {
@@ -57,10 +58,15 @@ def make_link_dict(
         "created_by": created_by,
         "slugs": slugs if slugs is not None else [make_slug_dict(link_id=link_id, slug="auto")],
         "total_clicks": total_clicks,
+        "short_origin": short_origin,
     }
     if delta_pct is not None:
         d["delta_pct"] = delta_pct
     return d
+
+
+def make_config_dict(*, short_origin: str = "https://shrtnr.test") -> dict[str, Any]:
+    return {"short_origin": short_origin}
 
 
 def make_bundle_dict(

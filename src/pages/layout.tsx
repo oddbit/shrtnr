@@ -10,6 +10,12 @@ type LayoutProps = {
   active: string;
   theme?: string;
   lang?: string;
+  /**
+   * Origin the client script builds short URLs from. Rendered onto <html>
+   * because the script cannot read the Worker's environment
+   * (src/short-origin.ts).
+   */
+  shortOrigin: string;
   t: TranslateFn;
 };
 
@@ -17,6 +23,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
   active,
   theme,
   lang,
+  shortOrigin,
   t,
   children,
 }) => {
@@ -43,7 +50,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
   ];
 
   return (
-    <html lang={htmlLang} data-theme={currentTheme}>
+    <html lang={htmlLang} data-theme={currentTheme} data-short-origin={shortOrigin}>
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />

@@ -5,6 +5,7 @@ import { HttpClient } from "./internal/http";
 import { LinksResource } from "./resources/links";
 import { SlugsResource } from "./resources/slugs";
 import { BundlesResource } from "./resources/bundles";
+import { ConfigResource } from "./resources/config";
 
 export interface ShrtnrClientConfig {
   /** Base URL of your shrtnr deployment, e.g. "https://s.example.com". */
@@ -19,11 +20,13 @@ export class ShrtnrClient {
   readonly links: LinksResource;
   readonly slugs: SlugsResource;
   readonly bundles: BundlesResource;
+  readonly config: ConfigResource;
 
   constructor(config: ShrtnrClientConfig) {
     const http = new HttpClient(config);
     this.links = new LinksResource(http);
     this.slugs = new SlugsResource(http);
     this.bundles = new BundlesResource(http);
+    this.config = new ConfigResource(http);
   }
 }

@@ -32,6 +32,18 @@ export interface Link {
   slugs: Slug[];
   totalClicks: number;
   deltaPct?: number;
+  /// Origin this deployment hands the link's short URLs out on: the deployment's
+  /// SHORT_ORIGIN when set, otherwise the origin of the request. Build short URLs
+  /// as `${shortOrigin}/${slug}` instead of assuming the host the API was reached on.
+  shortOrigin: string;
+}
+
+/// Deployment settings a client needs to build short URLs, so a client that
+/// composes them itself agrees with the copy button, the QR code and the redirects.
+export interface Config {
+  /// Origin short URLs are handed out on: the deployment's SHORT_ORIGIN when
+  /// set, otherwise the origin of the request. Absolute, no trailing slash.
+  shortOrigin: string;
 }
 
 export interface Bundle {

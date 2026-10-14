@@ -24,6 +24,7 @@ import { Hono } from "hono";
 import type { Env, TimelineRange } from "./types";
 import { verifyAccessJwt, extractIdentity, isSignedIn, isDevMode, type AccessUser } from "./access";
 import { accessNotConfiguredResponse } from "./access-required";
+import { resolveShortOrigin } from "./short-origin";
 import { handleDevLogin, handleDevLogout } from "./dev-login";
 import { handleRedirect } from "./redirect";
 import { unauthorizedResponse, hasScope, forbiddenResponse } from "./auth";
@@ -232,19 +233,23 @@ async function getPageData(c: { env: Env; req: { raw: Request } }, identity: str
   const filterBots = settings?.filter_bots ?? true;
   const filterSelfReferrers = settings?.filter_self_referrers ?? true;
   const t = createTranslateFn(lang);
-  return { theme, slugLength, lang, defaultRange, filterBots, filterSelfReferrers, t };
+  // Every admin page carries this into <Layout>, so the browser-side copy
+  // button and QR modal agree with the server-rendered QR code about which
+  // origin a short URL lives on.
+  const shortOrigin = resolveShortOrigin(c.env, c.req.raw.url);
+  return { theme, slugLength, lang, defaultRange, filterBots, filterSelfReferrers, shortOrigin, t };
 }
 
 // ---- Admin pages ----
 
 app.get("/_/admin/dashboard", async (c) => {
   const identity = c.var.identity;
-  const { theme, t, lang, defaultRange } = await getPageData(c, identity);
+  const { theme, shortOrigin, t, lang, defaultRange } = await getPageData(c, identity);
   const rangeParam = c.req.query("range");
   const validRanges = new Set(["24h", "7d", "30d", "90d", "1y", "all"]);
   const range = (validRanges.has(rangeParam || "") ? rangeParam : defaultRange) as TimelineRange;
   return c.html(
-    <Layout active="dashboard" theme={theme} t={t} lang={lang}>
+    <Layout active="dashboard" shortOrigin={shortOrigin} theme={theme} t={t} lang={lang}>
       <DashboardPage t={t} lang={lang} range={range} />
     </Layout>,
   );
@@ -252,7 +257,7 @@ app.get("/_/admin/dashboard", async (c) => {
 
 app.get("/_/admin/links", async (c) => {
   const identity = c.var.identity;
-  const { theme, slugLength, t, lang, defaultRange } = await getPageData(c, identity);
+  const { theme, slugLength, shortOrigin, t, lang, defaultRange } = await getPageData(c, identity);
   // Trim before anything reads it. The repository treats a query that trims
   // to nothing as matching nothing (a bare LIKE "%%" would match every row),
   // so an untrimmed run of spaces empties the window and the empty state
@@ -287,7 +292,7 @@ app.get("/_/admin/links", async (c) => {
     range,
   });
   return c.html(
-    <Layout active="links" theme={theme} t={t} lang={lang}>
+    <Layout active="links" shortOrigin={shortOrigin} theme={theme} t={t} lang={lang}>
       <LinksPage
         links={data.links}
         total={data.total}
@@ -310,7 +315,7 @@ app.get("/_/admin/links/:id", async (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return notFoundResponse();
   const identity = c.var.identity;
-  const { theme, t, lang, defaultRange } = await getPageData(c, identity);
+  const { theme, shortOrigin, t, lang, defaultRange } = await getPageData(c, identity);
   const initialRange: TimelineRange = defaultRange;
   const filters = await resolveClickFilters(c.env, identity);
   const linkResult = await getLink(c.env, id, { filters, range: initialRange });
@@ -327,7 +332,7 @@ app.get("/_/admin/links/:id", async (c) => {
   };
   const bundles = bundlesResult.ok ? bundlesResult.data : [];
   return c.html(
-    <Layout active="links" theme={theme} t={t} lang={lang}>
+    <Layout active="links" shortOrigin={shortOrigin} theme={theme} t={t} lang={lang}>
       <LinkDetailPage link={linkResult.data} analytics={analytics} bundles={bundles} t={t} lang={lang} identity={identity} initialRange={initialRange} />
     </Layout>,
   );
@@ -335,7 +340,7 @@ app.get("/_/admin/links/:id", async (c) => {
 
 app.get("/_/admin/bundles", async (c) => {
   const identity = c.var.identity;
-  const { theme, t, lang, defaultRange } = await getPageData(c, identity);
+  const { theme, shortOrigin, t, lang, defaultRange } = await getPageData(c, identity);
   const filterParam = c.req.query("filter");
   const filter = filterParam === "archived" || filterParam === "all" ? filterParam : "active";
   const validRanges = new Set<TimelineRange>(["24h", "7d", "30d", "90d", "1y", "all"]);
@@ -349,7 +354,7 @@ app.get("/_/admin/bundles", async (c) => {
   });
   const bundles = listResult.ok ? listResult.data : [];
   return c.html(
-    <Layout active="bundles" theme={theme} t={t} lang={lang}>
+    <Layout active="bundles" shortOrigin={shortOrigin} theme={theme} t={t} lang={lang}>
       <BundlesPage bundles={bundles} t={t} lang={lang} filter={filter} range={range} />
     </Layout>,
   );
@@ -359,7 +364,7 @@ app.get("/_/admin/bundles/:id", async (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return notFoundResponse();
   const identity = c.var.identity;
-  const { theme, t, lang, defaultRange } = await getPageData(c, identity);
+  const { theme, shortOrigin, t, lang, defaultRange } = await getPageData(c, identity);
   const rangeParam = c.req.query("range");
   const validRanges = new Set(["24h", "7d", "30d", "90d", "1y", "all"]);
   const range = (validRanges.has(rangeParam || "") ? rangeParam : defaultRange) as TimelineRange;
@@ -367,7 +372,7 @@ app.get("/_/admin/bundles/:id", async (c) => {
   const statsResult = await getBundleAnalytics(c.env, id, range, identity, { filters });
   if (!statsResult.ok) return notFoundResponse();
   return c.html(
-    <Layout active="bundles" theme={theme} t={t} lang={lang}>
+    <Layout active="bundles" shortOrigin={shortOrigin} theme={theme} t={t} lang={lang}>
       <BundleDetailPage stats={statsResult.data} identity={identity} t={t} lang={lang} range={range} />
     </Layout>,
   );
@@ -375,12 +380,12 @@ app.get("/_/admin/bundles/:id", async (c) => {
 
 app.get("/_/admin/keys", async (c) => {
   const identity = c.var.identity;
-  const { theme, t, lang } = await getPageData(c, identity);
+  const { theme, shortOrigin, t, lang } = await getPageData(c, identity);
   const keysResult = await listAllApiKeys(c.env, identity);
   const keys = keysResult.ok ? keysResult.data : [];
   const origin = new URL(c.req.url).origin;
   return c.html(
-    <Layout active="keys" theme={theme} t={t} lang={lang}>
+    <Layout active="keys" shortOrigin={shortOrigin} theme={theme} t={t} lang={lang}>
       <KeysPage keys={keys as any} t={t} lang={lang} origin={origin} />
     </Layout>,
   );
@@ -388,11 +393,11 @@ app.get("/_/admin/keys", async (c) => {
 
 app.get("/_/admin/settings", async (c) => {
   const identity = c.var.identity;
-  const { theme, slugLength, t, lang, defaultRange, filterBots, filterSelfReferrers } = await getPageData(c, identity);
+  const { theme, slugLength, shortOrigin, t, lang, defaultRange, filterBots, filterSelfReferrers } = await getPageData(c, identity);
   const mcpConfigured = Boolean(c.env.MCP_ACCESS_AUD && c.env.ACCESS_JWKS_URL);
   const userEmail = c.var.user?.email ?? null;
   return c.html(
-    <Layout active="settings" theme={theme} t={t} lang={lang}>
+    <Layout active="settings" shortOrigin={shortOrigin} theme={theme} t={t} lang={lang}>
       <SettingsPage theme={theme} slugLength={slugLength} lang={lang} defaultRange={defaultRange} filterBots={filterBots} filterSelfReferrers={filterSelfReferrers} t={t} mcpConfigured={mcpConfigured} userEmail={userEmail} />
     </Layout>,
   );

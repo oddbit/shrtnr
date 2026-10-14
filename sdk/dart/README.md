@@ -121,6 +121,20 @@ final stats = await client.bundles.analytics(bundle.id, range: TimelineRange.las
 print(stats.totalClicks);
 ```
 
+### Config (`client.config`)
+
+Deployment settings, including the origin short URLs are handed out on.
+
+| Method | Description |
+|---|---|
+| `get()` | Get the origin short URLs are handed out on |
+
+```dart
+// Build a short URL that matches the copy button and QR code
+final config = await client.config.get();
+print('${config.shortOrigin}/${link.slugs.first.slug}');
+```
+
 ## Models
 
 All model fields use camelCase. The SDK maps snake_case JSON from the wire automatically
@@ -128,7 +142,7 @@ inside each `fromJson` factory.
 
 Key types exported from `package:shrtnr/shrtnr.dart`:
 
-- `Link`, `Slug`, `Bundle`, `BundleWithSummary`, `BundleTopLink`
+- `Link`, `Slug`, `Bundle`, `BundleWithSummary`, `BundleTopLink`, `Config`
 - `ClickStats`, `TimelineData`, `TimelineBucket`, `TimelineSummary`, `NameCount`
 - `DateCount`, `SlugCount`, `BreakdownPage`
 - `DeletedResult`, `AddedResult`, `RemovedResult`
@@ -136,6 +150,11 @@ Key types exported from `package:shrtnr/shrtnr.dart`:
 
 Timestamp fields (`createdAt`, `expiresAt`, `disabledAt`, `archivedAt`, `updatedAt`) are
 plain `int` Unix seconds, matching the wire format exactly.
+
+`Link.shortOrigin` and `Config.shortOrigin` give the origin this deployment hands short
+URLs out on: the deployment's `SHORT_ORIGIN` when set, otherwise the origin of the request.
+Build short URLs as `${shortOrigin}/${slug}` so they match the copy button, the QR code and
+the redirects.
 
 ## Errors
 

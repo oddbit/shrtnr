@@ -9,6 +9,13 @@ export const BASE_URL = `http://localhost:${PORT}`;
 /** The identity every spec acts as. Owner-gated writes check against it. */
 export const IDENTITY = "e2e@example.com";
 
+/**
+ * The origin the e2e server pins as SHORT_ORIGIN. Deliberately not the admin
+ * host (BASE_URL): the suite has to see the copy button and the QR modal use
+ * a configured origin rather than the host the page was opened on.
+ */
+export const SHORT_ORIGIN = "https://c.example";
+
 /** Written by the setup project, read by every spec. Lives with the server's own throwaway state. */
 const STATE_DIR = path.resolve(process.cwd(), ".wrangler/e2e-state");
 export const AUTH_STATE = path.join(STATE_DIR, "auth.json");

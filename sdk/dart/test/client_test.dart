@@ -76,6 +76,7 @@ Map<String, Object?> _linkJson({
   int totalClicks = 0,
   double? deltaPct,
   List<Map<String, Object?>> slugs = const [],
+  String shortOrigin = 'https://c.example',
 }) =>
     <String, Object?>{
       'id': id,
@@ -87,6 +88,7 @@ Map<String, Object?> _linkJson({
       'created_by': 'owner@example.com',
       'slugs': slugs,
       'total_clicks': totalClicks,
+      'short_origin': shortOrigin,
       if (deltaPct != null) 'delta_pct': deltaPct,
     };
 
@@ -458,6 +460,15 @@ void main() {
       final m = _mock(status: 200, body: _linkJson());
       await m.client.links.get(1);
       expect(m.capture.request!.url.toString(), '$_base/_/api/links/1');
+    });
+
+    test("exposes the response's short_origin as shortOrigin", () async {
+      final m = _mock(
+        status: 200,
+        body: _linkJson(shortOrigin: 'https://c.example'),
+      );
+      final link = await m.client.links.get(3);
+      expect(link.shortOrigin, 'https://c.example');
     });
   });
 
@@ -1212,7 +1223,34 @@ void main() {
     });
   });
 
-  // ---- 30. Base URL normalization ----
+  // ---- 30. config.get ----
+
+  group('config.get', () {
+    test('GETs /_/api/config and returns shortOrigin', () async {
+      final m = _mock(
+        status: 200,
+        body: <String, Object?>{'short_origin': 'https://c.example'},
+      );
+      final config = await m.client.config.get();
+      expect(config.shortOrigin, 'https://c.example');
+      expect(m.capture.request!.url.toString(), '$_base/_/api/config');
+      expect(m.capture.request!.method, 'GET');
+    });
+
+    test('sends the Authorization header', () async {
+      final m = _mock(
+        status: 200,
+        body: <String, Object?>{'short_origin': 'https://c.example'},
+      );
+      await m.client.config.get();
+      expect(
+        m.capture.request!.headers['Authorization'],
+        'Bearer $_apiKey',
+      );
+    });
+  });
+
+  // ---- 31. Base URL normalization ----
 
   group('Base URL normalization', () {
     test('strips trailing slashes from baseUrl', () async {
@@ -1229,7 +1267,7 @@ void main() {
     });
   });
 
-  // ---- 31. snake_case → camelCase model mapping ----
+  // ---- 32. snake_case → camelCase model mapping ----
 
   group('snake_case to camelCase model mapping', () {
     test('Link maps snake_case fields to camelCase', () async {
@@ -1289,7 +1327,7 @@ void main() {
     });
   });
 
-  // ---- 32. BundleAccent enum ----
+  // ---- 33. BundleAccent enum ----
 
   group('BundleAccent enum', () {
     test('wireValue round-trips for every member', () {
@@ -1326,7 +1364,7 @@ void main() {
     });
   });
 
-  // ---- 33. TimelineRange enum ----
+  // ---- 34. TimelineRange enum ----
 
   group('TimelineRange enum', () {
     test('wireValue round-trips for every member', () {
@@ -1351,7 +1389,7 @@ void main() {
     });
   });
 
-  // ---- 34. BundleArchivedFilter enum ----
+  // ---- 35. BundleArchivedFilter enum ----
 
   group('BundleArchivedFilter enum', () {
     test('wireValue maps to correct strings', () {
@@ -1374,7 +1412,7 @@ void main() {
     });
   });
 
-  // ---- 35. Bundle.fromJson null accent ----
+  // ---- 36. Bundle.fromJson null accent ----
 
   group('Bundle.fromJson null accent', () {
     test('defaults to orange when accent is absent', () {
@@ -1412,7 +1450,7 @@ void main() {
     });
   });
 
-  // ---- 36. BundleWithSummary.fromJson null accent ----
+  // ---- 37. BundleWithSummary.fromJson null accent ----
 
   group('BundleWithSummary.fromJson null accent', () {
     test('defaults to orange when accent is absent', () {

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineConfig, devices } from "@playwright/test";
-import { AUTH_STATE, BASE_URL, PORT } from "./e2e/env";
+import { AUTH_STATE, BASE_URL, PORT, SHORT_ORIGIN } from "./e2e/env";
 
 /**
  * Browser e2e suite: the app as a user meets it, driven through a real
@@ -31,7 +31,7 @@ export default defineConfig({
     // Locally a running server (from a previous `yarn e2e`) is reused. CI
     // always boots its own so the seed lands on a fresh database.
     reuseExistingServer: !process.env.CI,
-    env: { E2E_PORT: String(PORT) },
+    env: { E2E_PORT: String(PORT), E2E_SHORT_ORIGIN: SHORT_ORIGIN },
   },
   projects: [
     { name: "setup", testMatch: /setup\.ts$/ },

@@ -119,13 +119,29 @@ const stats = await client.bundles.analytics(bundle.id, { range: "7d" });
 console.log(stats.totalClicks);
 ```
 
+### Config (`client.config`)
+
+Deployment settings a client needs to build short URLs.
+
+| Method | Description |
+|---|---|
+| `get()` | Origin short URLs are handed out on |
+
+```ts
+// Build a short URL on the origin the deployment hands links out on
+const { shortOrigin } = await client.config.get();
+const shortUrl = `${shortOrigin}/${link.slugs[0].slug}`;
+```
+
 ## Models
 
 All model fields use camelCase. The SDK converts snake_case JSON from the wire automatically.
 
+Every `Link` carries `shortOrigin`, the origin this deployment hands its short URLs out on (the deployment's `SHORT_ORIGIN`, or the request origin when unset). `client.config.get()` answers the same value on its own.
+
 Key types exported from `@oddbit/shrtnr`:
 
-- `Link`, `Slug`, `Bundle`, `BundleWithSummary`, `BundleTopLink`
+- `Link`, `Slug`, `Bundle`, `BundleWithSummary`, `BundleTopLink`, `Config`
 - `ClickStats`, `TimelineData`, `TimelineBucket`, `NameCount`
 - `DateCount`, `SlugCount`
 - `DeletedResult`, `AddedResult`, `RemovedResult`

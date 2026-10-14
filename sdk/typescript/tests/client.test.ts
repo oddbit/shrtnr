@@ -482,6 +482,7 @@ const stubLink = {
   id: 1, url: "https://example.com", label: null,
   created_at: 1000, expires_at: null, created_via: null,
   created_by: "u", total_clicks: 0, slugs: [],
+  short_origin: "https://c.example",
 };
 
 describe("links.get", () => {
@@ -502,6 +503,12 @@ describe("links.get", () => {
     mockFetch(200, stubLink);
     await client().links.get(3);
     expect(lastCall().url).toBe(`${BASE}/_/api/links/3`);
+  });
+
+  it("exposes the response's short_origin as shortOrigin", async () => {
+    mockFetch(200, { ...stubLink, short_origin: "https://c.example" });
+    const link = await client().links.get(3);
+    expect(link.shortOrigin).toBe("https://c.example");
   });
 });
 
@@ -975,7 +982,29 @@ describe("bundles.removeLink", () => {
 });
 
 // ============================================================
-// 7. Base URL normalization
+// 7. ConfigResource
+// ============================================================
+
+describe("config.get", () => {
+  it("GETs /api/config and returns shortOrigin", async () => {
+    mockFetch(200, { short_origin: "https://c.example" });
+    const config = await client().config.get();
+    expect(config.shortOrigin).toBe("https://c.example");
+    const { url, init } = lastCall();
+    expect(url).toBe(`${BASE}/_/api/config`);
+    expect(init.method).toBe("GET");
+  });
+
+  it("sends the Authorization header", async () => {
+    mockFetch(200, { short_origin: "https://c.example" });
+    await client().config.get();
+    const { init } = lastCall();
+    expect((init.headers as Record<string, string>)["Authorization"]).toBe(`Bearer ${API_KEY}`);
+  });
+});
+
+// ============================================================
+// 8. Base URL normalization
 // ============================================================
 
 describe("Base URL normalization", () => {
@@ -995,7 +1024,7 @@ describe("Base URL normalization", () => {
 });
 
 // ============================================================
-// 8. Package surface
+// 9. Package surface
 // ============================================================
 
 describe("Package surface", () => {
@@ -1008,6 +1037,7 @@ describe("Package surface", () => {
     expect(typeof c.links).toBe("object");
     expect(typeof c.slugs).toBe("object");
     expect(typeof c.bundles).toBe("object");
+    expect(typeof c.config).toBe("object");
   });
 
   it("does not publish an internal admin entrypoint in package.json", async () => {

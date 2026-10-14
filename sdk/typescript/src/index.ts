@@ -11,6 +11,7 @@ export type {
   BreakdownPage,
   Slug,
   Link,
+  Config,
   Bundle,
   BundleTopLink,
   BundleWithSummary,

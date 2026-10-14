@@ -95,18 +95,44 @@ function api(path, opts) {
 }
 
 // ---- Copy ----
+// The origin short URLs are built from. The server pins it on <html> when
+// SHORT_ORIGIN is set (src/short-origin.ts); without that the host the admin
+// was opened on is the answer. Read per call rather than cached at load: the
+// script is one cached asset shared by every deployment, and the value lives
+// on the document.
+function shortOrigin() {
+  var pinned = document.documentElement.getAttribute('data-short-origin');
+  return pinned || location.origin;
+}
+
+// Whether the text reached the clipboard. navigator.clipboard is undefined
+// outside a secure context, which is the plain-http LAN deployment
+// SHORT_ORIGIN supports, and writeText rejects when the permission is denied.
+// Both become false here rather than a throw: copyUrl() is called for its side
+// effect and its caller keeps going afterwards (quickShorten() redirects), so
+// an uncaught TypeError would swallow the toast and the redirect.
+function copyText(text) {
+  if (!navigator.clipboard) return Promise.resolve(false);
+  return navigator.clipboard.writeText(text).then(
+    function() { return true; },
+    function() { return false; }
+  );
+}
+
 function copyUrl(slug) {
-  var url = location.origin + '/' + slug;
-  navigator.clipboard.writeText(url);
+  var url = shortOrigin() + '/' + slug;
+  copyText(url);
+  // The toast names the URL, so a deployment without a clipboard still shows
+  // the user what to copy by hand.
   toast(t('client.copied', {url: url}));
 }
 
 function copyCodeBlock(id) {
   var el = document.getElementById(id);
-  if (!el || !navigator.clipboard) return;
-  navigator.clipboard.writeText(el.textContent || '').then(function() {
-    toast(t('client.codeCopied'));
-  }, function() {});
+  if (!el) return;
+  copyText(el.textContent || '').then(function(ok) {
+    if (ok) toast(t('client.codeCopied'));
+  });
 }
 
 // ---- Mobile drawer ----
@@ -275,7 +301,7 @@ function showKeyRevealModal(rawKey) {
 
 function copyRawKey() {
   var key = document.getElementById('revealed-key').textContent;
-  navigator.clipboard.writeText(key);
+  copyText(key);
   toast(t('client.apiKeyCopied'));
 }
 
@@ -522,10 +548,20 @@ function clearDetailExpiry(linkId) {
 var _qrSlug = '';
 var _qrSrc = '';
 
+// The origin rides along as a cache key, not as an input: the endpoint decides
+// what the QR encodes (see src/api/qr.ts). It is here because the response is
+// cached for a day under a URL that would otherwise be identical, so an
+// operator who repoints SHORT_ORIGIN would get a modal that names the new
+// origin while the image, and both download buttons that fetch this URL, still
+// hold the old one.
+function qrSrc(linkId, slug) {
+  return API + '/links/' + linkId + '/qr?slug=' + encodeURIComponent(slug) + '&origin=' + encodeURIComponent(shortOrigin());
+}
+
 function showQRModal(linkId, slug) {
   _qrSlug = slug;
-  _qrSrc = API + '/links/' + linkId + '/qr?slug=' + encodeURIComponent(slug);
-  var shortUrl = location.origin + '/' + slug;
+  _qrSrc = qrSrc(linkId, slug);
+  var shortUrl = shortOrigin() + '/' + slug;
   openModal(
     '<div class="modal-title">' + esc(t('client.qrCode')) + '</div>' +
     '<p style="text-align:center;font-size:0.85rem;color:var(--color-text-muted);margin:0 0 1.25rem">' + esc(shortUrl) + '</p>' +
