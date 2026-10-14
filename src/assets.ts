@@ -12,8 +12,11 @@
  *
  * The hash covers the whole body, so it moves with the app version (the
  * client script embeds it) and with the translations (one script per
- * language). The four assets are fixed for the life of the isolate, so they
- * are built once at module init and served from a map.
+ * language). The asset set is fixed for the life of the isolate, so each
+ * asset is built once at module init and served from a map: every language
+ * registered in SUPPORTED_LANGUAGES costs one script built here, whatever
+ * the code's shape (a two-letter code today, a subtagged one if a locale
+ * ever needs it).
  *
  * A deploy reaches colos one at a time, so for a short window a document
  * from the new build can request its assets from an isolate on the old one
@@ -89,7 +92,13 @@ export function adminClientScriptPath(lang: string): string {
 }
 
 const STYLESHEET_PATH = /^\/_\/assets\/admin\.[0-9a-f]+\.css$/;
-const SCRIPT_PATH = /^\/_\/assets\/client\.([a-z]{2})\.[0-9a-f]+\.js$/;
+// The language segment is matched loosely, as any language-shaped code: a
+// subtagged code such as "zh-Hant" or "pt-BR" is recognized here even though
+// no such locale exists yet, so a build that ever registers one serves the
+// no-store fallback during a deploy window instead of a 404.
+// isSupportedLanguage below is the gate that decides which codes this build
+// actually holds a script for.
+const SCRIPT_PATH = /^\/_\/assets\/client\.([A-Za-z-]+)\.[0-9a-f]+\.js$/;
 
 /** The asset another build of this app would have emitted at the path, if the path names one. */
 function sameAssetFromThisBuild(path: string): Asset | undefined {

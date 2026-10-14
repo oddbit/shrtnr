@@ -5,15 +5,20 @@ import type { TranslationKey, Translations } from "./types";
 import en from "./en";
 import id from "./id";
 import sv from "./sv";
+import zh from "./zh";
 
 export type { TranslationKey, Translations };
 export type TranslateFn = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
 export const DEFAULT_LANGUAGE = "en";
-export const SUPPORTED_LANGUAGES = ["en", "id", "sv"] as const;
+export const SUPPORTED_LANGUAGES = ["en", "id", "sv", "zh"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
-const translations: Record<string, Translations> = { en, id, sv };
+// Keyed by the union rather than by string: a language added to
+// SUPPORTED_LANGUAGES without a table here fails the typecheck instead of
+// serving `undefined` through getTranslations, which would put `var T =
+// undefined;` in that language's client script and throw on the first t().
+const translations: Record<SupportedLanguage, Translations> = { en, id, sv, zh };
 
 export function isSupportedLanguage(lang: string): lang is SupportedLanguage {
   return SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage);

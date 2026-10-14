@@ -25,6 +25,13 @@ describe("countryName", () => {
     expect(result).toBe("Amerika Serikat");
   });
 
+  it("should resolve US to a localized name in Simplified Chinese", () => {
+    // A translated name, not the raw code and not the English fallback, which
+    // is what a runtime without zh ICU data would return.
+    const result = countryName("US", "zh");
+    expect(result).toBe("美国");
+  });
+
   it("should return something for unknown codes without throwing", () => {
     const result = countryName("ZZ", "en");
     expect(typeof result).toBe("string");

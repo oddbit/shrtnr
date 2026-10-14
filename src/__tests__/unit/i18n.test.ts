@@ -7,8 +7,6 @@ import {
   SUPPORTED_LANGUAGES,
 } from "../../i18n";
 import en from "../../i18n/en";
-import id from "../../i18n/id";
-import sv from "../../i18n/sv";
 
 function flattenKeys(obj: unknown, prefix = ""): string[] {
   if (obj === null || typeof obj !== "object") return [prefix];
@@ -25,12 +23,21 @@ function placeholders(value: string): string[] {
   return [...(value.match(/\{[a-zA-Z0-9_]+\}/g) ?? [])].sort();
 }
 
+/**
+ * Every supported language except the fallback. Derived once here: the
+ * placeholder and key-parity suites both iterate it, so a change to the
+ * default language or to the exclusion rule lands in one place instead of
+ * two copies that drift apart.
+ */
+const translated = SUPPORTED_LANGUAGES.filter((lang) => lang !== DEFAULT_LANGUAGE);
+
 describe("i18n", () => {
   describe("isSupportedLanguage", () => {
     it("returns true for supported languages", () => {
       expect(isSupportedLanguage("en")).toBe(true);
       expect(isSupportedLanguage("id")).toBe(true);
       expect(isSupportedLanguage("sv")).toBe(true);
+      expect(isSupportedLanguage("zh")).toBe(true);
     });
 
     it("returns false for unsupported languages", () => {
@@ -56,6 +63,11 @@ describe("i18n", () => {
       expect(t["nav.dashboard"]).toBe("Översikt");
     });
 
+    it("returns Simplified Chinese translations for 'zh'", () => {
+      const t = getTranslations("zh");
+      expect(t["nav.dashboard"]).toBe("仪表盘");
+    });
+
     it("falls back to English for unsupported language", () => {
       const t = getTranslations("fr");
       expect(t["nav.dashboard"]).toBe("Dashboard");
@@ -65,10 +77,12 @@ describe("i18n", () => {
   describe("placeholder parity", () => {
     // Translations is typed off en, so a missing key fails the build. Nothing
     // types the placeholders inside a value, so a locale can keep the key and
-    // silently drop the interpolation the key exists for.
-    it.each([["id", id], ["sv", sv]] as const)("keeps every %s placeholder that en declares", (_name, locale) => {
+    // silently drop the interpolation the key exists for. Driven off
+    // SUPPORTED_LANGUAGES so a new locale is covered the day it is registered.
+    it.each(translated)("keeps every %s placeholder that en declares", (lang) => {
+      const locale = getTranslations(lang);
       for (const key of Object.keys(en) as (keyof typeof en)[]) {
-        expect(placeholders(locale[key])).toEqual(placeholders(en[key]));
+        expect(placeholders(locale[key]), `${lang} ${key}`).toEqual(placeholders(en[key]));
       }
     });
   });
@@ -140,20 +154,18 @@ describe("i18n", () => {
     });
 
     it("lists all supported languages", () => {
-      expect(SUPPORTED_LANGUAGES).toContain("en");
-      expect(SUPPORTED_LANGUAGES).toContain("id");
-      expect(SUPPORTED_LANGUAGES).toContain("sv");
+      // The exact set, not one containment per language: a locale dropped from
+      // the array used to leave this test green, because its sibling parity
+      // suites iterate the array itself and would simply run one case fewer.
+      expect([...SUPPORTED_LANGUAGES]).toEqual(["en", "id", "sv", "zh"]);
     });
   });
 
   describe("key parity across locales", () => {
     const enKeys = new Set(flattenKeys(en));
 
-    it.each([
-      ["id", id],
-      ["sv", sv],
-    ])("locale %s has the same key set as en", (_name, locale) => {
-      const localeKeys = new Set(flattenKeys(locale));
+    it.each(translated)("locale %s has the same key set as en", (lang) => {
+      const localeKeys = new Set(flattenKeys(getTranslations(lang)));
       const missing = [...enKeys].filter((k) => !localeKeys.has(k));
       const extra = [...localeKeys].filter((k) => !enKeys.has(k));
       expect({ missing, extra }).toEqual({ missing: [], extra: [] });
@@ -174,6 +186,7 @@ describe("i18n", () => {
         expect(translations["lang.en"]).toBe("English");
         expect(translations["lang.id"]).toBe("Bahasa Indonesia");
         expect(translations["lang.sv"]).toBe("Svenska");
+        expect(translations["lang.zh"]).toBe("简体中文");
       }
     });
 
@@ -181,14 +194,22 @@ describe("i18n", () => {
       const en = getTranslations("en");
       const id = getTranslations("id");
       const sv = getTranslations("sv");
+      const zh = getTranslations("zh");
 
       expect(en["langLocal.id"]).toBe("Indonesian");
       expect(id["langLocal.id"]).toBe("Indonesia");
       expect(sv["langLocal.id"]).toBe("Indonesiska");
+      expect(zh["langLocal.id"]).toBe("印度尼西亚语");
 
       expect(en["langLocal.sv"]).toBe("Swedish");
       expect(id["langLocal.sv"]).toBe("Swedia");
       expect(sv["langLocal.sv"]).toBe("Svenska");
+      expect(zh["langLocal.sv"]).toBe("瑞典语");
+
+      expect(en["langLocal.zh"]).toBe("Chinese (Simplified)");
+      expect(id["langLocal.zh"]).toBe("Tionghoa (Sederhana)");
+      expect(sv["langLocal.zh"]).toBe("Kinesiska (förenklad)");
+      expect(zh["langLocal.zh"]).toBe("简体中文");
     });
   });
 });
