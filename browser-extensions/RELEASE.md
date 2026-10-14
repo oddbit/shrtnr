@@ -52,11 +52,13 @@ Firefox 140 or newer (`strict_min_version`), so the data-collection declaration 
 
 ## 4. Locale check
 
-Switch the OS or browser locale to Indonesian, then to Swedish. Reload the popup and options page.
+Switch the OS or browser locale to Indonesian, then Swedish, then Chinese (Simplified). Reload the popup and options page.
 
 - [ ] Both surfaces render translated strings.
+- [ ] The Chinese labels are not clipped: the popup and the options page are the narrowest surfaces the strings land on.
 - [ ] Placeholders (`{host}`, `{message}`) interpolate correctly in error messages.
 - [ ] Fall back to English when the OS locale is something else (e.g. German).
+- [ ] A Traditional Chinese locale (`zh-TW`) renders Simplified, which is the documented behavior: the extension carries one Chinese table.
 
 ## 5. Bump and tag
 
