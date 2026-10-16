@@ -208,15 +208,16 @@ export function extractTitle(html: string): string | null {
   const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   if (!match) return null;
 
+  const named: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"' };
+  // One pass, so "&amp;lt;" decodes to the text "&lt;" and not to "<".
   const raw = match[1]
     .replace(/\s+/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'")
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&(?:(amp|lt|gt|quot)|#x27|#(\d+));/g, (whole, name, code) => {
+      if (name) return named[name];
+      if (code === undefined) return "'";
+      const point = parseInt(code, 10);
+      return point <= 0x10ffff ? String.fromCodePoint(point) : whole;
+    })
     .trim();
 
   return raw || null;
