@@ -35,13 +35,13 @@ class Links(_SyncResource):
     def get(self, id: int, *, range: TimelineRange | None = None) -> Link:
         """Get a link by ID. Optional range scopes the click-count window."""
         url = self._url(f"/_/api/links/{id}", {"range": range})
-        return Link.from_dict(self._request("GET", url, headers=self._headers()))
+        return Link.from_dict(self._request("GET", url, headers=self._headers()), self._origin)
 
     def list(self, *, owner: str | None = None, range: TimelineRange | None = None) -> list[Link]:
         """List all links. Filter by owner or click-count range."""
         url = self._url("/_/api/links", {"owner": owner, "range": range})
         data = self._request("GET", url, shape="array", headers=self._headers())
-        return [Link.from_dict(x) for x in data]
+        return [Link.from_dict(x, self._origin) for x in data]
 
     def create(
         self,
@@ -64,7 +64,7 @@ class Links(_SyncResource):
             body["allow_duplicate"] = allow_duplicate
         req_url = self._url("/_/api/links")
         return Link.from_dict(
-            self._request("POST", req_url, headers=self._json_headers(), json=body)
+            self._request("POST", req_url, headers=self._json_headers(), json=body), self._origin
         )
 
     def update(
@@ -89,18 +89,18 @@ class Links(_SyncResource):
             body["expires_at"] = expires_at
         req_url = self._url(f"/_/api/links/{id}")
         return Link.from_dict(
-            self._request("PUT", req_url, headers=self._json_headers(), json=body)
+            self._request("PUT", req_url, headers=self._json_headers(), json=body), self._origin
         )
 
     def disable(self, id: int) -> Link:
         """Disable a link (stops redirecting)."""
         url = self._url(f"/_/api/links/{id}/disable")
-        return Link.from_dict(self._request("POST", url, headers=self._headers()))
+        return Link.from_dict(self._request("POST", url, headers=self._headers()), self._origin)
 
     def enable(self, id: int) -> Link:
         """Re-enable a disabled link."""
         url = self._url(f"/_/api/links/{id}/enable")
-        return Link.from_dict(self._request("POST", url, headers=self._headers()))
+        return Link.from_dict(self._request("POST", url, headers=self._headers()), self._origin)
 
     def delete(self, id: int) -> DeletedResult:
         """Permanently delete a link."""
@@ -161,7 +161,9 @@ class AsyncLinks(_AsyncResource):
     async def get(self, id: int, *, range: TimelineRange | None = None) -> Link:
         """Get a link by ID. Optional range scopes the click-count window."""
         url = self._url(f"/_/api/links/{id}", {"range": range})
-        return Link.from_dict(await self._request("GET", url, headers=self._headers()))
+        return Link.from_dict(
+            await self._request("GET", url, headers=self._headers()), self._origin
+        )
 
     async def list(
         self, *, owner: str | None = None, range: TimelineRange | None = None
@@ -169,7 +171,7 @@ class AsyncLinks(_AsyncResource):
         """List all links. Filter by owner or click-count range."""
         url = self._url("/_/api/links", {"owner": owner, "range": range})
         data = await self._request("GET", url, shape="array", headers=self._headers())
-        return [Link.from_dict(x) for x in data]
+        return [Link.from_dict(x, self._origin) for x in data]
 
     async def create(
         self,
@@ -192,7 +194,8 @@ class AsyncLinks(_AsyncResource):
             body["allow_duplicate"] = allow_duplicate
         req_url = self._url("/_/api/links")
         return Link.from_dict(
-            await self._request("POST", req_url, headers=self._json_headers(), json=body)
+            await self._request("POST", req_url, headers=self._json_headers(), json=body),
+            self._origin,
         )
 
     async def update(
@@ -217,18 +220,23 @@ class AsyncLinks(_AsyncResource):
             body["expires_at"] = expires_at
         req_url = self._url(f"/_/api/links/{id}")
         return Link.from_dict(
-            await self._request("PUT", req_url, headers=self._json_headers(), json=body)
+            await self._request("PUT", req_url, headers=self._json_headers(), json=body),
+            self._origin,
         )
 
     async def disable(self, id: int) -> Link:
         """Disable a link (stops redirecting)."""
         url = self._url(f"/_/api/links/{id}/disable")
-        return Link.from_dict(await self._request("POST", url, headers=self._headers()))
+        return Link.from_dict(
+            await self._request("POST", url, headers=self._headers()), self._origin
+        )
 
     async def enable(self, id: int) -> Link:
         """Re-enable a disabled link."""
         url = self._url(f"/_/api/links/{id}/enable")
-        return Link.from_dict(await self._request("POST", url, headers=self._headers()))
+        return Link.from_dict(
+            await self._request("POST", url, headers=self._headers()), self._origin
+        )
 
     async def delete(self, id: int) -> DeletedResult:
         """Permanently delete a link."""

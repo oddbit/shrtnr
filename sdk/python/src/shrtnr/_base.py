@@ -11,7 +11,7 @@ same errors. Everything here is the core that would be duplicated between
 from __future__ import annotations
 
 from typing import Any, Literal
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 import httpx
 
@@ -45,6 +45,16 @@ def _build_request_headers(api_key: str) -> dict[str, str]:
     src/api/bundles.ts).
     """
     return {"Authorization": f"Bearer {api_key}", "X-Client": "sdk"}
+
+
+def _origin_of(base_url: str) -> str:
+    """The origin of the client's base URL: what a deployment older than the
+    ``short_origin`` field hands short URLs out on."""
+    parts = urlsplit(base_url)
+    # netloc keeps any user:password@ prefix; an origin never carries it, and
+    # a short URL built from it would hand the credentials out.
+    host = parts.netloc.rpartition("@")[2]
+    return f"{parts.scheme}://{host}" if parts.scheme and host else base_url.rstrip("/")
 
 
 def _build_url(base_url: str, path: str, query: dict[str, str | None] | None = None) -> str:
@@ -133,6 +143,7 @@ class _SyncResource:
         self._base_url = base_url
         self._api_key = api_key
         self._http = http
+        self._origin = _origin_of(base_url)
 
     def _headers(self) -> dict[str, str]:
         return _build_request_headers(self._api_key)
@@ -167,6 +178,7 @@ class _AsyncResource:
         self._base_url = base_url
         self._api_key = api_key
         self._http = http
+        self._origin = _origin_of(base_url)
 
     def _headers(self) -> dict[str, str]:
         return _build_request_headers(self._api_key)

@@ -15,7 +15,7 @@ import pytest
 import respx
 
 from shrtnr import Config, Shrtnr, ShrtnrError
-from shrtnr.models import Bundle, BundleWithSummary
+from shrtnr.models import Bundle, BundleWithSummary, Link
 
 from .conftest import (
     API_KEY,
@@ -221,6 +221,53 @@ def test_links_list_exposes_short_origin(client: Shrtnr) -> None:
     )
     links = client.links.list()
     assert [link.short_origin for link in links] == ["https://c.example", "https://c.example"]
+
+
+@respx.mock
+def test_links_fall_back_to_the_base_url_origin_without_short_origin(client: Shrtnr) -> None:
+    """A deployment older than the field answers without it. Every call that
+    returns a link must still work against it: the SDK can be upgraded before
+    the Worker is redeployed. The client's own base URL is the answer such a
+    deployment gives anyway."""
+    legacy = make_link_dict(link_id=3)
+    del legacy["short_origin"]
+    respx.get(f"{BASE_URL}/_/api/links/3").mock(return_value=httpx.Response(200, json=legacy))
+    respx.get(f"{BASE_URL}/_/api/links").mock(return_value=httpx.Response(200, json=[legacy]))
+    respx.get(f"{BASE_URL}/_/api/slugs/auto").mock(return_value=httpx.Response(200, json=legacy))
+    respx.get(f"{BASE_URL}/_/api/bundles/42/links").mock(
+        return_value=httpx.Response(200, json=[legacy])
+    )
+
+    assert client.links.get(3).short_origin == BASE_URL
+    assert [link.short_origin for link in client.links.list()] == [BASE_URL]
+    assert client.slugs.lookup("auto").short_origin == BASE_URL
+    assert [link.short_origin for link in client.bundles.links(42)] == [BASE_URL]
+
+
+@respx.mock
+def test_links_fallback_is_the_origin_without_path_or_trailing_slash() -> None:
+    legacy = make_link_dict(link_id=3)
+    del legacy["short_origin"]
+    respx.get(f"{BASE_URL}/_/api/links/3").mock(return_value=httpx.Response(200, json=legacy))
+    with Shrtnr(base_url=f"{BASE_URL}/", api_key=API_KEY) as c:
+        assert c.links.get(3).short_origin == BASE_URL
+
+
+@respx.mock
+def test_links_fallback_drops_credentials_from_the_base_url() -> None:
+    legacy = make_link_dict(link_id=3)
+    del legacy["short_origin"]
+    respx.get(f"{BASE_URL}/_/api/links/3").mock(return_value=httpx.Response(200, json=legacy))
+    with Shrtnr(base_url="https://user:secret@shrtnr.test", api_key=API_KEY) as c:
+        assert c.links.get(3).short_origin == BASE_URL
+
+
+def test_link_constructor_does_not_require_short_origin() -> None:
+    """Code and test fakes that build a Link by hand predate the field. Adding
+    it must not break them, positional delta_pct included."""
+    link = Link(3, "https://example.com", None, 0, None, None, "o@example.com", [], 0, 1.5)
+    assert link.delta_pct == 1.5
+    assert link.short_origin == ""
 
 
 # ---- links.list ----

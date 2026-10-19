@@ -145,9 +145,11 @@ Deployment settings a client needs to build short URLs.
 | `get()` | Origin short URLs are handed out on |
 
 ```python
-# Build a short URL on the origin the deployment hands links out on
+# Build a short URL on the origin the deployment hands links out on, from the
+# primary slug: the one the copy button and the QR code use
 config = client.config.get()
-short_url = f"{config.short_origin}/{link.slugs[0].slug}"
+primary = next((s for s in link.slugs if s.is_primary), link.slugs[0])
+short_url = f"{config.short_origin}/{primary.slug}"
 ```
 
 ## Models
@@ -157,6 +159,8 @@ All model fields use snake_case, matching the wire format. Types are frozen data
 Every `Link` carries `short_origin`: the origin this deployment hands short URLs out on (its
 `SHORT_ORIGIN` when set, otherwise the origin of the request). Build short URLs as
 `f"{short_origin}/{slug}"` so they match the copy button, the QR code and the redirects.
+A deployment older than the field answers without it, and the SDK fills in the origin of
+the client's `base_url`, which is the origin such a deployment hands out.
 
 Key types exported from `shrtnr`:
 
