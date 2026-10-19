@@ -637,6 +637,108 @@ describe("MCP get_link_qr and SHORT_ORIGIN", () => {
   });
 });
 
+// ---- Link tools and the pinned short origin ----
+// The REST link responses carry short_origin, and the MCP link tools did not,
+// so an assistant on a deployment that pins SHORT_ORIGIN built URLs from
+// whatever host it knew: the wrong domain this setting exists to prevent. With
+// nothing pinned the field stays off: an MCP request often arrives on the mcp.*
+// host, which is not where short links live, so the request origin is no answer.
+
+describe("MCP link tools and SHORT_ORIGIN", () => {
+  async function connect(shortOrigin: unknown): Promise<Client> {
+    const agent = Object.create(ShrtnrMCP.prototype) as ShrtnrMCP;
+    Object.assign(agent, { env: { ...env, SHORT_ORIGIN: shortOrigin } as Env, props: { email: "dev@local" } });
+    agent.server = new McpServer({ name: "shrtnr", version: "test" });
+    await agent.init();
+
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test-client", version: "test" });
+    await Promise.all([client.connect(clientTransport), agent.server.connect(serverTransport)]);
+    return client;
+  }
+
+  async function callJson(client: Client, name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const result = (await client.callTool({ name, arguments: args })) as {
+      isError?: boolean;
+      content: { type: string; text?: string }[];
+    };
+    const text = result.content.find((c) => c.type === "text")?.text ?? "";
+    expect(result.isError, text).toBeFalsy();
+    return JSON.parse(text) as Record<string, unknown>;
+  }
+
+  it("annotates every tool that answers a link or a list of links", async () => {
+    const client = await connect("https://c.example");
+    try {
+      const created = await callJson(client, "create_link", { url: "https://example.com/mcp-origin" });
+      expect(created.short_origin).toBe("https://c.example");
+      const id = created.id as number;
+
+      for (const [name, args] of [
+        ["get_link", { link_id: id }],
+        ["update_link", { link_id: id, label: "pinned" }],
+        ["disable_link", { link_id: id }],
+        ["enable_link", { link_id: id }],
+      ] as const) {
+        const link = await callJson(client, name, args);
+        expect(link.short_origin, name).toBe("https://c.example");
+      }
+
+      for (const [name, args] of [
+        ["list_links", {}],
+        ["search_links", { query: "mcp-origin" }],
+        ["list_links_by_owner", { owner: "dev@local" }],
+      ] as const) {
+        const { results } = (await callJson(client, name, args)) as { results: Record<string, unknown>[] };
+        expect(results.length, name).toBeGreaterThan(0);
+        for (const link of results) expect(link.short_origin, name).toBe("https://c.example");
+      }
+
+      const bundle = await callJson(client, "create_bundle", { name: "Origin bundle" });
+      await callJson(client, "add_link_to_bundle", { bundle_id: bundle.id, link_id: id });
+      const bundleLinks = (await client.callTool({ name: "list_bundle_links", arguments: { bundle_id: bundle.id } })) as {
+        content: { type: string; text?: string }[];
+      };
+      const links = JSON.parse(bundleLinks.content[0].text ?? "[]") as Record<string, unknown>[];
+      expect(links).toHaveLength(1);
+      expect(links[0].short_origin).toBe("https://c.example");
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("leaves the field off when the deployment pins nothing", async () => {
+    const client = await connect(undefined);
+    try {
+      const created = await callJson(client, "create_link", { url: "https://example.com/mcp-unpinned" });
+      expect(created).not.toHaveProperty("short_origin");
+      const link = await callJson(client, "get_link", { link_id: created.id });
+      expect(link).not.toHaveProperty("short_origin");
+    } finally {
+      await client.close();
+    }
+  });
+
+  // An MCP client reads the input schema to decide what to send. On a
+  // deployment without SHORT_ORIGIN the tool cannot build a URL without
+  // base_url, so the schema has to say so up front instead of failing the call.
+  it("lists base_url on get_link_qr as required only when nothing is pinned", async () => {
+    const requiredFor = async (shortOrigin: unknown) => {
+      const client = await connect(shortOrigin);
+      try {
+        const { tools } = await client.listTools();
+        const qr = tools.find((tool) => tool.name === "get_link_qr");
+        return qr?.inputSchema.required ?? [];
+      } finally {
+        await client.close();
+      }
+    };
+
+    expect(await requiredFor(undefined)).toContain("base_url");
+    expect(await requiredFor("https://c.example")).not.toContain("base_url");
+  });
+});
+
 describe("MCP error surface", () => {
   it("malformed JSON-RPC body returns parse error (-32700)", async () => {
     // No session needed: the parse error fires before session validation.
@@ -734,6 +836,8 @@ describe("MCP error surface", () => {
 describe("MCP tool descriptions", () => {
   it("list_bundles does not claim caller-owned scoping", async () => {
     const agent = Object.create(ShrtnrMCP.prototype) as ShrtnrMCP;
+    // init() reads the environment to shape a tool schema, as it does at runtime.
+    Object.assign(agent, { env: env as Env });
     agent.server = new McpServer({ name: "shrtnr", version: "test" });
     await agent.init();
 
@@ -764,6 +868,8 @@ describe("MCP tool descriptions", () => {
   // agent re-discovers the contract by trial or by a wasted lookup.
   it("create_link announces its idempotent upsert contract", async () => {
     const agent = Object.create(ShrtnrMCP.prototype) as ShrtnrMCP;
+    // init() reads the environment to shape a tool schema, as it does at runtime.
+    Object.assign(agent, { env: env as Env });
     agent.server = new McpServer({ name: "shrtnr", version: "test" });
     await agent.init();
 
@@ -796,6 +902,8 @@ describe("MCP tool descriptions", () => {
   // it does not own, believing the call would be rejected if it were unsafe.
   it("add_link_to_bundle does not claim an ownership check it does not enforce", async () => {
     const agent = Object.create(ShrtnrMCP.prototype) as ShrtnrMCP;
+    // init() reads the environment to shape a tool schema, as it does at runtime.
+    Object.assign(agent, { env: env as Env });
     agent.server = new McpServer({ name: "shrtnr", version: "test" });
     await agent.init();
 
