@@ -248,13 +248,19 @@ function updateQuickActionButton() {
 }
 
 // Copies a new link's URL, then opens its page. The navigation waits for the
-// write: the browser can abort a pending clipboard write on unload. "Created
-// & copied" is announced only when the copy landed. On a failed copy the
-// link page that opens next shows the short URL.
+// write: the browser can abort a pending clipboard write on unload. The wait
+// is capped at 1.5 s. A write the browser leaves pending (an unanswered
+// permission prompt, a webview that never settles it) would otherwise hold the
+// user on the page with no feedback, inviting a second click and a second
+// link. "Created & copied" is announced only when the copy landed. On a
+// failed or abandoned copy the link page that opens next shows the short URL.
+// copyText() rather than copyUrl(): the page is about to unload, so copyUrl's
+// own toast would only flash before this one or the navigation replaced it.
 function copyThenOpen(link) {
   var primary = pickPrimarySlug(link);
-  var copied = primary ? copyUrl(primary) : Promise.resolve(false);
-  return copied.then(function(ok) {
+  var copied = primary ? copyText(shortOrigin() + '/' + primary) : Promise.resolve(false);
+  var abandoned = new Promise(function(resolve) { setTimeout(function() { resolve(false); }, 1500); });
+  return Promise.race([copied, abandoned]).then(function(ok) {
     if (ok) toast(t('client.linkCreatedCopied'));
     window.location.href = '/_/admin/links/' + link.id;
   });

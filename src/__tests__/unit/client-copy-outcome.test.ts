@@ -7,7 +7,7 @@
 // was the API key modal: "API key copied", then Done, and the key, shown only
 // once, was gone. These tests run the client script's own functions against
 // stubs and assert which message the user sees for each outcome.
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { adminClientScript } from "../../client";
 import type { Translations } from "../../i18n/types";
 import { extractTopLevelChunk } from "../client-script";
@@ -126,8 +126,8 @@ describe("copyRawKey() never claims a copy that failed", () => {
 
 // quickShorten() and createDuplicate() leave the page once the link exists. They
 // used to navigate on the line after starting the write, and the browser can
-// abort a pending clipboard write on unload. They now wait for the write, and
-// announce "created & copied" only when the copy landed.
+// abort a pending clipboard write on unload. They now wait for the write, up
+// to 1.5 s, and announce "created & copied" only when the copy landed.
 describe("creating a link waits for the copy before leaving the page", () => {
   type Harness = {
     run: () => Promise<void>;
@@ -210,7 +210,6 @@ describe("creating a link waits for the copy before leaving the page", () => {
       expect(events).toEqual([
         "write started",
         "write settled",
-        "toast client.copied",
         "toast client.linkCreatedCopied",
         "navigate /_/admin/links/42",
       ]);
@@ -225,5 +224,25 @@ describe("creating a link waits for the copy before leaving the page", () => {
       expect(toasts.map((toast) => toast.key)).not.toContain("client.linkCreatedCopied");
       expect(events[events.length - 1]).toBe("navigate /_/admin/links/42");
     });
+
+    it(`${entry}: opens the link page when the write never settles`, async () => {
+      vi.useFakeTimers();
+      const events: string[] = [];
+      const pending = { clipboard: { writeText: () => new Promise<void>(() => {}) } };
+      const { run, toasts } = load(entry, pending, events);
+
+      const done = run();
+      await vi.advanceTimersByTimeAsync(1499);
+      expect(events).toEqual([]);
+      await vi.advanceTimersByTimeAsync(1);
+      await done;
+
+      expect(toasts).toEqual([]);
+      expect(events).toEqual(["navigate /_/admin/links/42"]);
+    });
   }
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
