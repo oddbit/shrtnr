@@ -48,6 +48,19 @@ describe("Popup — not configured", () => {
       expect(link.href).toContain("oddb.it/shrtnr-deploy-ext");
     });
   });
+
+  it("renders in Simplified Chinese when the browser reports zh-CN", async () => {
+    // The language comes from the browser, with no picker in the extension, so
+    // this is the whole path from navigator.language to the strings on screen.
+    // Every other case in this file runs against the en-US pin in setup.ts.
+    Object.defineProperty(globalThis.navigator, "language", { configurable: true, value: "zh-CN" });
+    await renderPopup();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "保存" })).toBeTruthy();
+    });
+    expect(screen.getByRole("button", { name: "测试连接" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /save/i })).toBeNull();
+  });
 });
 
 describe("Popup — success", () => {

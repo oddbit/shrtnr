@@ -88,7 +88,7 @@ The test suite covers:
 - `storage.ts`: get / set / clear / onConfigChange semantics, normalization, validation rejections
 - `recent.ts`: ordering, dedupe by link id, size cap, malformed entries, missing or failing local storage area
 - `api.ts`: client construction, internal-page guard, error-status to category mapping (including 409), slug validation and add, QR fetch with and without a slug, connection test
-- `i18n`: translation lookup, fallback to en, placeholder interpolation, key parity across all three languages
+- `i18n`: translation lookup, fallback to en, placeholder interpolation, key parity across every supported language, browser-language detection including script variants
 - `Popup.tsx`: every state in the state machine (loading, not-configured, success, error categories, recovery actions, QR toggle caching, visible QR errors, custom slug flow, recent list)
 - `Options.tsx`: CTA banner visibility rule, connection test rendering including the create-only note, save flow with permission request and revocation of the previous origin
 
@@ -161,7 +161,7 @@ Before tagging, run through the checklist in [`RELEASE.md`](RELEASE.md).
 
 ## i18n
 
-Three languages, mirroring the admin app: English, Indonesian, Swedish. English is the source of truth and the fallback. Add a key to `src/i18n/en.ts` first; TypeScript will fail to compile until `id.ts` and `sv.ts` add the same key (the `Translations = typeof en` type is the contract).
+The same languages as the admin app. `src/i18n/index.ts` lists them in `SUPPORTED_LANGUAGES`, which is where a new one is registered: the table map beside it is typed over that list, so a language without a table fails the typecheck. The language is the browser's, read from `navigator.language` by its primary subtag; there is no picker in the extension. English is the source of truth and the fallback. Add a key to `src/i18n/en.ts` first; TypeScript fails to compile until every other table adds the same key (the `Translations = typeof en` type is the contract).
 
 ## Related
 
