@@ -20,7 +20,7 @@ Use `scripts/bump-sdk-version.sh <npm|python|pub> <version>` to bump SDK version
 On "update the version" / "bump version" / "create a release":
 
 1. Bump version in the correct manifest per semver. Confirm track if ambiguous.
-2. Add a concise section (paragraph or bullets, not a commit log) to the matching `CHANGELOG.md` (root, `sdk/typescript/`, `sdk/python/`, `sdk/dart/`).
+2. Add a concise section (paragraph or bullets, not a commit log) to the `CHANGELOG.md` next to the bumped manifest.
 3. App track only: the OpenAPI spec embeds `info.version` from root `package.json`, so every app version bump stales all three SDK hashes. Before committing, run `./scripts/spec-hash.sh` and update `x-spec-hash` in `sdk/typescript/package.json`, `spec_hash` in `sdk/python/pyproject.toml`, and the `# x-spec-hash:` comment in `sdk/dart/pubspec.yaml` in the same commit. CI's `sdk-spec-drift` gate fails otherwise.
 4. Commit. Do not push.
 5. Dart only: also create the tag locally, do not push: `git tag pub-v<version>`. pub.dev publishes on tag push. App/npm/Python tag from CI after publish.
@@ -58,7 +58,7 @@ Workflow on API change:
 ### Parity check (required before hash bump)
 
 - **Models** cover every `components.schemas` entry. Diff `yarn emit-spec | jq '.components.schemas | keys'` against SDK `models.<ext>`.
-- **Endpoints** surface as methods on resource groups (`client.links.*`, `client.slugs.*`, `client.bundles.*`).
+- **Endpoints** surface as methods on the resource groups in each SDK's `resources/` directory (`client.links.*` and its siblings).
 - **Parameters** match spec (path, query like `range`, request body).
 - **Tests pass.** Full SDK test suite. New methods/fields require new tests.
 - **Cross-SDK parity holds.** Surface changes apply to all three SDKs in the same PR series. Hash advances on all three together. Mismatched hashes on `main` = open issue, not steady state.

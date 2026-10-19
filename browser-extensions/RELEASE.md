@@ -63,4 +63,4 @@ Switch the OS or browser locale to each non-English language in `SUPPORTED_LANGU
 1. Update `package.json` `version` and add a `CHANGELOG.md` entry.
 2. Commit on `main`. Do not push the tag manually.
 3. Workflow `.github/workflows/release-extension.yml` runs on push, builds, uploads, and tags `ext-v$VERSION`.
-4. Verify the `ext-v$VERSION` tag exists and both store dashboards show the new version pending review.
+4. Verify both store dashboards show the new version pending review. The workflow fails at the store upload until the repo has the store secrets listed in the README, so upload the zips from `dist/` by hand until then.

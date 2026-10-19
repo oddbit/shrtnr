@@ -141,6 +141,8 @@ A bump of `browser-extensions/package.json` on `main` triggers `.github/workflow
 4. Uploads `dist/firefox.zip` to AMO via `web-ext sign`.
 5. Tags `ext-v$VERSION` and pushes the tag. The workflow creates no GitHub Release: the store listings and `CHANGELOG.md` carry the release notes.
 
+The repo does not have the store secrets below yet, so every run so far has stopped at step 3 and no `ext-v` tag exists. Until the secrets are added, upload the zips through the store dashboards.
+
 Required repo secrets:
 - `CHROME_WEBSTORE_CLIENT_ID`, `CHROME_WEBSTORE_CLIENT_SECRET`, `CHROME_WEBSTORE_REFRESH_TOKEN`, `CHROME_WEBSTORE_EXTENSION_ID`
 - `FIREFOX_AMO_API_KEY`, `FIREFOX_AMO_API_SECRET`
