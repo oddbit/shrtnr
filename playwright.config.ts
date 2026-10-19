@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineConfig, devices } from "@playwright/test";
-import { AUTH_STATE, BASE_URL, PORT, SHORT_ORIGIN } from "./e2e/env";
+import { AUTH_STATE, BASE_URL, PORT, SHORT_ORIGIN, UNPINNED_PORT, UNPINNED_URL } from "./e2e/env";
 
 /**
  * Browser e2e suite: the app as a user meets it, driven through a real
@@ -24,22 +24,41 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: "retain-on-failure",
   },
-  webServer: {
-    command: "bash scripts/e2e-server.sh",
-    url: `${BASE_URL}/_/health`,
-    timeout: 120_000,
-    // Locally a running server (from a previous `yarn e2e`) is reused. CI
-    // always boots its own so the seed lands on a fresh database.
-    reuseExistingServer: !process.env.CI,
-    env: { E2E_PORT: String(PORT), E2E_SHORT_ORIGIN: SHORT_ORIGIN },
-  },
+  // Every run boots its own servers. A reused one carries whatever
+  // environment it was started with: a server left running from before
+  // SHORT_ORIGIN was pinned failed the origin specs for a reason no test named.
+  // A port already in use now fails the run up front instead.
+  webServer: [
+    {
+      command: "bash scripts/e2e-server.sh",
+      url: `${BASE_URL}/_/health`,
+      timeout: 120_000,
+      reuseExistingServer: false,
+      env: { E2E_PORT: String(PORT), E2E_SHORT_ORIGIN: SHORT_ORIGIN },
+    },
+    {
+      // SHORT_ORIGIN unset, the default most deployments run with.
+      command: "bash scripts/e2e-server.sh",
+      url: `${UNPINNED_URL}/_/health`,
+      timeout: 120_000,
+      reuseExistingServer: false,
+      env: { E2E_PORT: String(UNPINNED_PORT), E2E_STATE: ".wrangler/e2e-state-unpinned" },
+    },
+  ],
   projects: [
     { name: "setup", testMatch: /setup\.ts$/ },
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: AUTH_STATE },
       dependencies: ["setup"],
-      testIgnore: [/setup\.ts$/, /authorization\.spec\.ts$/],
+      testIgnore: [/setup\.ts$/, /authorization\.spec\.ts$/, /default-origin\.spec\.ts$/],
+    },
+    {
+      // Against the server with SHORT_ORIGIN unset. It signs in and creates
+      // its own link there, so it needs neither the setup project nor its seed.
+      name: "default-origin",
+      testMatch: /default-origin\.spec\.ts$/,
+      use: { ...devices["Desktop Chrome"], baseURL: UNPINNED_URL },
     },
     {
       // Runs after the counting specs: it signs in a second identity and
