@@ -315,6 +315,7 @@ const en = {
 
   // Client-side strings
   "client.copied": "Copied {url}",
+  "client.copyFailedUrl": "Clipboard unavailable. Copy it by hand: {url}",
   "client.themeUpdated": "Theme updated",
   "client.themeError": "Failed to save theme",
   "client.languageUpdated": "Language updated",
@@ -344,6 +345,7 @@ const en = {
   "client.copy": "Copy",
   "client.done": "Done",
   "client.apiKeyCopied": "API key copied",
+  "client.keyCopyFailed": "Clipboard unavailable. The key is selected: copy it by hand.",
   "client.codeCopied": "Command copied",
   "client.confirmDeleteKey":
     'Delete API key "{title}"? This cannot be undone.',

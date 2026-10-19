@@ -108,9 +108,9 @@ function shortOrigin() {
 // Whether the text reached the clipboard. navigator.clipboard is undefined
 // outside a secure context, which is the plain-http LAN deployment
 // SHORT_ORIGIN supports, and writeText rejects when the permission is denied.
-// Both become false here rather than a throw: copyUrl() is called for its side
-// effect and its caller keeps going afterwards (quickShorten() redirects), so
-// an uncaught TypeError would swallow the toast and the redirect.
+// Both become false here rather than a throw, and every caller reads the
+// answer: a toast that announces a copy that never happened is worse than
+// none, since the user moves on without the text.
 function copyText(text) {
   if (!navigator.clipboard) return Promise.resolve(false);
   return navigator.clipboard.writeText(text).then(
@@ -119,12 +119,15 @@ function copyText(text) {
   );
 }
 
+// Resolves to whether the copy landed. The toast names the URL either way, so
+// a deployment without a clipboard still shows the user what to copy by hand.
 function copyUrl(slug) {
   var url = shortOrigin() + '/' + slug;
-  copyText(url);
-  // The toast names the URL, so a deployment without a clipboard still shows
-  // the user what to copy by hand.
-  toast(t('client.copied', {url: url}));
+  return copyText(url).then(function(ok) {
+    if (ok) toast(t('client.copied', {url: url}));
+    else toast(t('client.copyFailedUrl', {url: url}), 'error');
+    return ok;
+  });
 }
 
 function copyCodeBlock(id) {
@@ -212,10 +215,7 @@ function quickShorten() {
             window.location.href = '/_/admin/links/' + link.id;
           }
         } else {
-          var primary = pickPrimarySlug(link);
-          if (primary) copyUrl(primary);
-          toast(t('client.linkCreatedCopied'));
-          window.location.href = '/_/admin/links/' + link.id;
+          return copyThenOpen(link);
         }
       });
     } else {
@@ -241,15 +241,25 @@ function updateQuickActionButton() {
   }
 }
 
+// Copies a new link's URL, then opens its page. The navigation waits for the
+// write: the browser can abort a pending clipboard write on unload. "Created
+// & copied" is announced only when the copy landed. On a failed copy the
+// link page that opens next shows the short URL.
+function copyThenOpen(link) {
+  var primary = pickPrimarySlug(link);
+  var copied = primary ? copyUrl(primary) : Promise.resolve(false);
+  return copied.then(function(ok) {
+    if (ok) toast(t('client.linkCreatedCopied'));
+    window.location.href = '/_/admin/links/' + link.id;
+  });
+}
+
 // ---- Duplicate link ----
 function createDuplicate(url) {
   api('/links', { method: 'POST', body: JSON.stringify({ url: url, allow_duplicate: true }) }).then(function(res) {
     if (res.ok) {
       return res.json().then(function(link) {
-        var primary = pickPrimarySlug(link);
-        if (primary) copyUrl(primary);
-        toast(t('client.linkCreatedCopied'));
-        window.location.href = '/_/admin/links/' + link.id;
+        return copyThenOpen(link);
       });
     } else {
       return res.json().then(function(data) {
@@ -299,10 +309,19 @@ function showKeyRevealModal(rawKey) {
   );
 }
 
+// The key is shown once. A failed copy must not read as a success, or the
+// user clicks Done and loses it, so the key is selected for a copy by hand.
 function copyRawKey() {
-  var key = document.getElementById('revealed-key').textContent;
-  copyText(key);
-  toast(t('client.apiKeyCopied'));
+  var el = document.getElementById('revealed-key');
+  return copyText(el.textContent).then(function(ok) {
+    if (ok) {
+      toast(t('client.apiKeyCopied'));
+    } else {
+      window.getSelection().selectAllChildren(el);
+      toast(t('client.keyCopyFailed'), 'error');
+    }
+    return ok;
+  });
 }
 
 function closeKeyRevealModal() {

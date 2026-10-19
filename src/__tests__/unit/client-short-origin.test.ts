@@ -43,9 +43,10 @@ describe("client.ts shortOrigin()", () => {
 // the write (quickShorten() redirects on the next line, and the toast names the
 // URL for a user who has to copy it by hand), so a throw here was a dead
 // button: no toast, no redirect. The guard lives in the shared copyText()
-// helper, and the rejection is swallowed for the same reason.
+// helper, and the rejection is swallowed for the same reason. The toast waits
+// for the write to settle, so each test awaits the promise copyUrl() returns.
 
-type CopyUrlHarness = { copyUrl: (slug: string) => void; toasts: string[] };
+type CopyUrlHarness = { copyUrl: (slug: string) => Promise<boolean>; toasts: string[] };
 
 function loadCopyUrl(navigatorObject: unknown): CopyUrlHarness {
   const script = adminClientScript("1.0.0", {} as unknown as Translations);
@@ -66,7 +67,7 @@ function loadCopyUrl(navigatorObject: unknown): CopyUrlHarness {
     navigator: unknown,
     toast: (message: string) => void,
     t: (key: string, params?: { url?: string }) => string,
-  ) => (slug: string) => void;
+  ) => (slug: string) => Promise<boolean>;
 
   return {
     copyUrl: factory(
@@ -83,7 +84,7 @@ function loadCopyUrl(navigatorObject: unknown): CopyUrlHarness {
 }
 
 describe("client.ts copyUrl()", () => {
-  it("copies the pinned origin and the slug", () => {
+  it("copies the pinned origin and the slug", async () => {
     const written: string[] = [];
     const { copyUrl, toasts } = loadCopyUrl({
       clipboard: {
@@ -94,16 +95,20 @@ describe("client.ts copyUrl()", () => {
       },
     });
 
-    copyUrl("abc");
+    await copyUrl("abc");
 
     expect(written).toEqual(["https://c.example/abc"]);
     expect(toasts).toEqual(["Copied https://c.example/abc"]);
   });
 
-  it("keeps the toast when the clipboard is missing", () => {
+  it("keeps the toast when the clipboard is missing", async () => {
     const { copyUrl, toasts } = loadCopyUrl({});
 
-    expect(() => copyUrl("abc")).not.toThrow();
+    let pending: Promise<boolean> | undefined;
+    expect(() => {
+      pending = copyUrl("abc");
+    }).not.toThrow();
+    await pending;
     // The toast is the only feedback left, and it names the URL to copy.
     expect(toasts).toEqual(["Copied https://c.example/abc"]);
   });
@@ -113,11 +118,9 @@ describe("client.ts copyUrl()", () => {
       clipboard: { writeText: () => Promise.reject(new Error("NotAllowedError")) },
     });
 
-    copyUrl("abc");
     // An unhandled rejection fails the vitest run, so letting the microtask
     // queue drain is the assertion: the helper has to attach a handler.
-    await Promise.resolve();
-    await Promise.resolve();
+    await copyUrl("abc");
 
     expect(toasts).toEqual(["Copied https://c.example/abc"]);
   });

@@ -40,11 +40,10 @@ test.describe("pinned short origin", () => {
 
     await chip.click();
     await expect(toast(page)).toHaveText(`Copied ${SHORT_ORIGIN}/${slug}`);
-    // The toast is raised synchronously, right after writeText() is called, so
-    // it proves the call was made, not that the write landed. Poll the
-    // clipboard rather than reading it once: a slow clipboard IPC in headless
-    // Chromium answers with the previous contents, which are empty on a fresh
-    // context.
+    // The toast waits for writeText() to settle, but the read below goes
+    // through its own clipboard IPC. Poll rather than read once: a slow
+    // clipboard IPC in headless Chromium answers with the previous contents,
+    // which are empty on a fresh context.
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`${SHORT_ORIGIN}/${slug}`);
 
     errors.assertClean();
@@ -67,6 +66,57 @@ test.describe("pinned short origin", () => {
     // the text above names the new origin (src/client.ts qrSrc).
     const cacheKey = encodeURIComponent(SHORT_ORIGIN);
     await expect(page.locator("#qr-img")).toHaveAttribute("src", new RegExp(`[?&]origin=${cacheKey}`));
+
+    errors.assertClean();
+  });
+});
+
+/**
+ * navigator.clipboard is undefined outside a secure context, which is how a
+ * plain-http LAN deployment meets the admin. A copy that cannot land must not
+ * be announced as one: the user moves on without the text. For the API key,
+ * shown once, that loses the key.
+ */
+test.describe("without a clipboard", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    });
+  });
+
+  test("the copy button names the URL to copy by hand", async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.goto("/_/admin/links");
+
+    const chip = page.locator(".col-short-chip").first();
+    const slug = await chip.getAttribute("data-copy-slug");
+    expect(slug).toBeTruthy();
+
+    await chip.click();
+    await expect(toast(page)).toHaveText(`Clipboard unavailable. Copy it by hand: ${SHORT_ORIGIN}/${slug}`);
+    await expect(toast(page)).toHaveClass(/toast-error/);
+
+    errors.assertClean();
+  });
+
+  test("the API key copy keeps the key on screen and selected", async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.goto("/_/admin/keys");
+
+    await page.getByRole("button", { name: "New key" }).click();
+    await page.locator("#m-key-title").fill("No clipboard key");
+    await page.getByRole("button", { name: "Create Key" }).click();
+
+    const key = page.locator("#revealed-key");
+    await expect(key).toHaveText(/\S+/);
+    const raw = (await key.textContent()) ?? "";
+
+    await page.locator("#modal").getByRole("button", { name: "Copy" }).click();
+    await expect(toast(page)).toHaveText("Clipboard unavailable. The key is selected: copy it by hand.");
+    await expect(toast(page)).toHaveClass(/toast-error/);
+    // The modal stays open with the key, and the key is the selection.
+    await expect(key).toBeVisible();
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe(raw);
 
     errors.assertClean();
   });

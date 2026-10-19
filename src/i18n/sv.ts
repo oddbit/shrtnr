@@ -318,6 +318,7 @@ const sv: Translations = {
 
   // Client-side strings
   "client.copied": "{url} kopierad",
+  "client.copyFailedUrl": "Urklippet är inte tillgängligt. Kopiera manuellt: {url}",
   "client.themeUpdated": "Tema uppdaterat",
   "client.themeError": "Kunde inte spara tema",
   "client.languageUpdated": "Språk uppdaterat",
@@ -348,6 +349,7 @@ const sv: Translations = {
   "client.copy": "Kopiera",
   "client.done": "Klar",
   "client.apiKeyCopied": "API-nyckel kopierad",
+  "client.keyCopyFailed": "Urklippet är inte tillgängligt. Nyckeln är markerad: kopiera den manuellt.",
   "client.codeCopied": "Kommando kopierat",
   "client.confirmDeleteKey":
     'Ta bort API-nyckel "{title}"? Detta kan inte ångras.',
