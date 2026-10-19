@@ -11,6 +11,7 @@ import httpx
 
 from ._base import DEFAULT_TIMEOUT
 from .resources.bundles import AsyncBundles, Bundles
+from .resources.config import AsyncConfig, Config
 from .resources.links import AsyncLinks, Links
 from .resources.slugs import AsyncSlugs, Slugs
 
@@ -47,6 +48,7 @@ class Shrtnr:
         self.links = Links(self._base_url, self._api_key, self._http)
         self.slugs = Slugs(self._base_url, self._api_key, self._http)
         self.bundles = Bundles(self._base_url, self._api_key, self._http)
+        self.config = Config(self._base_url, self._api_key, self._http)
 
     # ---- context manager ----
 
@@ -98,6 +100,7 @@ class AsyncShrtnr:
         self.links = AsyncLinks(self._base_url, self._api_key, self._http)
         self.slugs = AsyncSlugs(self._base_url, self._api_key, self._http)
         self.bundles = AsyncBundles(self._base_url, self._api_key, self._http)
+        self.config = AsyncConfig(self._base_url, self._api_key, self._http)
 
     # ---- context manager ----
 

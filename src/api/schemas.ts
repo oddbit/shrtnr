@@ -54,8 +54,23 @@ export const LinkSchema = z
     slugs: z.array(SlugSchema),
     total_clicks: z.number().int().nonnegative().openapi({ example: 137 }),
     delta_pct: z.number().optional().openapi({ description: "Click count change as percentage. Optional; absent when comparison data is unavailable." }),
+    short_origin: z.string().url().openapi({
+      description: "Origin this deployment hands the link's short URLs out on: the deployment's SHORT_ORIGIN when set, otherwise the origin of this request. Build short URLs as `${short_origin}/${slug}` instead of assuming the host the API was reached on.",
+      example: "https://oddb.it",
+    }),
   })
   .openapi("Link", { description: "A short link with its slugs, total click count, and metadata." });
+
+export const ConfigSchema = z
+  .object({
+    short_origin: z.string().url().openapi({
+      description: "Origin short URLs are handed out on: the deployment's SHORT_ORIGIN when set, otherwise the origin of this request.",
+      example: "https://oddb.it",
+    }),
+  })
+  .openapi("Config", {
+    description: "Deployment settings a client needs to build short URLs, so a client that composes them itself agrees with the copy button, the QR code and the redirects.",
+  });
 
 export const CreateLinkBodySchema = z
   .object({

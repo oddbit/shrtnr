@@ -58,6 +58,7 @@ class Link:
     created_by: str
     slugs: list[Slug]
     total_clicks: int
+    short_origin: str
     delta_pct: float | None = None
 
     @classmethod
@@ -74,8 +75,18 @@ class Link:
             created_by=str(data["created_by"]),
             slugs=[Slug.from_dict(s) for s in data.get("slugs", [])],
             total_clicks=int(data.get("total_clicks", 0)),
+            short_origin=str(data["short_origin"]),
             delta_pct=float(delta) if delta is not None else None,
         )
+
+
+@dataclass(frozen=True)
+class Config:
+    short_origin: str
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Config:
+        return cls(short_origin=str(data["short_origin"]))
 
 
 @dataclass(frozen=True)

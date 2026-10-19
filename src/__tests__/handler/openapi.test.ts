@@ -230,6 +230,7 @@ describe("OpenAPI spec coverage", () => {
       "/bundles/{id}/analytics",
       "/bundles/{id}/links",
       "/bundles/{id}/links/{linkId}",
+      "/config",
     ];
     const actualKeys = Object.keys(doc.paths).sort();
     for (const path of expected) {

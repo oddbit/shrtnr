@@ -6,12 +6,18 @@ import { Env } from "../types";
 import { getLink } from "../services/link-management";
 import { renderQrSvg } from "../qr";
 import { pickPrimarySlug } from "../slugs";
+import { resolveShortOrigin } from "../short-origin";
 import { json } from "./response";
 
 export async function handleLinkQr(request: Request, env: Env, linkId: number): Promise<Response> {
   const url = new URL(request.url);
   const requestedSlug = url.searchParams.get("slug") ?? undefined;
   const sizeParam = url.searchParams.get("size");
+  // `origin` is deliberately read nowhere below. The admin adds it as a browser
+  // cache key (see qrSrc() in src/client.ts) so that a cached SVG cannot outlive
+  // a change to SHORT_ORIGIN, and the payload stays the server's decision: a
+  // parameter the caller controls would mint QRs for an origin this deployment
+  // does not serve.
 
   if (requestedSlug === "") {
     return json({ error: "slug must not be empty" }, 400);
@@ -36,7 +42,7 @@ export async function handleLinkQr(request: Request, env: Env, linkId: number): 
 
   if (!slug) return json({ error: "Slug not found" }, 404);
 
-  const qrUrl = `${url.origin}/${slug.slug}?utm_medium=qr`;
+  const qrUrl = `${resolveShortOrigin(env, url)}/${slug.slug}?utm_medium=qr`;
   const svg = renderQrSvg(qrUrl, { size });
 
   if (!svg) return json({ error: "Failed to generate QR code" }, 500);

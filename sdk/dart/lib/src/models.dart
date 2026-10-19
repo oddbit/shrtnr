@@ -228,6 +228,7 @@ class Link {
     required this.createdBy,
     required this.slugs,
     required this.totalClicks,
+    required this.shortOrigin,
     this.deltaPct,
   });
 
@@ -244,6 +245,7 @@ class Link {
             .map((dynamic s) => Slug.fromJson(s as Map<String, dynamic>))
             .toList(growable: false),
         totalClicks: ((json['total_clicks'] as num?) ?? 0).toInt(),
+        shortOrigin: json['short_origin'] as String,
         deltaPct: (json['delta_pct'] as num?)?.toDouble(),
       );
 
@@ -274,6 +276,12 @@ class Link {
   /// Total clicks across every slug on this link in the requested range.
   final int totalClicks;
 
+  /// Origin this deployment hands the link's short URLs out on: the
+  /// deployment's `SHORT_ORIGIN` when set, otherwise the origin of the
+  /// request. Build short URLs as `${shortOrigin}/${slug}` instead of
+  /// assuming the host the API was reached on.
+  final String shortOrigin;
+
   /// Click count change as a percentage versus the previous equivalent period.
   /// Absent when comparison data is unavailable.
   final double? deltaPct;
@@ -292,6 +300,7 @@ class Link {
     String? createdBy,
     List<Slug>? slugs,
     int? totalClicks,
+    String? shortOrigin,
     Object? deltaPct = _unset,
   }) {
     return Link(
@@ -304,9 +313,28 @@ class Link {
       createdBy: createdBy ?? this.createdBy,
       slugs: slugs ?? this.slugs,
       totalClicks: totalClicks ?? this.totalClicks,
+      shortOrigin: shortOrigin ?? this.shortOrigin,
       deltaPct: identical(deltaPct, _unset) ? this.deltaPct : deltaPct as double?,
     );
   }
+}
+
+/// Deployment settings a client needs to build short URLs, so a client that
+/// composes them itself agrees with the copy button, the QR code and the
+/// redirects.
+@immutable
+class Config {
+  /// Creates a config. Most callers should use [Config.fromJson].
+  const Config({required this.shortOrigin});
+
+  /// Parses a config from its JSON representation.
+  factory Config.fromJson(Map<String, dynamic> json) =>
+      Config(shortOrigin: json['short_origin'] as String);
+
+  /// Origin short URLs are handed out on: the deployment's `SHORT_ORIGIN`
+  /// when set, otherwise the origin of the request. Absolute, with no
+  /// trailing slash.
+  final String shortOrigin;
 }
 
 /// A collection of links grouped to show combined engagement.

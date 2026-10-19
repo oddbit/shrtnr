@@ -5,10 +5,12 @@ import 'package:http/http.dart' as http;
 
 import 'base_client.dart';
 import 'resources/bundles.dart';
+import 'resources/config.dart';
 import 'resources/links.dart';
 import 'resources/slugs.dart';
 
 export 'resources/bundles.dart' show BundlesResource;
+export 'resources/config.dart' show ConfigResource;
 export 'resources/links.dart' show LinksResource;
 export 'resources/slugs.dart' show SlugsResource;
 
@@ -46,6 +48,7 @@ class ShrtnrClient {
     links = LinksResource(_base);
     slugs = SlugsResource(_base);
     bundles = BundlesResource(_base);
+    config = ConfigResource(_base);
   }
 
   final ShrtnrBaseClient _base;
@@ -58,6 +61,9 @@ class ShrtnrClient {
 
   /// Bundle management and analytics methods.
   late final BundlesResource bundles;
+
+  /// Deployment settings, including the origin short URLs are handed out on.
+  late final ConfigResource config;
 
   /// Closes the underlying HTTP client.
   ///

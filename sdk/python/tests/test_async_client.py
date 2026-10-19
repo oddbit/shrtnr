@@ -23,6 +23,7 @@ from .conftest import (
     make_bundle_dict,
     make_bundle_with_summary_dict,
     make_click_stats_dict,
+    make_config_dict,
     make_link_dict,
     make_slug_dict,
     make_timeline_dict,
@@ -126,6 +127,18 @@ async def test_async_links_get_with_range(client: AsyncShrtnr) -> None:
     )
     await client.links.get(3, range="7d")
     assert route.called
+
+
+@respx.mock
+async def test_async_links_get_exposes_short_origin(client: AsyncShrtnr) -> None:
+    """See test_links_get_exposes_short_origin in test_client.py."""
+    respx.get(f"{BASE_URL}/_/api/links/3").mock(
+        return_value=httpx.Response(
+            200, json=make_link_dict(link_id=3, short_origin="https://c.example")
+        ),
+    )
+    link = await client.links.get(3)
+    assert link.short_origin == "https://c.example"
 
 
 @respx.mock
@@ -420,6 +433,20 @@ async def test_async_bundles_remove_link(client: AsyncShrtnr) -> None:
     )
     result = await client.bundles.remove_link(42, 7)
     assert result.removed is True
+
+
+# ---- config.get ----
+
+
+@respx.mock
+async def test_async_config_get(client: AsyncShrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/config").mock(
+        return_value=httpx.Response(200, json=make_config_dict(short_origin="https://c.example")),
+    )
+    config = await client.config.get()
+    assert config.short_origin == "https://c.example"
+    assert route.calls[0].request.method == "GET"
+    assert route.calls[0].request.headers["Authorization"] == f"Bearer {API_KEY}"
 
 
 # ---- Context manager ----

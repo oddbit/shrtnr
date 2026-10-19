@@ -126,6 +126,20 @@ When a migration fails, the Worker remembers the failure for 30 seconds before a
 
 The admin pages open only behind [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/). Access supplies the login and the per-user identity that ownership, API keys and settings run on, and the Worker verifies every Access JWT itself. Enable Access on the `workers.dev` URL in one click, or add a self-hosted application for `/_/admin/*` on your custom domain. Then store the application's AUD tag as the `ACCESS_AUD` secret and your team's key URL as `ACCESS_JWKS_URL`. Until both are set, the admin pages answer a setup page and short links keep redirecting. Step-by-step instructions, the identity table and the full permission model are in [docs/access-control.md](docs/access-control.md).
 
+## Short domains
+
+A Worker that answers on more than one domain hands out whichever one the operator opened the admin on: the copy button, the QR modal and the QR code all follow the request host. Store `SHORT_ORIGIN` as the origin short links should live on and every one of them uses that instead, whatever host the admin is opened on:
+
+```bash
+npx wrangler secret put SHORT_ORIGIN   # c.example, or https://c.example
+```
+
+Store it as a secret or as a variable in the Cloudflare dashboard, not as a `vars` entry in `wrangler.jsonc`: `yarn types` gives a `vars` value its own literal type, which collides with the optional `SHORT_ORIGIN` that `src/types.ts` declares, and the typecheck stops with TS2430.
+
+Unset is the default and keeps the request origin. A value that is not a bare http(s) origin is ignored, and the request origin is used. The domain still has to be attached to the Worker: the setting changes which URL is handed out, it does not create the domain.
+
+A client that builds short URLs itself reads the same origin from `GET /_/api/config`, or from the `short_origin` field every link response carries, rather than assuming the host it reached the API on. See [API](#api).
+
 ## MCP server
 
 Point Claude, Copilot or any other MCP client at `https://mcp.<your-domain>` and sign in through Cloudflare Access when the browser opens. The endpoint needs its own subdomain and a second Access application with Managed OAuth turned on, plus the `MCP_ACCESS_AUD` secret. The one setting that catches people out is Cloudflare's "Block AI bots" rule, which has to be off for the zone. The setup walkthrough, client configuration snippets and the tool reference are in [docs/mcp.md](docs/mcp.md).
@@ -145,7 +159,7 @@ For full endpoint shapes, parameters, and example payloads, see the live API ref
 
 ## SDKs
 
-Shorten URLs, manage slugs and bundles, and read analytics from your own code. All three expose the same resource groups: `links`, `slugs` and `bundles`.
+Shorten URLs, manage slugs and bundles, and read analytics from your own code. All three expose the same resource groups: `links`, `slugs`, `bundles` and `config`.
 
 - TypeScript/JavaScript: [`@oddbit/shrtnr`](https://www.npmjs.com/package/@oddbit/shrtnr) on npm. Details in [sdk/typescript/README.md](sdk/typescript/README.md).
 - Python: [`shrtnr`](https://pypi.org/project/shrtnr/) on PyPI. Sync and async clients on httpx. Details in [sdk/python/README.md](sdk/python/README.md).

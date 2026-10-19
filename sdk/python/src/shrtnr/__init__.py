@@ -5,7 +5,8 @@
 
 Exposes a synchronous :class:`Shrtnr` and asynchronous :class:`AsyncShrtnr`
 client. Each provides resource-grouped access via ``client.links``,
-``client.slugs``, and ``client.bundles``. See README.md for usage.
+``client.slugs``, ``client.bundles``, and ``client.config``. See README.md for
+usage.
 """
 
 from importlib.metadata import PackageNotFoundError
@@ -22,6 +23,7 @@ from .models import (
     BundleTopLink,
     BundleWithSummary,
     ClickStats,
+    Config,
     DateCount,
     DeletedResult,
     Link,
@@ -50,6 +52,7 @@ __all__ = [
     "BundleTopLink",
     "BundleWithSummary",
     "ClickStats",
+    "Config",
     "DateCount",
     "DeletedResult",
     "Link",

@@ -58,6 +58,7 @@ import {
 import type { TimelineRange } from "../types";
 import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH, DEFAULT_SLUG_LENGTH, TIMELINE_RANGES } from "../constants";
 import { renderQrSvg } from "../qr";
+import { configuredShortOrigin } from "../short-origin";
 import { pickPrimarySlug } from "../slugs";
 import {
   BUNDLE_ACCENTS,
@@ -471,15 +472,22 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       "get_link_qr",
       {
         title: "Link QR code",
-        description: "Get a QR code SVG for a short link. The QR encodes the short URL with a utm_medium=qr tracking parameter so scans show up as QR traffic in analytics.",
+        description: "Get a QR code SVG for a short link. The QR encodes the short URL with a utm_medium=qr tracking parameter so scans show up as QR traffic in analytics. The URL is built from the deployment's SHORT_ORIGIN setting when it is set, so the code matches the URL the admin UI and the API hand out.",
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link"),
           slug: z.string().optional().describe("Specific slug to use (defaults to the link's primary slug)"),
-          base_url: z.string().url().describe("Base URL of the shrtnr instance, e.g. https://oddb.it"),
+          base_url: z.string().url().optional().describe("Base URL of the shrtnr instance, e.g. https://oddb.it. Used only when the deployment sets no SHORT_ORIGIN."),
         },
         annotations: { title: "Link QR code", ...READ_ONLY },
       },
       async ({ link_id, slug: requestedSlug, base_url }) => {
+        // A deployment that pins SHORT_ORIGIN hands out that origin here too.
+        // Otherwise one deployment encodes two different URLs for the same slug
+        // depending on whether an assistant or the admin asked for the QR.
+        // base_url stays the caller's fallback for a deployment that sets none.
+        const origin = configuredShortOrigin(this.env) ?? (base_url ? base_url.replace(/\/+$/, "") : null);
+        if (!origin) return fail("base_url is required when the deployment sets no SHORT_ORIGIN");
+
         const result = await getLink(this.env, link_id);
         if (!result.ok) return fail(result.error);
         const link = result.data;
@@ -493,7 +501,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         // Same tracked URL shape as the REST QR endpoint (api/qr.ts): the
         // redirect handler maps utm_medium=qr to link_mode "qr". A bare ?qr
         // parameter would record the scan as a plain link click.
-        const qrUrl = `${base_url.replace(/\/+$/, "")}/${target.slug}?utm_medium=qr`;
+        const qrUrl = `${origin}/${target.slug}?utm_medium=qr`;
         const svg = renderQrSvg(qrUrl, { size: 400 });
         if (!svg) return fail("Failed to generate QR code");
 

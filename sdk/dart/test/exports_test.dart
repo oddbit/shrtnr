@@ -18,6 +18,7 @@ void main() {
       expect(BundleWithSummary, isNotNull);
       expect(BundleTopLink, isNotNull);
       expect(ClickStats, isNotNull);
+      expect(Config, isNotNull);
       expect(NameCount, isNotNull);
       expect(DateCount, isNotNull);
       expect(SlugCount, isNotNull);
@@ -39,6 +40,7 @@ void main() {
       expect(client.links, isA<LinksResource>());
       expect(client.slugs, isA<SlugsResource>());
       expect(client.bundles, isA<BundlesResource>());
+      expect(client.config, isA<ConfigResource>());
       client.close();
     });
 

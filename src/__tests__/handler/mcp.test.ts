@@ -15,6 +15,7 @@ import {
   searchLinks,
 } from "../../services/link-management";
 import { ShrtnrMCP } from "../../mcp/server";
+import type { Env } from "../../types";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -563,6 +564,76 @@ describe("MCP get_link_qr", () => {
     expect(result?.isError).toBeFalsy();
     const text = result?.content?.find((c) => c.type === "text")?.text ?? "";
     expect(text).toContain(`https://shrtnr.test/${slug}?utm_medium=qr`);
+  });
+});
+
+// ---- get_link_qr and the pinned short origin ----
+// Regression: this tool built its QR from the caller's base_url while the admin
+// UI and the REST endpoint (api/qr.ts) built theirs from SHORT_ORIGIN, so one
+// deployment handed out two different QR payloads for the same slug depending
+// on which surface asked. The agent is built directly rather than reached
+// through SELF.fetch, because the test has to pin an environment the way a
+// deployment would.
+
+describe("MCP get_link_qr and SHORT_ORIGIN", () => {
+  async function callQr(
+    shortOrigin: unknown,
+    args: Record<string, unknown>,
+  ): Promise<{ isError?: boolean; text: string }> {
+    const agent = Object.create(ShrtnrMCP.prototype) as ShrtnrMCP;
+    Object.assign(agent, { env: { ...env, SHORT_ORIGIN: shortOrigin } as Env });
+    agent.server = new McpServer({ name: "shrtnr", version: "test" });
+    await agent.init();
+
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test-client", version: "test" });
+    await Promise.all([client.connect(clientTransport), agent.server.connect(serverTransport)]);
+
+    try {
+      const result = (await client.callTool({ name: "get_link_qr", arguments: args })) as {
+        isError?: boolean;
+        content: { type: string; text?: string }[];
+      };
+      return { isError: result.isError, text: result.content.find((c) => c.type === "text")?.text ?? "" };
+    } finally {
+      await client.close();
+    }
+  }
+
+  async function seedQrLink(): Promise<{ id: number; slug: string }> {
+    const created = await createLink(env as never, { url: "https://example.com/pinned-qr", created_by: "dev@local" });
+    if (!created.ok) throw new Error("seed failed");
+    return { id: created.data.id, slug: created.data.slugs[0].slug };
+  }
+
+  it("prefers the pinned origin over the caller's base_url", async () => {
+    const { id, slug } = await seedQrLink();
+
+    const { isError, text } = await callQr("https://c.example", { link_id: id, base_url: "https://a.example" });
+
+    expect(isError).toBeFalsy();
+    expect(text).toContain(`https://c.example/${slug}?utm_medium=qr`);
+    expect(text).not.toContain("a.example");
+  });
+
+  it("falls back to base_url when the deployment pins nothing", async () => {
+    const { id, slug } = await seedQrLink();
+
+    // The trailing slash is trimmed, the same way the admin and REST URL
+    // builders never produce a double slash.
+    const { isError, text } = await callQr(undefined, { link_id: id, base_url: "https://a.example/" });
+
+    expect(isError).toBeFalsy();
+    expect(text).toContain(`https://a.example/${slug}?utm_medium=qr`);
+  });
+
+  it("asks for base_url when the deployment pins nothing and none is given", async () => {
+    const { id } = await seedQrLink();
+
+    const { isError, text } = await callQr(undefined, { link_id: id });
+
+    expect(isError).toBe(true);
+    expect(text).toMatch(/base_url/);
   });
 });
 

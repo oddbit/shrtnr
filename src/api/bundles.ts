@@ -18,10 +18,11 @@ import {
 } from "../services/bundle-management";
 import { resolveClickFilters } from "../services/admin-management";
 import { handlePublicBundleBreakdown } from "./analytics";
-import { fromServiceResult, json } from "./response";
+import { fromLinkResult, fromServiceResult, json } from "./response";
 import { createRoute, z } from "@hono/zod-openapi";
 import { createApiSubApp } from "./sub-app";
 import { requireScope } from "./scope";
+import { resolveShortOrigin } from "../short-origin";
 import {
   AddBundleLinkBodySchema,
   ArchivedQuerySchema,
@@ -401,7 +402,7 @@ const listBundleLinksRoute = createRoute({
 
 bundlesApp.openapi(listBundleLinksRoute, async (c) => {
   const { id } = c.req.valid("param") as { id: number };
-  return fromServiceResult(await listBundleLinks(c.env, id, c.var.auth.identity)) as never;
+  return fromLinkResult(await listBundleLinks(c.env, id, c.var.auth.identity), resolveShortOrigin(c.env, c.req.url)) as never;
 }, paramHook);
 
 // ---- POST /:id/links (add link to bundle) ----

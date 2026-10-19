@@ -17,7 +17,7 @@
 /// ```
 library;
 
-export 'src/client.dart' show ShrtnrClient, LinksResource, SlugsResource, BundlesResource;
+export 'src/client.dart' show ShrtnrClient, LinksResource, SlugsResource, BundlesResource, ConfigResource;
 export 'src/errors.dart' show ShrtnrError;
 export 'src/models.dart'
     show
@@ -30,6 +30,7 @@ export 'src/models.dart'
         BundleTopLink,
         BundleWithSummary,
         ClickStats,
+        Config,
         DateCount,
         DeletedResult,
         Link,
