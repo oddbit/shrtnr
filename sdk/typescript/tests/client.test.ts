@@ -512,6 +512,51 @@ describe("links.get", () => {
   });
 });
 
+// A deployment older than the field answers without it. The SDK can be
+// upgraded before the Worker is redeployed, so every call that returns a link
+// fills in the origin of the client's base URL: the origin such a deployment
+// hands out. The type promises a string, so undefined would be a lie.
+describe("links without short_origin", () => {
+  const { short_origin: _omitted, ...legacy } = stubLink;
+
+  const calls: [string, (c: ShrtnrClient) => Promise<{ shortOrigin: string } | { shortOrigin: string }[]>, unknown][] = [
+    ["links.get", (c) => c.links.get(1), legacy],
+    ["links.list", (c) => c.links.list(), [legacy]],
+    ["links.create", (c) => c.links.create({ url: "https://example.com" }), legacy],
+    ["links.update", (c) => c.links.update(1, { label: "x" }), legacy],
+    ["links.disable", (c) => c.links.disable(1), legacy],
+    ["links.enable", (c) => c.links.enable(1), legacy],
+    ["slugs.lookup", (c) => c.slugs.lookup("abc"), legacy],
+    ["bundles.links", (c) => c.bundles.links(1), [legacy]],
+  ];
+
+  for (const [name, call, body] of calls) {
+    it(`${name} falls back to the base URL origin`, async () => {
+      mockFetch(200, body);
+      const result = await call(client());
+      const links = Array.isArray(result) ? result : [result];
+      expect(links.map((l) => l.shortOrigin)).toEqual(links.map(() => BASE));
+    });
+  }
+
+  it("uses the origin, not a trailing slash or path", async () => {
+    mockFetch(200, legacy);
+    const link = await new ShrtnrClient({ baseUrl: `${BASE}/`, apiKey: API_KEY, fetch: fetchSpy }).links.get(1);
+    expect(link.shortOrigin).toBe(BASE);
+  });
+
+  it("drops credentials in the base URL from the fallback", async () => {
+    mockFetch(200, legacy);
+    const link = await new ShrtnrClient({ baseUrl: "https://user:secret@shrtnr.test", apiKey: API_KEY, fetch: fetchSpy }).links.get(1);
+    expect(link.shortOrigin).toBe(BASE);
+  });
+
+  it("keeps the value a response carries", async () => {
+    mockFetch(200, stubLink);
+    expect((await client().links.get(1)).shortOrigin).toBe("https://c.example");
+  });
+});
+
 describe("links.list", () => {
   it("GETs /api/links", async () => {
     mockFetch(200, []);

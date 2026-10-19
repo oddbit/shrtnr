@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { HttpClient } from "../internal/http";
+import { withShortOrigin } from "../internal/link";
 import { Link, RemovedResult, Slug } from "../models";
 
 export class SlugsResource {
@@ -9,7 +10,9 @@ export class SlugsResource {
 
   /** Look up a link by its slug. */
   lookup(slug: string): Promise<Link> {
-    return this.http.request("GET", `/_/api/slugs/${encodeURIComponent(slug)}`);
+    return this.http
+      .request<Link>("GET", `/_/api/slugs/${encodeURIComponent(slug)}`)
+      .then((value) => withShortOrigin(value, this.http.origin));
   }
 
   /** Add a custom slug to a link. */

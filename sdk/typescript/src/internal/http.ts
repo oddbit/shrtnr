@@ -38,13 +38,26 @@ function resolveGlobalFetch(): typeof fetch {
   return globalFetch.bind(globalThis);
 }
 
+// A base URL that does not parse fails on the first request with the
+// documented ShrtnrError, not here in the constructor.
+function originOf(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).origin;
+  } catch {
+    return baseUrl;
+  }
+}
+
 export class HttpClient {
   private readonly baseUrl: string;
+  /** Origin of the base URL, the fallback for a link without `short_origin`. */
+  readonly origin: string;
   private readonly authHeader: string;
   private readonly fetchFn: typeof fetch;
 
   constructor(config: HttpClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, "");
+    this.origin = originOf(this.baseUrl);
     this.authHeader = `Bearer ${config.apiKey}`;
     // A caller-supplied fetch needs the same globalThis binding as the
     // default: it's typically a bare reference like `window.fetch` (see the
