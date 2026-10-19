@@ -73,6 +73,8 @@ An API key carries the identity of its issuer and a scope (`read`, `create`, or 
 | `FP_SALT` | secret, optional | visitor fingerprint salt |
 | `DEV_MODE`, `DEV_IDENTITY` | `.dev.vars` only | local identity |
 
+The sources are `wrangler.jsonc` for bindings and vars and `src/types.ts` for secrets and dev vars. When this table disagrees with them, they win.
+
 `wrangler.jsonc` carries no resource IDs. Wrangler provisions D1 and KV by binding name on first deploy.
 
 ## Redirect path

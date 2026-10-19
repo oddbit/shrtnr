@@ -50,7 +50,7 @@ No lint gate enforces the layers. Review and tests do.
 |---|---|
 | Public API router, OpenAPI `info` | `src/api/router.ts` |
 | Zod schemas, OpenAPI components | `src/api/schemas.ts` |
-| Resource sub-apps | `src/api/links.ts`, `slugs.ts`, `bundles.ts`, `config.ts` |
+| Resource sub-apps | one file per resource in `src/api/`, mounted in `router.ts` |
 | Scope middleware | `src/api/scope.ts` |
 | Admin API handlers | same files, `handle*` exports, mounted in `src/index.tsx` |
 | Response mapping | `src/api/response.ts` |
@@ -89,14 +89,14 @@ Server-rendered `hono/jsx`. No client framework, no build step for the browser.
 | An admin endpoint | `handle*` in `src/api/<resource>.ts`, route in `src/index.tsx` |
 | An MCP tool | `src/mcp/server.ts`, calling a service |
 | A schema change | new `migrations/NNNN_name.sql`, then `yarn migrations:bundle` |
-| A server test | `src/__tests__/<unit|repository|service|handler|page|integration|admin>/` |
+| A server test | the matching layer folder under `src/__tests__/` |
 | A browser test | `e2e/<name>.spec.ts` |
 
 ## Outside `src/`
 
 | Looking for | It is in |
 |---|---|
-| SDKs | `sdk/typescript/`, `sdk/python/`, `sdk/dart/`, each with own tests and manifest |
+| SDKs | `sdk/<language>/`, each with own tests and manifest |
 | Browser extension | `browser-extensions/` (Preact, esbuild, uses the TypeScript SDK) |
 | CI, releases | `.github/workflows/`, `release-automation.md` |
 | Release and dev scripts | `scripts/` |
