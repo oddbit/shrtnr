@@ -38,7 +38,7 @@ The rest of the shortener:
 - **Labels from the page title.** A link created without a label gets the destination page's title fetched in the background, with private and internal hosts refused.
 - **QR codes** as SVG for any slug, from the admin UI, the API, the SDKs and MCP. Scans are tracked separately from link clicks.
 - **Edge redirects.** Slug lookups are cached in Workers KV in front of D1, and click recording runs after the redirect is sent.
-- **Admin dashboard** in four languages (see [`src/i18n/`](src/i18n/) for the set), with three themes, per-link and per-bundle analytics, API key management and settings.
+- **Admin dashboard** in every language under [`src/i18n/`](src/i18n/) and every theme in `THEMES` ([`src/constants.ts`](src/constants.ts)), with per-link and per-bundle analytics, API key management and settings.
 - **Browser extension** for Chrome and Firefox that shortens the current tab against your own deployment. Source and store status in [browser-extensions/README.md](browser-extensions/README.md).
 - **One-click deploy** with automatic provisioning of the database and KV namespace, and migrations that the Worker applies on its first request.
 
@@ -159,7 +159,7 @@ For full endpoint shapes, parameters, and example payloads, see the live API ref
 
 ## SDKs
 
-Shorten URLs, manage slugs and bundles, and read analytics from your own code. All three expose the same resource groups: `links`, `slugs`, `bundles` and `config`.
+Shorten URLs, manage slugs and bundles, and read analytics from your own code. All three expose the same resource groups, one per file in each SDK's `resources/` directory.
 
 - TypeScript/JavaScript: [`@oddbit/shrtnr`](https://www.npmjs.com/package/@oddbit/shrtnr) on npm. Details in [sdk/typescript/README.md](sdk/typescript/README.md).
 - Python: [`shrtnr`](https://pypi.org/project/shrtnr/) on PyPI. Sync and async clients on httpx. Details in [sdk/python/README.md](sdk/python/README.md).
@@ -189,12 +189,7 @@ This sets a `dev_identity` cookie for that browser only, so a second browser or 
 
 ### SDK development
 
-```bash
-cd sdk
-yarn install
-yarn test
-yarn build
-```
+Each SDK builds and tests inside its own directory under `sdk/`. Its manifest (`package.json`, `pyproject.toml` or `pubspec.yaml`) names the commands.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the test suites, the SDK parity rule and what a pull request needs.
 
