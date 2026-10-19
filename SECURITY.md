@@ -24,7 +24,7 @@ Email **hello@oddbit.id** with the subject line `SECURITY: <short description>`.
 - Steps to reproduce, or a proof-of-concept request/payload.
 - What the flaw lets an attacker do: read another owner's links, forge a redirect, bypass the API key check, and so on.
 
-Do not open a public GitHub issue for a vulnerability. Public issue and pull request templates are for functional bugs and feature requests; routing a security report through them discloses it before a fix ships.
+Do not open a public GitHub issue for a vulnerability. Public issue templates are for functional bugs and feature requests; routing a security report through them discloses it before a fix ships.
 
 ## Response window
 

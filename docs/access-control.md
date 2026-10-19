@@ -95,7 +95,7 @@ The table is what `src/services/link-management.ts` and `src/services/bundle-man
 | Add a link to a bundle | Any authenticated identity |
 | Remove a link from a bundle | Bundle owner |
 | Create or delete API keys | Each identity manages its own keys |
-| Theme, language, default range, analytics filters, default slug length | Stored per identity |
+| Every option on the Settings page | Stored per identity |
 
 The two open rows are a settled design decision, not an oversight: they let a colleague file your link into their campaign bundle, or hand it a memorable slug, without asking you first. Neither can redirect, disable or destroy anything.
 

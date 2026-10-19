@@ -6,9 +6,9 @@ The endpoint authenticates through [Cloudflare Access Managed OAuth](https://dev
 
 ## Authorization model
 
-The MCP endpoint does not split read from write. Anyone whose email matches the Access policy on the MCP application can call every registered tool, including the destructive ones (`delete_link`, `delete_bundle`, `remove_slug`). What a tool does once called is bounded by the same rules the admin UI and the API apply, because all three go through one service layer.
+The MCP endpoint does not split read from write. Anyone whose email matches the Access policy on the MCP application can call every registered tool, including the ones annotated `destructiveHint`. What a tool does once called is bounded by the same rules the admin UI and the API apply, because all three go through one service layer.
 
-A caller reads anything in the deployment and changes only what they own. `update_link`, `disable_link`, `enable_link`, `delete_link`, `disable_slug`, `enable_slug`, `remove_slug`, `update_bundle`, `archive_bundle`, `unarchive_bundle`, `delete_bundle` and `remove_link_from_bundle` all refuse on another user's resource. `delete_link` additionally refuses on any link that has recorded a click, and `remove_slug` on any slug that has; disable is the operation that works there. Two tools are open to every caller by design and carry no owner check: `add_custom_slug` adds a slug to any link, and `add_link_to_bundle` files any link into any bundle. A refusal arrives as an error message naming the rule, not as an HTTP status. The full permission table is in [Access control](access-control.md#permission-model).
+A caller reads anything in the deployment and changes only what they own. Every tool that changes or removes a link, slug or bundle refuses on another user's resource, and its description names the rule. `delete_link` additionally refuses on any link that has recorded a click, and `remove_slug` on any slug that has; disable is the operation that works there. Two tools are open to every caller by design and carry no owner check: `add_custom_slug` adds a slug to any link, and `add_link_to_bundle` files any link into any bundle. A refusal arrives as an error message naming the rule, not as an HTTP status. The full permission table is in [Access control](access-control.md#permission-model).
 
 To grant a read-only audience, gate them through a separate MCP application or a separate Worker deployment with the write tools removed.
 
@@ -60,13 +60,7 @@ Go to the [Cloudflare dashboard](https://dash.cloudflare.com/) > your zone > **S
 
 ## Tools
 
-Clients discover the tool list through the standard `tools/list` call, so any MCP client or inspector enumerates it on connect. The authoritative source is [`src/mcp/server.ts`](../src/mcp/server.ts). The tools fall into five groups:
-
-- **Links**: create, read, search, list by owner, update, disable, enable, delete.
-- **Slugs**: add a custom slug to a link, disable, enable, remove.
-- **Bundles**: create, read, list, update, archive, unarchive, delete, add and remove member links, list a link's bundles.
-- **Analytics**: per-link analytics, timeline and single-dimension breakdowns; cross-link totals, trending links, and breakdowns by country, referrer and device; side-by-side link comparison; combined analytics for a bundle.
-- **QR codes**: an SVG for any slug, with the scan tracked as QR traffic.
+Clients discover the tool list through the standard `tools/list` call, so any MCP client or inspector enumerates it on connect. The authoritative source is [`src/mcp/server.ts`](../src/mcp/server.ts). The tools cover links, slugs, bundles, analytics and QR codes, plus a health check. `tools/list` returns the exact set.
 
 Every tool carries MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`) so a client can ask for confirmation before a destructive call. Three rules the tool descriptions spell out, because they decide which tool an assistant should reach for:
 
