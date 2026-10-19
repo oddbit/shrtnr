@@ -1,12 +1,14 @@
 # CLAUDE.md
 
+Shape: `docs/architecture.md`, `docs/code-architecture.md`. Technical rules: `docs/code-rules.md`.
+
 ## Styling
 
-- No inline styles for global design. Use centralized style files imported by components/pages.
+- No inline styles for global design. Styles live in centralized files that components and pages import.
 
 ## Releases
 
-Release tracks (version bump on `main` drives each):
+A version bump on `main` drives each track:
 
 | Target | Manifest | Tag prefix |
 |---|---|---|
@@ -15,24 +17,24 @@ Release tracks (version bump on `main` drives each):
 | Python/PyPI SDK | `sdk/python/pyproject.toml` | `py-v*` |
 | Dart/pub.dev SDK | `sdk/dart/pubspec.yaml` | `pub-v*` |
 
-Use `scripts/bump-sdk-version.sh <npm|python|pub> <version>` to bump SDK versions. It edits the manifest, adds a placeholder CHANGELOG entry, and refreshes lockfiles. Replace `TODO: fill in release notes.` before commit.
+SDK bumps: `scripts/bump-sdk-version.sh <npm|python|pub> <version>` edits the manifest, adds a placeholder CHANGELOG entry and refreshes lockfiles. Replace `TODO: fill in release notes.` before committing.
 
-On "update the version" / "bump version" / "create a release":
+On "update the version", "bump version" or "create a release":
 
-1. Bump version in the correct manifest per semver. Confirm track if ambiguous.
-2. Add a concise section (paragraph or bullets, not a commit log) to the `CHANGELOG.md` next to the bumped manifest.
-3. App track only: the OpenAPI spec embeds `info.version` from root `package.json`, so every app version bump stales all three SDK hashes. Before committing, run `./scripts/spec-hash.sh` and update `x-spec-hash` in `sdk/typescript/package.json`, `spec_hash` in `sdk/python/pyproject.toml`, and the `# x-spec-hash:` comment in `sdk/dart/pubspec.yaml` in the same commit. CI's `sdk-spec-drift` gate fails otherwise.
+1. Bump the manifest per semver. Confirm the track if ambiguous.
+2. Add a concise section (paragraph or bullets, not a commit log) to the `CHANGELOG.md` next to the manifest.
+3. App track only: the spec embeds `info.version`, so the bump stales all three SDK hashes. Run `./scripts/spec-hash.sh` and update every hash field (see Spec hash) in the same commit, or CI's `sdk-spec-drift` fails.
 4. Commit. Do not push.
-5. Dart only: also create the tag locally, do not push: `git tag pub-v<version>`. pub.dev publishes on tag push. App/npm/Python tag from CI after publish.
+5. Dart only: tag locally, do not push: `git tag pub-v<version>`. pub.dev publishes on tag push. CI tags app, npm and Python after publish.
 
-Only the app track creates a GitHub Release (with `--latest`). SDK and extension tracks tag and publish to their registry; never add `gh release create` to those workflows.
+**Only the app track creates a GitHub Release** (with `--latest`). SDK and extension workflows tag and publish to their registry; never add `gh release create` to them.
 
-Full details: [docs/release-automation.md](docs/release-automation.md).
+Details: [docs/release-automation.md](docs/release-automation.md).
 
 ## SDKs
 
-- **SDK parity.** Any change to one SDK under `sdk/` must be evaluated and applied to the others (public methods, models, auth, errors, base-URL handling). Single-SDK changes require explicit rationale in the commit message. Default: SDKs move together.
-- **README parity.** All SDK READMEs stay in lockstep (install, usage, auth, feature list), adjusted only for language idioms. Removing/renaming a documented feature in one requires the same edit in the others.
+- **SDK parity.** A change to one SDK under `sdk/` applies to the others: public methods, models, auth, errors, base-URL handling. A single-SDK change states its reason in the commit message.
+- **README parity.** SDK READMEs stay in lockstep (install, usage, auth, feature list), differing only for language idioms. Removing or renaming a documented feature in one means the same edit in the others.
 
 ### Spec hash
 
@@ -42,30 +44,30 @@ Each SDK records the SHA-256 of the OpenAPI spec it was last regenerated against
 |---|---|---|
 | TypeScript | `sdk/typescript/package.json` | top-level `x-spec-hash` |
 | Python | `sdk/python/pyproject.toml` | `[tool.shrtnr]` `spec_hash` |
-| Dart | `sdk/dart/pubspec.yaml` | leading comment `# x-spec-hash:` (top-level keys would draw a pana warning) |
+| Dart | `sdk/dart/pubspec.yaml` | leading comment `# x-spec-hash:` (a top-level key draws a pana warning) |
 
-Spec changes (edits to `src/api/router.ts`, `src/api/schemas.ts`, or any resource sub-app affecting the generated doc) stale all three hashes. A root `package.json` version bump also drifts the hash because the spec embeds `info.version`. CI enforces via the `sdk-spec-drift` job in `.github/workflows/ci.yml`.
+Stales all three: edits to `src/api/router.ts`, `src/api/schemas.ts` or a resource sub-app that change the generated doc, and any root `package.json` version bump. CI enforces it in the `sdk-spec-drift` job (`.github/workflows/ci.yml`).
 
-Workflow on API change:
+On API change:
 
 1. Commit the API change. Run `./scripts/spec-hash.sh` for the new hash.
-2. For each SDK, decide:
-   - **Surface change** (new endpoint, new field, changed return shape, renamed param): regenerate SDK, semver bump, update `CHANGELOG.md`, update hash field.
-   - **No surface change** (internal docstring, admin-only schema, server-side reorg): update hash only. Commit message: "spec change does not affect SDK surface; bump hash to record review".
-3. Run parity check before bumping any hash.
-4. Commit per SDK with focused message.
+2. Per SDK:
+   - **Surface change** (new endpoint or field, changed return shape, renamed param): regenerate, semver bump, `CHANGELOG.md`, hash.
+   - **No surface change** (internal docstring, admin-only schema, server-side reorg): hash only, message "spec change does not affect SDK surface; bump hash to record review".
+3. Run the parity check before bumping any hash.
+4. One focused commit per SDK.
 
-### Parity check (required before hash bump)
+### Parity check (before any hash bump)
 
-- **Models** cover every `components.schemas` entry. Diff `yarn emit-spec | jq '.components.schemas | keys'` against SDK `models.<ext>`.
+- **Models** cover every `components.schemas` entry: diff `yarn emit-spec | jq '.components.schemas | keys'` against each SDK's `models.<ext>`.
 - **Endpoints** surface as methods on the resource groups in each SDK's `resources/` directory (`client.links.*` and its siblings).
-- **Parameters** match spec (path, query like `range`, request body).
-- **Tests pass.** Full SDK test suite. New methods/fields require new tests.
-- **Cross-SDK parity holds.** Surface changes apply to all three SDKs in the same PR series. Hash advances on all three together. Mismatched hashes on `main` = open issue, not steady state.
+- **Parameters** match the spec: path, query (e.g. `range`), request body.
+- **Tests pass:** the full SDK suite. New methods and fields get new tests.
+- **Cross-SDK parity holds.** Surface changes land in all three SDKs in the same PR series, and the hash advances on all three together. Mismatched hashes on `main` are an open issue, not a steady state.
 
 ## Authorization model
 
-Settled. Do not raise these for confirmation, do not flag them as gaps, do not add gates.
+Settled. Do not raise these for confirmation, flag them as gaps or add gates.
 
 1. Anyone can create a link.
 2. Anyone can see everyone's links, bundles and analytics, including `GET /_/api/links?owner=`.
@@ -78,55 +80,55 @@ Settled. Do not raise these for confirmation, do not flag them as gaps, do not a
 
 The system-generated slug is never removed or disabled on its own; disable the whole link.
 
-**Source of truth is how the app has been working, in the UI first.** When code, docs, tests or comments disagree, the behavior the admin UI has offered users (or was clearly built to offer) wins. Do not derive rules from the database schema or from what a column would permit. Tests in `src/__tests__/service/authorization-model.test.ts` and `src/__tests__/handler/authorization-surfaces.test.ts` pin these rules; a failure there after a change means the change is wrong, not the test.
+**The UI's behavior is the source of truth.** When code, docs, tests or comments disagree, what the admin UI has offered users (or was clearly built to offer) wins. Never derive rules from the database schema or from what a column permits. `src/__tests__/service/authorization-model.test.ts` and `src/__tests__/handler/authorization-surfaces.test.ts` pin the rules: a failure there after a change means the change is wrong, not the test.
 
-Full description: [docs/access-control.md](docs/access-control.md).
+Details: [docs/access-control.md](docs/access-control.md).
 
 ## Testing
 
-- Tests are the requirements and the functional documentation. A rule about how the app behaves is written down as a test, not as a question to the developer. UI/UX rules (which control a visitor is offered, what a click does) go in Playwright under `e2e/`; server answers go in vitest. `e2e/authorization.spec.ts` is the model: the eight authorization rules from the section above, each as a browser step.
-- Write tests first. Ask the developer for behavior details; if trivial, write directly. Implement to pass.
-- Write tests for every requested behavior or change.
-- Tests may be hardened, never weakened. Do not modify or remove a test to make a code change pass: no loosened assertions, deleted cases, widened tolerances, skips or added retries. If a change breaks an existing test, stop and notify the developer.
-- Hardening a test is permitted without asking: fixing a defect in the test itself (a race, a missing wait, a wrong fixture), making it deterministic, or tightening what it asserts. A hardening change keeps the intent of every assertion, and its commit message names the defect it fixes and why the test was wrong rather than the code.
-- Two suites, two questions. `yarn test` (vitest, `src/__tests__/`) asks whether the server emits the right HTML, JSON and SQL. `yarn e2e` (Playwright, `e2e/`) asks whether the page in front of the user responds when clicked: it boots `wrangler dev` on a throwaway D1, signs in through `/_/dev/login`, seeds a catalog, and drives every admin page in Chromium.
-- Any change under `src/pages/`, `src/admin/`, `src/client.ts`, `src/styles.ts` or `src/index.tsx` admin routes ends with `yarn e2e` green, not only `yarn test`. A code review or release that touches those paths is not complete until the e2e suite has run. Rendering tests cannot see a dead control, a script that throws on load, or a link that 500s under real data; the browser can.
-- New admin controls (chip, sort, paginator, selector, row action) get an e2e step that clicks them and asserts the URL and the marked state, alongside the vitest render assertions.
-- `e2e/perf.spec.ts` runs inside `yarn e2e` and pins page weight (wire bytes of a cold load, largest single response), layout shift, and DOM accessibility invariants (hidden icon glyphs, one `h1`, labelled controls, named buttons). Byte budgets and DOM checks fail the run; timing is printed, never asserted. `yarn perf` runs that spec alone under a Fast 3G / 4x CPU profile to show what a slow phone meets. A change that adds a font, a script, or a third-party stylesheet ends with `yarn perf` and its table in the PR description.
+- **Tests are the requirements and the functional documentation.** Write a behavior rule down as a test instead of asking the developer. UI/UX rules (which control a visitor is offered, what a click does) go in Playwright under `e2e/`; server answers go in vitest. The model is `e2e/authorization.spec.ts`: the eight authorization rules, each as a browser step.
+- **Tests first.** Ask the developer for behavior details; write trivial ones directly. Implement to pass. Every requested behavior or change gets tests.
+- **Harden, never weaken.** Never modify or remove a test to make a change pass: no loosened assertions, deleted cases, widened tolerances, skips or retries. If a change breaks a test, stop and notify the developer.
+- **Hardening needs no permission:** fixing a defect in the test (race, missing wait, wrong fixture), making it deterministic, or tightening an assertion. It keeps every assertion's intent, and the commit message names the defect and why the test, not the code, was wrong.
+- **Two suites.** `yarn test` (vitest, `src/__tests__/`): does the server emit the right HTML, JSON and SQL. `yarn e2e` (Playwright, `e2e/`): does the page respond when clicked. It boots `wrangler dev` on a throwaway D1, signs in through `/_/dev/login`, seeds a catalog and drives every admin page in Chromium.
+- **Admin UI changes end with `yarn e2e` green**, not only `yarn test`: any change under `src/pages/`, `src/admin/`, `src/client.ts`, `src/styles.ts` or the admin routes in `src/index.tsx`. A review or release touching those paths is incomplete until e2e has run. Render tests miss dead controls, scripts that throw on load and links that 500 under real data.
+- **New admin controls** (chip, sort, paginator, selector, row action) get an e2e step that clicks them and asserts the URL and marked state, alongside the vitest render assertions.
+- **`e2e/perf.spec.ts`** runs in `yarn e2e`. It pins page weight (cold-load wire bytes, largest response), layout shift and DOM accessibility invariants (hidden icon glyphs, one `h1`, labelled controls, named buttons). Byte budgets and DOM checks fail the run; timing is printed, never asserted. `yarn perf` runs it alone under Fast 3G / 4x CPU. A change adding a font, script or third-party stylesheet ends with `yarn perf` and its table in the PR description.
 
 ## Internationalization
 
-- All user-facing strings in admin pages/components go through `t()` and live in translation files. No inline hardcoded strings in JSX/TSX.
-- New UI copy (buttons, labels, headings, hints, empty states, aria-labels): add key+text to i18n sources first, then reference via `t("namespace.key")`. Applies to new features and refactors of existing copy.
+- Every user-facing string in admin pages and components goes through `t()` and lives in translation files. No hardcoded strings in JSX/TSX.
+- New or refactored UI copy (buttons, labels, headings, hints, empty states, aria-labels): add the key and text to the i18n sources first, then reference `t("namespace.key")`.
 
 ## Database migrations
 
-- Preserve all existing data. D1 has no `ALTER TABLE ... DROP/ADD CONSTRAINT`; CHECK constraint changes require table recreation.
-- When recreating a table referenced by FKs with `ON DELETE CASCADE`: save and drop dependent tables first, then restore after rename. Dropping the referenced table cascades and silently deletes dependent rows.
-- Verify row counts unchanged in all affected tables post-migration.
+- Preserve all data. D1 has no `ALTER TABLE ... DROP/ADD CONSTRAINT`; a CHECK change requires table recreation.
+- Recreating a table that FKs reference with `ON DELETE CASCADE`: save and drop the dependent tables first, restore them after the rename. Dropping the referenced table cascades and silently deletes dependent rows.
+- Verify row counts in every affected table after migrating.
 
 ## Worker configuration
 
-- Binding and runtime types are generated, never hand-written: `yarn types` writes the git-ignored `worker-configuration.d.ts` from `wrangler.jsonc`, and CI runs it before the typecheck. Rerun it after any change to `wrangler.jsonc`. Secrets and dev-only vars are declared in `src/types.ts` by merging into `Cloudflare.Env`.
-- `compatibility_date` is capped by the older of the two bundled `workerd` binaries (wrangler and the vitest pool); `yarn test` names the newest supported date when the value is too new. Review the flags between the old and new date before advancing it.
+- **Binding and runtime types are generated.** `yarn types` writes the git-ignored `worker-configuration.d.ts` from `wrangler.jsonc`; CI runs it before the typecheck. Rerun it after any `wrangler.jsonc` change. Secrets and dev-only vars are declared in `src/types.ts`, merged into `Cloudflare.Env`.
+- **`compatibility_date` is capped** by the older bundled `workerd` (wrangler and the vitest pool). `yarn test` names the newest supported date when the value is too new. Review the flags between the old and new date before advancing it.
 
 ## Repository
 
 - Never force push.
 - No "Co-Authored-By" lines in commit messages.
-- Logically grouped commits as work progresses. One coherent change per commit (one refactor, one feature, one fix) with rationale in the message. Do not batch unrelated changes; do not defer all commits to task end.
+- Commit as work progresses: one coherent change per commit (refactor, feature or fix) with the rationale in the message. Do not batch unrelated changes or defer all commits to the end.
 
 ## Writing rules
 
-Apply to all produced material (docs, comments, UI copy, any text):
+For all produced text (docs, comments, UI copy):
 
-- Prefer specific words over general ones. "shuffle" over "move", "announce" over "say", "bottleneck" over "problem".
-- No em dashes. Use colon, comma, or period.
-- No hollow intensifiers ("very", "really", "quite", "essentially", "basically"). If a word needs a modifier, pick a better word.
-- Active voice by default. Passive only when actor is unknown or irrelevant.
+- Specific words over general ones: "shuffle" over "move", "announce" over "say", "bottleneck" over "problem".
+- No em dashes. Use a colon, comma or period.
+- No hollow intensifiers ("very", "really", "quite", "essentially", "basically"). Pick a better word instead.
+- Active voice. Passive only when the actor is unknown or irrelevant.
 - Split sentences with more than two clauses.
 - No throat-clearing openers ("In today's world", "As we all know").
 
 ## Documentation
 
-- Do not hardcode dynamic content that can drift. Never enumerate plugins, skills, dependencies, components, or any list backed by a file/folder source of truth. Reference the source directly (e.g. `package.json` over a dependency list).
+- **Concise and instructional.** Match `docs/architecture.md`, `docs/code-architecture.md` and `docs/code-rules.md`: tables for mappings, bold one-line rules with a short reason, imperative steps. Cut filler; keep every fact.
+- **No drifting content.** Never enumerate plugins, skills, dependencies, components or any list backed by a file or folder. Reference the source (e.g. `package.json`, not a dependency list).
