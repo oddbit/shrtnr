@@ -58,12 +58,16 @@ function pickPrimarySlug(link) {
 }
 
 // ---- Toast ----
-function toast(msg, type) {
+// ms overrides the 3 s default for a message the user has to act on. Each
+// toast replaces the hide timer of the one before it: an earlier toast's
+// timer used to hide a newer message early.
+function toast(msg, type, ms) {
   var el = document.getElementById('toast');
   el.textContent = msg;
   el.className = 'toast toast-' + (type || 'success');
   el.style.display = 'block';
-  setTimeout(function() { el.style.display = 'none'; }, 3000);
+  clearTimeout(el.hideTimer);
+  el.hideTimer = setTimeout(function() { el.style.display = 'none'; }, ms || 3000);
 }
 
 // ---- Modal ----
@@ -121,11 +125,13 @@ function copyText(text) {
 
 // Resolves to whether the copy landed. The toast names the URL either way, so
 // a deployment without a clipboard still shows the user what to copy by hand.
+// That toast stays up for 10 s: on the links list it is the only place the
+// full URL appears, and 3 s is too short to select it.
 function copyUrl(slug) {
   var url = shortOrigin() + '/' + slug;
   return copyText(url).then(function(ok) {
     if (ok) toast(t('client.copied', {url: url}));
-    else toast(t('client.copyFailedUrl', {url: url}), 'error');
+    else toast(t('client.copyFailedUrl', {url: url}), 'error', 10000);
     return ok;
   });
 }

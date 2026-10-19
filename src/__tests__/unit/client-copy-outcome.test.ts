@@ -12,7 +12,7 @@ import { adminClientScript } from "../../client";
 import type { Translations } from "../../i18n/types";
 import { extractTopLevelChunk } from "../client-script";
 
-type Toast = { key: string; url?: string; type?: string };
+type Toast = { key: string; url?: string; type?: string; ms?: number };
 
 const clipboardOk = (written: string[]) => ({
   clipboard: {
@@ -31,9 +31,9 @@ function chunks(...names: string[]): string {
 // t() echoes the key so each assertion names the message, not its English text.
 function stubs(toasts: Toast[]) {
   return {
-    toast: (message: string, type?: string) => {
+    toast: (message: string, type?: string, ms?: number) => {
       const parsed = JSON.parse(message) as { key: string; url?: string };
-      toasts.push({ ...parsed, ...(type ? { type } : {}) });
+      toasts.push({ ...parsed, ...(type ? { type } : {}), ...(ms ? { ms } : {}) });
     },
     t: (key: string, params?: { url?: string }) => JSON.stringify({ key, ...(params?.url ? { url: params.url } : {}) }),
   };
@@ -70,7 +70,7 @@ describe("copyUrl() reports the outcome", () => {
     const { copyUrl, toasts } = load({});
 
     expect(await copyUrl("abc")).toBe(false);
-    expect(toasts).toEqual([{ key: "client.copyFailedUrl", url: "https://c.example/abc", type: "error" }]);
+    expect(toasts).toEqual([{ key: "client.copyFailedUrl", url: "https://c.example/abc", type: "error", ms: 10000 }]);
   });
 
   it("names the URL to copy by hand when the write is refused", async () => {
@@ -79,7 +79,7 @@ describe("copyUrl() reports the outcome", () => {
     });
 
     expect(await copyUrl("abc")).toBe(false);
-    expect(toasts).toEqual([{ key: "client.copyFailedUrl", url: "https://c.example/abc", type: "error" }]);
+    expect(toasts).toEqual([{ key: "client.copyFailedUrl", url: "https://c.example/abc", type: "error", ms: 10000 }]);
   });
 });
 
