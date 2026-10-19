@@ -26,6 +26,15 @@ describe("extractTitle", () => {
     expect(extractTitle("<title>  Hello \n  World  </title>")).toBe("Hello World");
   });
 
+  it("decodes each entity once, so an escaped entity stays literal text", () => {
+    expect(extractTitle("<title>Use &amp;lt;b&amp;gt; for bold</title>")).toBe("Use &lt;b&gt; for bold");
+    expect(extractTitle("<title>&amp;#39;quoted&amp;#39;</title>")).toBe("&#39;quoted&#39;");
+  });
+
+  it("decodes code points above the BMP", () => {
+    expect(extractTitle("<title>Party &#127881;</title>")).toBe("Party \u{1F389}");
+  });
+
   it("decodes HTML entities", () => {
     expect(extractTitle("<title>Tom &amp; Jerry &#39;s</title>")).toBe("Tom & Jerry 's");
   });
