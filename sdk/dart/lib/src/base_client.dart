@@ -47,6 +47,19 @@ class ShrtnrBaseClient {
 
   final String _baseUrl;
   final String _authHeader;
+
+  /// Origin of the base URL, the fallback for a link without `short_origin`.
+  ///
+  /// [Uri.origin] drops any credentials. It throws for a scheme other than
+  /// http(s); such a base URL fails on the first request with the documented
+  /// [ShrtnrError], so the fallback is the URL as given.
+  late final String origin = () {
+    try {
+      return Uri.parse(_baseUrl).origin;
+    } on Object {
+      return _baseUrl;
+    }
+  }();
   final http.Client _httpClient;
   // True when we created the client ourselves and must close it.
   final bool _owned;

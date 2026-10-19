@@ -137,7 +137,8 @@ class BundlesResource {
       shape: JsonShape.list,
     );
     return (json! as List<dynamic>)
-        .map((dynamic e) => Link.fromJson(e as Map<String, dynamic>))
+        .map((dynamic e) => Link.fromJson(e as Map<String, dynamic>,
+            defaultOrigin: _http.origin))
         .toList(growable: false);
   }
 

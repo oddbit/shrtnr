@@ -18,7 +18,8 @@ class LinksResource {
       '/_/api/links/$id',
       query: {'range': range?.wireValue},
     );
-    return Link.fromJson(json! as Map<String, dynamic>);
+    return Link.fromJson(json! as Map<String, dynamic>,
+        defaultOrigin: _http.origin);
   }
 
   /// List all links. Filter by [owner] identity or click-count [range].
@@ -30,7 +31,8 @@ class LinksResource {
       shape: JsonShape.list,
     );
     return (json! as List<dynamic>)
-        .map((dynamic e) => Link.fromJson(e as Map<String, dynamic>))
+        .map((dynamic e) => Link.fromJson(e as Map<String, dynamic>,
+            defaultOrigin: _http.origin))
         .toList(growable: false);
   }
 
@@ -48,7 +50,8 @@ class LinksResource {
     if (expiresAt != null) body['expires_at'] = expiresAt;
     if (allowDuplicate != null) body['allow_duplicate'] = allowDuplicate;
     final json = await _http.requestJson('POST', '/_/api/links', body: body);
-    return Link.fromJson(json! as Map<String, dynamic>);
+    return Link.fromJson(json! as Map<String, dynamic>,
+        defaultOrigin: _http.origin);
   }
 
   /// Update a link with the values held by [link].
@@ -67,19 +70,22 @@ class LinksResource {
     };
     final json =
         await _http.requestJson('PUT', '/_/api/links/${link.id}', body: body);
-    return Link.fromJson(json! as Map<String, dynamic>);
+    return Link.fromJson(json! as Map<String, dynamic>,
+        defaultOrigin: _http.origin);
   }
 
   /// Disable a link so it stops redirecting.
   Future<Link> disable(int id) async {
     final json = await _http.requestJson('POST', '/_/api/links/$id/disable');
-    return Link.fromJson(json! as Map<String, dynamic>);
+    return Link.fromJson(json! as Map<String, dynamic>,
+        defaultOrigin: _http.origin);
   }
 
   /// Re-enable a disabled link.
   Future<Link> enable(int id) async {
     final json = await _http.requestJson('POST', '/_/api/links/$id/enable');
-    return Link.fromJson(json! as Map<String, dynamic>);
+    return Link.fromJson(json! as Map<String, dynamic>,
+        defaultOrigin: _http.origin);
   }
 
   /// Permanently delete a link.

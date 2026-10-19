@@ -15,7 +15,8 @@ class SlugsResource {
   Future<Link> lookup(String slug) async {
     final encoded = Uri.encodeComponent(slug);
     final json = await _http.requestJson('GET', '/_/api/slugs/$encoded');
-    return Link.fromJson(json! as Map<String, dynamic>);
+    return Link.fromJson(json! as Map<String, dynamic>,
+        defaultOrigin: _http.origin);
   }
 
   /// Add a custom slug to a link.

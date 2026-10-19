@@ -17,7 +17,13 @@
 /// ```
 library;
 
-export 'src/client.dart' show ShrtnrClient, LinksResource, SlugsResource, BundlesResource, ConfigResource;
+export 'src/client.dart'
+    show
+        ShrtnrClient,
+        LinksResource,
+        SlugsResource,
+        BundlesResource,
+        ConfigResource;
 export 'src/errors.dart' show ShrtnrError;
 export 'src/models.dart'
     show

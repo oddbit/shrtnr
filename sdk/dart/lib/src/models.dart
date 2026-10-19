@@ -228,12 +228,17 @@ class Link {
     required this.createdBy,
     required this.slugs,
     required this.totalClicks,
-    required this.shortOrigin,
+    this.shortOrigin = '',
     this.deltaPct,
   });
 
   /// Parses a link from its JSON representation.
-  factory Link.fromJson(Map<String, dynamic> json) => Link(
+  ///
+  /// [defaultOrigin] stands in for `short_origin` on a deployment older than
+  /// the field; the client passes its base URL's origin.
+  factory Link.fromJson(Map<String, dynamic> json,
+          {String defaultOrigin = ''}) =>
+      Link(
         id: (json['id'] as num).toInt(),
         url: json['url'] as String,
         label: json['label'] as String?,
@@ -245,7 +250,7 @@ class Link {
             .map((dynamic s) => Slug.fromJson(s as Map<String, dynamic>))
             .toList(growable: false),
         totalClicks: ((json['total_clicks'] as num?) ?? 0).toInt(),
-        shortOrigin: json['short_origin'] as String,
+        shortOrigin: (json['short_origin'] as String?) ?? defaultOrigin,
         deltaPct: (json['delta_pct'] as num?)?.toDouble(),
       );
 
@@ -280,6 +285,9 @@ class Link {
   /// deployment's `SHORT_ORIGIN` when set, otherwise the origin of the
   /// request. Build short URLs as `${shortOrigin}/${slug}` instead of
   /// assuming the host the API was reached on.
+  ///
+  /// Empty only on a [Link] built by hand: every link the client returns
+  /// carries it.
   final String shortOrigin;
 
   /// Click count change as a percentage versus the previous equivalent period.
@@ -308,13 +316,17 @@ class Link {
       url: url ?? this.url,
       label: identical(label, _unset) ? this.label : label as String?,
       createdAt: createdAt ?? this.createdAt,
-      expiresAt: identical(expiresAt, _unset) ? this.expiresAt : expiresAt as int?,
-      createdVia: identical(createdVia, _unset) ? this.createdVia : createdVia as String?,
+      expiresAt:
+          identical(expiresAt, _unset) ? this.expiresAt : expiresAt as int?,
+      createdVia: identical(createdVia, _unset)
+          ? this.createdVia
+          : createdVia as String?,
       createdBy: createdBy ?? this.createdBy,
       slugs: slugs ?? this.slugs,
       totalClicks: totalClicks ?? this.totalClicks,
       shortOrigin: shortOrigin ?? this.shortOrigin,
-      deltaPct: identical(deltaPct, _unset) ? this.deltaPct : deltaPct as double?,
+      deltaPct:
+          identical(deltaPct, _unset) ? this.deltaPct : deltaPct as double?,
     );
   }
 }
@@ -417,11 +429,16 @@ class Bundle {
     return Bundle(
       id: id ?? this.id,
       name: name ?? this.name,
-      description: identical(description, _unset) ? this.description : description as String?,
+      description: identical(description, _unset)
+          ? this.description
+          : description as String?,
       icon: identical(icon, _unset) ? this.icon : icon as String?,
       accent: accent ?? this.accent,
-      archivedAt: identical(archivedAt, _unset) ? this.archivedAt : archivedAt as int?,
-      createdVia: identical(createdVia, _unset) ? this.createdVia : createdVia as String?,
+      archivedAt:
+          identical(archivedAt, _unset) ? this.archivedAt : archivedAt as int?,
+      createdVia: identical(createdVia, _unset)
+          ? this.createdVia
+          : createdVia as String?,
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -470,11 +487,10 @@ class BundleWithSummary extends Bundle {
         sparkline: ((json['sparkline'] as List<dynamic>?) ?? const <dynamic>[])
             .map((dynamic e) => (e as num).toInt())
             .toList(growable: false),
-        topLinks:
-            ((json['top_links'] as List<dynamic>?) ?? const <dynamic>[])
-                .map((dynamic e) =>
-                    BundleTopLink.fromJson(e as Map<String, dynamic>))
-                .toList(growable: false),
+        topLinks: ((json['top_links'] as List<dynamic>?) ?? const <dynamic>[])
+            .map((dynamic e) =>
+                BundleTopLink.fromJson(e as Map<String, dynamic>))
+            .toList(growable: false),
       );
 
   /// Number of links in the bundle.
@@ -518,17 +534,23 @@ class BundleWithSummary extends Bundle {
     return BundleWithSummary(
       id: id ?? this.id,
       name: name ?? this.name,
-      description: identical(description, _unset) ? this.description : description as String?,
+      description: identical(description, _unset)
+          ? this.description
+          : description as String?,
       icon: identical(icon, _unset) ? this.icon : icon as String?,
       accent: accent ?? this.accent,
-      archivedAt: identical(archivedAt, _unset) ? this.archivedAt : archivedAt as int?,
-      createdVia: identical(createdVia, _unset) ? this.createdVia : createdVia as String?,
+      archivedAt:
+          identical(archivedAt, _unset) ? this.archivedAt : archivedAt as int?,
+      createdVia: identical(createdVia, _unset)
+          ? this.createdVia
+          : createdVia as String?,
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       linkCount: linkCount ?? this.linkCount,
       totalClicks: totalClicks ?? this.totalClicks,
-      deltaPct: identical(deltaPct, _unset) ? this.deltaPct : deltaPct as double?,
+      deltaPct:
+          identical(deltaPct, _unset) ? this.deltaPct : deltaPct as double?,
       sparkline: sparkline ?? this.sparkline,
       topLinks: topLinks ?? this.topLinks,
     );
@@ -632,16 +654,14 @@ class ClickStats {
         browsers: _nameCountList(json['browsers']),
         linkModes: _nameCountList(json['link_modes']),
         channels: _nameCountList(json['channels']),
-        clicksOverTime:
-            ((json['clicks_over_time'] as List<dynamic>?) ?? const <dynamic>[])
-                .map((dynamic e) =>
-                    DateCount.fromJson(e as Map<String, dynamic>))
-                .toList(growable: false),
-        slugClicks:
-            ((json['slug_clicks'] as List<dynamic>?) ?? const <dynamic>[])
-                .map((dynamic e) =>
-                    SlugCount.fromJson(e as Map<String, dynamic>))
-                .toList(growable: false),
+        clicksOverTime: ((json['clicks_over_time'] as List<dynamic>?) ??
+                const <dynamic>[])
+            .map((dynamic e) => DateCount.fromJson(e as Map<String, dynamic>))
+            .toList(growable: false),
+        slugClicks: ((json['slug_clicks'] as List<dynamic>?) ??
+                const <dynamic>[])
+            .map((dynamic e) => SlugCount.fromJson(e as Map<String, dynamic>))
+            .toList(growable: false),
         numCountries: ((json['num_countries'] as num?) ?? 0).toInt(),
         numReferrers: ((json['num_referrers'] as num?) ?? 0).toInt(),
         numReferrerHosts: ((json['num_referrer_hosts'] as num?) ?? 0).toInt(),
@@ -768,7 +788,8 @@ class TimelineSummary {
   });
 
   /// Parses a timeline summary from JSON.
-  factory TimelineSummary.fromJson(Map<String, dynamic> json) => TimelineSummary(
+  factory TimelineSummary.fromJson(Map<String, dynamic> json) =>
+      TimelineSummary(
         last24h: ((json['last_24h'] as num?) ?? 0).toInt(),
         last7d: ((json['last_7d'] as num?) ?? 0).toInt(),
         last30d: ((json['last_30d'] as num?) ?? 0).toInt(),

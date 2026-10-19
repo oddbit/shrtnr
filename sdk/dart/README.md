@@ -130,9 +130,14 @@ Deployment settings, including the origin short URLs are handed out on.
 | `get()` | Get the origin short URLs are handed out on |
 
 ```dart
-// Build a short URL that matches the copy button and QR code
+// Build a short URL on the origin the deployment hands links out on, from the
+// primary slug: the one the copy button and the QR code use
 final config = await client.config.get();
-print('${config.shortOrigin}/${link.slugs.first.slug}');
+final primary = link.slugs.firstWhere(
+  (s) => s.isPrimary == 1,
+  orElse: () => link.slugs.first,
+);
+print('${config.shortOrigin}/${primary.slug}');
 ```
 
 ## Models
@@ -154,7 +159,8 @@ plain `int` Unix seconds, matching the wire format exactly.
 `Link.shortOrigin` and `Config.shortOrigin` give the origin this deployment hands short
 URLs out on: the deployment's `SHORT_ORIGIN` when set, otherwise the origin of the request.
 Build short URLs as `${shortOrigin}/${slug}` so they match the copy button, the QR code and
-the redirects.
+the redirects. A deployment older than the field answers without it, and the SDK fills in
+the origin of the client's `baseUrl`, which is the origin such a deployment hands out.
 
 ## Errors
 
