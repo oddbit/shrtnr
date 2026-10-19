@@ -37,9 +37,7 @@ ShrtnrClient(
 )
 ```
 
-The `httpClient` parameter accepts any `http.Client`. Pass a custom implementation for test
-mocking or custom TLS configuration. When omitted, a new `http.Client` is created and
-closed by `client.close()`.
+Pass any `http.Client` as `httpClient` for test mocks or custom TLS. Without one, the SDK creates its own `http.Client`, and `client.close()` closes it.
 
 ## Resources
 
@@ -123,11 +121,11 @@ print(stats.totalClicks);
 
 ### Config (`client.config`)
 
-Deployment settings, including the origin short URLs are handed out on.
+Deployment settings a client needs to build short URLs.
 
 | Method | Description |
 |---|---|
-| `get()` | Get the origin short URLs are handed out on |
+| `get()` | Origin short URLs are handed out on |
 
 ```dart
 // Build a short URL that matches the copy button and QR code
@@ -137,8 +135,11 @@ print('${config.shortOrigin}/${link.slugs.first.slug}');
 
 ## Models
 
-All model fields use camelCase. The SDK maps snake_case JSON from the wire automatically
-inside each `fromJson` factory.
+Model fields use camelCase. Each `fromJson` factory maps the snake_case wire JSON.
+
+Every `Link` carries `shortOrigin`: the origin this deployment hands short URLs out on. It is the deployment's `SHORT_ORIGIN` when set, otherwise the request origin. `client.config.get()` returns the same value in `Config.shortOrigin`. Build short URLs as `${shortOrigin}/${slug}` so they match the copy button, the QR code and the redirects.
+
+Timestamp fields (`createdAt`, `expiresAt`, `disabledAt`, `archivedAt`, `updatedAt`) are plain `int` Unix seconds, matching the wire format.
 
 Key types exported from `package:shrtnr/shrtnr.dart`:
 
@@ -148,18 +149,9 @@ Key types exported from `package:shrtnr/shrtnr.dart`:
 - `DeletedResult`, `AddedResult`, `RemovedResult`
 - Enums: `TimelineRange`, `BundleAccent`, `BreakdownDimension`, `BundleArchivedFilter`
 
-Timestamp fields (`createdAt`, `expiresAt`, `disabledAt`, `archivedAt`, `updatedAt`) are
-plain `int` Unix seconds, matching the wire format exactly.
-
-`Link.shortOrigin` and `Config.shortOrigin` give the origin this deployment hands short
-URLs out on: the deployment's `SHORT_ORIGIN` when set, otherwise the origin of the request.
-Build short URLs as `${shortOrigin}/${slug}` so they match the copy button, the QR code and
-the redirects.
-
 ## Errors
 
-Every 4xx/5xx response throws `ShrtnrError`. Network failures also throw `ShrtnrError` with
-`status: 0`.
+Any 4xx/5xx response or network failure throws `ShrtnrError`. A network failure carries `status: 0`.
 
 ```dart
 import 'package:shrtnr/shrtnr.dart';
