@@ -52,9 +52,9 @@ Firefox 140 or newer (`strict_min_version`), so the data-collection declaration 
 
 ## 4. Locale check
 
-Switch the OS or browser locale to Indonesian, then to Swedish. Reload the popup and options page.
+Switch the OS or browser locale to each non-English language in `SUPPORTED_LANGUAGES` (`src/i18n/index.ts`). Reload the popup and options page each time.
 
-- [ ] Both surfaces render translated strings.
+- [ ] Both surfaces render translated strings in every language.
 - [ ] Placeholders (`{host}`, `{message}`) interpolate correctly in error messages.
 - [ ] Fall back to English when the OS locale is something else (e.g. German).
 
@@ -63,4 +63,4 @@ Switch the OS or browser locale to Indonesian, then to Swedish. Reload the popup
 1. Update `package.json` `version` and add a `CHANGELOG.md` entry.
 2. Commit on `main`. Do not push the tag manually.
 3. Workflow `.github/workflows/release-extension.yml` runs on push, builds, uploads, and tags `ext-v$VERSION`.
-4. Verify the GitHub release was created and both store dashboards show the new version pending review.
+4. Verify the `ext-v$VERSION` tag exists and both store dashboards show the new version pending review.
