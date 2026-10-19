@@ -20,6 +20,15 @@ describe("fmtNumber", () => {
     expect(out).toMatch(/1.234.567/); // any single separator character
   });
 
+  it("groups thousands for zh", () => {
+    // Chinese groups with commas like en, so the output alone cannot tell a
+    // resolved zh locale from the en-US fallback the runtime uses when it has
+    // no zh ICU data. Assert the locale the formatter actually resolved, then
+    // the digits it produced.
+    expect(new Intl.NumberFormat("zh").resolvedOptions().locale).toMatch(/^zh/);
+    expect(fmtNumber(1234567, "zh")).toBe("1,234,567");
+  });
+
   it("formats zero and negative values", () => {
     expect(fmtNumber(0, "en")).toBe("0");
     expect(fmtNumber(-12345, "en")).toBe("-12,345");

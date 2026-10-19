@@ -6,6 +6,7 @@ import {
   getAppSettings,
   updateAppSettings,
 } from "../../services/admin-management";
+import { SUPPORTED_LANGUAGES } from "../../i18n";
 
 const TEST_IDENTITY = "test@example.com";
 
@@ -223,7 +224,7 @@ describe("settings theme and language validation", () => {
   });
 
   it("accepts every supported language", async () => {
-    for (const lang of ["en", "id", "sv"]) {
+    for (const lang of SUPPORTED_LANGUAGES) {
       const result = await updateAppSettings(env as any, TEST_IDENTITY, { lang });
       expect(result.ok).toBe(true);
       const settings = await getAppSettings(env as any, TEST_IDENTITY);
