@@ -9,8 +9,11 @@ import { IDENTITY, UNPINNED_URL } from "./env";
  * Most deployments never set SHORT_ORIGIN. The admin then hands out short URLs
  * on the host it was opened on. The rest of the suite runs against a server
  * that pins the variable, so this spec drives the second e2e server, which
- * leaves it unset. A build whose fallback broke, an empty data-short-origin or
- * a script that ignores location.origin, fails here.
+ * leaves it unset. The server then renders the request origin into
+ * data-short-origin, so a server whose fallback broke fails here: an empty
+ * attribute, or a configured origin leaking into an unpinned deployment.
+ * The script's own location.origin fallback never runs against this server;
+ * src/__tests__/unit/client-short-origin.test.ts covers it.
  */
 test.beforeEach(async ({ context, page }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: UNPINNED_URL });
