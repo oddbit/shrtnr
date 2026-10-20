@@ -33,9 +33,9 @@ npx --no-install wrangler d1 migrations apply DB --local --persist-to "$STATE" >
 
 # exec so the PID Playwright tracks is wrangler itself and its shutdown
 # signal reaches the server, not a shell wrapper.
-VARS=(--var "DEV_MODE:true")
-if [ -n "$SHORT_ORIGIN" ]; then
-  VARS+=(--var "SHORT_ORIGIN:$SHORT_ORIGIN")
-fi
+# SHORT_ORIGIN is passed even when empty. wrangler dev still loads the
+# developer's .dev.vars, and an empty --var overrides a SHORT_ORIGIN set
+# there: leaving the flag off let a local value pin the "unpinned" server.
+VARS=(--var "DEV_MODE:true" --var "SHORT_ORIGIN:$SHORT_ORIGIN")
 
 exec npx --no-install wrangler dev --port "$PORT" --persist-to "$STATE" "${VARS[@]}"
