@@ -15,7 +15,6 @@ import {
 import { json, fromLinkResult, fromServiceResult } from "./response";
 import { requireScope } from "./scope";
 import { ErrorResponseSchema, LinkSchema, SlugParamSchema, paramHook } from "./schemas";
-import { resolveShortOrigin } from "../short-origin";
 // ---- Legacy admin handlers (still consumed by admin routes in src/index.tsx) ----
 
 export async function handleAddCustomSlug(
@@ -104,5 +103,5 @@ const getLinkBySlugRoute = createRoute({
 
 slugsApp.openapi(getLinkBySlugRoute, async (c) => {
   const { slug } = c.req.valid("param") as { slug: string };
-  return fromLinkResult(await getLinkBySlug(c.env, slug.toLowerCase()), resolveShortOrigin(c.env, c.req.url)) as never;
+  return fromLinkResult(c, await getLinkBySlug(c.env, slug.toLowerCase())) as never;
 }, paramHook);

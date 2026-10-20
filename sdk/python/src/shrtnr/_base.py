@@ -11,11 +11,12 @@ same errors. Everything here is the core that would be duplicated between
 from __future__ import annotations
 
 from typing import Any, Literal
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 import httpx
 
 from .errors import ShrtnrError
+from .models import Link
 
 DEFAULT_TIMEOUT = 30.0
 
@@ -45,6 +46,34 @@ def _build_request_headers(api_key: str) -> dict[str, str]:
     src/api/bundles.ts).
     """
     return {"Authorization": f"Bearer {api_key}", "X-Client": "sdk"}
+
+
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def _origin_of(base_url: str) -> str:
+    """The origin of the client's base URL: what a deployment older than the
+    ``short_origin`` field hands short URLs out on.
+
+    Matches URL.origin, which the server and the TypeScript SDK use (Dart's
+    Uri.origin agrees): scheme and host lowercased, a default port dropped,
+    credentials left out so a short URL never hands them out. A base URL that
+    does not parse falls back to itself: it fails on the first request with
+    the documented ShrtnrError, not here in the constructor.
+    """
+    try:
+        parts = urlsplit(base_url)
+        scheme = parts.scheme.lower()
+        host = parts.hostname
+        port = parts.port
+    except ValueError:
+        return base_url.rstrip("/")
+    if scheme not in _DEFAULT_PORTS or not host:
+        return base_url.rstrip("/")
+    if ":" in host:
+        host = f"[{host}]"
+    suffix = f":{port}" if port is not None and port != _DEFAULT_PORTS[scheme] else ""
+    return f"{scheme}://{host}{suffix}"
 
 
 def _build_url(base_url: str, path: str, query: dict[str, str | None] | None = None) -> str:
@@ -133,6 +162,7 @@ class _SyncResource:
         self._base_url = base_url
         self._api_key = api_key
         self._http = http
+        self._origin = _origin_of(base_url)
 
     def _headers(self) -> dict[str, str]:
         return _build_request_headers(self._api_key)
@@ -159,6 +189,15 @@ class _SyncResource:
     def _request_text(self, method: str, url: str, **kwargs: Any) -> str:
         return parse_text_response(self._send(method, url, **kwargs))
 
+    # Every endpoint that answers a link goes through these two, so none can
+    # forget the short_origin fallback for a deployment older than the field.
+    def _request_link(self, method: str, url: str, **kwargs: Any) -> Link:
+        return Link.from_dict(self._request(method, url, **kwargs), self._origin)
+
+    def _request_links(self, method: str, url: str, **kwargs: Any) -> list[Link]:
+        data = self._request(method, url, shape="array", **kwargs)
+        return [Link.from_dict(x, self._origin) for x in data]
+
 
 class _AsyncResource:
     """Async twin of :class:`_SyncResource`."""
@@ -167,6 +206,7 @@ class _AsyncResource:
         self._base_url = base_url
         self._api_key = api_key
         self._http = http
+        self._origin = _origin_of(base_url)
 
     def _headers(self) -> dict[str, str]:
         return _build_request_headers(self._api_key)
@@ -192,3 +232,10 @@ class _AsyncResource:
 
     async def _request_text(self, method: str, url: str, **kwargs: Any) -> str:
         return parse_text_response(await self._send(method, url, **kwargs))
+
+    async def _request_link(self, method: str, url: str, **kwargs: Any) -> Link:
+        return Link.from_dict(await self._request(method, url, **kwargs), self._origin)
+
+    async def _request_links(self, method: str, url: str, **kwargs: Any) -> list[Link]:
+        data = await self._request(method, url, shape="array", **kwargs)
+        return [Link.from_dict(x, self._origin) for x in data]

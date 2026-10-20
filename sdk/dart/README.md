@@ -128,16 +128,23 @@ Deployment settings a client needs to build short URLs.
 | `get()` | Origin short URLs are handed out on |
 
 ```dart
-// Build a short URL that matches the copy button and QR code
-final config = await client.config.get();
-print('${config.shortOrigin}/${link.slugs.first.slug}');
+// Matches the copy button and QR code: primary slug, else first custom, else generated.
+// link.shortOrigin works on deployments that predate config.get().
+final primary = link.slugs.firstWhere(
+  (s) => s.isPrimary == 1,
+  orElse: () => link.slugs.firstWhere(
+    (s) => s.isCustom == 1,
+    orElse: () => link.slugs.first,
+  ),
+);
+print('${link.shortOrigin}/${primary.slug}');
 ```
 
 ## Models
 
 Model fields use camelCase. Each `fromJson` factory maps the snake_case wire JSON.
 
-Every `Link` carries `shortOrigin`: the origin this deployment hands short URLs out on. It is the deployment's `SHORT_ORIGIN` when set, otherwise the request origin. `client.config.get()` returns the same value in `Config.shortOrigin`. Build short URLs as `${shortOrigin}/${slug}` so they match the copy button, the QR code and the redirects.
+Every `Link` carries `shortOrigin`: the origin this deployment hands short URLs out on. It is the deployment's `SHORT_ORIGIN` when set, otherwise the request origin. `client.config.get()` returns the same value in `Config.shortOrigin`. Build short URLs as `${shortOrigin}/${slug}` so they match the copy button, the QR code and the redirects. Deployments older than the field omit it, so the SDK fills in the origin of `baseUrl`.
 
 Timestamp fields (`createdAt`, `expiresAt`, `disabledAt`, `archivedAt`, `updatedAt`) are plain `int` Unix seconds, matching the wire format.
 

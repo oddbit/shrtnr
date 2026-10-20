@@ -58,11 +58,16 @@ class Link:
     created_by: str
     slugs: list[Slug]
     total_clicks: int
-    short_origin: str
     delta_pct: float | None = None
+    # Last and defaulted, so code that builds a Link by hand keeps working.
+    # Every Link the client returns carries the real origin.
+    short_origin: str = ""
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Link:
+    def from_dict(cls, data: dict[str, Any], default_origin: str = "") -> Link:
+        """Parse a link. ``default_origin`` stands in for ``short_origin`` on a
+        deployment older than the field; the client passes its base URL's origin.
+        """
         delta = data.get("delta_pct")
         expires = data.get("expires_at")
         return cls(
@@ -75,8 +80,8 @@ class Link:
             created_by=str(data["created_by"]),
             slugs=[Slug.from_dict(s) for s in data.get("slugs", [])],
             total_clicks=int(data.get("total_clicks", 0)),
-            short_origin=str(data["short_origin"]),
             delta_pct=float(delta) if delta is not None else None,
+            short_origin=str(data.get("short_origin") or default_origin),
         )
 
 

@@ -19,7 +19,7 @@ class Slugs(_SyncResource):
     def lookup(self, slug: str) -> Link:
         """Look up a link by its slug."""
         url = self._url(f"/_/api/slugs/{url_encode(slug)}")
-        return Link.from_dict(self._request("GET", url, headers=self._headers()))
+        return self._request_link("GET", url, headers=self._headers())
 
     def add(self, link_id: int, slug: str) -> Slug:
         """Add a custom slug to a link."""
@@ -50,7 +50,7 @@ class AsyncSlugs(_AsyncResource):
     async def lookup(self, slug: str) -> Link:
         """Look up a link by its slug."""
         url = self._url(f"/_/api/slugs/{url_encode(slug)}")
-        return Link.from_dict(await self._request("GET", url, headers=self._headers()))
+        return await self._request_link("GET", url, headers=self._headers())
 
     async def add(self, link_id: int, slug: str) -> Slug:
         """Add a custom slug to a link."""

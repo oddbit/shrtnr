@@ -142,6 +142,38 @@ async def test_async_links_get_exposes_short_origin(client: AsyncShrtnr) -> None
 
 
 @respx.mock
+async def test_async_links_fall_back_to_the_base_url_origin_without_short_origin(
+    client: AsyncShrtnr,
+) -> None:
+    """See test_links_fall_back_to_the_base_url_origin_without_short_origin."""
+    legacy = make_link_dict(link_id=3)
+    del legacy["short_origin"]
+    respx.get(f"{BASE_URL}/_/api/links/3").mock(return_value=httpx.Response(200, json=legacy))
+    respx.get(f"{BASE_URL}/_/api/links").mock(return_value=httpx.Response(200, json=[legacy]))
+    respx.get(f"{BASE_URL}/_/api/slugs/auto").mock(return_value=httpx.Response(200, json=legacy))
+    respx.get(f"{BASE_URL}/_/api/bundles/42/links").mock(
+        return_value=httpx.Response(200, json=[legacy])
+    )
+    respx.post(f"{BASE_URL}/_/api/links").mock(return_value=httpx.Response(201, json=legacy))
+    respx.put(f"{BASE_URL}/_/api/links/3").mock(return_value=httpx.Response(200, json=legacy))
+    respx.post(f"{BASE_URL}/_/api/links/3/disable").mock(
+        return_value=httpx.Response(200, json=legacy)
+    )
+    respx.post(f"{BASE_URL}/_/api/links/3/enable").mock(
+        return_value=httpx.Response(200, json=legacy)
+    )
+
+    assert (await client.links.get(3)).short_origin == BASE_URL
+    assert [link.short_origin for link in await client.links.list()] == [BASE_URL]
+    assert (await client.slugs.lookup("auto")).short_origin == BASE_URL
+    assert [link.short_origin for link in await client.bundles.links(42)] == [BASE_URL]
+    assert (await client.links.create(url="https://example.com")).short_origin == BASE_URL
+    assert (await client.links.update(3, label="x")).short_origin == BASE_URL
+    assert (await client.links.disable(3)).short_origin == BASE_URL
+    assert (await client.links.enable(3)).short_origin == BASE_URL
+
+
+@respx.mock
 async def test_async_links_list(client: AsyncShrtnr) -> None:
     respx.get(f"{BASE_URL}/_/api/links").mock(
         return_value=httpx.Response(200, json=[make_link_dict()]),

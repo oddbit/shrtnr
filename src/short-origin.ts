@@ -103,3 +103,18 @@ export function configuredShortOrigin(env: Env): string | null {
 export function resolveShortOrigin(env: Env, requestUrl: string | URL): string {
   return configuredShortOrigin(env) ?? new URL(requestUrl).origin;
 }
+
+/**
+ * A link, or a list of links, with the origin its short URLs are handed out on.
+ *
+ * The origin is per deployment, not per row, so it rides on the serialized
+ * link rather than in the database. Every surface that answers a link to a
+ * client which composes `${origin}/${slug}` itself goes through here: the REST
+ * link responses and the MCP link tools. Anything that is not an object passes
+ * through unchanged.
+ */
+export function withShortOrigin<T>(data: T, origin: string): T {
+  const annotate = (value: unknown) =>
+    typeof value === "object" && value !== null ? { ...value, short_origin: origin } : value;
+  return (Array.isArray(data) ? data.map(annotate) : annotate(data)) as T;
+}

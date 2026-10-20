@@ -311,6 +311,7 @@ const zh: Translations = {
 
   // Client-side strings
   "client.copied": "已复制 {url}",
+  "client.copyFailedUrl": "剪贴板不可用，请手动复制：{url}",
   "client.themeUpdated": "主题已更新",
   "client.themeError": "保存主题失败",
   "client.languageUpdated": "语言已更新",
@@ -339,6 +340,7 @@ const zh: Translations = {
   "client.copy": "复制",
   "client.done": "完成",
   "client.apiKeyCopied": "已复制 API 密钥",
+  "client.keyCopyFailed": "剪贴板不可用。密钥已选中，请手动复制。",
   "client.codeCopied": "已复制命令",
   "client.confirmDeleteKey": "删除 API 密钥“{title}”？此操作无法撤销。",
   "client.keyDeleted": "密钥已删除",

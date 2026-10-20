@@ -16,6 +16,13 @@ export const IDENTITY = "e2e@example.com";
  */
 export const SHORT_ORIGIN = "https://c.example";
 
+/**
+ * A second server with SHORT_ORIGIN unset, the default. Short URLs there are
+ * built on the host the admin was opened on.
+ */
+export const UNPINNED_PORT = PORT + 1;
+export const UNPINNED_URL = `http://localhost:${UNPINNED_PORT}`;
+
 /** Written by the setup project, read by every spec. Lives with the server's own throwaway state. */
 const STATE_DIR = path.resolve(process.cwd(), ".wrangler/e2e-state");
 export const AUTH_STATE = path.join(STATE_DIR, "auth.json");

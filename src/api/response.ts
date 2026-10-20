@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { z } from "zod";
+import type { Env } from "../types";
+import { resolveShortOrigin, withShortOrigin } from "../short-origin";
 
 export type { ServiceResult } from "../services/result";
 
@@ -27,15 +29,17 @@ export function fromServiceResult<T>(result: import("../services/result").Servic
  * when one is set, and the request's own origin otherwise. A client that
  * composes `${origin}/${slug}` itself has no other way to learn it, and a
  * client that assumes the host it reached the API on hands out the wrong URL on
- * a deployment that answers on several domains. List endpoints answer with the
- * link objects bare, so arrays are annotated item by item.
+ * a deployment that answers on several domains. Taking the request context
+ * rather than a resolved origin keeps the lookup in one place, so a new link
+ * route cannot answer without the field. List endpoints answer with the link
+ * objects bare, so arrays are annotated item by item.
  */
-export function fromLinkResult(result: import("../services/result").ServiceResult<unknown>, origin: string): Response {
+export function fromLinkResult(
+  c: { env: Env; req: { url: string } },
+  result: import("../services/result").ServiceResult<unknown>,
+): Response {
   if (!result.ok) return fromServiceResult(result);
-  const annotate = (value: unknown) =>
-    typeof value === "object" && value !== null ? { ...value, short_origin: origin } : value;
-  const data = Array.isArray(result.data) ? result.data.map(annotate) : annotate(result.data);
-  return fromServiceResult({ ...result, data });
+  return fromServiceResult({ ...result, data: withShortOrigin(result.data, resolveShortOrigin(c.env, c.req.url)) });
 }
 
 export function formatZodError(err: z.ZodError): string {

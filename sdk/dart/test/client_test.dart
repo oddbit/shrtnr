@@ -472,6 +472,89 @@ void main() {
     });
   });
 
+  // A deployment older than the field answers without it. The SDK can be
+  // upgraded before the Worker is redeployed, so every call that returns a
+  // link fills in the origin of the client's base URL: the origin such a
+  // deployment hands out.
+  group('links without short_origin', () {
+    Map<String, Object?> legacy() => _linkJson()..remove('short_origin');
+
+    final calls = <String, (Object?, Future<Object> Function(ShrtnrClient))>{
+      'links.get': (legacy(), (c) => c.links.get(1)),
+      'links.list': (<Object?>[legacy()], (c) => c.links.list()),
+      'links.create': (
+        legacy(),
+        (c) => c.links.create(url: 'https://example.com')
+      ),
+      'links.update': (
+        legacy(),
+        (c) => c.links.update(Link.fromJson(_linkJson()))
+      ),
+      'links.disable': (legacy(), (c) => c.links.disable(1)),
+      'links.enable': (legacy(), (c) => c.links.enable(1)),
+      'slugs.lookup': (legacy(), (c) => c.slugs.lookup('abc')),
+      'bundles.links': (<Object?>[legacy()], (c) => c.bundles.links(1)),
+    };
+
+    for (final MapEntry(key: name, value: (body, call)) in calls.entries) {
+      test('$name falls back to the base URL origin', () async {
+        final m = _mock(status: 200, body: body);
+        final result = await call(m.client);
+        final links = result is List<Link> ? result : <Link>[result as Link];
+        expect(links.map((l) => l.shortOrigin), everyElement(_base));
+        expect(links, isNotEmpty);
+      });
+    }
+
+    test('uses the origin, without a trailing slash or credentials', () async {
+      for (final baseUrl in <String>[
+        '$_base/',
+        'https://user:secret@shrtnr.test'
+      ]) {
+        final mock = MockClient(
+          (request) async => http.Response(
+            jsonEncode(legacy()),
+            200,
+            headers: <String, String>{'content-type': 'application/json'},
+          ),
+        );
+        final client =
+            ShrtnrClient(baseUrl: baseUrl, apiKey: _apiKey, httpClient: mock);
+        expect((await client.links.get(1)).shortOrigin, _base, reason: baseUrl);
+      }
+    });
+
+    // Python and TypeScript treat an empty value as missing. Dart replaced
+    // only null, and an empty origin builds '/abc' instead of a URL.
+    test('treats an empty short_origin as missing', () async {
+      final m = _mock(status: 200, body: _linkJson(shortOrigin: ''));
+      expect((await m.client.links.get(1)).shortOrigin, _base);
+    });
+
+    test('keeps the value a response carries', () async {
+      final m =
+          _mock(status: 200, body: _linkJson(shortOrigin: 'https://c.example'));
+      expect((await m.client.links.get(1)).shortOrigin, 'https://c.example');
+    });
+  });
+
+  // Code and test fakes that build a Link by hand predate the field. Adding it
+  // must not break them.
+  test('Link constructor does not require shortOrigin', () {
+    const link = Link(
+      id: 1,
+      url: 'https://example.com',
+      label: null,
+      createdAt: 0,
+      expiresAt: null,
+      createdVia: null,
+      createdBy: 'o@example.com',
+      slugs: <Slug>[],
+      totalClicks: 0,
+    );
+    expect(link.shortOrigin, '');
+  });
+
   // ---- 4. links.list ----
 
   group('links.list', () {

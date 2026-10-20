@@ -128,16 +128,18 @@ Deployment settings a client needs to build short URLs.
 | `get()` | Origin short URLs are handed out on |
 
 ```ts
-// Build a short URL on the origin the deployment hands links out on
-const { shortOrigin } = await client.config.get();
-const shortUrl = `${shortOrigin}/${link.slugs[0].slug}`;
+// Matches the copy button and QR code: primary slug, else first custom, else generated.
+// link.shortOrigin works on deployments that predate config.get().
+const primary =
+  link.slugs.find((s) => s.isPrimary) ?? link.slugs.find((s) => s.isCustom) ?? link.slugs[0];
+const shortUrl = `${link.shortOrigin}/${primary.slug}`;
 ```
 
 ## Models
 
 Model fields use camelCase. The SDK converts the snake_case wire JSON.
 
-Every `Link` carries `shortOrigin`: the origin this deployment hands short URLs out on. It is the deployment's `SHORT_ORIGIN` when set, otherwise the request origin. `client.config.get()` returns the same value. Build short URLs as `${shortOrigin}/${slug}` so they match the copy button, the QR code and the redirects.
+Every `Link` carries `shortOrigin`: the origin this deployment hands short URLs out on. It is the deployment's `SHORT_ORIGIN` when set, otherwise the request origin. `client.config.get()` returns the same value. Build short URLs as `${shortOrigin}/${slug}` so they match the copy button, the QR code and the redirects. Deployments older than the field omit it, so the SDK fills in the origin of `baseUrl`.
 
 Key types exported from `@oddbit/shrtnr`:
 

@@ -58,7 +58,7 @@ import {
 import type { TimelineRange } from "../types";
 import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH, DEFAULT_SLUG_LENGTH, TIMELINE_RANGES } from "../constants";
 import { renderQrSvg } from "../qr";
-import { configuredShortOrigin } from "../short-origin";
+import { configuredShortOrigin, withShortOrigin } from "../short-origin";
 import { pickPrimarySlug } from "../slugs";
 import {
   BUNDLE_ACCENTS,
@@ -153,6 +153,17 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
     return this.props.email;
   }
 
+  /**
+   * A link, or a list of links, carrying the deployment's pinned short origin,
+   * the same field the REST link responses carry. Without SHORT_ORIGIN the
+   * field stays off: an MCP request often arrives on the mcp.* host, which is
+   * not where short links live, so its origin is no answer.
+   */
+  private withOrigin<T>(data: T): T {
+    const origin = configuredShortOrigin(this.env);
+    return origin ? withShortOrigin(data, origin) : data;
+  }
+
   async init() {
     this.server.registerTool(
       "health",
@@ -185,7 +196,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         const filters = await resolveClickFilters(this.env, this.identity);
         const result = await listLinks(this.env, { range: resolved, withDeltaRange: resolved, filters });
         if (!result.ok) return fail(result.error);
-        return okWithRange(resolved, { results: result.data });
+        return okWithRange(resolved, { results: this.withOrigin(result.data) });
       },
     );
 
@@ -206,7 +217,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         const filters = await resolveClickFilters(this.env, this.identity);
         const result = await getLink(this.env, link_id, { range: resolved, filters });
         if (!result.ok) return fail(result.error);
-        return okWithRange(resolved, result.data);
+        return okWithRange(resolved, this.withOrigin(result.data));
       },
     );
 
@@ -251,7 +262,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         const link = requestedSlugs.length > 0 ? await getLink(this.env, result.data.id) : result;
         if (!link.ok) return fail(link.error);
 
-        const response: Record<string, unknown> = { ...link.data, ...(result.meta ?? {}) };
+        const response: Record<string, unknown> = { ...this.withOrigin(link.data), ...(result.meta ?? {}) };
         if (rejections.length > 0) response.slug_rejections = rejections;
         return ok(response);
       },
@@ -274,7 +285,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       async ({ link_id, ...opts }) => {
         const result = await updateLink(this.env, link_id, opts, this.identity);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok(this.withOrigin(result.data));
       },
     );
 
@@ -292,7 +303,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       async ({ link_id }) => {
         const result = await disableLink(this.env, link_id, this.identity);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok(this.withOrigin(result.data));
       },
     );
 
@@ -310,7 +321,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       async ({ link_id }) => {
         const result = await enableLink(this.env, link_id, this.identity);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok(this.withOrigin(result.data));
       },
     );
 
@@ -436,7 +447,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         if (result.data.length === 0) {
           return okWithRange(resolved, { results: [], message: "No links found matching that query." });
         }
-        return okWithRange(resolved, { results: result.data, count: result.data.length });
+        return okWithRange(resolved, { results: this.withOrigin(result.data), count: result.data.length });
       },
     );
 
@@ -464,7 +475,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         if (result.data.length === 0) {
           return okWithRange(resolved, { results: [], message: `No links found for ${owner}.` });
         }
-        return okWithRange(resolved, { results: result.data, count: result.data.length });
+        return okWithRange(resolved, { results: this.withOrigin(result.data), count: result.data.length });
       },
     );
 
@@ -476,7 +487,11 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         inputSchema: {
           link_id: z.number().int().positive().describe("Numeric ID of the link"),
           slug: z.string().optional().describe("Specific slug to use (defaults to the link's primary slug)"),
-          base_url: z.string().url().optional().describe("Base URL of the shrtnr instance, e.g. https://oddb.it. Used only when the deployment sets no SHORT_ORIGIN."),
+          // Required exactly when the tool cannot build a URL without it, so an
+          // MCP client reading the schema sends it on the first call.
+          base_url: configuredShortOrigin(this.env)
+            ? z.string().url().optional().describe("Ignored: this deployment pins its short origin.")
+            : z.string().url().describe("Base URL of the shrtnr instance, e.g. https://oddb.it."),
         },
         annotations: { title: "Link QR code", ...READ_ONLY },
       },
@@ -933,7 +948,7 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
       async ({ bundle_id }) => {
         const result = await listBundleLinks(this.env, bundle_id, this.identity);
         if (!result.ok) return fail(result.error);
-        return ok(result.data);
+        return ok(this.withOrigin(result.data));
       },
     );
 

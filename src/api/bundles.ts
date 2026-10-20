@@ -22,7 +22,6 @@ import { fromLinkResult, fromServiceResult, json } from "./response";
 import { createRoute, z } from "@hono/zod-openapi";
 import { createApiSubApp } from "./sub-app";
 import { requireScope } from "./scope";
-import { resolveShortOrigin } from "../short-origin";
 import {
   AddBundleLinkBodySchema,
   ArchivedQuerySchema,
@@ -402,7 +401,7 @@ const listBundleLinksRoute = createRoute({
 
 bundlesApp.openapi(listBundleLinksRoute, async (c) => {
   const { id } = c.req.valid("param") as { id: number };
-  return fromLinkResult(await listBundleLinks(c.env, id, c.var.auth.identity), resolveShortOrigin(c.env, c.req.url)) as never;
+  return fromLinkResult(c, await listBundleLinks(c.env, id, c.var.auth.identity)) as never;
 }, paramHook);
 
 // ---- POST /:id/links (add link to bundle) ----

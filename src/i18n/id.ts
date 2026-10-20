@@ -318,6 +318,7 @@ const id: Translations = {
 
   // Client-side strings
   "client.copied": "{url} disalin",
+  "client.copyFailedUrl": "Papan klip tidak tersedia. Salin secara manual: {url}",
   "client.themeUpdated": "Tema diperbarui",
   "client.themeError": "Gagal menyimpan tema",
   "client.languageUpdated": "Bahasa diperbarui",
@@ -348,6 +349,7 @@ const id: Translations = {
   "client.copy": "Salin",
   "client.done": "Selesai",
   "client.apiKeyCopied": "Kunci API disalin",
+  "client.keyCopyFailed": "Papan klip tidak tersedia. Kunci sudah dipilih: salin secara manual.",
   "client.codeCopied": "Perintah disalin",
   "client.confirmDeleteKey":
     'Hapus kunci API "{title}"? Tindakan ini tidak dapat dibatalkan.',

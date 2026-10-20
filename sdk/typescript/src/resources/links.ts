@@ -20,37 +20,43 @@ export class LinksResource {
 
   /** Get a link by ID. Optional range controls the click-count window. */
   get(id: number, options: { range?: TimelineRange } = {}): Promise<Link> {
-    return this.http.request("GET", `/_/api/links/${id}`, {
-      query: { range: options.range },
-    });
+    return this.http
+      .requestLink<Link>("GET", `/_/api/links/${id}`, {
+        query: { range: options.range },
+      });
   }
 
   /** List all links. Filter by owner or click-count range. */
   list(options: { owner?: string; range?: TimelineRange } = {}): Promise<Link[]> {
-    return this.http.request("GET", "/_/api/links", {
-      query: { owner: options.owner, range: options.range },
-      shape: "array",
-    });
+    return this.http
+      .requestLink<Link[]>("GET", "/_/api/links", {
+        query: { owner: options.owner, range: options.range },
+        shape: "array",
+      });
   }
 
   /** Create a new short link. */
   create(body: CreateLinkBody): Promise<Link> {
-    return this.http.request("POST", "/_/api/links", { body });
+    return this.http
+      .requestLink<Link>("POST", "/_/api/links", { body });
   }
 
   /** Update a link's URL, label, or expiry. */
   update(id: number, body: UpdateLinkBody): Promise<Link> {
-    return this.http.request("PUT", `/_/api/links/${id}`, { body });
+    return this.http
+      .requestLink<Link>("PUT", `/_/api/links/${id}`, { body });
   }
 
   /** Disable a link (stops redirecting). */
   disable(id: number): Promise<Link> {
-    return this.http.request("POST", `/_/api/links/${id}/disable`);
+    return this.http
+      .requestLink<Link>("POST", `/_/api/links/${id}/disable`);
   }
 
   /** Re-enable a disabled link. */
   enable(id: number): Promise<Link> {
-    return this.http.request("POST", `/_/api/links/${id}/enable`);
+    return this.http
+      .requestLink<Link>("POST", `/_/api/links/${id}/enable`);
   }
 
   /** Permanently delete a link. */

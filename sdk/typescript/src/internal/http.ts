@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ShrtnrError } from "../errors";
+import type { Link } from "../models";
 import { keysToCamel, keysToSnake } from "./case";
+import { withShortOrigin } from "./link";
 
 /**
  * The JSON container a resource method can consume: a single resource
@@ -38,13 +40,26 @@ function resolveGlobalFetch(): typeof fetch {
   return globalFetch.bind(globalThis);
 }
 
+// A base URL that does not parse fails on the first request with the
+// documented ShrtnrError, not here in the constructor.
+function originOf(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).origin;
+  } catch {
+    return baseUrl;
+  }
+}
+
 export class HttpClient {
   private readonly baseUrl: string;
+  /** Origin of the base URL, the fallback for a link without `short_origin`. */
+  private readonly origin: string;
   private readonly authHeader: string;
   private readonly fetchFn: typeof fetch;
 
   constructor(config: HttpClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, "");
+    this.origin = originOf(this.baseUrl);
     this.authHeader = `Bearer ${config.apiKey}`;
     // A caller-supplied fetch needs the same globalThis binding as the
     // default: it's typically a bare reference like `window.fetch` (see the
@@ -52,6 +67,19 @@ export class HttpClient {
     // already-bound function ignores the new receiver, so this is a no-op
     // for implementations that don't care about `this`.
     this.fetchFn = config.fetch ? config.fetch.bind(globalThis) : resolveGlobalFetch();
+  }
+
+  /**
+   * request() for an endpoint that answers a link or a list of links. Every
+   * such call goes through here so none can forget the `shortOrigin` fallback
+   * for a deployment older than the field.
+   */
+  requestLink<T extends Link | Link[]>(
+    method: string,
+    path: string,
+    options: { body?: unknown; query?: Record<string, string | undefined>; shape?: JsonShape } = {},
+  ): Promise<T> {
+    return this.request<T>(method, path, options).then((value) => withShortOrigin(value, this.origin));
   }
 
   async request<T>(
