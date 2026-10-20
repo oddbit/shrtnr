@@ -128,11 +128,11 @@ Deployment settings a client needs to build short URLs.
 | `get()` | Origin short URLs are handed out on |
 
 ```ts
-// Build a short URL on the origin the deployment hands links out on, from the
-// primary slug: the one the copy button and the QR code use
-const { shortOrigin } = await client.config.get();
-const primary = link.slugs.find((s) => s.isPrimary) ?? link.slugs[0];
-const shortUrl = `${shortOrigin}/${primary.slug}`;
+// Matches the copy button and QR code: primary slug, else first custom, else generated.
+// link.shortOrigin works on deployments that predate config.get().
+const primary =
+  link.slugs.find((s) => s.isPrimary) ?? link.slugs.find((s) => s.isCustom) ?? link.slugs[0];
+const shortUrl = `${link.shortOrigin}/${primary.slug}`;
 ```
 
 ## Models

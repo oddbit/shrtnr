@@ -143,11 +143,14 @@ Deployment settings a client needs to build short URLs.
 | `get()` | Origin short URLs are handed out on |
 
 ```python
-# Build a short URL on the origin the deployment hands links out on, from the
-# primary slug: the one the copy button and the QR code use
-config = client.config.get()
-primary = next((s for s in link.slugs if s.is_primary), link.slugs[0])
-short_url = f"{config.short_origin}/{primary.slug}"
+# Matches the copy button and QR code: primary slug, else first custom, else generated.
+# link.short_origin works on deployments that predate config.get().
+primary = (
+    next((s for s in link.slugs if s.is_primary), None)
+    or next((s for s in link.slugs if s.is_custom), None)
+    or link.slugs[0]
+)
+short_url = f"{link.short_origin}/{primary.slug}"
 ```
 
 ## Models

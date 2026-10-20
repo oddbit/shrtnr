@@ -128,14 +128,16 @@ Deployment settings a client needs to build short URLs.
 | `get()` | Origin short URLs are handed out on |
 
 ```dart
-// Build a short URL on the origin the deployment hands links out on, from the
-// primary slug: the one the copy button and the QR code use
-final config = await client.config.get();
+// Matches the copy button and QR code: primary slug, else first custom, else generated.
+// link.shortOrigin works on deployments that predate config.get().
 final primary = link.slugs.firstWhere(
   (s) => s.isPrimary == 1,
-  orElse: () => link.slugs.first,
+  orElse: () => link.slugs.firstWhere(
+    (s) => s.isCustom == 1,
+    orElse: () => link.slugs.first,
+  ),
 );
-print('${config.shortOrigin}/${primary.slug}');
+print('${link.shortOrigin}/${primary.slug}');
 ```
 
 ## Models
