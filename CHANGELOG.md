@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.43.0 (2026-10-20)
+
+Short URLs can be pinned to one origin, API and MCP clients learn that origin, and the admin speaks Simplified Chinese.
+
+- **`SHORT_ORIGIN` pins the origin short URLs are handed out on.** A deployment that answers on several domains used to hand out whichever host the admin was opened on. The copy button, the QR modal and the QR code now use the configured origin. Unset keeps the request origin, and a value that is not a bare http(s) origin is ignored with a warning.
+- **API and MCP clients get the same origin.** `GET /_/api/config` answers it, and every public link response and MCP link tool carries a `short_origin` field. The SDKs ship this in npm 1.3.0, PyPI 1.3.0 and pub 2.3.0.
+- **A copy is announced only when it reached the clipboard.** On plain http, or when the browser refuses the write, the admin used to confirm a copy that never happened. The API key modal now selects the key and says to copy it by hand. The copy button names the URL in an error toast that stays up for 10 s. Creating a link waits up to 1.5 s for the copy before it opens the link page.
+- **Simplified Chinese** joins English, Indonesian and Swedish in the language picker.
+- **Fixes.** The bundles page no longer fails past roughly 100 bundles (D1's bound-parameter cap). A settings request rejected on one field no longer stores the fields before it. `/_/health` stops reporting a stale degraded status once the schema recovers. Page titles decode every hex entity and the uppercase named ones. Bundle card stats line up across a grid row.
+- App dependencies are on their latest releases. The docs gain architecture, code map and code rules pages, and the rest are condensed.
+
 ## 0.42.1 (2026-09-23)
 
 The authorization model is now written down as tests, and the API reference, the MCP tool descriptions and the access guide are rewritten from them (PR #69). No behavior changed.
