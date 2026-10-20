@@ -13,27 +13,20 @@ class LinksResource {
 
   /// Get a link by ID. Optional [range] scopes the click count to a time window.
   Future<Link> get(int id, {TimelineRange? range}) async {
-    final json = await _http.requestJson(
+    return _http.requestLink(
       'GET',
       '/_/api/links/$id',
       query: {'range': range?.wireValue},
     );
-    return Link.fromJson(json! as Map<String, dynamic>,
-        defaultOrigin: _http.origin);
   }
 
   /// List all links. Filter by [owner] identity or click-count [range].
   Future<List<Link>> list({String? owner, TimelineRange? range}) async {
-    final json = await _http.requestJson(
+    return _http.requestLinks(
       'GET',
       '/_/api/links',
       query: {'owner': owner, 'range': range?.wireValue},
-      shape: JsonShape.list,
     );
-    return (json! as List<dynamic>)
-        .map((dynamic e) => Link.fromJson(e as Map<String, dynamic>,
-            defaultOrigin: _http.origin))
-        .toList(growable: false);
   }
 
   /// Create a new short link.
@@ -49,9 +42,7 @@ class LinksResource {
     if (slugLength != null) body['slug_length'] = slugLength;
     if (expiresAt != null) body['expires_at'] = expiresAt;
     if (allowDuplicate != null) body['allow_duplicate'] = allowDuplicate;
-    final json = await _http.requestJson('POST', '/_/api/links', body: body);
-    return Link.fromJson(json! as Map<String, dynamic>,
-        defaultOrigin: _http.origin);
+    return _http.requestLink('POST', '/_/api/links', body: body);
   }
 
   /// Update a link with the values held by [link].
@@ -68,24 +59,17 @@ class LinksResource {
       'label': link.label,
       'expires_at': link.expiresAt,
     };
-    final json =
-        await _http.requestJson('PUT', '/_/api/links/${link.id}', body: body);
-    return Link.fromJson(json! as Map<String, dynamic>,
-        defaultOrigin: _http.origin);
+    return _http.requestLink('PUT', '/_/api/links/${link.id}', body: body);
   }
 
   /// Disable a link so it stops redirecting.
   Future<Link> disable(int id) async {
-    final json = await _http.requestJson('POST', '/_/api/links/$id/disable');
-    return Link.fromJson(json! as Map<String, dynamic>,
-        defaultOrigin: _http.origin);
+    return _http.requestLink('POST', '/_/api/links/$id/disable');
   }
 
   /// Re-enable a disabled link.
   Future<Link> enable(int id) async {
-    final json = await _http.requestJson('POST', '/_/api/links/$id/enable');
-    return Link.fromJson(json! as Map<String, dynamic>,
-        defaultOrigin: _http.origin);
+    return _http.requestLink('POST', '/_/api/links/$id/enable');
   }
 
   /// Permanently delete a link.

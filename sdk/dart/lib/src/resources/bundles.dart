@@ -131,15 +131,7 @@ class BundlesResource {
 
   /// List links in a bundle.
   Future<List<Link>> links(int id) async {
-    final json = await _http.requestJson(
-      'GET',
-      '/_/api/bundles/$id/links',
-      shape: JsonShape.list,
-    );
-    return (json! as List<dynamic>)
-        .map((dynamic e) => Link.fromJson(e as Map<String, dynamic>,
-            defaultOrigin: _http.origin))
-        .toList(growable: false);
+    return _http.requestLinks('GET', '/_/api/bundles/$id/links');
   }
 
   /// Add a link to a bundle. Idempotent.

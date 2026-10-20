@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'errors.dart';
+import 'models.dart';
 
 /// Value of the `X-Client` header sent on every request.
 ///
@@ -53,7 +54,7 @@ class ShrtnrBaseClient {
   /// [Uri.origin] drops any credentials. It throws for a scheme other than
   /// http(s); such a base URL fails on the first request with the documented
   /// [ShrtnrError], so the fallback is the URL as given.
-  late final String origin = () {
+  late final String _origin = () {
     try {
       return Uri.parse(_baseUrl).origin;
     } on Object {
@@ -70,6 +71,33 @@ class ShrtnrBaseClient {
       out = out.substring(0, out.length - 1);
     }
     return out;
+  }
+
+  /// [requestJson] for an endpoint that answers a link. Every such call goes
+  /// through here or [requestLinks], so none can forget the `short_origin`
+  /// fallback for a deployment older than the field.
+  Future<Link> requestLink(
+    String method,
+    String path, {
+    Map<String, String?>? query,
+    Object? body,
+  }) async {
+    final json = await requestJson(method, path, query: query, body: body);
+    return Link.fromJson(json! as Map<String, dynamic>, defaultOrigin: _origin);
+  }
+
+  /// [requestJson] for an endpoint that answers a list of links.
+  Future<List<Link>> requestLinks(
+    String method,
+    String path, {
+    Map<String, String?>? query,
+  }) async {
+    final json =
+        await requestJson(method, path, query: query, shape: JsonShape.list);
+    return (json! as List<dynamic>)
+        .map((dynamic e) =>
+            Link.fromJson(e as Map<String, dynamic>, defaultOrigin: _origin))
+        .toList(growable: false);
   }
 
   /// Issues an HTTP request and returns the parsed JSON body.
