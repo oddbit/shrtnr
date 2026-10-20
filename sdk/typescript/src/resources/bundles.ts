@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { HttpClient } from "../internal/http";
-import { withShortOrigin } from "../internal/link";
 import {
   AddedResult,
   BreakdownDimension,
@@ -88,8 +87,7 @@ export class BundlesResource {
   /** List links in a bundle. */
   links(id: number): Promise<Link[]> {
     return this.http
-      .request<Link[]>("GET", `/_/api/bundles/${id}/links`, { shape: "array" })
-      .then((value) => withShortOrigin(value, this.http.origin));
+      .requestLink<Link[]>("GET", `/_/api/bundles/${id}/links`, { shape: "array" });
   }
 
   /** Add a link to a bundle. */

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { HttpClient } from "../internal/http";
-import { withShortOrigin } from "../internal/link";
 import {
   BreakdownDimension,
   BreakdownPage,
@@ -22,48 +21,42 @@ export class LinksResource {
   /** Get a link by ID. Optional range controls the click-count window. */
   get(id: number, options: { range?: TimelineRange } = {}): Promise<Link> {
     return this.http
-      .request<Link>("GET", `/_/api/links/${id}`, {
+      .requestLink<Link>("GET", `/_/api/links/${id}`, {
         query: { range: options.range },
-      })
-      .then((value) => withShortOrigin(value, this.http.origin));
+      });
   }
 
   /** List all links. Filter by owner or click-count range. */
   list(options: { owner?: string; range?: TimelineRange } = {}): Promise<Link[]> {
     return this.http
-      .request<Link[]>("GET", "/_/api/links", {
+      .requestLink<Link[]>("GET", "/_/api/links", {
         query: { owner: options.owner, range: options.range },
         shape: "array",
-      })
-      .then((value) => withShortOrigin(value, this.http.origin));
+      });
   }
 
   /** Create a new short link. */
   create(body: CreateLinkBody): Promise<Link> {
     return this.http
-      .request<Link>("POST", "/_/api/links", { body })
-      .then((value) => withShortOrigin(value, this.http.origin));
+      .requestLink<Link>("POST", "/_/api/links", { body });
   }
 
   /** Update a link's URL, label, or expiry. */
   update(id: number, body: UpdateLinkBody): Promise<Link> {
     return this.http
-      .request<Link>("PUT", `/_/api/links/${id}`, { body })
-      .then((value) => withShortOrigin(value, this.http.origin));
+      .requestLink<Link>("PUT", `/_/api/links/${id}`, { body });
   }
 
   /** Disable a link (stops redirecting). */
   disable(id: number): Promise<Link> {
     return this.http
-      .request<Link>("POST", `/_/api/links/${id}/disable`)
-      .then((value) => withShortOrigin(value, this.http.origin));
+      .requestLink<Link>("POST", `/_/api/links/${id}/disable`);
   }
 
   /** Re-enable a disabled link. */
   enable(id: number): Promise<Link> {
     return this.http
-      .request<Link>("POST", `/_/api/links/${id}/enable`)
-      .then((value) => withShortOrigin(value, this.http.origin));
+      .requestLink<Link>("POST", `/_/api/links/${id}/enable`);
   }
 
   /** Permanently delete a link. */
