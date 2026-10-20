@@ -140,8 +140,7 @@ class Bundles(_SyncResource):
     def links(self, id: int) -> _list[Link]:
         """List links in a bundle."""
         url = self._url(f"/_/api/bundles/{id}/links")
-        data = self._request("GET", url, shape="array", headers=self._headers())
-        return [Link.from_dict(x, self._origin) for x in data]
+        return self._request_links("GET", url, headers=self._headers())
 
     def add_link(self, id: int, link_id: int) -> AddedResult:
         """Add a link to a bundle."""
@@ -268,8 +267,7 @@ class AsyncBundles(_AsyncResource):
     async def links(self, id: int) -> _list[Link]:
         """List links in a bundle."""
         url = self._url(f"/_/api/bundles/{id}/links")
-        data = await self._request("GET", url, shape="array", headers=self._headers())
-        return [Link.from_dict(x, self._origin) for x in data]
+        return await self._request_links("GET", url, headers=self._headers())
 
     async def add_link(self, id: int, link_id: int) -> AddedResult:
         """Add a link to a bundle."""

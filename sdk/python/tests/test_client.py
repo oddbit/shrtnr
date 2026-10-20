@@ -250,11 +250,23 @@ def test_links_fall_back_to_the_base_url_origin_without_short_origin(client: Shr
     respx.get(f"{BASE_URL}/_/api/bundles/42/links").mock(
         return_value=httpx.Response(200, json=[legacy])
     )
+    respx.post(f"{BASE_URL}/_/api/links").mock(return_value=httpx.Response(201, json=legacy))
+    respx.put(f"{BASE_URL}/_/api/links/3").mock(return_value=httpx.Response(200, json=legacy))
+    respx.post(f"{BASE_URL}/_/api/links/3/disable").mock(
+        return_value=httpx.Response(200, json=legacy)
+    )
+    respx.post(f"{BASE_URL}/_/api/links/3/enable").mock(
+        return_value=httpx.Response(200, json=legacy)
+    )
 
     assert client.links.get(3).short_origin == BASE_URL
     assert [link.short_origin for link in client.links.list()] == [BASE_URL]
     assert client.slugs.lookup("auto").short_origin == BASE_URL
     assert [link.short_origin for link in client.bundles.links(42)] == [BASE_URL]
+    assert client.links.create(url="https://example.com").short_origin == BASE_URL
+    assert client.links.update(3, label="x").short_origin == BASE_URL
+    assert client.links.disable(3).short_origin == BASE_URL
+    assert client.links.enable(3).short_origin == BASE_URL
 
 
 @respx.mock

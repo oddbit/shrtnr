@@ -16,6 +16,7 @@ from urllib.parse import quote, urlsplit
 import httpx
 
 from .errors import ShrtnrError
+from .models import Link
 
 DEFAULT_TIMEOUT = 30.0
 
@@ -188,6 +189,15 @@ class _SyncResource:
     def _request_text(self, method: str, url: str, **kwargs: Any) -> str:
         return parse_text_response(self._send(method, url, **kwargs))
 
+    # Every endpoint that answers a link goes through these two, so none can
+    # forget the short_origin fallback for a deployment older than the field.
+    def _request_link(self, method: str, url: str, **kwargs: Any) -> Link:
+        return Link.from_dict(self._request(method, url, **kwargs), self._origin)
+
+    def _request_links(self, method: str, url: str, **kwargs: Any) -> list[Link]:
+        data = self._request(method, url, shape="array", **kwargs)
+        return [Link.from_dict(x, self._origin) for x in data]
+
 
 class _AsyncResource:
     """Async twin of :class:`_SyncResource`."""
@@ -222,3 +232,10 @@ class _AsyncResource:
 
     async def _request_text(self, method: str, url: str, **kwargs: Any) -> str:
         return parse_text_response(await self._send(method, url, **kwargs))
+
+    async def _request_link(self, method: str, url: str, **kwargs: Any) -> Link:
+        return Link.from_dict(await self._request(method, url, **kwargs), self._origin)
+
+    async def _request_links(self, method: str, url: str, **kwargs: Any) -> list[Link]:
+        data = await self._request(method, url, shape="array", **kwargs)
+        return [Link.from_dict(x, self._origin) for x in data]
