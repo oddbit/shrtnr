@@ -258,6 +258,14 @@ def test_links_fall_back_to_the_base_url_origin_without_short_origin(client: Shr
 
 
 @respx.mock
+def test_links_fallback_treats_an_empty_short_origin_as_missing(client: Shrtnr) -> None:
+    respx.get(f"{BASE_URL}/_/api/links/3").mock(
+        return_value=httpx.Response(200, json=make_link_dict(link_id=3, short_origin=""))
+    )
+    assert client.links.get(3).short_origin == BASE_URL
+
+
+@respx.mock
 def test_links_fallback_is_the_origin_without_path_or_trailing_slash() -> None:
     legacy = make_link_dict(link_id=3)
     del legacy["short_origin"]

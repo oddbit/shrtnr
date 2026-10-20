@@ -524,6 +524,13 @@ void main() {
       }
     });
 
+    // Python and TypeScript treat an empty value as missing. Dart replaced
+    // only null, and an empty origin builds '/abc' instead of a URL.
+    test('treats an empty short_origin as missing', () async {
+      final m = _mock(status: 200, body: _linkJson(shortOrigin: ''));
+      expect((await m.client.links.get(1)).shortOrigin, _base);
+    });
+
     test('keeps the value a response carries', () async {
       final m =
           _mock(status: 200, body: _linkJson(shortOrigin: 'https://c.example'));

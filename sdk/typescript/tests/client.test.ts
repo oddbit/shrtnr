@@ -551,6 +551,11 @@ describe("links without short_origin", () => {
     expect(link.shortOrigin).toBe(BASE);
   });
 
+  it("treats an empty short_origin as missing", async () => {
+    mockFetch(200, { ...stubLink, short_origin: "" });
+    expect((await client().links.get(1)).shortOrigin).toBe(BASE);
+  });
+
   it("keeps the value a response carries", async () => {
     mockFetch(200, stubLink);
     expect((await client().links.get(1)).shortOrigin).toBe("https://c.example");

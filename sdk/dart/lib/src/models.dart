@@ -250,7 +250,12 @@ class Link {
             .map((dynamic s) => Slug.fromJson(s as Map<String, dynamic>))
             .toList(growable: false),
         totalClicks: ((json['total_clicks'] as num?) ?? 0).toInt(),
-        shortOrigin: (json['short_origin'] as String?) ?? defaultOrigin,
+        // An empty value counts as missing, as in the Python and TypeScript
+        // SDKs: it would build '/slug' instead of a URL.
+        shortOrigin: switch (json['short_origin']) {
+          final String origin when origin.isNotEmpty => origin,
+          _ => defaultOrigin,
+        },
         deltaPct: (json['delta_pct'] as num?)?.toDouble(),
       );
 
