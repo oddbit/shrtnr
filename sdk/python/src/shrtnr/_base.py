@@ -47,14 +47,32 @@ def _build_request_headers(api_key: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {api_key}", "X-Client": "sdk"}
 
 
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
 def _origin_of(base_url: str) -> str:
     """The origin of the client's base URL: what a deployment older than the
-    ``short_origin`` field hands short URLs out on."""
-    parts = urlsplit(base_url)
-    # netloc keeps any user:password@ prefix; an origin never carries it, and
-    # a short URL built from it would hand the credentials out.
-    host = parts.netloc.rpartition("@")[2]
-    return f"{parts.scheme}://{host}" if parts.scheme and host else base_url.rstrip("/")
+    ``short_origin`` field hands short URLs out on.
+
+    Matches URL.origin, which the server and the TypeScript SDK use (Dart's
+    Uri.origin agrees): scheme and host lowercased, a default port dropped,
+    credentials left out so a short URL never hands them out. A base URL that
+    does not parse falls back to itself: it fails on the first request with
+    the documented ShrtnrError, not here in the constructor.
+    """
+    try:
+        parts = urlsplit(base_url)
+        scheme = parts.scheme.lower()
+        host = parts.hostname
+        port = parts.port
+    except ValueError:
+        return base_url.rstrip("/")
+    if scheme not in _DEFAULT_PORTS or not host:
+        return base_url.rstrip("/")
+    if ":" in host:
+        host = f"[{host}]"
+    suffix = f":{port}" if port is not None and port != _DEFAULT_PORTS[scheme] else ""
+    return f"{scheme}://{host}{suffix}"
 
 
 def _build_url(base_url: str, path: str, query: dict[str, str | None] | None = None) -> str:

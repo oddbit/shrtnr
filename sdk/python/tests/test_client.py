@@ -152,6 +152,19 @@ def test_malformed_base_url_wraps_as_status_0() -> None:
         assert exc_info.value.status == 0
 
 
+@pytest.mark.parametrize("base_url", ["http://[::1", "https://shrtnr.test:notaport"])
+def test_unparseable_base_url_fails_on_the_first_call_not_the_constructor(base_url: str) -> None:
+    # urlsplit() raises ValueError for an unclosed IPv6 bracket, and .port
+    # raises it for a port that is not a number. Deriving the fallback origin
+    # in the constructor let either escape from Shrtnr(...) as a bare
+    # ValueError. TypeScript and Dart construct the client and raise their
+    # documented error on the first call, and so does this SDK.
+    with Shrtnr(base_url=base_url, api_key=API_KEY) as client:
+        with pytest.raises(ShrtnrError) as exc_info:
+            client.links.list()
+        assert exc_info.value.status == 0
+
+
 # ---- Base URL normalization ----
 
 
@@ -260,6 +273,29 @@ def test_links_fallback_drops_credentials_from_the_base_url() -> None:
     respx.get(f"{BASE_URL}/_/api/links/3").mock(return_value=httpx.Response(200, json=legacy))
     with Shrtnr(base_url="https://user:secret@shrtnr.test", api_key=API_KEY) as c:
         assert c.links.get(3).short_origin == BASE_URL
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("base_url", "origin"),
+    [
+        ("https://Shrtnr.TEST:443", "https://shrtnr.test"),
+        ("HTTP://shrtnr.test:80/api", "http://shrtnr.test"),
+        ("http://shrtnr.test:8787", "http://shrtnr.test:8787"),
+        ("http://[::1]:8787", "http://[::1]:8787"),
+    ],
+)
+def test_links_fallback_matches_the_url_origin_the_server_and_other_sdks_use(
+    base_url: str, origin: str
+) -> None:
+    # The server builds the origin with URL.origin, and the TypeScript and
+    # Dart SDKs use URL.origin and Uri.origin: the host lowercased, a default
+    # port dropped. This SDK has to hand out the same string.
+    legacy = make_link_dict(link_id=3)
+    del legacy["short_origin"]
+    respx.get(url__regex=r".*/_/api/links/3$").mock(return_value=httpx.Response(200, json=legacy))
+    with Shrtnr(base_url=base_url, api_key=API_KEY) as c:
+        assert c.links.get(3).short_origin == origin
 
 
 def test_link_constructor_does_not_require_short_origin() -> None:
