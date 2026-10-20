@@ -1065,7 +1065,10 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
   line-height: 1.45;
 }
 
+/* margin-top: auto drops stats, sparkline and footer to the card bottom, so
+   cards in a row align whatever the description length. */
 .bundle-card-stats {
+  margin-top: auto;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.5rem 1rem;
