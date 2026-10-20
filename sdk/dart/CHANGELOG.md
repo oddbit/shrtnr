@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.3.0 (2026-10-20)
+
+Clients can build the same short URLs the admin hands out.
+
+- **`Link.shortOrigin`** carries the origin the deployment hands short URLs out on: its `SHORT_ORIGIN` when set, otherwise the request origin. Build a short URL as `'${link.shortOrigin}/$slug'`.
+- **`client.config.get()`** returns that origin on its own as a `Config`, for a client that holds no link. It needs app 0.43.0 or later.
+- **Older deployments still work.** A Worker that predates the field answers without it, and every method that returns a link fills in the origin of the client's `baseUrl`. An empty value counts as missing. The TypeScript and Python SDKs behave the same in 1.3.0.
+- `Link.shortOrigin` defaults to `''` in the constructor, so code that builds a `Link` by hand keeps working.
+- Records the spec hash for app 0.43.0.
+
 ## 2.2.1 (2026-09-22)
 
 Error-handling fixes on the transport. No public surface changes.
