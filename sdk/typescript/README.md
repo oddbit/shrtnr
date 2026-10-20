@@ -37,7 +37,7 @@ new ShrtnrClient({
 })
 ```
 
-The `fetch` option is useful for test mocking or custom TLS configurations.
+Pass `fetch` for test mocks or custom TLS.
 
 ## Resources
 
@@ -137,9 +137,9 @@ const shortUrl = `${shortOrigin}/${primary.slug}`;
 
 ## Models
 
-All model fields use camelCase. The SDK converts snake_case JSON from the wire automatically.
+Model fields use camelCase. The SDK converts the snake_case wire JSON.
 
-Every `Link` carries `shortOrigin`, the origin this deployment hands its short URLs out on (the deployment's `SHORT_ORIGIN`, or the request origin when unset). `client.config.get()` answers the same value on its own. A deployment older than the field answers without it, and the SDK fills in the origin of the client's `baseUrl`, which is the origin such a deployment hands out.
+Every `Link` carries `shortOrigin`: the origin this deployment hands short URLs out on. It is the deployment's `SHORT_ORIGIN` when set, otherwise the request origin. `client.config.get()` returns the same value. Build short URLs as `${shortOrigin}/${slug}` so they match the copy button, the QR code and the redirects. Deployments older than the field omit it, so the SDK fills in the origin of `baseUrl`.
 
 Key types exported from `@oddbit/shrtnr`:
 
@@ -154,7 +154,7 @@ Key types exported from `@oddbit/shrtnr`:
 
 ## Errors
 
-Every 4xx/5xx response throws `ShrtnrError`. Network failures also throw `ShrtnrError` with `status: 0`.
+Any 4xx/5xx response or network failure throws `ShrtnrError`. A network failure carries `status: 0`.
 
 ```ts
 import { ShrtnrError } from "@oddbit/shrtnr";

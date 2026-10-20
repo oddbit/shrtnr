@@ -22,7 +22,7 @@ link = client.links.create(url="https://example.com/very-long-path")
 print(link.slugs[0].slug)  # "a3x9"
 ```
 
-Async usage:
+Async:
 
 ```python
 import asyncio
@@ -47,9 +47,7 @@ Shrtnr(
 )
 ```
 
-`AsyncShrtnr` accepts the same parameters, but takes an `httpx.AsyncClient` for `http_client`.
-
-Both classes work as context managers:
+`AsyncShrtnr` takes the same parameters, with an `httpx.AsyncClient` for `http_client`. Both classes work as context managers:
 
 ```python
 with Shrtnr(base_url="...", api_key="sk_...") as client:
@@ -154,13 +152,9 @@ short_url = f"{config.short_origin}/{primary.slug}"
 
 ## Models
 
-All model fields use snake_case, matching the wire format. Types are frozen dataclasses.
+Model fields use snake_case, matching the wire format. Types are frozen dataclasses.
 
-Every `Link` carries `short_origin`: the origin this deployment hands short URLs out on (its
-`SHORT_ORIGIN` when set, otherwise the origin of the request). Build short URLs as
-`f"{short_origin}/{slug}"` so they match the copy button, the QR code and the redirects.
-A deployment older than the field answers without it, and the SDK fills in the origin of
-the client's `base_url`, which is the origin such a deployment hands out.
+Every `Link` carries `short_origin`: the origin this deployment hands short URLs out on. It is the deployment's `SHORT_ORIGIN` when set, otherwise the request origin. `client.config.get()` returns the same value. Build short URLs as `f"{short_origin}/{slug}"` so they match the copy button, the QR code and the redirects. Deployments older than the field omit it, so the SDK fills in the origin of `base_url`.
 
 Key types exported from `shrtnr`:
 
@@ -175,8 +169,7 @@ Key types exported from `shrtnr`:
 
 ## Errors
 
-Every 4xx/5xx response raises `ShrtnrError`. Network failures also raise `ShrtnrError` with
-`status=0`.
+Any 4xx/5xx response or network failure raises `ShrtnrError`. A network failure carries `status=0`.
 
 ```python
 from shrtnr import ShrtnrError

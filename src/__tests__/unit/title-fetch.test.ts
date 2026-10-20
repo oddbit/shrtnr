@@ -35,6 +35,25 @@ describe("extractTitle", () => {
     expect(extractTitle("<title>Party &#127881;</title>")).toBe("Party \u{1F389}");
   });
 
+  it("decodes any hex numeric reference", () => {
+    expect(extractTitle("<title>Foo &#x2014; Bar</title>")).toBe("Foo — Bar");
+    expect(extractTitle("<title>Party &#X1F389;</title>")).toBe("Party \u{1F389}");
+    expect(extractTitle("<title>It&#x27;s</title>")).toBe("It's");
+  });
+
+  it("leaves out-of-range numeric references as literal text", () => {
+    expect(extractTitle("<title>a &#x110000; b</title>")).toBe("a &#x110000; b");
+    expect(extractTitle("<title>a &#1114112; b</title>")).toBe("a &#1114112; b");
+  });
+
+  it("decodes the uppercase entity forms HTML defines", () => {
+    expect(extractTitle("<title>Tom &AMP; Jerry &LT;3 &QUOT;hi&QUOT; &GT;</title>")).toBe('Tom & Jerry <3 "hi" >');
+  });
+
+  it("leaves mixed-case entity names as literal text", () => {
+    expect(extractTitle("<title>Tom &Amp; Jerry</title>")).toBe("Tom &Amp; Jerry");
+  });
+
   it("decodes HTML entities", () => {
     expect(extractTitle("<title>Tom &amp; Jerry &#39;s</title>")).toBe("Tom & Jerry 's");
   });

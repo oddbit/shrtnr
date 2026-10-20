@@ -212,10 +212,10 @@ export function extractTitle(html: string): string | null {
   // One pass, so "&amp;lt;" decodes to the text "&lt;" and not to "<".
   const raw = match[1]
     .replace(/\s+/g, " ")
-    .replace(/&(?:(amp|lt|gt|quot)|#x27|#(\d+));/g, (whole, name, code) => {
-      if (name) return named[name];
-      if (code === undefined) return "'";
-      const point = parseInt(code, 10);
+    // HTML defines the uppercase forms of these four names, but no mixed case.
+    .replace(/&(?:(amp|lt|gt|quot|AMP|LT|GT|QUOT)|#[xX]([0-9a-fA-F]+)|#(\d+));/g, (whole, name, hex, dec) => {
+      if (name) return named[name.toLowerCase()];
+      const point = hex ? parseInt(hex, 16) : parseInt(dec, 10);
       return point <= 0x10ffff ? String.fromCodePoint(point) : whole;
     })
     .trim();

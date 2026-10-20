@@ -1440,6 +1440,20 @@ export class ClickRepository {
     // dataset-wide day span.)
     includeCardExtras = false,
   ): Promise<Map<number, { total_clicks: number; delta_pct?: number; sparkline: number[]; top_links: { slug: string; click_count: number }[]; clicked_links?: number }>> {
+    // Every query below binds one parameter per bundle id, and D1 rejects a
+    // statement past D1_MAX_BOUND_PARAMS. Past one chunk, summarise slices of
+    // the ids and merge: the summaries are per bundle, so slices are independent.
+    if (bundleIds.length > BUNDLE_SUMMARY_CHUNK) {
+      const merged = new Map<number, { total_clicks: number; delta_pct?: number; sparkline: number[]; top_links: { slug: string; click_count: number }[]; clicked_links?: number }>();
+      const ts = now ?? Math.floor(Date.now() / 1000);
+      for (let i = 0; i < bundleIds.length; i += BUNDLE_SUMMARY_CHUNK) {
+        const part = await this.getBundleSummariesBulk(
+          db, bundleIds.slice(i, i + BUNDLE_SUMMARY_CHUNK), ts, filters, range, includeCardExtras,
+        );
+        for (const [id, summary] of part) merged.set(id, summary);
+      }
+      return merged;
+    }
     const out = new Map<number, { total_clicks: number; delta_pct?: number; sparkline: number[]; top_links: { slug: string; click_count: number }[]; clicked_links?: number }>();
     for (const id of bundleIds) {
       out.set(id, { total_clicks: 0, sparkline: [], top_links: [] });
@@ -1586,6 +1600,9 @@ export class ClickRepository {
     return out;
   }
 }
+
+/** Bundle ids bound per statement in getBundleSummariesBulk, with headroom under D1_MAX_BOUND_PARAMS for the range and filter binds. */
+const BUNDLE_SUMMARY_CHUNK = 50;
 
 function countDistinctHosts(rows: { url: string }[]): number {
   const hosts = new Set<string>();
