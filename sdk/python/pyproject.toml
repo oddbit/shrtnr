@@ -49,11 +49,11 @@ Issues = "https://github.com/oddbit/shrtnr/issues"
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=9.1.1",
-  "pytest-asyncio>=1.4.0",
+  "pytest>=9.2.0",
+  "pytest-asyncio>=1.4.1",
   "respx>=0.23.1",
-  "mypy>=2.3.1",
-  "ruff>=0.16.9",
+  "mypy>=2.4.0",
+  "ruff>=0.17.3",
 ]
 
 [tool.hatch.build.targets.wheel]
