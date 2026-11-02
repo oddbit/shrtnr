@@ -1025,48 +1025,88 @@ function fmtAvgPerDay(totalClicks, range, createdAt) {
   return String(Math.round(avg));
 }
 
-// The chart's x-axis label for one bucket. Bucket labels are canonical and
-// UTC: "YYYY-MM-DD HH" for hourly, "YYYY-MM-DD" for daily and weekly, and
-// "YYYY-MM" for monthly.
-//
-// The label is composed by Intl rather than by gluing a translated month name
-// onto a day number, because which of the two comes first, and what sits
-// between them, are locale decisions: en puts the month first ("Jul 16"), sv
-// and id put the day first ("16 juli", "16 Jul"), and zh needs a day counter
-// ("7月16日"). The glue rendered a monthly bucket as "7月 26", which reads as
-// the 26th of July rather than July 2026, and a two-digit year is not the fix
-// either, because zh renders that as "26年7月", the year 26.
-function fmtLabel(label, range) {
-  if (range === '24h') {
-    // "YYYY-MM-DD HH" → "HH:00"
-    return label.slice(11) + ':00';
-  }
-  var parts = label.split('-');
-  var monthly = parts.length === 2;
-  var day = monthly ? 1 : parseInt(parts[2], 10);
-  var dt = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, day));
-  if (monthly) return dt.toLocaleDateString(UI_LANG, { year: 'numeric', month: 'short', timeZone: 'UTC' });
-  return dt.toLocaleDateString(UI_LANG, { month: 'short', day: 'numeric', timeZone: 'UTC' });
-}
-
-// Humanizes a canonical bucket label ("YYYY-MM", "YYYY-MM-DD", or
-// "YYYY-MM-DD HH") into a full, locale-aware date for point tooltips. Buckets
-// are UTC, so format in UTC to match the axis offsets.
-function fmtBucketDate(label) {
+// Chart bucket labels are canonical and UTC: "YYYY-MM-DD HH" for hourly,
+// "YYYY-MM-DD" for daily and weekly, and "YYYY-MM" for monthly. The label's
+// shape picks the format. The range does not.
+function bucketDate(label) {
   var split = label.split(' ');
   var d = split[0].split('-');
-  var y = parseInt(d[0], 10), mo = parseInt(d[1], 10);
-  if (d.length < 3) {
-    var dtM = new Date(Date.UTC(y, mo - 1, 1));
-    return dtM.toLocaleDateString(UI_LANG, { year: 'numeric', month: 'short', timeZone: 'UTC' });
-  }
+  var y = parseInt(d[0], 10), mo = parseInt(d[1], 10) - 1;
+  if (d.length < 3) return { dt: new Date(Date.UTC(y, mo, 1)), kind: 'month' };
   var day = parseInt(d[2], 10);
-  if (split.length > 1) {
-    var dtH = new Date(Date.UTC(y, mo - 1, day, parseInt(split[1], 10)));
-    return dtH.toLocaleString(UI_LANG, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+  if (split.length > 1) return { dt: new Date(Date.UTC(y, mo, day, parseInt(split[1], 10))), kind: 'hour' };
+  return { dt: new Date(Date.UTC(y, mo, day)), kind: 'day' };
+}
+
+// Intl orders the month and day, picks the separator and adds any counters:
+// en writes "Jul 16", sv and id write "16 juli" and "16 Jul", zh writes
+// "7月16日". Gluing a translated month name onto a day number gets these
+// wrong. Built once per page, like numberFormatter. A monthly label always
+// carries the full year. zh renders a two-digit year as "26年7月", which
+// reads as the year 26.
+var BUCKET_FORMATS = {
+  hour: new Intl.DateTimeFormat(UI_LANG, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }),
+  day: new Intl.DateTimeFormat(UI_LANG, { month: 'short', day: 'numeric', timeZone: 'UTC' }),
+  dayYear: new Intl.DateTimeFormat(UI_LANG, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }),
+  month: new Intl.DateTimeFormat(UI_LANG, { year: 'numeric', month: 'short', timeZone: 'UTC' }),
+  hourFull: new Intl.DateTimeFormat(UI_LANG, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
+};
+
+// The x-axis text for one bucket. withYear adds the year to a daily or
+// weekly label. Hourly labels show the time the tooltip shows.
+function fmtLabel(label, withYear) {
+  var b = bucketDate(label);
+  if (b.kind === 'day' && withYear) return BUCKET_FORMATS.dayYear.format(b.dt);
+  return BUCKET_FORMATS[b.kind].format(b.dt);
+}
+
+// The full date for a point's tooltip.
+function fmtBucketDate(label) {
+  var b = bucketDate(label);
+  if (b.kind === 'hour') return BUCKET_FORMATS.hourFull.format(b.dt);
+  if (b.kind === 'day') return BUCKET_FORMATS.dayYear.format(b.dt);
+  return BUCKET_FORMATS.month.format(b.dt);
+}
+
+// Estimated width of an axis label in viewBox units. The axis text is 9px
+// monospace: a Latin glyph advances about 0.6em, a CJK glyph a full em.
+function labelWidth(text) {
+  var w = 0;
+  for (var i = 0; i < text.length; i++) w += text.charCodeAt(i) >= 0x2E80 ? 9 : 5.4;
+  return w;
+}
+
+// Two centered labels overlap when their centers sit closer than half their
+// combined width plus a 6-unit gap.
+function labelsOverlap(a, b) {
+  return Math.abs(b.x - a.x) < (labelWidth(a.text) + labelWidth(b.text)) / 2 + 6;
+}
+
+// Picks the x-axis labels: every dotInterval-th bucket, and todayText on the
+// final bucket. When the axis crosses a year boundary, daily and weekly
+// labels print the year on the first label and wherever the year changes.
+// Otherwise "Oct 20" in 2025 and "Oct 5" in 2026 read as the same October.
+// A label that would overlap the one before it is dropped. The today label
+// always stays, so its neighbor gives way.
+function axisLabels(buckets, xs, dotInterval, todayText) {
+  var n = buckets.length;
+  var spansYears = n > 1 && buckets[0].label.slice(0, 4) !== buckets[n - 1].label.slice(0, 4);
+  var out = [];
+  var lastYear = '';
+  for (var i = 0; i < n; i++) {
+    var last = i === n - 1;
+    if (i % dotInterval !== 0 && !last) continue;
+    var year = buckets[i].label.slice(0, 4);
+    var label = { x: xs[i], text: last ? todayText : fmtLabel(buckets[i].label, spansYears && year !== lastYear) };
+    var prev = out[out.length - 1];
+    if (prev && labelsOverlap(prev, label)) {
+      if (!last) continue;
+      out.pop();
+    }
+    out.push(label);
+    lastYear = year;
   }
-  var dtD = new Date(Date.UTC(y, mo - 1, day));
-  return dtD.toLocaleDateString(UI_LANG, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return out;
 }
 
 function renderTimeline(data) {
@@ -1151,11 +1191,11 @@ function renderTimeline(data) {
     }
   }
 
-  for (var i = 0; i < n; i++) {
-    if (i % dotInterval === 0 || i === n - 1) {
-      var label = i === n - 1 ? t('linkDetail.today') : fmtLabel(buckets[i].label, data.range);
-      parts.push('<text x="' + pts[i][0].toFixed(1) + '" y="' + (h - 6) + '" font-size="9" fill="var(--color-text-subtle)" text-anchor="middle" font-family="var(--font-family-mono)">' + esc(label) + '</text>');
-    }
+  var xs = new Array(n);
+  for (var i = 0; i < n; i++) xs[i] = pts[i][0];
+  var axis = axisLabels(buckets, xs, dotInterval, t('linkDetail.today'));
+  for (var ai = 0; ai < axis.length; ai++) {
+    parts.push('<text x="' + axis[ai].x.toFixed(1) + '" y="' + (h - 6) + '" font-size="9" fill="var(--color-text-subtle)" text-anchor="middle" font-family="var(--font-family-mono)">' + esc(axis[ai].text) + '</text>');
   }
 
   // Invisible per-point hover bands. Each spans its column full-height so the
