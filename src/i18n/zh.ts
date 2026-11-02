@@ -277,20 +277,6 @@ const zh: Translations = {
   "widget.error": "无法加载此面板。",
   "widget.retry": "重试",
 
-  // Months (short)
-  "month.jan": "1月",
-  "month.feb": "2月",
-  "month.mar": "3月",
-  "month.apr": "4月",
-  "month.may": "5月",
-  "month.jun": "6月",
-  "month.jul": "7月",
-  "month.aug": "8月",
-  "month.sep": "9月",
-  "month.oct": "10月",
-  "month.nov": "11月",
-  "month.dec": "12月",
-
   // Time ranges
   "range.24h": "24小时",
   "range.7d": "7天",

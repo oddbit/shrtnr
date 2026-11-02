@@ -284,20 +284,6 @@ const id: Translations = {
   "widget.error": "Tidak dapat memuat panel ini.",
   "widget.retry": "Coba lagi",
 
-  // Months (short)
-  "month.jan": "Jan",
-  "month.feb": "Feb",
-  "month.mar": "Mar",
-  "month.apr": "Apr",
-  "month.may": "Mei",
-  "month.jun": "Jun",
-  "month.jul": "Jul",
-  "month.aug": "Agu",
-  "month.sep": "Sep",
-  "month.oct": "Okt",
-  "month.nov": "Nov",
-  "month.dec": "Des",
-
   // Time ranges
   "range.24h": "24J",
   "range.7d": "7H",
