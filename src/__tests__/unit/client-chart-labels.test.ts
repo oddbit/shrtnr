@@ -1,102 +1,135 @@
 // Copyright 2026 Oddbit (https://oddbit.id)
 // SPDX-License-Identifier: Apache-2.0
 
-// The admin client's chart x-axis labels. A canonical bucket label
-// ("YYYY-MM-DD HH" hourly, "YYYY-MM-DD" daily and weekly, "YYYY-MM" monthly)
-// becomes the text the axis shows. Which of the month and the day comes first,
-// what separates them, and whether the day or the year carries a counter are
-// locale decisions.
+// The admin client's chart x-axis labels. A canonical bucket label becomes
+// the text the axis shows: "YYYY-MM-DD HH" hourly, "YYYY-MM-DD" daily and
+// weekly, "YYYY-MM" monthly. The locale decides the order of month and day.
+// It also decides the separator and any counters.
 //
-// These tests cut the shipped functions out of adminClientScript() and run
-// them with UI_LANG set, the same way the other client.ts tests do. The chunk
-// runs with no t() in scope, so a version that went back to gluing translated
-// month names onto day numbers throws here instead of rendering a wrong label.
+// These tests cut the shipped code out of adminClientScript() for each
+// language. The script embeds that language's translation table, so t() and
+// UI_LANG come from the real wiring. Chart tests run the real renderTimeline()
+// and read the SVG it writes. Its geometry and label cadence stay private.
 //
 // Assertions name the components that carry meaning (month, day, year, hour)
-// and their order, not the whole string: ICU punctuation has shifted between
-// runtime versions. The server-side sibling, formatBucketLabel, is pinned the
-// same way in big-chart.test.ts.
+// and their order, not the whole string. ICU punctuation has shifted between
+// runtime versions. The server-side formatBucketLabel is pinned the same way
+// in big-chart.test.ts.
 import { describe, expect, it } from "vitest";
 import { adminClientScript } from "../../client";
-import { SUPPORTED_LANGUAGES } from "../../i18n";
-import type { Translations } from "../../i18n/types";
+import { getTranslations, SUPPORTED_LANGUAGES, type SupportedLanguage } from "../../i18n";
 import { extractTopLevelChunk } from "../client-script";
 
-type AxisLabel = { x: number; text: string };
-type ChartLabels = {
+type Bucket = { label: string; count: number };
+type AxisLabel = { i: number; x: number; text: string };
+type Chart = {
   fmtLabel: (label: string, withYear?: boolean) => string;
   fmtBucketDate: (label: string) => string;
-  axisLabels: (
-    buckets: Array<{ label: string }>,
-    xs: number[],
-    dotInterval: number,
-    todayText: string,
-  ) => AxisLabel[];
+  axisLabels: (buckets: Bucket[], pts: number[][], dotInterval: number, todayText: string) => AxisLabel[];
+  render: (buckets: Bucket[]) => string;
+  formattersBuilt: () => number;
 };
 
 const CHUNKS = [
+  /^var T = /,
+  /^function t\(/,
+  /^var UI_LANG = /,
+  /^function fmtNum\(/,
+  /^function niceStep\(/,
   /^function bucketDate\(/,
-  /^var BUCKET_FORMATS = /,
+  /^var bucketFormatCache = /,
+  /^function bucketFormats\(/,
   /^function fmtLabel\(/,
   /^function fmtBucketDate\(/,
+  /^var AXIS_FONT_SIZE = /,
   /^function labelWidth\(/,
   /^function labelsOverlap\(/,
   /^function axisLabels\(/,
+  /^function renderTimeline\(/,
 ];
 
-function loadChartLabels(lang: string): ChartLabels {
-  const script = adminClientScript("1.0.0", {} as unknown as Translations);
+// The real esc() and getElementById() need a DOM. These stand-ins escape the
+// same characters and hand renderTimeline() a container to write into. The
+// Intl stand-in counts the formatters the script builds.
+const HARNESS = `
+var built = 0;
+var Intl = { DateTimeFormat: function(lang, opts) { built++; return new globalThis.Intl.DateTimeFormat(lang, opts); } };
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+var container = { innerHTML: '' };
+var document = { getElementById: function() { return container; } };
+`;
+
+function loadChart(lang: SupportedLanguage): Chart {
+  const script = adminClientScript("1.0.0", getTranslations(lang));
   const code = [
-    `var UI_LANG = ${JSON.stringify(lang)};`,
+    HARNESS,
     ...CHUNKS.map((re) => extractTopLevelChunk(script, re)),
-    "return { fmtLabel: fmtLabel, fmtBucketDate: fmtBucketDate, axisLabels: axisLabels };",
+    `return {
+      fmtLabel: fmtLabel,
+      fmtBucketDate: fmtBucketDate,
+      axisLabels: axisLabels,
+      render: function(buckets) { renderTimeline({ buckets: buckets }); return container.innerHTML; },
+      formattersBuilt: function() { return built; }
+    };`,
   ].join("\n");
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
-  return (new Function(code) as () => ChartLabels)();
+  return (new Function(code) as () => Chart)();
 }
 
-const TODAY = "Today";
-
-// The x positions renderTimeline() gives n points on its 800-wide viewBox.
-function chartXs(n: number): number[] {
-  const padL = 36;
-  const innerW = 800 - 36 - 8;
-  return Array.from({ length: n }, (_, i) => padL + (i * innerW) / (n - 1));
-}
-
-// renderTimeline()'s label spacing for n buckets.
-function dotInterval(n: number): number {
-  return n > 60 ? Math.ceil(n / 10) : n > 30 ? 5 : n > 14 ? 3 : 1;
-}
-
-function weeklyBuckets(startUtc: number, count: number): Array<{ label: string }> {
-  return Array.from({ length: count }, (_, i) => ({
-    label: new Date(startUtc + i * 7 * 86_400_000).toISOString().slice(0, 10),
-  }));
-}
-
-function monthlyBuckets(year: number, month: number, count: number): Array<{ label: string }> {
-  return Array.from({ length: count }, (_, i) => {
-    const d = new Date(Date.UTC(year, month - 1 + i, 1));
-    return { label: d.toISOString().slice(0, 7) };
-  });
-}
-
-const charts = new Map(SUPPORTED_LANGUAGES.map((lang) => [lang, loadChartLabels(lang)]));
-function chart(lang: (typeof SUPPORTED_LANGUAGES)[number]): ChartLabels {
+const charts = new Map(SUPPORTED_LANGUAGES.map((lang) => [lang, loadChart(lang)]));
+function chart(lang: SupportedLanguage): Chart {
   return charts.get(lang)!;
 }
 
+function today(lang: SupportedLanguage): string {
+  return getTranslations(lang)["linkDetail.today"];
+}
+
+const DAY = 86_400_000;
+
+function dailyBuckets(startUtc: number, count: number, stepDays = 1): Bucket[] {
+  return Array.from({ length: count }, (_, i) => ({
+    label: new Date(startUtc + i * stepDays * DAY).toISOString().slice(0, 10),
+    count: i % 4,
+  }));
+}
+
+function monthlyBuckets(year: number, month: number, count: number): Bucket[] {
+  return Array.from({ length: count }, (_, i) => ({
+    label: new Date(Date.UTC(year, month - 1 + i, 1)).toISOString().slice(0, 7),
+    count: i % 4,
+  }));
+}
+
+// The x-axis labels and the emphasized dots renderTimeline() drew.
+function readAxis(svg: string): { labels: Array<{ x: number; text: string }>; dots: number[] } {
+  const labels = [...svg.matchAll(/<text x="([\d.]+)" [^>]*text-anchor="middle"[^>]*>([^<]*)<\/text>/g)].map(
+    (m) => ({ x: Number(m[1]), text: m[2] }),
+  );
+  const dots = [...svg.matchAll(/<circle cx="([\d.]+)"/g)].map((m) => Number(m[1]));
+  return { labels, dots };
+}
+
 describe("client.ts fmtLabel", () => {
-  it("formats an hourly bucket as the same time the tooltip shows, in every language", () => {
-    // The axis glued "HH:00" while the tooltip used the locale's clock: en
-    // read 09:00 on the axis and 09:00 AM in the tooltip, id 09:00 and 09.00.
+  it("formats an hourly bucket as the time the tooltip shows, in every language", () => {
+    // The axis glued "HH:00" while the tooltip used the locale's clock. en
+    // read 09:00 on the axis and 09:00 AM in the tooltip. id read 09:00
+    // against 09.00.
     for (const lang of SUPPORTED_LANGUAGES) {
       const { fmtLabel, fmtBucketDate } = chart(lang);
-      const axis = fmtLabel("2026-07-16 09");
-      expect(axis, lang).toContain("09");
-      expect(fmtBucketDate("2026-07-16 09"), lang).toContain(axis);
+      for (const label of ["2026-07-16 09", "2026-07-16 13"]) {
+        expect(fmtBucketDate(label), `${lang} ${label}`).toContain(fmtLabel(label));
+      }
     }
+  });
+
+  it("writes the hour in the locale's own form, without a forced leading zero", () => {
+    // hour: '2-digit' rendered en as "01:00 PM", which no en reader writes.
+    const en = chart("en").fmtLabel("2026-07-16 13");
+    expect(en).toContain("1:00");
+    expect(en).not.toMatch(/^0/);
+    expect(chart("id").fmtLabel("2026-07-16 09")).toContain("9.00");
+    expect(chart("sv").fmtLabel("2026-07-16 13")).toContain("13:00");
   });
 
   it("picks the hourly format from the label's shape, not the range", () => {
@@ -153,8 +186,8 @@ describe("client.ts fmtLabel", () => {
 
   it("shows the month and day of a weekly bucket", () => {
     // The 1y range and a long all range bucket by week and emit YYYY-MM-DD,
-    // the same shape as a daily bucket. The label must show the week's day,
-    // not collapse to the month.
+    // the same shape as a daily bucket. The label must show the week's day.
+    // It must not collapse to the month.
     const out = chart("en").fmtLabel("2026-07-13");
     expect(out).toContain("Jul");
     expect(out).toContain("13");
@@ -167,6 +200,18 @@ describe("client.ts fmtLabel", () => {
       expect(fmtLabel("2025-10-20", true), lang).toContain("2025");
       expect(fmtLabel("2025-10-20", true), lang).toContain("20");
       expect(fmtLabel("2025-10-20", false), lang).not.toContain("2025");
+    }
+  });
+
+  it("shows a label in no known shape as it arrived instead of throwing", () => {
+    // Intl.DateTimeFormat#format throws a RangeError on an invalid date. The
+    // old toLocaleDateString path printed "Invalid Date" and the panel lived.
+    for (const lang of SUPPORTED_LANGUAGES) {
+      const { fmtLabel, fmtBucketDate } = chart(lang);
+      for (const label of ["2026-W29", "", "soon"]) {
+        expect(fmtLabel(label), `${lang} ${label}`).toBe(label);
+        expect(fmtBucketDate(label), `${lang} ${label}`).toBe(label);
+      }
     }
   });
 
@@ -184,26 +229,74 @@ describe("client.ts fmtLabel", () => {
       }
     }
   });
+
+  it("builds the date formatters on first use, once per page", () => {
+    // Every admin page loads this script. Only the link detail page draws the
+    // chart, so the other pages must not pay for the formatters.
+    const fresh = loadChart("en");
+    expect(fresh.formattersBuilt()).toBe(0);
+    fresh.fmtLabel("2026-07-16");
+    const afterFirst = fresh.formattersBuilt();
+    expect(afterFirst).toBeGreaterThan(0);
+    fresh.fmtLabel("2026-07-17");
+    fresh.fmtBucketDate("2026-07-16 09");
+    expect(fresh.formattersBuilt()).toBe(afterFirst);
+  });
 });
 
-describe("client.ts axisLabels", () => {
-  it("ends on the today label", () => {
-    const buckets = weeklyBuckets(Date.UTC(2026, 0, 5), 10);
-    const labels = chart("en").axisLabels(buckets, chartXs(10), 1, TODAY);
-    expect(labels.at(-1)).toEqual({ x: chartXs(10)[9], text: TODAY });
+describe("client.ts renderTimeline axis", () => {
+  // Range shapes the analytics API emits, with dates that cross New Year.
+  const SCENARIOS: Array<[string, Bucket[]]> = [
+    ["24h hourly", Array.from({ length: 25 }, (_, i) => ({ label: `2026-07-${i < 15 ? 15 : 16} ${String((9 + i) % 24).padStart(2, "0")}`, count: i % 3 }))],
+    ["7d daily", dailyBuckets(Date.UTC(2025, 11, 27), 8)],
+    ["30d daily across New Year", dailyBuckets(Date.UTC(2025, 11, 12), 31)],
+    ["90d daily", dailyBuckets(Date.UTC(2026, 3, 1), 91)],
+    ["1y weekly", dailyBuckets(Date.UTC(2025, 9, 20), 53, 7)],
+    ["14-day all range across New Year", dailyBuckets(Date.UTC(2025, 11, 20), 14)],
+    ["all monthly, 26 buckets", monthlyBuckets(2024, 8, 26)],
+    ["all monthly, 25 buckets", monthlyBuckets(2024, 8, 25)],
+  ];
+
+  it("ends on the locale's today label", () => {
+    for (const lang of SUPPORTED_LANGUAGES) {
+      for (const [name, buckets] of SCENARIOS) {
+        const { labels } = readAxis(chart(lang).render(buckets));
+        expect(labels.at(-1)!.text, `${lang} ${name}`).toBe(today(lang));
+      }
+    }
+  });
+
+  it("draws an emphasized dot under every label and nowhere else", () => {
+    // A label dropped for overlap used to keep its dot, so the marked points
+    // and the labels stopped lining up.
+    for (const lang of SUPPORTED_LANGUAGES) {
+      for (const [name, buckets] of SCENARIOS) {
+        const { labels, dots } = readAxis(chart(lang).render(buckets));
+        expect(dots, `${lang} ${name}`).toEqual(labels.map((l) => l.x));
+      }
+    }
+  });
+
+  it("keeps a full label interval between today and its neighbor", () => {
+    // The cadence used to start at the first bucket. Today could then sit one
+    // step from its neighbor: "Sep 2026" and "Today" 30 units apart, overlapping.
+    for (const lang of SUPPORTED_LANGUAGES) {
+      for (const [name, buckets] of SCENARIOS) {
+        const { labels } = readAxis(chart(lang).render(buckets));
+        const gaps = labels.slice(1).map((l, k) => l.x - labels[k].x);
+        const step = Math.min(...gaps);
+        expect(gaps.at(-1)!, `${lang} ${name}`).toBeCloseTo(step, 0);
+      }
+    }
   });
 
   it("marks the year where a weekly axis crosses into a new one", () => {
-    // 1y range on 2026-10-20: 53 weekly buckets from 2025-10-20. Without a
-    // year, "Oct 20" (2025) and "Oct 5" (2026) on the same axis read as the
-    // same October.
-    const n = 53;
-    const buckets = weeklyBuckets(Date.UTC(2025, 9, 20), n);
+    // 1y range on 2026-10-20. Without a year, "Oct 20" (2025) and "Oct 5"
+    // (2026) on the same axis read as the same October.
+    const buckets = dailyBuckets(Date.UTC(2025, 9, 20), 53, 7);
     for (const lang of SUPPORTED_LANGUAGES) {
-      const labels = chart(lang).axisLabels(buckets, chartXs(n), dotInterval(n), TODAY);
-      const dated = labels.slice(0, -1);
-      const withYear = dated.filter((l) => /20\d\d/.test(l.text));
-      expect(withYear.length, lang).toBe(2);
+      const dated = readAxis(chart(lang).render(buckets)).labels.slice(0, -1);
+      expect(dated.filter((l) => /20\d\d/.test(l.text)).length, lang).toBe(2);
       expect(dated[0].text, `${lang} first label`).toContain("2025");
       const firstIn2026 = dated.findIndex((l) => l.text.includes("2026"));
       expect(firstIn2026, lang).toBeGreaterThan(0);
@@ -212,47 +305,54 @@ describe("client.ts axisLabels", () => {
   });
 
   it("marks the year where a daily axis crosses into a new one", () => {
-    // 30d range on 2026-01-10: daily buckets from 2025-12-12.
-    const n = 30;
-    const buckets = Array.from({ length: n }, (_, i) => ({
-      label: new Date(Date.UTC(2025, 11, 12) + i * 86_400_000).toISOString().slice(0, 10),
-    }));
-    const labels = chart("en").axisLabels(buckets, chartXs(n), dotInterval(n), TODAY);
-    expect(labels[0].text).toContain("2025");
-    expect(labels.some((l) => l.text.includes("2026"))).toBe(true);
+    // 30d range on 2026-01-11.
+    const buckets = dailyBuckets(Date.UTC(2025, 11, 12), 31);
+    for (const lang of SUPPORTED_LANGUAGES) {
+      const { labels } = readAxis(chart(lang).render(buckets));
+      expect(labels[0].text, lang).toContain("2025");
+      expect(labels.some((l) => l.text.includes("2026")), lang).toBe(true);
+    }
   });
 
   it("leaves the year off an axis inside one year", () => {
-    const n = 30;
-    const buckets = Array.from({ length: n }, (_, i) => ({
-      label: new Date(Date.UTC(2026, 5, 1) + i * 86_400_000).toISOString().slice(0, 10),
-    }));
+    const buckets = dailyBuckets(Date.UTC(2026, 5, 1), 31);
     for (const lang of SUPPORTED_LANGUAGES) {
-      const labels = chart(lang).axisLabels(buckets, chartXs(n), dotInterval(n), TODAY);
+      const { labels } = readAxis(chart(lang).render(buckets));
       expect(labels.every((l) => !l.text.includes("2026")), lang).toBe(true);
     }
   });
 
-  it("drops the label that would collide with the today label", () => {
-    // all range with 26 monthly buckets: labels at 0, 3, ..., 24 and today at
-    // 25. Bucket 24 sits 30 units from today, and "Sep 2026" (en), "2026年9月"
-    // (zh) and "sep. 2026" (sv) are too wide to share that gap with "Today".
-    const n = 26;
-    const xs = chartXs(n);
-    const buckets = monthlyBuckets(2024, 8, n);
-    for (const lang of SUPPORTED_LANGUAGES) {
-      const labels = chart(lang).axisLabels(buckets, xs, dotInterval(n), TODAY);
-      expect(labels.at(-1)!.text, lang).toBe(TODAY);
-      expect(labels.at(-2)!.x, `${lang} keeps bucket 21, drops 24`).toBe(xs[21]);
-      expect(labels.length, lang).toBe(9);
-    }
+  it("drops a regular label that would overlap a wide year label before it", () => {
+    // A 14-day all range across New Year labels every day. zh's
+    // "2025年12月20日" is too wide to share a step with "12月21日". en's
+    // "Dec 20, 2025" fits beside "Dec 21".
+    const buckets = dailyBuckets(Date.UTC(2025, 11, 20), 14);
+    const zh = readAxis(chart("zh").render(buckets)).labels.map((l) => l.text);
+    expect(zh[0]).toContain("2025");
+    expect(zh).not.toContain("12月21日");
+    expect(zh).toContain("12月22日");
+    expect(zh).toHaveLength(13);
+    expect(readAxis(chart("en").render(buckets)).labels).toHaveLength(14);
   });
 
-  it("keeps every label when today sits a full interval from its neighbor", () => {
-    // 25 monthly buckets: today lands on index 24, three steps after 21.
-    const n = 25;
-    const xs = chartXs(n);
-    const labels = chart("en").axisLabels(monthlyBuckets(2024, 8, n), xs, dotInterval(n), TODAY);
-    expect(labels.map((l) => l.x)).toEqual([0, 3, 6, 9, 12, 15, 18, 21, 24].map((i) => xs[i]));
+  it("drops today's neighbor, not today, when the two would overlap", () => {
+    // The cadence keeps a full interval before today on every real chart, so
+    // this pins the guard with explicit positions.
+    const buckets = dailyBuckets(Date.UTC(2026, 6, 14), 3);
+    const pts = [[0, 0], [100, 0], [110, 0]];
+    const labels = chart("en").axisLabels(buckets, pts, 1, "Today");
+    expect(labels.map((l) => l.i)).toEqual([0, 2]);
+    expect(labels.at(-1)!.text).toBe("Today");
+  });
+
+  it("draws a chart whose buckets arrive in an unknown shape", () => {
+    const buckets = [
+      { label: "2026-W28", count: 1 },
+      { label: "2026-W29", count: 2 },
+    ];
+    for (const lang of SUPPORTED_LANGUAGES) {
+      const { labels } = readAxis(chart(lang).render(buckets));
+      expect(labels.map((l) => l.text), lang).toEqual(["2026-W28", today(lang)]);
+    }
   });
 });

@@ -1027,52 +1027,68 @@ function fmtAvgPerDay(totalClicks, range, createdAt) {
 
 // Chart bucket labels are canonical and UTC: "YYYY-MM-DD HH" for hourly,
 // "YYYY-MM-DD" for daily and weekly, and "YYYY-MM" for monthly. The label's
-// shape picks the format. The range does not.
+// shape picks the format. The range does not. Returns null for a label in no
+// known shape, because Intl.DateTimeFormat throws on an invalid date.
 function bucketDate(label) {
   var split = label.split(' ');
   var d = split[0].split('-');
   var y = parseInt(d[0], 10), mo = parseInt(d[1], 10) - 1;
-  if (d.length < 3) return { dt: new Date(Date.UTC(y, mo, 1)), kind: 'month' };
-  var day = parseInt(d[2], 10);
-  if (split.length > 1) return { dt: new Date(Date.UTC(y, mo, day, parseInt(split[1], 10))), kind: 'hour' };
-  return { dt: new Date(Date.UTC(y, mo, day)), kind: 'day' };
+  var b;
+  if (d.length < 3) b = { dt: new Date(Date.UTC(y, mo, 1)), kind: 'month' };
+  else if (split.length > 1) b = { dt: new Date(Date.UTC(y, mo, parseInt(d[2], 10), parseInt(split[1], 10))), kind: 'hour' };
+  else b = { dt: new Date(Date.UTC(y, mo, parseInt(d[2], 10))), kind: 'day' };
+  return isNaN(b.dt.getTime()) ? null : b;
 }
 
-// Intl orders the month and day, picks the separator and adds any counters:
-// en writes "Jul 16", sv and id write "16 juli" and "16 Jul", zh writes
-// "7月16日". Gluing a translated month name onto a day number gets these
-// wrong. Built once per page, like numberFormatter. A monthly label always
-// carries the full year. zh renders a two-digit year as "26年7月", which
-// reads as the year 26.
-var BUCKET_FORMATS = {
-  hour: new Intl.DateTimeFormat(UI_LANG, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }),
-  day: new Intl.DateTimeFormat(UI_LANG, { month: 'short', day: 'numeric', timeZone: 'UTC' }),
-  dayYear: new Intl.DateTimeFormat(UI_LANG, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }),
-  month: new Intl.DateTimeFormat(UI_LANG, { year: 'numeric', month: 'short', timeZone: 'UTC' }),
-  hourFull: new Intl.DateTimeFormat(UI_LANG, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
-};
+// Intl owns the order of month and day, the separator and any counters.
+// en writes "Jul 16" and sv writes "16 juli". zh writes "7月16日".
+// A monthly label always carries the full year. zh renders a two-digit year
+// as "26年7月", which reads as the year 26. The axis shows the hour in the
+// locale's own form ("9:00 AM", "9.00"). The tooltip pads it to match the
+// bundle chart's server-rendered tooltip. The formatters are built on first
+// use, so admin pages without a chart skip the cost.
+var bucketFormatCache = null;
+function bucketFormats() {
+  if (bucketFormatCache) return bucketFormatCache;
+  bucketFormatCache = {
+    hour: new Intl.DateTimeFormat(UI_LANG, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }),
+    day: new Intl.DateTimeFormat(UI_LANG, { month: 'short', day: 'numeric', timeZone: 'UTC' }),
+    dayYear: new Intl.DateTimeFormat(UI_LANG, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }),
+    month: new Intl.DateTimeFormat(UI_LANG, { year: 'numeric', month: 'short', timeZone: 'UTC' }),
+    hourFull: new Intl.DateTimeFormat(UI_LANG, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
+  };
+  return bucketFormatCache;
+}
 
 // The x-axis text for one bucket. withYear adds the year to a daily or
-// weekly label. Hourly labels show the time the tooltip shows.
+// weekly label. A label in no known shape shows as it arrived.
 function fmtLabel(label, withYear) {
   var b = bucketDate(label);
-  if (b.kind === 'day' && withYear) return BUCKET_FORMATS.dayYear.format(b.dt);
-  return BUCKET_FORMATS[b.kind].format(b.dt);
+  if (!b) return label;
+  var f = bucketFormats();
+  if (b.kind === 'day' && withYear) return f.dayYear.format(b.dt);
+  return f[b.kind].format(b.dt);
 }
 
 // The full date for a point's tooltip.
 function fmtBucketDate(label) {
   var b = bucketDate(label);
-  if (b.kind === 'hour') return BUCKET_FORMATS.hourFull.format(b.dt);
-  if (b.kind === 'day') return BUCKET_FORMATS.dayYear.format(b.dt);
-  return BUCKET_FORMATS.month.format(b.dt);
+  if (!b) return label;
+  var f = bucketFormats();
+  if (b.kind === 'hour') return f.hourFull.format(b.dt);
+  if (b.kind === 'day') return f.dayYear.format(b.dt);
+  return f.month.format(b.dt);
 }
 
-// Estimated width of an axis label in viewBox units. The axis text is 9px
-// monospace: a Latin glyph advances about 0.6em, a CJK glyph a full em.
+// Font size of the chart's axis text, in viewBox units. labelWidth() reads
+// it too, so the collision estimate follows a font change.
+var AXIS_FONT_SIZE = 9;
+
+// Estimated width of an axis label in viewBox units. The axis text is
+// monospace. A Latin glyph advances about 0.6em and a CJK glyph a full em.
 function labelWidth(text) {
   var w = 0;
-  for (var i = 0; i < text.length; i++) w += text.charCodeAt(i) >= 0x2E80 ? 9 : 5.4;
+  for (var i = 0; i < text.length; i++) w += AXIS_FONT_SIZE * (text.charCodeAt(i) >= 0x2E80 ? 1 : 0.6);
   return w;
 }
 
@@ -1082,22 +1098,24 @@ function labelsOverlap(a, b) {
   return Math.abs(b.x - a.x) < (labelWidth(a.text) + labelWidth(b.text)) / 2 + 6;
 }
 
-// Picks the x-axis labels: every dotInterval-th bucket, and todayText on the
-// final bucket. When the axis crosses a year boundary, daily and weekly
-// labels print the year on the first label and wherever the year changes.
-// Otherwise "Oct 20" in 2025 and "Oct 5" in 2026 read as the same October.
-// A label that would overlap the one before it is dropped. The today label
-// always stays, so its neighbor gives way.
-function axisLabels(buckets, xs, dotInterval, todayText) {
+// Picks the labelled buckets on the x-axis. Returns { i, x, text } per label.
+// The cadence counts back from the final bucket, which reads todayText. That
+// keeps a full interval between today and its neighbor.
+// A daily or weekly axis can cross a year boundary. Its first label then
+// carries the year. So does each label where the year changes. Without it,
+// "Oct 20" in 2025 and "Oct 5" in 2026 read as the same October.
+// axisLabels drops a label that would overlap the one before it. The today
+// label always stays, so its neighbor gives way instead.
+function axisLabels(buckets, pts, dotInterval, todayText) {
   var n = buckets.length;
   var spansYears = n > 1 && buckets[0].label.slice(0, 4) !== buckets[n - 1].label.slice(0, 4);
   var out = [];
   var lastYear = '';
-  for (var i = 0; i < n; i++) {
+  for (var i = (n - 1) % dotInterval; i < n; i += dotInterval) {
     var last = i === n - 1;
-    if (i % dotInterval !== 0 && !last) continue;
     var year = buckets[i].label.slice(0, 4);
-    var label = { x: xs[i], text: last ? todayText : fmtLabel(buckets[i].label, spansYears && year !== lastYear) };
+    var text = last ? todayText : fmtLabel(buckets[i].label, spansYears && year !== lastYear);
+    var label = { i: i, x: pts[i][0], text: text };
     var prev = out[out.length - 1];
     if (prev && labelsOverlap(prev, label)) {
       if (!last) continue;
@@ -1173,29 +1191,27 @@ function renderTimeline(data) {
     var gy = pad.t + innerH * grid[gi];
     var val = Math.round(gridMax * (1 - grid[gi]));
     parts.push('<line x1="' + pad.l + '" x2="' + (w - pad.r) + '" y1="' + gy + '" y2="' + gy + '" stroke="var(--color-border)" stroke-opacity="0.35" stroke-width="1" vector-effect="non-scaling-stroke"/>');
-    parts.push('<text x="' + (pad.l - 6) + '" y="' + (gy + 3) + '" font-size="9" fill="var(--color-text-subtle)" text-anchor="end" font-family="var(--font-family-mono)">' + fmtNum(val) + '</text>');
+    parts.push('<text x="' + (pad.l - 6) + '" y="' + (gy + 3) + '" font-size="' + AXIS_FONT_SIZE + '" fill="var(--color-text-subtle)" text-anchor="end" font-family="var(--font-family-mono)">' + fmtNum(val) + '</text>');
   }
 
   if (area) parts.push('<path d="' + area + '" fill="url(#chartGrad)"/>');
   if (n > 2) parts.push('<path d="' + solidLine + '" fill="none" stroke="var(--color-accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
   if (dashLine) parts.push('<path d="' + dashLine + '" fill="none" stroke="var(--color-accent)" stroke-width="2" stroke-opacity="0.7" stroke-dasharray="4 4" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
 
+  // Each labelled bucket gets an emphasized dot, so a label dropped for
+  // overlap takes its dot with it.
   var dotInterval = n > 60 ? Math.ceil(n / 10) : (n > 30 ? 5 : (n > 14 ? 3 : 1));
-  for (var i = 0; i < n; i++) {
-    if (i % dotInterval === 0 || i === n - 1) {
-      if (i === n - 1) {
-        parts.push('<circle cx="' + pts[i][0].toFixed(1) + '" cy="' + pts[i][1].toFixed(1) + '" r="2.5" fill="var(--color-surface-raised)" stroke="var(--color-accent)" stroke-width="1.5" vector-effect="non-scaling-stroke"><title>' + esc(t('linkDetail.todayPartial')) + '</title></circle>');
-      } else {
-        parts.push('<circle cx="' + pts[i][0].toFixed(1) + '" cy="' + pts[i][1].toFixed(1) + '" r="2.5" fill="var(--color-accent)" stroke="var(--color-surface-raised)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>');
-      }
+  var axis = axisLabels(buckets, pts, dotInterval, t('linkDetail.today'));
+  for (var ai = 0; ai < axis.length; ai++) {
+    var p = pts[axis[ai].i];
+    if (axis[ai].i === n - 1) {
+      parts.push('<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="2.5" fill="var(--color-surface-raised)" stroke="var(--color-accent)" stroke-width="1.5" vector-effect="non-scaling-stroke"><title>' + esc(t('linkDetail.todayPartial')) + '</title></circle>');
+    } else {
+      parts.push('<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="2.5" fill="var(--color-accent)" stroke="var(--color-surface-raised)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>');
     }
   }
-
-  var xs = new Array(n);
-  for (var i = 0; i < n; i++) xs[i] = pts[i][0];
-  var axis = axisLabels(buckets, xs, dotInterval, t('linkDetail.today'));
   for (var ai = 0; ai < axis.length; ai++) {
-    parts.push('<text x="' + axis[ai].x.toFixed(1) + '" y="' + (h - 6) + '" font-size="9" fill="var(--color-text-subtle)" text-anchor="middle" font-family="var(--font-family-mono)">' + esc(axis[ai].text) + '</text>');
+    parts.push('<text x="' + axis[ai].x.toFixed(1) + '" y="' + (h - 6) + '" font-size="' + AXIS_FONT_SIZE + '" fill="var(--color-text-subtle)" text-anchor="middle" font-family="var(--font-family-mono)">' + esc(axis[ai].text) + '</text>');
   }
 
   // Invisible per-point hover bands. Each spans its column full-height so the
