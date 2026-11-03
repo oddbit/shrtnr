@@ -4,7 +4,8 @@
 import { render } from "preact";
 import { Popup } from "./Popup";
 import "./popup.css";
-import { applyDocumentLanguage, detectLanguage } from "../i18n";
+import { detectLanguage } from "../i18n";
+import { applyDocumentLanguage } from "../i18n/document";
 
 applyDocumentLanguage(detectLanguage());
 

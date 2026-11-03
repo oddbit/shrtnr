@@ -4,7 +4,8 @@
 import { render } from "preact";
 import { Options } from "./Options";
 import "./options.css";
-import { applyDocumentLanguage, createTranslateFn, detectLanguage } from "../i18n";
+import { createTranslateFn, detectLanguage } from "../i18n";
+import { applyDocumentLanguage } from "../i18n/document";
 
 const lang = detectLanguage();
 applyDocumentLanguage(lang, createTranslateFn(lang)("options.title"));

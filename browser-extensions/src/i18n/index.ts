@@ -25,17 +25,19 @@ export function isSupportedLanguage(lang: string): lang is SupportedLanguage {
  * A browser tag whose likely script differs falls back to English instead of
  * crossing scripts, the way chrome.i18n keeps zh_CN and zh_TW apart.
  */
-const TABLE_SCRIPT: Partial<Record<SupportedLanguage, string>> = { zh: "Hans" };
+const TABLE_SCRIPT: Partial<Record<string, string>> = { zh: "Hans" };
 
 /**
  * The browser's language, as a supported table. Intl.Locale#maximize()
  * supplies the script a tag implies: zh-CN and zh-SG write Hans, while zh-TW,
  * zh-HK and zh-MO write Hant. zh-Hans-HK names its script and reads
  * Simplified. A Traditional table would register as its own language and be
- * matched on language and script before this check.
+ * matched on language and script before this check. Reads navigator through
+ * globalThis, so this module carries no DOM types. The admin app's suite
+ * imports it for the parity checks.
  */
 export function detectLanguage(): SupportedLanguage {
-  const raw = typeof navigator !== "undefined" ? navigator.language || "" : "";
+  const raw = (globalThis as { navigator?: { language?: string } }).navigator?.language ?? "";
   let locale: Intl.Locale;
   try {
     locale = new Intl.Locale(raw).maximize();
@@ -52,19 +54,9 @@ export function detectLanguage(): SupportedLanguage {
  * The tag for <html lang>. A table written in one of several scripts names
  * it, so screen readers and Han font fallback match the strings on screen.
  */
-export function documentLang(lang: SupportedLanguage): string {
+export function documentLang(lang: string): string {
   const script = TABLE_SCRIPT[lang];
   return script ? `${lang}-${script}` : lang;
-}
-
-/**
- * Tags the document with the language its strings are in. popup.html and
- * options.html ship lang="en" and an English title, so each entry point
- * calls this before it renders.
- */
-export function applyDocumentLanguage(lang: SupportedLanguage, title?: string): void {
-  document.documentElement.lang = documentLang(lang);
-  if (title !== undefined) document.title = title;
 }
 
 export function getTranslations(lang: string): Translations {

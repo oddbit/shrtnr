@@ -27,6 +27,8 @@ const TABLE_SCRIPT: Partial<Record<SupportedLanguage, string>> = { zh: "Hans" };
 /**
  * The tag for <html lang>. A table written in one of several scripts names
  * it, so screen readers and Han font fallback match the strings on screen.
+ * The browser extension's documentLang() tags the same way, and
+ * extension-i18n-parity.test.ts holds the two to it.
  */
 export function documentLang(lang: string): string {
   const script = isSupportedLanguage(lang) ? TABLE_SCRIPT[lang] : undefined;

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect } from "vitest";
-import { SUPPORTED_LANGUAGES as ADMIN_LANGUAGES } from "../../src/i18n";
 import en from "../src/i18n/en";
 import id from "../src/i18n/id";
 import sv from "../src/i18n/sv";
@@ -200,12 +199,6 @@ describe("i18n.isSupportedLanguage", () => {
     for (const lang of SUPPORTED_LANGUAGES) {
       expect(isSupportedLanguage(lang), lang).toBe(true);
     }
-  });
-
-  it("carries the admin app's languages", () => {
-    // The README promises the admin app's set. Both lists live in this repo,
-    // so a locale registered on one side only fails here.
-    expect([...SUPPORTED_LANGUAGES]).toEqual([...ADMIN_LANGUAGES]);
   });
 
   it("rejects everything else", () => {
