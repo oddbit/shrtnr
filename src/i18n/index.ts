@@ -20,6 +20,19 @@ export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 // undefined;` in that language's client script and throw on the first t().
 const translations: Record<SupportedLanguage, Translations> = { en, id, sv, zh };
 
+// The script a table is written in, for languages written in more than one.
+// The zh table is Simplified.
+const TABLE_SCRIPT: Partial<Record<SupportedLanguage, string>> = { zh: "Hans" };
+
+/**
+ * The tag for <html lang>. A table written in one of several scripts names
+ * it, so screen readers and Han font fallback match the strings on screen.
+ */
+export function documentLang(lang: string): string {
+  const script = isSupportedLanguage(lang) ? TABLE_SCRIPT[lang] : undefined;
+  return script ? `${lang}-${script}` : lang;
+}
+
 export function isSupportedLanguage(lang: string): lang is SupportedLanguage {
   return SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage);
 }

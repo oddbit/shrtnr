@@ -4,7 +4,7 @@
 import type { FC, PropsWithChildren } from "hono/jsx";
 import { adminClientScriptPath, adminStylesheetPath } from "../assets";
 import { Topbar } from "../components/topbar";
-import type { TranslateFn } from "../i18n";
+import { documentLang, type TranslateFn } from "../i18n";
 
 type LayoutProps = {
   active: string;
@@ -29,7 +29,10 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
 }) => {
   const year = new Date().getFullYear();
   const currentTheme = theme || "oddbit";
-  const htmlLang = lang || "en";
+  // The language code picks the client script. The <html lang> tag adds a
+  // script subtag where the table has one, which no script URL carries.
+  const uiLang = lang || "en";
+  const htmlLang = documentLang(uiLang);
 
   const oddbitLogo = currentTheme === "light"
     ? "/oddbit-logotype-graphite-green.svg"
@@ -132,7 +135,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({
 
         <div id="toast" class="toast" style="display:none" />
 
-        <script src={adminClientScriptPath(htmlLang)}></script>
+        <script src={adminClientScriptPath(uiLang)}></script>
       </body>
     </html>
   );
