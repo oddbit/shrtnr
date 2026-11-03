@@ -2,7 +2,7 @@
 
 All notable changes to the shrtnr browser extensions are documented in this file.
 
-## Unreleased
+## 0.2.0 (2026-11-03)
 
 Repairs the extension in real browsers, adds the parity features a shortener extension is expected to have, and hardens permissions. No new permissions.
 

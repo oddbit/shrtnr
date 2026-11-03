@@ -1,6 +1,6 @@
 {
   "name": "@oddbit/shrtnr-browser-extensions",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "description": "Chrome and Firefox browser extensions for shrtnr: shorten the active tab into your self-hosted shrtnr deployment.",
   "license": "Apache-2.0",
