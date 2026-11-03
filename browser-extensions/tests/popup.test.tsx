@@ -3,7 +3,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/preact";
-import { setStorageItem, getClipboardMock } from "./setup";
+import { setStorageItem, getClipboardMock, setBrowserLanguage } from "./setup";
 import { ExtensionError } from "../src/errors";
 
 let mockedShorten: ReturnType<typeof vi.fn<(url: string) => Promise<unknown>>>;
@@ -53,7 +53,7 @@ describe("Popup — not configured", () => {
     // The language comes from the browser, with no picker in the extension, so
     // this is the whole path from navigator.language to the strings on screen.
     // Every other case in this file runs against the en-US pin in setup.ts.
-    Object.defineProperty(globalThis.navigator, "language", { configurable: true, value: "zh-CN" });
+    setBrowserLanguage("zh-CN");
     await renderPopup();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "保存" })).toBeTruthy();

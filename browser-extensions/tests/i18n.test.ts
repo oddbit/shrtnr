@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect } from "vitest";
+import { SUPPORTED_LANGUAGES as ADMIN_LANGUAGES } from "../../src/i18n";
 import en from "../src/i18n/en";
+import id from "../src/i18n/id";
+import sv from "../src/i18n/sv";
+import zh from "../src/i18n/zh";
 import {
   createTranslateFn,
   detectLanguage,
@@ -15,9 +19,9 @@ import {
 import { setBrowserLanguage } from "./setup";
 
 /**
- * Every supported language except the fallback, derived once here: the key
- * and placeholder parity suites both iterate it, so a change to the default
- * language or to the exclusion rule lands in one place.
+ * Every supported language except the fallback, derived once here. Each suite
+ * that compares a table against English iterates it, so a change to the
+ * default language or to the exclusion rule lands in one place.
  */
 const translated = SUPPORTED_LANGUAGES.filter((lang) => lang !== DEFAULT_LANGUAGE);
 
@@ -70,22 +74,18 @@ describe("i18n.createTranslateFn", () => {
     expect(t("error.network", { host: "$&.example.com" })).toContain("$&.example.com");
   });
 
-  it.each(SUPPORTED_LANGUAGES)(
-    "localizes the invalid-URL error instead of passing English through (%s)",
-    (lang) => {
-      // error.validation is a "{message}" passthrough for server-supplied
-      // text. A client-side URL parse failure must carry its own localized
-      // key, in every language the extension offers.
-      const text = createTranslateFn(lang)("error.invalidUrl");
-      expect(text).not.toBe("error.invalidUrl");
-      if (lang !== DEFAULT_LANGUAGE) expect(text).not.toBe(en["error.invalidUrl"]);
-    },
-  );
+  // error.validation is a "{message}" passthrough for server-supplied text. A
+  // client-side failure must carry its own localized key in every language.
+  it.each(SUPPORTED_LANGUAGES)("carries its own invalid-URL and save-failure strings (%s)", (lang) => {
+    const t = createTranslateFn(lang);
+    expect(t("error.invalidUrl")).not.toBe("error.invalidUrl");
+    expect(t("error.saveFailed")).not.toBe("error.saveFailed");
+  });
 
-  it.each(SUPPORTED_LANGUAGES)("localizes the save-failure message (%s)", (lang) => {
-    const text = createTranslateFn(lang)("error.saveFailed");
-    expect(text).not.toBe("error.saveFailed");
-    if (lang !== DEFAULT_LANGUAGE) expect(text).not.toBe(en["error.saveFailed"]);
+  it.each(translated)("translates the invalid-URL and save-failure strings instead of passing English through (%s)", (lang) => {
+    const t = createTranslateFn(lang);
+    expect(t("error.invalidUrl")).not.toBe(en["error.invalidUrl"]);
+    expect(t("error.saveFailed")).not.toBe(en["error.saveFailed"]);
   });
 
   it("returns the key itself when missing in both target and fallback", () => {
@@ -192,8 +192,10 @@ describe("i18n.isSupportedLanguage", () => {
     }
   });
 
-  it("carries exactly the languages it declares", () => {
-    expect([...SUPPORTED_LANGUAGES]).toEqual(["en", "id", "sv", "zh"]);
+  it("carries the admin app's languages", () => {
+    // The README promises the admin app's set. Both lists live in this repo,
+    // so a locale registered on one side only fails here.
+    expect([...SUPPORTED_LANGUAGES]).toEqual([...ADMIN_LANGUAGES]);
   });
 
   it("rejects everything else", () => {
@@ -210,9 +212,12 @@ describe("i18n.getTranslations", () => {
   it("returns en for unknown lang", () => {
     expect(getTranslations("xx")).toBe(en);
   });
-  it("returns the table the language names", () => {
+  it("returns the table module the language names", () => {
+    // Reference identity: a map entry pointing at a copy of another table
+    // with _lang overridden fails here.
+    const tables = { en, id, sv, zh };
     for (const lang of SUPPORTED_LANGUAGES) {
-      expect(getTranslations(lang)["_lang"], lang).toBe(lang);
+      expect(getTranslations(lang), lang).toBe(tables[lang]);
     }
   });
   it("DEFAULT_LANGUAGE is en", () => {

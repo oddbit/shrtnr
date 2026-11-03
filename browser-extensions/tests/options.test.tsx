@@ -3,7 +3,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/preact";
-import { setStorageItem } from "./setup";
+import { setStorageItem, setBrowserLanguage } from "./setup";
 import { ExtensionError } from "../src/errors";
 
 let mockedTest: ReturnType<typeof vi.fn<(config: { baseUrl: string; apiKey: string }) => Promise<void>>>;
@@ -28,6 +28,21 @@ async function renderOptions() {
   const { Options } = await import("../src/options/Options");
   render(<Options />);
 }
+
+describe("Options — language", () => {
+  it("renders in Simplified Chinese when the browser reports zh-CN", async () => {
+    // Options builds its own t from detectLanguage(), apart from the popup's.
+    // A hardcoded "en" or a t hoisted to module scope ships unseen without
+    // this case.
+    setBrowserLanguage("zh-CN");
+    await renderOptions();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "shrtnr 设置" })).toBeTruthy();
+    });
+    expect(screen.getByRole("button", { name: "测试连接" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "shrtnr settings" })).toBeNull();
+  });
+});
 
 describe("Options — banner visibility", () => {
   it("renders the deploy CTA banner when no config saved", async () => {
