@@ -159,7 +159,7 @@ Before tagging, run the checklist in [`RELEASE.md`](RELEASE.md).
 
 ## i18n
 
-`SUPPORTED_LANGUAGES` in `src/i18n/index.ts` lists the languages, the same set as the admin app. The extension follows the browser's language (`navigator.language`) and offers no picker. A tag in a script no table carries, such as Traditional Chinese, falls back to English. English is the source of truth and the fallback.
+`SUPPORTED_LANGUAGES` in `src/i18n/index.ts` lists the languages, the same set as the admin app. The extension follows the browser's language (`navigator.language`) and offers no picker. A tag in a script no table carries falls back to English. Chinese counts as Traditional in Taiwan, Hong Kong and Macau or with a `Hant` subtag. English is the source of truth and the fallback.
 
 **Keep `src/i18n/index.ts` free of DOM types and of imports from outside this folder.** The root suite imports it: `src/__tests__/unit/extension-i18n-parity.test.ts` holds the language set, interpolation and `<html lang>` tags to the admin app's.
 

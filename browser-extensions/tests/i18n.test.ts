@@ -12,6 +12,7 @@ import {
   documentLang,
   getTranslations,
   isSupportedLanguage,
+  matchLanguageTag,
   SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,
 } from "../src/i18n";
@@ -168,9 +169,18 @@ describe("i18n.detectLanguage", () => {
     }
   });
 
-  it("reads Simplified for a tag whose script is Simplified", () => {
-    // The script decides, not the region: zh-Hans-HK names Simplified.
-    for (const reported of ["zh", "zh-Hans", "zh-Hans-HK", "zh-Hans-TW"]) {
+  it("reads Simplified for a tag that names the Simplified script", () => {
+    // A script subtag wins over the region: zh-Hans-HK is Simplified.
+    for (const reported of ["zh-Hans", "zh-Hans-HK", "zh-Hans-TW"]) {
+      setBrowserLanguage(reported);
+      expect(detectLanguage(), reported).toBe("zh");
+    }
+  });
+
+  it("reads Simplified for Chinese outside Taiwan, Hong Kong and Macau", () => {
+    // CLDR's likely subtags send zh-US, zh-GB, zh-AU and others to Hant, and
+    // the mapping shifts between browser versions. The rule here is fixed.
+    for (const reported of ["zh", "zh-CN", "zh-SG", "zh-MY", "zh-US", "zh-GB", "zh-AU", "zh-CA"]) {
       setBrowserLanguage(reported);
       expect(detectLanguage(), reported).toBe("zh");
     }
@@ -178,9 +188,9 @@ describe("i18n.detectLanguage", () => {
 
   it("falls back to English for Traditional Chinese instead of crossing scripts", () => {
     // The zh table is Simplified. chrome.i18n keeps zh_CN and zh_TW apart and
-    // falls back to default_locale, and so does this, until a Traditional
-    // table exists. The region implies the script: TW, HK and MO write Hant.
-    for (const reported of ["zh-TW", "zh-HK", "zh-MO", "zh-Hant", "zh-Hant-CN"]) {
+    // falls back to default_locale. This does the same until a Traditional
+    // table exists. TW, HK and MO write Traditional, and so does any Hant tag.
+    for (const reported of ["zh-TW", "zh-HK", "zh-MO", "zh-tw", "zh-Hant", "zh-Hant-CN", "zh-Hant-US"]) {
       setBrowserLanguage(reported);
       expect(detectLanguage(), reported).toBe(DEFAULT_LANGUAGE);
     }
@@ -239,5 +249,29 @@ describe("i18n.documentLang", () => {
     for (const lang of SUPPORTED_LANGUAGES.filter((l) => l !== "zh")) {
       expect(documentLang(lang), lang).toBe(lang);
     }
+  });
+});
+
+describe("i18n.matchLanguageTag", () => {
+  // A Traditional table would register as "zh-Hant". These cases run the
+  // matcher against such a list, so that path works before the table exists.
+  const withTraditional = ["en", "zh", "zh-Hant"];
+
+  it("matches a table registered by language and script first", () => {
+    for (const tag of ["zh-TW", "zh-HK", "zh-Hant", "zh-Hant-CN"]) {
+      expect(matchLanguageTag(tag, withTraditional), tag).toBe("zh-Hant");
+    }
+  });
+
+  it("keeps Simplified tags on the bare-language table", () => {
+    for (const tag of ["zh", "zh-CN", "zh-US", "zh-Hans-TW"]) {
+      expect(matchLanguageTag(tag, withTraditional), tag).toBe("zh");
+    }
+  });
+
+  it("matches nothing for a tag no table carries or that does not parse", () => {
+    expect(matchLanguageTag("zh-TW", SUPPORTED_LANGUAGES)).toBeUndefined();
+    expect(matchLanguageTag("fr-FR", SUPPORTED_LANGUAGES)).toBeUndefined();
+    expect(matchLanguageTag("not a tag", SUPPORTED_LANGUAGES)).toBeUndefined();
   });
 });

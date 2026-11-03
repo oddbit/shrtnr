@@ -21,33 +21,60 @@ export function isSupportedLanguage(lang: string): lang is SupportedLanguage {
 }
 
 /**
- * The script a table is written in, for languages written in more than one.
- * A browser tag whose likely script differs falls back to English instead of
- * crossing scripts, the way chrome.i18n keeps zh_CN and zh_TW apart.
+ * The script a table is written in, for a language written in more than one.
+ * A bare "zh" table is Simplified. A Traditional table would register as
+ * "zh-Hant" and need no entry here.
  */
 const TABLE_SCRIPT: Partial<Record<string, string>> = { zh: "Hans" };
 
+/** Regions whose Chinese is written in Traditional script. */
+const TRADITIONAL_CHINESE_REGIONS = new Set(["TW", "HK", "MO"]);
+
 /**
- * The browser's language, as a supported table. Intl.Locale#maximize()
- * supplies the script a tag implies: zh-CN and zh-SG write Hans, while zh-TW,
- * zh-HK and zh-MO write Hant. zh-Hans-HK names its script and reads
- * Simplified. A Traditional table would register as its own language and be
- * matched on language and script before this check. Reads navigator through
+ * The script a tag's text is in, for a language written in more than one. A
+ * script subtag wins. Chinese without one is Traditional in TW, HK and MO
+ * and Simplified elsewhere. The rule is fixed on purpose. CLDR's likely
+ * subtags send zh-US, zh-GB and others to Traditional, and they shift
+ * between browser versions.
+ */
+function tagScript(locale: Intl.Locale): string | undefined {
+  if (locale.script) return locale.script;
+  if (locale.language !== "zh") return undefined;
+  return locale.region && TRADITIONAL_CHINESE_REGIONS.has(locale.region) ? "Hant" : "Hans";
+}
+
+/**
+ * Resolves a BCP 47 tag to a code in `supported`, or undefined when none
+ * fits. A table registered by language and script ("zh-Hant") matches first.
+ * A bare-language table matches when the tag's script is the table's. A tag
+ * in another script matches nothing, so the reader gets the fallback instead
+ * of a script they did not choose. chrome.i18n keeps zh_CN and zh_TW apart
+ * the same way.
+ */
+export function matchLanguageTag(tag: string, supported: readonly string[]): string | undefined {
+  let locale: Intl.Locale;
+  try {
+    locale = new Intl.Locale(tag);
+  } catch {
+    return undefined;
+  }
+  const { language } = locale;
+  const script = tagScript(locale);
+  if (script && supported.includes(`${language}-${script}`)) return `${language}-${script}`;
+  if (!supported.includes(language)) return undefined;
+  const tableScript = TABLE_SCRIPT[language];
+  return tableScript && script !== tableScript ? undefined : language;
+}
+
+/**
+ * The browser's language, as a supported table. Reads navigator through
  * globalThis, so this module carries no DOM types. The admin app's suite
  * imports it for the parity checks.
  */
 export function detectLanguage(): SupportedLanguage {
-  const raw = (globalThis as { navigator?: { language?: string } }).navigator?.language ?? "";
-  let locale: Intl.Locale;
-  try {
-    locale = new Intl.Locale(raw).maximize();
-  } catch {
-    return DEFAULT_LANGUAGE;
-  }
-  const lang = locale.language;
-  if (!isSupportedLanguage(lang)) return DEFAULT_LANGUAGE;
-  const script = TABLE_SCRIPT[lang];
-  return script && locale.script !== script ? DEFAULT_LANGUAGE : lang;
+  const nav = (globalThis as { navigator?: { language?: string } }).navigator;
+  const match = matchLanguageTag(nav?.language ?? "", SUPPORTED_LANGUAGES);
+  return match !== undefined && isSupportedLanguage(match) ? match : DEFAULT_LANGUAGE;
 }
 
 /**
