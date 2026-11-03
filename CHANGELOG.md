@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.43.1 (2026-11-03)
+
+Chart axes read correctly in every admin language, Chinese pages render in Simplified glyphs, and dependencies pick up two security patches. No API change.
+
+- **Chart axis labels follow the locale.** The x-axis glued a translated month name onto a day number, so Chinese read "7月 16" and Swedish and Indonesian put the month first. Labels now come from `Intl.DateTimeFormat`, like the tooltips. Monthly labels carry the full year, an axis that crosses a year boundary names the year where it changes, and a label that would collide with "Today" drops out together with its dot. A bucket label in no known shape prints as received instead of breaking the analytics panel.
+- **Chinese admin pages declare `lang="zh-Hans"`.** They used to declare `zh`, so a system whose default Han font is Traditional or Japanese drew the Simplified strings in the wrong glyph forms.
+- **Security patches.** hono 4.13.14 and zod 4.6.7 close published advisories. The other app dependencies move to their latest releases.
+- The twelve unused `month.*` translation keys are gone from all four locales.
+- The version bump refreshes the recorded spec hash in all three SDKs, which ship no code change in this release.
+
 ## 0.43.0 (2026-10-20)
 
 Short URLs can be pinned to one origin, API and MCP clients learn that origin, and the admin speaks Simplified Chinese.
