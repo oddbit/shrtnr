@@ -135,13 +135,18 @@ export function resetChromeMocks(): void {
       configurable: true,
       value: { writeText: vi.fn(async () => undefined) },
     });
-    // Pin navigator.language so detectLanguage() always picks "en" — keeps
-    // assertions against English strings stable regardless of the host system locale.
-    Object.defineProperty(globalThis.navigator, "language", {
-      configurable: true,
-      value: "en-US",
-    });
+    // Pin navigator.language so detectLanguage() picks "en" and assertions
+    // against English strings hold on any host locale.
+    setBrowserLanguage("en-US");
   }
+}
+
+/**
+ * Sets navigator.language, the tag detectLanguage() reads. The global
+ * beforeEach re-pins it to en-US, so an override lasts one case.
+ */
+export function setBrowserLanguage(language: string): void {
+  Object.defineProperty(globalThis.navigator, "language", { configurable: true, value: language });
 }
 
 export function getClipboardMock(): { writeText: ReturnType<typeof vi.fn> } {

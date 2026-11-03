@@ -56,6 +56,21 @@ async function adminPages(): Promise<{ name: string; path: string }[]> {
   ];
 }
 
+describe("<html lang>: the language the strings are in", () => {
+  it("tags every admin page with the viewer's language, and zh with its script", async () => {
+    // The zh table is Simplified. "zh" alone lets the system's default Han
+    // font and screen-reader voice decide, which may be Traditional.
+    const expected: Record<string, string> = { en: "en", id: "id", sv: "sv", zh: "zh-Hans" };
+    for (const { name, path } of await adminPages()) {
+      for (const [lang, tag] of Object.entries(expected)) {
+        const res = await SELF.fetch(new Request(`https://shrtnr.test${path}`, { headers: { Cookie: `lang=${lang}` } }));
+        const html = await res.text();
+        expect(html, `${name} ${lang}`).toContain(`<html lang="${tag}"`);
+      }
+    }
+  });
+});
+
 describe("fonts: self-hosted, not preloaded, with metric-matched fallbacks", () => {
   const PAGES = ["/_/admin/settings", "/", "/no-such-page-for-fonts"];
 

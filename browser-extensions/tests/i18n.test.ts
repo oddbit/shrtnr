@@ -5,14 +5,25 @@ import { describe, it, expect } from "vitest";
 import en from "../src/i18n/en";
 import id from "../src/i18n/id";
 import sv from "../src/i18n/sv";
+import zh from "../src/i18n/zh";
 import {
   createTranslateFn,
   detectLanguage,
+  documentLang,
   getTranslations,
   isSupportedLanguage,
+  matchLanguageTag,
   SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,
 } from "../src/i18n";
+import { setBrowserLanguage } from "./setup";
+
+/**
+ * Every supported language except the fallback, derived once here. Each suite
+ * that compares a table against English iterates it, so a change to the
+ * default language or to the exclusion rule lands in one place.
+ */
+const translated = SUPPORTED_LANGUAGES.filter((lang) => lang !== DEFAULT_LANGUAGE);
 
 describe("i18n.createTranslateFn", () => {
   it("returns en strings for en", () => {
@@ -31,6 +42,12 @@ describe("i18n.createTranslateFn", () => {
     expect(t("popup.copy")).toBe("Kopiera");
   });
 
+  it("returns zh strings for zh", () => {
+    // "复制" only comes from the zh table: a fallback would render "Copy".
+    const t = createTranslateFn("zh");
+    expect(t("popup.copy")).toBe("复制");
+  });
+
   it("falls back to en for unknown languages", () => {
     const t = createTranslateFn("xx");
     expect(t("popup.copy")).toBe("Copy");
@@ -46,24 +63,29 @@ describe("i18n.createTranslateFn", () => {
     expect(t("error.validation", { message: "URL too long" })).toBe("URL too long");
   });
 
-  it("localizes the invalid-URL error instead of passing English through", () => {
-    // error.validation is a "{message}" passthrough for server-supplied text.
-    // A client-side URL parse failure must carry its own localized key.
-    const enText = createTranslateFn("en")("error.invalidUrl");
-    const idText = createTranslateFn("id")("error.invalidUrl");
-    const svText = createTranslateFn("sv")("error.invalidUrl");
-    expect(enText).not.toBe("error.invalidUrl");
-    expect(idText).not.toBe(enText);
-    expect(svText).not.toBe(enText);
+  it("prints $ sequences in a parameter literally", () => {
+    // A string replacement expands "$&", "$'", "$`" and "$1". error.validation
+    // passes server text through, so "Invalid character '$' in slug" rendered
+    // as "Invalid character ' in slug".
+    const t = createTranslateFn("en");
+    for (const message of ["Invalid character '$' in slug", "$& $' $` $1 $$"]) {
+      expect(t("error.validation", { message })).toBe(message);
+    }
+    expect(t("error.network", { host: "$&.example.com" })).toContain("$&.example.com");
   });
 
-  it("localizes the save-failure message", () => {
-    const enText = createTranslateFn("en")("error.saveFailed");
-    const idText = createTranslateFn("id")("error.saveFailed");
-    const svText = createTranslateFn("sv")("error.saveFailed");
-    expect(enText).not.toBe("error.saveFailed");
-    expect(idText).not.toBe(enText);
-    expect(svText).not.toBe(enText);
+  // error.validation is a "{message}" passthrough for server-supplied text. A
+  // client-side failure must carry its own localized key in every language.
+  it.each(SUPPORTED_LANGUAGES)("carries its own invalid-URL and save-failure strings (%s)", (lang) => {
+    const t = createTranslateFn(lang);
+    expect(t("error.invalidUrl")).not.toBe("error.invalidUrl");
+    expect(t("error.saveFailed")).not.toBe("error.saveFailed");
+  });
+
+  it.each(translated)("translates the invalid-URL and save-failure strings instead of passing English through (%s)", (lang) => {
+    const t = createTranslateFn(lang);
+    expect(t("error.invalidUrl")).not.toBe(en["error.invalidUrl"]);
+    expect(t("error.saveFailed")).not.toBe(en["error.saveFailed"]);
   });
 
   it("returns the key itself when missing in both target and fallback", () => {
@@ -74,29 +96,21 @@ describe("i18n.createTranslateFn", () => {
 });
 
 describe("i18n key parity", () => {
-  it("every en key exists in id", () => {
-    const enKeys = Object.keys(en);
-    const idKeys = new Set(Object.keys(id));
-    const missing = enKeys.filter((k) => !idKeys.has(k));
-    expect(missing).toEqual([]);
+  const enKeys = new Set(Object.keys(en));
+
+  it.each(translated)("locale %s carries every key en declares", (lang) => {
+    const keys = new Set(Object.keys(getTranslations(lang)));
+    expect([...enKeys].filter((k) => !keys.has(k))).toEqual([]);
   });
 
-  it("every en key exists in sv", () => {
-    const enKeys = Object.keys(en);
-    const svKeys = new Set(Object.keys(sv));
-    const missing = enKeys.filter((k) => !svKeys.has(k));
-    expect(missing).toEqual([]);
-  });
-
-  it("id and sv have no extra keys beyond en", () => {
-    const enKeys = new Set(Object.keys(en));
-    expect(Object.keys(id).filter((k) => !enKeys.has(k))).toEqual([]);
-    expect(Object.keys(sv).filter((k) => !enKeys.has(k))).toEqual([]);
+  it.each(translated)("locale %s carries no key beyond en", (lang) => {
+    const keys = new Set(Object.keys(getTranslations(lang)));
+    expect([...keys].filter((k) => !enKeys.has(k))).toEqual([]);
   });
 
   it("every value is a non-empty string in every language", () => {
-    for (const [lang, table] of Object.entries({ en, id, sv })) {
-      for (const [key, value] of Object.entries(table)) {
+    for (const lang of SUPPORTED_LANGUAGES) {
+      for (const [key, value] of Object.entries(getTranslations(lang))) {
         expect(typeof value, `${lang}.${key} must be a string`).toBe("string");
         expect(String(value).trim(), `${lang}.${key} must be non-empty`).not.toBe("");
       }
@@ -106,14 +120,31 @@ describe("i18n key parity", () => {
   it("placeholders match between en and translated languages", () => {
     const placeholderRe = /\{[^}]+\}/g;
     for (const key of Object.keys(en) as Array<keyof typeof en>) {
-      const enValue = en[key];
-      const idValue = id[key];
-      const svValue = sv[key];
-      const enPlaceholders = (enValue.match(placeholderRe) ?? []).sort();
-      const idPlaceholders = (idValue.match(placeholderRe) ?? []).sort();
-      const svPlaceholders = (svValue.match(placeholderRe) ?? []).sort();
-      expect(idPlaceholders, `id.${key} placeholders must match en`).toEqual(enPlaceholders);
-      expect(svPlaceholders, `sv.${key} placeholders must match en`).toEqual(enPlaceholders);
+      const enPlaceholders = (en[key].match(placeholderRe) ?? []).sort();
+      for (const lang of translated) {
+        const value = getTranslations(lang)[key];
+        expect(
+          (value.match(placeholderRe) ?? []).sort(),
+          `${lang}.${key} placeholders must match en`,
+        ).toEqual(enPlaceholders);
+      }
+    }
+  });
+
+  it.each(SUPPORTED_LANGUAGES)("marks the example host as the reader's own (%s)", (lang) => {
+    // en, id and sv write your-shrtnr, shrtnr-anda and din-shrtnr. A bare
+    // shrtnr.example.com reads as a real host to paste. The invalid-URL error
+    // quotes the same host the form's placeholder shows.
+    const t = createTranslateFn(lang);
+    const placeholder = t("form.baseUrl.placeholder");
+    expect(placeholder).not.toBe("https://shrtnr.example.com");
+    expect(t("error.invalidUrl")).toContain(placeholder);
+  });
+
+  it("every table declares its own code in _lang", () => {
+    // Catches a table that was copied from another locale and never renamed.
+    for (const lang of SUPPORTED_LANGUAGES) {
+      expect(getTranslations(lang)["_lang"], lang).toBe(lang);
     }
   });
 });
@@ -123,18 +154,70 @@ describe("i18n.detectLanguage", () => {
     const detected = detectLanguage();
     expect(SUPPORTED_LANGUAGES).toContain(detected);
   });
+
+  it("reads a regional variant as its language", () => {
+    for (const [reported, expected] of [
+      ["en-GB", "en"],
+      ["id-ID", "id"],
+      ["sv-SE", "sv"],
+      ["zh-CN", "zh"],
+      ["zh-SG", "zh"],
+      ["ZH-cn", "zh"],
+    ] as const) {
+      setBrowserLanguage(reported);
+      expect(detectLanguage(), reported).toBe(expected);
+    }
+  });
+
+  it("reads Simplified for a tag that names the Simplified script", () => {
+    // A script subtag wins over the region: zh-Hans-HK is Simplified.
+    for (const reported of ["zh-Hans", "zh-Hans-HK", "zh-Hans-TW"]) {
+      setBrowserLanguage(reported);
+      expect(detectLanguage(), reported).toBe("zh");
+    }
+  });
+
+  it("reads Simplified for Chinese outside Taiwan, Hong Kong and Macau", () => {
+    // CLDR's likely subtags send zh-US, zh-GB, zh-AU and others to Hant, and
+    // the mapping shifts between browser versions. The rule here is fixed.
+    for (const reported of ["zh", "zh-CN", "zh-SG", "zh-MY", "zh-US", "zh-GB", "zh-AU", "zh-CA"]) {
+      setBrowserLanguage(reported);
+      expect(detectLanguage(), reported).toBe("zh");
+    }
+  });
+
+  it("falls back to English for Traditional Chinese instead of crossing scripts", () => {
+    // The zh table is Simplified. chrome.i18n keeps zh_CN and zh_TW apart and
+    // falls back to default_locale. This does the same until a Traditional
+    // table exists. TW, HK and MO write Traditional, and so does any Hant tag.
+    for (const reported of ["zh-TW", "zh-HK", "zh-MO", "zh-tw", "zh-Hant", "zh-Hant-CN", "zh-Hant-US"]) {
+      setBrowserLanguage(reported);
+      expect(detectLanguage(), reported).toBe(DEFAULT_LANGUAGE);
+    }
+  });
+
+  it("falls back to English for a language the extension does not carry", () => {
+    for (const reported of ["fr-FR", "de", "ja-JP", "", "not a tag"]) {
+      setBrowserLanguage(reported);
+      expect(detectLanguage(), `reported ${JSON.stringify(reported)}`).toBe(DEFAULT_LANGUAGE);
+    }
+  });
 });
 
 describe("i18n.isSupportedLanguage", () => {
-  it("accepts en, id, sv", () => {
-    expect(isSupportedLanguage("en")).toBe(true);
-    expect(isSupportedLanguage("id")).toBe(true);
-    expect(isSupportedLanguage("sv")).toBe(true);
+  it("accepts every supported language", () => {
+    for (const lang of SUPPORTED_LANGUAGES) {
+      expect(isSupportedLanguage(lang), lang).toBe(true);
+    }
   });
+
   it("rejects everything else", () => {
     expect(isSupportedLanguage("fr")).toBe(false);
     expect(isSupportedLanguage("")).toBe(false);
     expect(isSupportedLanguage("EN")).toBe(false);
+    // A regional variant is not a language code of its own: detectLanguage()
+    // reduces it to its language before asking.
+    expect(isSupportedLanguage("zh-CN")).toBe(false);
   });
 });
 
@@ -142,10 +225,53 @@ describe("i18n.getTranslations", () => {
   it("returns en for unknown lang", () => {
     expect(getTranslations("xx")).toBe(en);
   });
-  it("returns id for id", () => {
-    expect(getTranslations("id")).toBe(id);
+  it("returns the table module the language names", () => {
+    // Reference identity: a map entry pointing at a copy of another table
+    // with _lang overridden fails here.
+    const tables = { en, id, sv, zh };
+    for (const lang of SUPPORTED_LANGUAGES) {
+      expect(getTranslations(lang), lang).toBe(tables[lang]);
+    }
   });
   it("DEFAULT_LANGUAGE is en", () => {
     expect(DEFAULT_LANGUAGE).toBe("en");
+  });
+});
+
+describe("i18n.documentLang", () => {
+  it("tags the zh table with its script", () => {
+    // Screen readers pick a voice and browsers pick a Han font from <html
+    // lang>. "zh" alone leaves the script to the system default.
+    expect(documentLang("zh")).toBe("zh-Hans");
+  });
+
+  it("tags every other table with its language code", () => {
+    for (const lang of SUPPORTED_LANGUAGES.filter((l) => l !== "zh")) {
+      expect(documentLang(lang), lang).toBe(lang);
+    }
+  });
+});
+
+describe("i18n.matchLanguageTag", () => {
+  // A Traditional table would register as "zh-Hant". These cases run the
+  // matcher against such a list, so that path works before the table exists.
+  const withTraditional = ["en", "zh", "zh-Hant"];
+
+  it("matches a table registered by language and script first", () => {
+    for (const tag of ["zh-TW", "zh-HK", "zh-Hant", "zh-Hant-CN"]) {
+      expect(matchLanguageTag(tag, withTraditional), tag).toBe("zh-Hant");
+    }
+  });
+
+  it("keeps Simplified tags on the bare-language table", () => {
+    for (const tag of ["zh", "zh-CN", "zh-US", "zh-Hans-TW"]) {
+      expect(matchLanguageTag(tag, withTraditional), tag).toBe("zh");
+    }
+  });
+
+  it("matches nothing for a tag no table carries or that does not parse", () => {
+    expect(matchLanguageTag("zh-TW", SUPPORTED_LANGUAGES)).toBeUndefined();
+    expect(matchLanguageTag("fr-FR", SUPPORTED_LANGUAGES)).toBeUndefined();
+    expect(matchLanguageTag("not a tag", SUPPORTED_LANGUAGES)).toBeUndefined();
   });
 });

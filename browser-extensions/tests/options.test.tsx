@@ -3,7 +3,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/preact";
-import { setStorageItem } from "./setup";
+import { setStorageItem, setBrowserLanguage } from "./setup";
 import { ExtensionError } from "../src/errors";
 
 let mockedTest: ReturnType<typeof vi.fn<(config: { baseUrl: string; apiKey: string }) => Promise<void>>>;
@@ -24,12 +24,62 @@ beforeEach(() => {
   cleanup();
 });
 
-async function renderOptions() {
+async function renderOptions(props: { lang?: "en" | "id" | "sv" | "zh" } = {}) {
   const { Options } = await import("../src/options/Options");
-  render(<Options />);
+  render(<Options {...props} />);
 }
 
-describe("Options — banner visibility", () => {
+/** Pins navigator.language to en-US and counts how often anything reads it. */
+function countLanguageReads(): () => number {
+  let reads = 0;
+  Object.defineProperty(globalThis.navigator, "language", {
+    configurable: true,
+    get: () => {
+      reads++;
+      return "en-US";
+    },
+  });
+  return () => reads;
+}
+
+
+describe("Options: language", () => {
+  it("renders in Simplified Chinese when the browser reports zh-CN", async () => {
+    // Options builds its own t from detectLanguage(), apart from the popup's.
+    // A hardcoded "en" or a t hoisted to module scope ships unseen without
+    // this case.
+    setBrowserLanguage("zh-CN");
+    await renderOptions();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "shrtnr 设置" })).toBeTruthy();
+    });
+    expect(screen.getByRole("button", { name: "测试连接" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "shrtnr settings" })).toBeNull();
+  });
+});
+
+describe("Options: language source", () => {
+  it("renders the language its entry point hands it, whatever the browser reports", async () => {
+    // The entry point detects once and passes the result down, so <html lang>
+    // and the strings on screen come from one detection.
+    await renderOptions({ lang: "zh" });
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "shrtnr 设置" })).toBeTruthy();
+    });
+  });
+
+  it("reads the browser language once per mount, not on every render", async () => {
+    const reads = countLanguageReads();
+    await renderOptions();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "shrtnr settings" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: /save/i })).toBeTruthy();
+    });
+    expect(reads()).toBe(1);
+  });
+});
+
+describe("Options: banner visibility", () => {
   it("renders the deploy CTA banner when no config saved", async () => {
     await renderOptions();
     await waitFor(() => {
@@ -46,7 +96,7 @@ describe("Options — banner visibility", () => {
   });
 });
 
-describe("Options — Test connection", () => {
+describe("Options: Test connection", () => {
   it("shows connected status on success", async () => {
     chrome.permissions.request = vi.fn(async () => true);
     await renderOptions();
@@ -157,7 +207,7 @@ describe("Options — Test connection", () => {
   });
 });
 
-describe("Options — Save", () => {
+describe("Options: Save", () => {
   it("requests host permission and persists when granted", async () => {
     chrome.permissions.request = vi.fn(async () => true);
     await renderOptions();

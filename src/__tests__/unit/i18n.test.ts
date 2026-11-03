@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createTranslateFn,
+  documentLang,
   getTranslations,
   isSupportedLanguage,
   DEFAULT_LANGUAGE,
@@ -211,5 +212,20 @@ describe("i18n", () => {
       expect(sv["langLocal.zh"]).toBe("Kinesiska (förenklad)");
       expect(zh["langLocal.zh"]).toBe("简体中文");
     });
+  });
+});
+
+describe("documentLang", () => {
+  it("tags the zh table with its script", () => {
+    // Screen readers pick a voice and browsers pick a Han font from <html
+    // lang>. "zh" alone leaves the script to the system default, which can be
+    // Traditional or Japanese glyph forms for Simplified strings.
+    expect(documentLang("zh")).toBe("zh-Hans");
+  });
+
+  it("tags every other language with its code", () => {
+    for (const lang of SUPPORTED_LANGUAGES.filter((l) => l !== "zh")) {
+      expect(documentLang(lang), lang).toBe(lang);
+    }
   });
 });

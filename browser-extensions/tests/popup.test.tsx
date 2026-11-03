@@ -3,7 +3,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/preact";
-import { setStorageItem, getClipboardMock } from "./setup";
+import { setStorageItem, getClipboardMock, setBrowserLanguage } from "./setup";
 import { ExtensionError } from "../src/errors";
 
 let mockedShorten: ReturnType<typeof vi.fn<(url: string) => Promise<unknown>>>;
@@ -27,12 +27,26 @@ beforeEach(() => {
   cleanup();
 });
 
-async function renderPopup() {
+async function renderPopup(props: { lang?: "en" | "id" | "sv" | "zh" } = {}) {
   const { Popup } = await import("../src/popup/Popup");
-  render(<Popup />);
+  render(<Popup {...props} />);
 }
 
-describe("Popup — not configured", () => {
+/** Pins navigator.language to en-US and counts how often anything reads it. */
+function countLanguageReads(): () => number {
+  let reads = 0;
+  Object.defineProperty(globalThis.navigator, "language", {
+    configurable: true,
+    get: () => {
+      reads++;
+      return "en-US";
+    },
+  });
+  return () => reads;
+}
+
+
+describe("Popup: not configured", () => {
   it("renders the configure form when no config saved", async () => {
     await renderPopup();
     await waitFor(() => {
@@ -48,9 +62,42 @@ describe("Popup — not configured", () => {
       expect(link.href).toContain("oddb.it/shrtnr-deploy-ext");
     });
   });
+
+  it("renders in Simplified Chinese when the browser reports zh-CN", async () => {
+    // The language comes from the browser, with no picker in the extension, so
+    // this is the whole path from navigator.language to the strings on screen.
+    // Every other case in this file runs against the en-US pin in setup.ts.
+    setBrowserLanguage("zh-CN");
+    await renderPopup();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "保存" })).toBeTruthy();
+    });
+    expect(screen.getByRole("button", { name: "测试连接" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /save/i })).toBeNull();
+  });
 });
 
-describe("Popup — success", () => {
+describe("Popup: language source", () => {
+  it("renders the language its entry point hands it, whatever the browser reports", async () => {
+    // The entry point detects once and passes the result down, so <html lang>
+    // and the strings on screen come from one detection.
+    await renderPopup({ lang: "zh" });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "保存" })).toBeTruthy();
+    });
+  });
+
+  it("reads the browser language once per mount, not on every render", async () => {
+    const reads = countLanguageReads();
+    await renderPopup();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i })).toBeTruthy();
+    });
+    expect(reads()).toBe(1);
+  });
+});
+
+describe("Popup: success", () => {
   beforeEach(() => {
     setStorageItem("config", { baseUrl: "https://x.com", apiKey: "sk_abc" });
     mockedShorten.mockResolvedValue({
@@ -99,7 +146,7 @@ describe("Popup — success", () => {
   });
 });
 
-describe("Popup — QR toggle", () => {
+describe("Popup: QR toggle", () => {
   beforeEach(() => {
     setStorageItem("config", { baseUrl: "https://x.com", apiKey: "sk_abc" });
     mockedShorten.mockResolvedValue({
@@ -143,7 +190,7 @@ describe("Popup — QR toggle", () => {
   });
 });
 
-describe("Popup — error states", () => {
+describe("Popup: error states", () => {
   beforeEach(() => {
     setStorageItem("config", { baseUrl: "https://x.com", apiKey: "sk_abc" });
   });
@@ -194,7 +241,7 @@ describe("Popup — error states", () => {
   });
 });
 
-describe("Popup — recovery", () => {
+describe("Popup: recovery", () => {
   beforeEach(() => {
     setStorageItem("config", { baseUrl: "https://x.com", apiKey: "sk_abc" });
   });

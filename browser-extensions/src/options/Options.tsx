@@ -5,12 +5,12 @@
 // config, surfaces the deploy CTA whenever no config exists yet, and
 // remains open after Save (no auto-close).
 
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useMemo, useState } from "preact/hooks";
 import { getConfig, type Config } from "../storage";
 import { ConfigForm } from "../components/ConfigForm";
 import { DeployCta } from "../components/DeployCta";
 import { PROJECT_INFO_URL } from "../constants";
-import { createTranslateFn, detectLanguage } from "../i18n";
+import { createTranslateFn, detectLanguage, type SupportedLanguage, type TranslateFn } from "../i18n";
 
 /**
  * The live binding for the popup command, or "" when the browser left it
@@ -54,10 +54,11 @@ function installedVersion(): string | null {
   }
 }
 
-export function Options() {
+/** `lang` comes from the entry point, which tags <html lang> and the tab title with the same value. */
+export function Options({ lang }: { lang?: SupportedLanguage } = {}) {
   const [loadState, setLoadState] = useState<LoadState>({ kind: "loading" });
   const [shortcut, setShortcut] = useState<ShortcutState>({ kind: "unknown" });
-  const t = createTranslateFn(detectLanguage());
+  const t = useMemo<TranslateFn>(() => createTranslateFn(lang ?? detectLanguage()), [lang]);
   const version = installedVersion();
 
   useEffect(() => {
