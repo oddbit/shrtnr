@@ -16,7 +16,7 @@ import { COPY_CONFIRM_DURATION_MS, MAX_SLUG_LENGTH } from "../constants";
 import { listRecent, recordRecent, type RecentLink } from "../recent";
 import { ConfigForm } from "../components/ConfigForm";
 import { DeployCta } from "../components/DeployCta";
-import { createTranslateFn, detectLanguage, type TranslateFn } from "../i18n";
+import { createTranslateFn, detectLanguage, type SupportedLanguage, type TranslateFn } from "../i18n";
 import { hostFromUrl } from "../url";
 
 type QrState = {
@@ -100,9 +100,10 @@ function toRecent(link: ShortenResult, pageUrl: string): RecentLink {
   return { id: link.id, slug: link.slug, shortUrl: link.shortUrl, url: pageUrl, createdAt: Date.now() };
 }
 
-export function Popup() {
+/** `lang` comes from the entry point, which tags <html lang> with the same value. */
+export function Popup({ lang }: { lang?: SupportedLanguage } = {}) {
   const [state, setState] = useState<State>({ kind: "loading" });
-  const t = useMemo<TranslateFn>(() => createTranslateFn(detectLanguage()), []);
+  const t = useMemo<TranslateFn>(() => createTranslateFn(lang ?? detectLanguage()), [lang]);
 
   async function runFlow() {
     setState({ kind: "loading" });

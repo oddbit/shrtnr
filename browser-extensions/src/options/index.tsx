@@ -7,10 +7,11 @@ import "./options.css";
 import { createTranslateFn, detectLanguage } from "../i18n";
 import { applyDocumentLanguage } from "../i18n/document";
 
+// One detection feeds <html lang>, the tab title and the strings on screen.
 const lang = detectLanguage();
 applyDocumentLanguage(lang, createTranslateFn(lang)("options.title"));
 
 const root = document.getElementById("root");
 if (root) {
-  render(<Options />, root);
+  render(<Options lang={lang} />, root);
 }

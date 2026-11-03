@@ -27,12 +27,26 @@ beforeEach(() => {
   cleanup();
 });
 
-async function renderPopup() {
+async function renderPopup(props: { lang?: "en" | "id" | "sv" | "zh" } = {}) {
   const { Popup } = await import("../src/popup/Popup");
-  render(<Popup />);
+  render(<Popup {...props} />);
 }
 
-describe("Popup — not configured", () => {
+/** Pins navigator.language to en-US and counts how often anything reads it. */
+function countLanguageReads(): () => number {
+  let reads = 0;
+  Object.defineProperty(globalThis.navigator, "language", {
+    configurable: true,
+    get: () => {
+      reads++;
+      return "en-US";
+    },
+  });
+  return () => reads;
+}
+
+
+describe("Popup: not configured", () => {
   it("renders the configure form when no config saved", async () => {
     await renderPopup();
     await waitFor(() => {
@@ -63,7 +77,27 @@ describe("Popup — not configured", () => {
   });
 });
 
-describe("Popup — success", () => {
+describe("Popup: language source", () => {
+  it("renders the language its entry point hands it, whatever the browser reports", async () => {
+    // The entry point detects once and passes the result down, so <html lang>
+    // and the strings on screen come from one detection.
+    await renderPopup({ lang: "zh" });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "保存" })).toBeTruthy();
+    });
+  });
+
+  it("reads the browser language once per mount, not on every render", async () => {
+    const reads = countLanguageReads();
+    await renderPopup();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i })).toBeTruthy();
+    });
+    expect(reads()).toBe(1);
+  });
+});
+
+describe("Popup: success", () => {
   beforeEach(() => {
     setStorageItem("config", { baseUrl: "https://x.com", apiKey: "sk_abc" });
     mockedShorten.mockResolvedValue({
@@ -112,7 +146,7 @@ describe("Popup — success", () => {
   });
 });
 
-describe("Popup — QR toggle", () => {
+describe("Popup: QR toggle", () => {
   beforeEach(() => {
     setStorageItem("config", { baseUrl: "https://x.com", apiKey: "sk_abc" });
     mockedShorten.mockResolvedValue({
@@ -156,7 +190,7 @@ describe("Popup — QR toggle", () => {
   });
 });
 
-describe("Popup — error states", () => {
+describe("Popup: error states", () => {
   beforeEach(() => {
     setStorageItem("config", { baseUrl: "https://x.com", apiKey: "sk_abc" });
   });
@@ -207,7 +241,7 @@ describe("Popup — error states", () => {
   });
 });
 
-describe("Popup — recovery", () => {
+describe("Popup: recovery", () => {
   beforeEach(() => {
     setStorageItem("config", { baseUrl: "https://x.com", apiKey: "sk_abc" });
   });
