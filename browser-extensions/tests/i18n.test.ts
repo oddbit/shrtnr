@@ -6,11 +6,13 @@ import en from "../src/i18n/en";
 import {
   createTranslateFn,
   detectLanguage,
+  documentLang,
   getTranslations,
   isSupportedLanguage,
   SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,
 } from "../src/i18n";
+import { setBrowserLanguage } from "./setup";
 
 /**
  * Every supported language except the fallback, derived once here: the key
@@ -18,11 +20,6 @@ import {
  * language or to the exclusion rule lands in one place.
  */
 const translated = SUPPORTED_LANGUAGES.filter((lang) => lang !== DEFAULT_LANGUAGE);
-
-/** Sets navigator.language for one case. The global beforeEach re-pins it. */
-function browserLanguage(language: string): void {
-  Object.defineProperty(globalThis.navigator, "language", { configurable: true, value: language });
-}
 
 describe("i18n.createTranslateFn", () => {
   it("returns en strings for en", () => {
@@ -148,7 +145,7 @@ describe("i18n.detectLanguage", () => {
     expect(SUPPORTED_LANGUAGES).toContain(detected);
   });
 
-  it("reads a regional variant by its primary subtag", () => {
+  it("reads a regional variant as its language", () => {
     for (const [reported, expected] of [
       ["en-GB", "en"],
       ["id-ID", "id"],
@@ -157,25 +154,32 @@ describe("i18n.detectLanguage", () => {
       ["zh-SG", "zh"],
       ["ZH-cn", "zh"],
     ] as const) {
-      browserLanguage(reported);
+      setBrowserLanguage(reported);
       expect(detectLanguage(), reported).toBe(expected);
     }
   });
 
-  it("resolves a Chinese script variant to Simplified", () => {
-    // The extension carries one Chinese table, so a Traditional reader gets
-    // Simplified rather than English. Pinned so the choice is deliberate:
-    // a zh-Hant table would have to be matched before the primary subtag is
-    // taken, which detectLanguage() does not do today.
-    for (const reported of ["zh-TW", "zh-HK", "zh-Hant"]) {
-      browserLanguage(reported);
+  it("reads Simplified for a tag whose script is Simplified", () => {
+    // The script decides, not the region: zh-Hans-HK names Simplified.
+    for (const reported of ["zh", "zh-Hans", "zh-Hans-HK", "zh-Hans-TW"]) {
+      setBrowserLanguage(reported);
       expect(detectLanguage(), reported).toBe("zh");
     }
   });
 
+  it("falls back to English for Traditional Chinese instead of crossing scripts", () => {
+    // The zh table is Simplified. chrome.i18n keeps zh_CN and zh_TW apart and
+    // falls back to default_locale, and so does this, until a Traditional
+    // table exists. The region implies the script: TW, HK and MO write Hant.
+    for (const reported of ["zh-TW", "zh-HK", "zh-MO", "zh-Hant", "zh-Hant-CN"]) {
+      setBrowserLanguage(reported);
+      expect(detectLanguage(), reported).toBe(DEFAULT_LANGUAGE);
+    }
+  });
+
   it("falls back to English for a language the extension does not carry", () => {
-    for (const reported of ["fr-FR", "de", "ja-JP", ""]) {
-      browserLanguage(reported);
+    for (const reported of ["fr-FR", "de", "ja-JP", "", "not a tag"]) {
+      setBrowserLanguage(reported);
       expect(detectLanguage(), `reported ${JSON.stringify(reported)}`).toBe(DEFAULT_LANGUAGE);
     }
   });
@@ -197,7 +201,7 @@ describe("i18n.isSupportedLanguage", () => {
     expect(isSupportedLanguage("")).toBe(false);
     expect(isSupportedLanguage("EN")).toBe(false);
     // A regional variant is not a language code of its own: detectLanguage()
-    // reduces it to the primary subtag before asking.
+    // reduces it to its language before asking.
     expect(isSupportedLanguage("zh-CN")).toBe(false);
   });
 });
@@ -213,5 +217,19 @@ describe("i18n.getTranslations", () => {
   });
   it("DEFAULT_LANGUAGE is en", () => {
     expect(DEFAULT_LANGUAGE).toBe("en");
+  });
+});
+
+describe("i18n.documentLang", () => {
+  it("tags the zh table with its script", () => {
+    // Screen readers pick a voice and browsers pick a Han font from <html
+    // lang>. "zh" alone leaves the script to the system default.
+    expect(documentLang("zh")).toBe("zh-Hans");
+  });
+
+  it("tags every other table with its language code", () => {
+    for (const lang of SUPPORTED_LANGUAGES.filter((l) => l !== "zh")) {
+      expect(documentLang(lang), lang).toBe(lang);
+    }
   });
 });

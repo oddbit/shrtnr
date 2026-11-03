@@ -21,16 +21,50 @@ export function isSupportedLanguage(lang: string): lang is SupportedLanguage {
 }
 
 /**
- * The browser's language decides, by its primary subtag: "zh-CN", "zh-SG" and
- * "zh-Hans" all resolve to "zh". A script variant this set does not carry,
- * "zh-TW" or "zh-HK", also resolves to "zh" and reads the Simplified table.
- * A Traditional locale would need its own entry here and would have to be
- * matched before the primary subtag is taken, which this does not do.
+ * The script a table is written in, for languages written in more than one.
+ * A browser tag whose likely script differs falls back to English instead of
+ * crossing scripts, the way chrome.i18n keeps zh_CN and zh_TW apart.
+ */
+const TABLE_SCRIPT: Partial<Record<SupportedLanguage, string>> = { zh: "Hans" };
+
+/**
+ * The browser's language, as a supported table. Intl.Locale#maximize()
+ * supplies the script a tag implies: zh-CN and zh-SG write Hans, while zh-TW,
+ * zh-HK and zh-MO write Hant. zh-Hans-HK names its script and reads
+ * Simplified. A Traditional table would register as its own language and be
+ * matched on language and script before this check.
  */
 export function detectLanguage(): SupportedLanguage {
-  const raw = typeof navigator !== "undefined" ? (navigator.language || "en") : "en";
-  const primary = raw.split("-")[0]?.toLowerCase() ?? "en";
-  return isSupportedLanguage(primary) ? primary : DEFAULT_LANGUAGE;
+  const raw = typeof navigator !== "undefined" ? navigator.language || "" : "";
+  let locale: Intl.Locale;
+  try {
+    locale = new Intl.Locale(raw).maximize();
+  } catch {
+    return DEFAULT_LANGUAGE;
+  }
+  const lang = locale.language;
+  if (!isSupportedLanguage(lang)) return DEFAULT_LANGUAGE;
+  const script = TABLE_SCRIPT[lang];
+  return script && locale.script !== script ? DEFAULT_LANGUAGE : lang;
+}
+
+/**
+ * The tag for <html lang>. A table written in one of several scripts names
+ * it, so screen readers and Han font fallback match the strings on screen.
+ */
+export function documentLang(lang: SupportedLanguage): string {
+  const script = TABLE_SCRIPT[lang];
+  return script ? `${lang}-${script}` : lang;
+}
+
+/**
+ * Tags the document with the language its strings are in. popup.html and
+ * options.html ship lang="en" and an English title, so each entry point
+ * calls this before it renders.
+ */
+export function applyDocumentLanguage(lang: SupportedLanguage, title?: string): void {
+  document.documentElement.lang = documentLang(lang);
+  if (title !== undefined) document.title = title;
 }
 
 export function getTranslations(lang: string): Translations {

@@ -58,7 +58,7 @@ Switch the OS or browser locale to each non-English language in `SUPPORTED_LANGU
 - [ ] The Chinese labels are not clipped: the popup and the options page are the narrowest surfaces the strings land on.
 - [ ] Placeholders (`{host}`, `{message}`) interpolate in error messages.
 - [ ] An unsupported OS locale (e.g. German) falls back to English.
-- [ ] A Traditional Chinese locale (`zh-TW`) renders Simplified, which is the documented behavior: the extension carries one Chinese table.
+- [ ] A Traditional Chinese locale (`zh-TW`) falls back to English. The extension carries a Simplified table only.
 
 ## 5. Bump and tag
 

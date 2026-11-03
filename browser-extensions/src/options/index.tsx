@@ -4,6 +4,10 @@
 import { render } from "preact";
 import { Options } from "./Options";
 import "./options.css";
+import { applyDocumentLanguage, createTranslateFn, detectLanguage } from "../i18n";
+
+const lang = detectLanguage();
+applyDocumentLanguage(lang, createTranslateFn(lang)("options.title"));
 
 const root = document.getElementById("root");
 if (root) {

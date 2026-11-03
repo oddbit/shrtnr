@@ -4,6 +4,9 @@
 import { render } from "preact";
 import { Popup } from "./Popup";
 import "./popup.css";
+import { applyDocumentLanguage, detectLanguage } from "../i18n";
+
+applyDocumentLanguage(detectLanguage());
 
 const root = document.getElementById("root");
 if (root) {
