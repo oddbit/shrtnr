@@ -284,20 +284,6 @@ const sv: Translations = {
   "widget.error": "Kunde inte ladda panelen.",
   "widget.retry": "Försök igen",
 
-  // Months (short)
-  "month.jan": "jan",
-  "month.feb": "feb",
-  "month.mar": "mar",
-  "month.apr": "apr",
-  "month.may": "maj",
-  "month.jun": "jun",
-  "month.jul": "jul",
-  "month.aug": "aug",
-  "month.sep": "sep",
-  "month.oct": "okt",
-  "month.nov": "nov",
-  "month.dec": "dec",
-
   // Time ranges
   "range.24h": "24T",
   "range.7d": "7D",
