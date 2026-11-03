@@ -35,7 +35,7 @@ const zh: Translations = {
 
   // Form
   "form.baseUrl.label": "服务器地址",
-  "form.baseUrl.placeholder": "https://shrtnr.example.com",
+  "form.baseUrl.placeholder": "https://ni-de-shrtnr.example.com",
   "form.baseUrl.help": "部署 shrtnr Worker 的域名。",
   "form.apiKey.label": "API 密钥",
   "form.apiKey.placeholder": "sk_...",
@@ -45,7 +45,7 @@ const zh: Translations = {
   "form.cancel": "取消",
   "form.testing": "正在测试...",
   "form.testOk": "已连接",
-  "form.testOkCreateOnly": "已连接。该密钥只能创建链接、不能读取链接，因此二维码需要具备读取权限的密钥。",
+  "form.testOkCreateOnly": "已连接。该密钥可以创建链接，但不能读取链接，因此二维码需要具备读取权限的密钥。",
   "form.saving": "正在保存...",
   "form.saved": "已保存",
 
@@ -68,7 +68,7 @@ const zh: Translations = {
   "error.rateLimited": "请求过于频繁。请稍后重试。",
   "error.server": "你的 shrtnr 服务器返回了错误。",
   "error.validation": "{message}",
-  "error.invalidUrl": "这不是有效的网址。请使用完整地址，例如 https://shrtnr.example.com。",
+  "error.invalidUrl": "这不是有效的网址。请使用完整地址，例如 https://ni-de-shrtnr.example.com。",
   "error.saveFailed": "无法保存设置。请重试。",
   "error.clipboard": "复制失败。请选中上方链接手动复制。",
   "error.permissionDenied": "shrtnr 需要访问 {host} 的权限。请再次点击保存并允许。",

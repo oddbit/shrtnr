@@ -131,6 +131,16 @@ describe("i18n key parity", () => {
     }
   });
 
+  it.each(SUPPORTED_LANGUAGES)("marks the example host as the reader's own (%s)", (lang) => {
+    // en, id and sv write your-shrtnr, shrtnr-anda and din-shrtnr. A bare
+    // shrtnr.example.com reads as a real host to paste. The invalid-URL error
+    // quotes the same host the form's placeholder shows.
+    const t = createTranslateFn(lang);
+    const placeholder = t("form.baseUrl.placeholder");
+    expect(placeholder).not.toBe("https://shrtnr.example.com");
+    expect(t("error.invalidUrl")).toContain(placeholder);
+  });
+
   it("every table declares its own code in _lang", () => {
     // Catches a table that was copied from another locale and never renamed.
     for (const lang of SUPPORTED_LANGUAGES) {
