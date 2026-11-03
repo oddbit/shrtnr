@@ -43,7 +43,9 @@ export function createTranslateFn(lang: string): TranslateFn {
     let value: string = strings[key] || en[key] || (key as string);
     if (params) {
       for (const [k, v] of Object.entries(params)) {
-        value = value.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+        // A replacer function, not a string: a string replacement expands
+        // "$&", "$'", "$`" and "$1" in the value instead of printing them.
+        value = value.replace(new RegExp(`\\{${k}\\}`, "g"), () => String(v));
       }
     }
     return value;

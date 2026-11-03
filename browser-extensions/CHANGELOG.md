@@ -8,6 +8,7 @@ Repairs the extension in real browsers, adds the parity features a shortener ext
 
 - **Simplified Chinese.** The popup and the options page follow the browser's language, and Chinese joins English, Indonesian and Swedish so the extension's set matches the admin app's. A browser reporting `zh-TW` or `zh-HK` reads Simplified: the extension carries one Chinese table, and it has no picker to choose another.
 
+- **Server error text prints as sent.** Interpolation expanded `$&`, `$'` and `$1` in a parameter, so `Invalid character '$' in slug` lost its `$`.
 - **Every request works again.** The lockfile pinned `@oddbit/shrtnr` 1.1.0, which calls `fetch` with the client object as receiver. Browsers reject that with `Illegal invocation`, the SDK reported it as a network failure, and the popup and the connection test showed "Can't reach your shrtnr" for every deployment. Verified in Chromium: zero requests left the browser. The floor is now 1.2.1, which also restores the `X-Client` header so links show as created via the SDK.
 - **Custom slug** field in the popup. Adds the slug to the link just created, swaps the short URL, copies it, and re-targets the QR code at the new slug. 409 shows "already taken" inline; a slug that breaks the rule is rejected before any request.
 - **Recent** list of the last five links shortened from this browser, kept on the device in `chrome.storage.local`.

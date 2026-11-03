@@ -62,6 +62,17 @@ describe("i18n.createTranslateFn", () => {
     expect(t("error.validation", { message: "URL too long" })).toBe("URL too long");
   });
 
+  it("prints $ sequences in a parameter literally", () => {
+    // A string replacement expands "$&", "$'", "$`" and "$1". error.validation
+    // passes server text through, so "Invalid character '$' in slug" rendered
+    // as "Invalid character ' in slug".
+    const t = createTranslateFn("en");
+    for (const message of ["Invalid character '$' in slug", "$& $' $` $1 $$"]) {
+      expect(t("error.validation", { message })).toBe(message);
+    }
+    expect(t("error.network", { host: "$&.example.com" })).toContain("$&.example.com");
+  });
+
   it.each(SUPPORTED_LANGUAGES)(
     "localizes the invalid-URL error instead of passing English through (%s)",
     (lang) => {
