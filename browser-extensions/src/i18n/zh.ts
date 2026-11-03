@@ -79,7 +79,7 @@ const zh: Translations = {
   "options.subtitle": "将此扩展连接到你的 shrtnr 部署。",
   "options.section.connection": "连接",
   "options.section.connection.body": "这些值保存在浏览器的同步设置中，绝不会发送给 Oddbit。",
-  "options.section.connection.scope": "只有创建权限的密钥就足以缩短链接。需要二维码时再加上读取权限。",
+  "options.section.connection.scope": "仅具备创建权限的密钥即可缩短链接。需要二维码时再加上读取权限。",
   "options.section.shortcut": "键盘快捷键",
   "options.section.shortcut.body": "{shortcut} 会打开弹窗并缩短当前标签页。可在浏览器的扩展快捷键页面修改。",
   "options.section.shortcut.unassigned": "尚未分配快捷键。建议的组合可能已被其他扩展占用。请在浏览器的扩展快捷键页面分配。",
