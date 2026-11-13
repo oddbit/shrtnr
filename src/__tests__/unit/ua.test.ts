@@ -2,6 +2,20 @@ import { describe, it, expect } from "vitest";
 import { parseDeviceType, parseBrowser, parseOS, isBot } from "../../ua";
 
 describe("parseDeviceType", () => {
+  // Regression: `Android.*Mobile` and `Android(?!.*Mobile)` rescanned the
+  // rest of the string at every "Android", so a long User-Agent header cost
+  // quadratic CPU on the redirect path (about 700 ms at 112 KB).
+  it("classifies a long Android-only User-Agent in linear time", () => {
+    const ua = "Android".repeat(16000);
+    const start = performance.now();
+    expect(parseDeviceType(ua)).toBe("tablet");
+    expect(performance.now() - start).toBeLessThan(50);
+  });
+
+  it("classifies an Android UA with Mobile after a long padding as mobile", () => {
+    expect(parseDeviceType(`Android ${"x".repeat(20000)} Mobile`)).toBe("mobile");
+  });
+
   it("should detect Mobile Safari as mobile", () => {
     expect(
       parseDeviceType(

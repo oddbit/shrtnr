@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
-import { SELF, env } from "cloudflare:test";
+import { SELF, env, createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
+import { handleRedirect } from "../../redirect";
 import { LinkRepository, SlugRepository } from "../../db";
 import { SlugCache } from "../../kv";
 import { applyMigrations, resetData } from "../setup";
@@ -320,5 +321,25 @@ describe("redirect status by link state", () => {
 
     const res = await SELF.fetch(req("custom-orphan"));
     expect(res.status).toBe(404);
+  });
+
+  it("still redirects when the read-through KV write fails", async () => {
+    // Regression: the read-through put was awaited in the request path, so a
+    // rejected write (KV answers 429 on more than one write per second to a
+    // key, as concurrent first hits on a cold slug produce) turned a resolved
+    // redirect into a 500. Cache population is side work.
+    await LinkRepository.create(env.DB, { url: "https://d1-target.com/cold", slug: "coldslug", createdBy: DEV_IDENTITY });
+    const failingKv = {
+      get: env.SLUG_KV.get.bind(env.SLUG_KV),
+      put: () => Promise.reject(new Error("KV PUT failed: 429 Too Many Requests")),
+      delete: env.SLUG_KV.delete.bind(env.SLUG_KV),
+    } as unknown as KVNamespace;
+    const ctx = createExecutionContext();
+
+    const res = await handleRedirect("coldslug", req("coldslug"), { ...env, SLUG_KV: failingKv }, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(301);
+    expect(res.headers.get("Location")).toBe("https://d1-target.com/cold");
   });
 });
