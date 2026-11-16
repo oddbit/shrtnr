@@ -7,8 +7,11 @@
  */
 
 export function parseDeviceType(ua: string): string {
-  if (/Mobile|Android.*Mobile|iPhone|iPod/i.test(ua)) return "mobile";
-  if (/iPad|Android(?!.*Mobile)|Tablet/i.test(ua)) return "tablet";
+  // Plain alternations only. A bare `Mobile` already covers "Android ...
+  // Mobile", and a UA that reaches the tablet check carries no "Mobile", so
+  // `.*Mobile` scans would add nothing but quadratic CPU on long headers.
+  if (/Mobile|iPhone|iPod/i.test(ua)) return "mobile";
+  if (/iPad|Android|Tablet/i.test(ua)) return "tablet";
   return "desktop";
 }
 

@@ -32,7 +32,9 @@ export async function handleRedirect(
       expires_at: d1Result.expires_at,
     };
 
-    await SlugCache.put(env.SLUG_KV, normalizedSlug, entry);
+    // Populating the cache is side work: a rejected write (KV answers 429
+    // to concurrent writes on one key) must not fail a resolved redirect.
+    await SlugCache.put(env.SLUG_KV, normalizedSlug, entry).catch(() => {});
   }
 
   // 3. Check disabled
