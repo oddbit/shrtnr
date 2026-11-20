@@ -31,6 +31,40 @@ describe("sparklineBucketLabels", () => {
     }
   });
 
+  // The monthly series used to step back 30 days at a time. Twelve such steps
+  // span 330 days, not twelve calendar months, so on about one day in six two
+  // steps landed in the same month (charted twice) and, around the turn of
+  // February, a month was skipped outright.
+  it("names twelve consecutive calendar months when 30-day steps would skip February", () => {
+    // 2027-03-01 12:00 UTC: 30 days back is 2027-01-30, which jumps February.
+    const ts = Math.floor(Date.UTC(2027, 2, 1, 12, 0, 0) / 1000);
+    for (const range of ["1y", "all"] as const) {
+      expect(sparklineBucketLabels(range, ts)).toEqual([
+        "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09",
+        "2026-10", "2026-11", "2026-12", "2027-01", "2027-02", "2027-03",
+      ]);
+    }
+  });
+
+  it("names each month once when 30-day steps would repeat the current month", () => {
+    // 2026-12-31 12:00 UTC: 30 days back is 2026-12-01, December again.
+    const ts = Math.floor(Date.UTC(2026, 11, 31, 12, 0, 0) / 1000);
+    for (const range of ["1y", "all"] as const) {
+      expect(sparklineBucketLabels(range, ts)).toEqual([
+        "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06",
+        "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12",
+      ]);
+    }
+  });
+
+  it("never repeats a month on any day of a year, leap day included", () => {
+    const start = Date.UTC(2028, 0, 1, 12, 0, 0) / 1000;
+    for (let day = 0; day < 366; day++) {
+      const labels = sparklineBucketLabels("1y", start + day * 86400);
+      expect(new Set(labels).size).toBe(12);
+    }
+  });
+
   it("produces 30 daily labels for the 30d range", () => {
     const labels = sparklineBucketLabels("30d", TS);
     expect(labels).toHaveLength(30);
