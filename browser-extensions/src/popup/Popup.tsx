@@ -228,10 +228,15 @@ export function Popup({ lang }: { lang?: SupportedLanguage } = {}) {
     );
     const { id } = state.link;
     const qrSlug = state.qrSlug;
+    // The answer belongs to the link and slug it was asked for. Adding a custom
+    // slug while the fetch is in flight resets the QR and re-targets it, so a
+    // late answer for the old slug must not land beside the new short URL.
+    const stillWanted = (prev: State): prev is Extract<State, { kind: "success" }> =>
+      prev.kind === "success" && prev.link.id === id && prev.qrSlug === qrSlug;
     try {
       const svg = await getQrSvg(id, qrSlug);
       setState((prev) =>
-        prev.kind === "success"
+        stillWanted(prev)
           ? { ...prev, qr: { visible: true, svg, loading: false, error: null } }
           : prev,
       );
@@ -239,7 +244,7 @@ export function Popup({ lang }: { lang?: SupportedLanguage } = {}) {
       const category: ErrorCategory = err instanceof ExtensionError ? err.category : "server";
       logError(category, err instanceof ExtensionError ? err.status : undefined);
       setState((prev) =>
-        prev.kind === "success"
+        stillWanted(prev)
           ? { ...prev, qr: { visible: false, svg: null, loading: false, error: category } }
           : prev,
       );

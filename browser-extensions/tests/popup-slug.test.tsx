@@ -237,6 +237,66 @@ describe("Popup: concurrent state writes", () => {
   });
 });
 
+describe("Popup: a QR fetch that outlives its slug", () => {
+  it("drops a QR for the old slug that arrives after a custom slug was added", async () => {
+    // Show QR starts a fetch for the primary slug. Adding a custom slug swaps
+    // the short URL and resets the QR. The late answer still encodes the old
+    // slug, so writing it would pair the new URL with a QR for the other one
+    // and cache it for every later toggle.
+    let resolveOldQr: (svg: string) => void = () => {};
+    mockedQr.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveOldQr = resolve;
+        }),
+    );
+    mockedAddSlug.mockResolvedValue({ id: 42, slug: "my-link", shortUrl: "https://x.com/my-link" });
+    await renderPopup();
+    await waitFor(() => slugInput());
+
+    fireEvent.click(screen.getByRole("button", { name: /show qr/i }));
+    await waitFor(() => expect(mockedQr).toHaveBeenCalledTimes(1));
+
+    fireEvent.input(slugInput(), { target: { value: "my-link" } });
+    fireEvent.click(addButton());
+    await waitFor(() => expect(screen.getByText("https://x.com/my-link")).toBeTruthy());
+
+    resolveOldQr("<svg data-old-slug/>");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByAltText(/qr code/i)).toBeNull();
+
+    // The next Show QR fetches for the slug on screen instead of reusing a cache.
+    mockedQr.mockResolvedValue("<svg data-new-slug/>");
+    fireEvent.click(screen.getByRole("button", { name: /show qr/i }));
+    await waitFor(() => expect(mockedQr).toHaveBeenLastCalledWith(42, "my-link"));
+    const img = await waitFor(() => screen.getByAltText(/qr code/i));
+    expect(decodeURIComponent(img.getAttribute("src") ?? "")).toContain("data-new-slug");
+  });
+
+  it("drops a late QR failure for the old slug the same way", async () => {
+    let rejectOldQr: (err: unknown) => void = () => {};
+    mockedQr.mockImplementationOnce(
+      () =>
+        new Promise<string>((_resolve, reject) => {
+          rejectOldQr = reject;
+        }),
+    );
+    mockedAddSlug.mockResolvedValue({ id: 42, slug: "my-link", shortUrl: "https://x.com/my-link" });
+    await renderPopup();
+    await waitFor(() => slugInput());
+
+    fireEvent.click(screen.getByRole("button", { name: /show qr/i }));
+    await waitFor(() => expect(mockedQr).toHaveBeenCalledTimes(1));
+    fireEvent.input(slugInput(), { target: { value: "my-link" } });
+    fireEvent.click(addButton());
+    await waitFor(() => expect(screen.getByText("https://x.com/my-link")).toBeTruthy());
+
+    rejectOldQr(new ExtensionError("server", "boom", 500));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByText(/couldn't fetch the qr code/i)).toBeNull();
+  });
+});
+
 describe("Popup: recent list on the error screen", () => {
   it("lists earlier links when the shorten fails", async () => {
     local.recent = [

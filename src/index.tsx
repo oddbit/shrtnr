@@ -216,7 +216,15 @@ app.get("/_/admin/logout", (c) => {
 function getCookie(request: Request, name: string): string | null {
   const header = request.headers.get("Cookie") || "";
   const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
+  if (!match) return null;
+  // The value is whatever the caller sent. One that is not valid
+  // percent-encoding counts as no cookie, so the page falls back to its
+  // default instead of answering 500.
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
 }
 
 async function getPageData(c: { env: Env; req: { raw: Request } }, identity: string) {
