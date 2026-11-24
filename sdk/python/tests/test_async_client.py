@@ -299,6 +299,24 @@ async def test_async_slugs_lookup(client: AsyncShrtnr) -> None:
     assert link.id == 1
 
 
+# A "." or ".." slug would collapse the request path onto another endpoint
+# (see the sync suite). The async client refuses it the same way.
+@pytest.mark.parametrize("slug", ["..", ".", ""])
+@respx.mock
+async def test_async_slug_dot_segments_raise_404_and_send_nothing(client: AsyncShrtnr, slug: str) -> None:
+    catch_all = respx.route().mock(return_value=httpx.Response(200, json=make_link_dict()))
+    for call in (
+        lambda: client.slugs.lookup(slug),
+        lambda: client.slugs.disable(5, slug),
+        lambda: client.slugs.enable(5, slug),
+        lambda: client.slugs.remove(5, slug),
+    ):
+        with pytest.raises(ShrtnrError) as exc_info:
+            await call()
+        assert exc_info.value.status == 404
+    assert not catch_all.called
+
+
 @respx.mock
 async def test_async_slugs_add(client: AsyncShrtnr) -> None:
     respx.post(f"{BASE_URL}/_/api/links/1/slugs").mock(
