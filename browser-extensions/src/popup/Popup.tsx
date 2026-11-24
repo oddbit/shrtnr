@@ -213,7 +213,9 @@ export function Popup({ lang }: { lang?: SupportedLanguage } = {}) {
       );
       return;
     }
-    if (state.qr.svg) {
+    // A cached answer, or a request still in flight, needs no second fetch:
+    // reopening is enough, and the answer in flight lands in the open panel.
+    if (state.qr.svg || state.qr.loading) {
       setState((prev) =>
         prev.kind === "success"
           ? { ...prev, qr: { ...prev.qr, visible: true, error: null } }
@@ -231,20 +233,22 @@ export function Popup({ lang }: { lang?: SupportedLanguage } = {}) {
     // The answer belongs to the link and slug it was asked for. Adding a custom
     // slug while the fetch is in flight resets the QR and re-targets it, so a
     // late answer for the old slug must not land beside the new short URL.
-    const stillWanted = (prev: State): prev is Extract<State, { kind: "success" }> =>
-      prev.kind === "success" && prev.link.id === id && prev.qrSlug === qrSlug;
+    const stillWanted = (prev: SuccessState): boolean =>
+      prev.link.id === id && prev.qrSlug === qrSlug;
     try {
       const svg = await getQrSvg(id, qrSlug);
+      // `visible` stays as the user last set it: Hide QR during the fetch
+      // keeps the panel closed, with the answer cached for the next Show.
       setState((prev) =>
-        stillWanted(prev)
-          ? { ...prev, qr: { visible: true, svg, loading: false, error: null } }
+        prev.kind === "success" && stillWanted(prev)
+          ? { ...prev, qr: { ...prev.qr, svg, loading: false, error: null } }
           : prev,
       );
     } catch (err) {
       const category: ErrorCategory = err instanceof ExtensionError ? err.category : "server";
       logError(category, err instanceof ExtensionError ? err.status : undefined);
       setState((prev) =>
-        stillWanted(prev)
+        prev.kind === "success" && stillWanted(prev)
           ? { ...prev, qr: { visible: false, svg: null, loading: false, error: category } }
           : prev,
       );
@@ -406,7 +410,7 @@ function SuccessView({
         </button>
       </div>
 
-      {qr.loading && (
+      {qr.visible && qr.loading && (
         <p class="popup-body" aria-live="polite">
           {t("popup.qrLoading")}
         </p>

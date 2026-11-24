@@ -297,6 +297,61 @@ describe("Popup: a QR fetch that outlives its slug", () => {
   });
 });
 
+describe("Popup: hiding the QR while it loads", () => {
+  // The button is the user's last word. Hide QR during the fetch must clear
+  // the loading line and keep the QR closed when the answer lands.
+  function heldQr() {
+    let resolve: (svg: string) => void = () => {};
+    mockedQr.mockImplementationOnce(
+      () =>
+        new Promise<string>((r) => {
+          resolve = r;
+        }),
+    );
+    return (svg: string) => resolve(svg);
+  }
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it("clears the loading line and keeps the QR closed when the answer arrives", async () => {
+    const answer = heldQr();
+    await renderPopup();
+    fireEvent.click(await waitFor(() => screen.getByRole("button", { name: /show qr/i })));
+    await waitFor(() => expect(screen.getByText(/generating qr/i)).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: /hide qr/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /show qr/i })).toBeTruthy());
+    expect(screen.queryByText(/generating qr/i)).toBeNull();
+
+    answer("<svg data-held/>");
+    await settle();
+    expect(screen.queryByAltText(/qr code/i)).toBeNull();
+    expect(screen.getByRole("button", { name: /show qr/i })).toBeTruthy();
+
+    // The answer was kept: the next Show QR needs no second request.
+    fireEvent.click(screen.getByRole("button", { name: /show qr/i }));
+    const img = await waitFor(() => screen.getByAltText(/qr code/i));
+    expect(decodeURIComponent(img.getAttribute("src") ?? "")).toContain("data-held");
+    expect(mockedQr).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits on the request in flight when the QR is shown again", async () => {
+    const answer = heldQr();
+    await renderPopup();
+    fireEvent.click(await waitFor(() => screen.getByRole("button", { name: /show qr/i })));
+    await waitFor(() => expect(mockedQr).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("button", { name: /hide qr/i }));
+    fireEvent.click(await waitFor(() => screen.getByRole("button", { name: /show qr/i })));
+
+    await waitFor(() => expect(screen.getByText(/generating qr/i)).toBeTruthy());
+    expect(mockedQr).toHaveBeenCalledTimes(1);
+
+    answer("<svg data-held/>");
+    await waitFor(() => expect(screen.getByAltText(/qr code/i)).toBeTruthy());
+    expect(screen.queryByText(/generating qr/i)).toBeNull();
+    expect(mockedQr).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("Popup: recent list on the error screen", () => {
   it("lists earlier links when the shorten fails", async () => {
     local.recent = [
