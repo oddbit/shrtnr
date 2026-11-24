@@ -1669,7 +1669,10 @@ function getBucketSpec(range: TimelineRange, ts: number): BucketSpec {
     case "1y":
       return {
         bucketExpr: (c) => `strftime('%Y-%m', ${c}, 'unixepoch')`,
-        since: ts - 365 * 86400,
+        // The floor is the start of the oldest charted month, so that month
+        // is counted whole. A 365-day floor cuts into it on a month's last
+        // day when the window holds 29 February.
+        since: monthStart(ts, 11),
         buckets: 12,
         stepSec: 30 * 86400,
         monthly: true,
@@ -1684,6 +1687,12 @@ function getBucketSpec(range: TimelineRange, ts: number): BucketSpec {
         monthly: true,
       };
   }
+}
+
+/** Unix seconds of the first instant (UTC) of the month `back` months before the one holding `ts`. Date.UTC normalizes a negative month index into the preceding year. */
+function monthStart(ts: number, back: number): number {
+  const now = new Date(ts * 1000);
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1) / 1000;
 }
 
 function sparkLabelAt(range: TimelineRange, t: number): string {
@@ -1704,16 +1713,12 @@ function sparkLabelAt(range: TimelineRange, t: number): string {
  *
  * Monthly series step the calendar. A fixed 30-day step drifts against months
  * of 28 to 31 days: two steps land in one month (its count is charted twice)
- * or a step jumps a month (its count is dropped). Date.UTC normalizes a
- * negative month index into the preceding year.
+ * or a step jumps a month (its count is dropped).
  */
 function sparkLabels(spec: BucketSpec, range: TimelineRange, ts: number): string[] {
   const out: string[] = [];
-  const now = new Date(ts * 1000);
   for (let i = spec.buckets - 1; i >= 0; i--) {
-    const t = spec.monthly
-      ? Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1) / 1000
-      : ts - i * spec.stepSec;
+    const t = spec.monthly ? monthStart(ts, i) : ts - i * spec.stepSec;
     out.push(sparkLabelAt(range, t));
   }
   return out;

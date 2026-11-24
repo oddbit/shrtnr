@@ -57,11 +57,19 @@ describe("sparklineBucketLabels", () => {
     }
   });
 
-  it("never repeats a month on any day of a year, leap day included", () => {
+  it("never repeats or skips a month on any day of a year, leap day included", () => {
     const start = Date.UTC(2028, 0, 1, 12, 0, 0) / 1000;
     for (let day = 0; day < 366; day++) {
-      const labels = sparklineBucketLabels("1y", start + day * 86400);
+      const ts = start + day * 86400;
+      const labels = sparklineBucketLabels("1y", ts);
       expect(new Set(labels).size).toBe(12);
+      // Distinct labels alone allow a gap: each must be the month after the
+      // one before it, ending on the month the series is read in.
+      expect(labels[11]).toBe(new Date(ts * 1000).toISOString().slice(0, 7));
+      for (let i = 1; i < labels.length; i++) {
+        const [y, m] = labels[i - 1].split("-").map(Number);
+        expect(labels[i]).toBe(new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 7));
+      }
     }
   });
 

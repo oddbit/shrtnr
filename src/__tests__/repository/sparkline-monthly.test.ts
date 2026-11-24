@@ -16,8 +16,10 @@ async function clickAt(slug: string, at: number) {
 const utc = (y: number, m: number, d: number) => Math.floor(Date.UTC(y, m, d, 12, 0, 0) / 1000);
 
 // The dashboard "clicks over time" chart and the KPI sparklines read this
-// series for the 1y and all ranges. Its points are calendar months, so every
-// click in the window lands on exactly one point.
+// series for the 1y and all ranges. Its points are the current calendar month
+// and the eleven before it, each charted whole. A click older than the first
+// of those months is on no point, though the 1y total still counts it while
+// it is under 365 days old.
 describe("ClickRepository.getSparkline monthly series", () => {
   it("charts February when the series is read on the first of March", async () => {
     await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
@@ -32,6 +34,21 @@ describe("ClickRepository.getSparkline monthly series", () => {
       expect(byMonth["2027-02"]).toBe(2);
       expect(byMonth["2027-01"]).toBe(1);
       expect(values.reduce((a, b) => a + b, 0)).toBe(3);
+    }
+  });
+
+  // With 29 February in the window, the last day of a month is 365 days
+  // after the second of the oldest charted month. A 365-day floor on the query
+  // then cuts that month's first day off.
+  it("charts the whole oldest month when the window holds a leap day", async () => {
+    await LinkRepository.create(env.DB, { url: "https://example.com", slug: "abc" });
+    await clickAt("abc", Math.floor(Date.UTC(2027, 3, 1, 6, 0, 0) / 1000));
+
+    const now = Math.floor(Date.UTC(2028, 2, 31, 18, 0, 0) / 1000);
+    for (const range of ["1y", "all"] as const) {
+      const values = await ClickRepository.getSparkline(env.DB, range, now);
+      expect(sparklineBucketLabels(range, now)[0]).toBe("2027-04");
+      expect(values[0], range).toBe(1);
     }
   });
 
