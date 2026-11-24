@@ -6,6 +6,7 @@ import { SlugCache } from "./kv";
 import { SlugRepository } from "./db";
 import { parseDeviceType, parseBrowser, parseOS, isBot } from "./ua";
 import { notFoundResponse } from "./404";
+import { isSlugShaped } from "./slugs";
 import type { ClickData, Env, WaitUntilContext } from "./types";
 import { computeVisitorFingerprint } from "./fingerprint";
 import { isSelfReferrer, normalizeHost, parseReferrerHost } from "./referrer";
@@ -18,8 +19,11 @@ export async function handleRedirect(
 ): Promise<Response> {
   const normalizedSlug = slug.toLowerCase();
 
-  // 1. Try KV (fast edge read)
-  let entry = await SlugCache.get(env.SLUG_KV, normalizedSlug);
+  // 0. A path no slug could match answers 404 without any I/O.
+  if (!isSlugShaped(normalizedSlug)) return notFoundResponse();
+
+  // 1. Try KV (fast edge read). An unusable answer counts as a miss.
+  let entry = await SlugCache.read(env.SLUG_KV, normalizedSlug);
 
   // 2. KV miss: fall back to D1 and populate KV (read-through)
   if (!entry) {
