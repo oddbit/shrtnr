@@ -2,6 +2,13 @@
 
 All notable changes to the shrtnr browser extensions are documented in this file.
 
+## 0.2.1 (2026-11-24)
+
+One popup fix. No new permissions.
+
+- **The popup shows the slug its QR code encodes.** It took the first slug in the server's answer, which is the system slug. For a URL that already had a link with a custom primary slug, the popup showed and copied `/abc` beside a QR code for `/promo`. It now picks the primary slug, then the first custom slug, then the first slug, as the server does.
+- Dev tooling (web-ext, vitest, happy-dom) moves to patched releases for published advisories. No runtime dependency changes.
+
 ## 0.2.0 (2026-11-03)
 
 Repairs the extension in real browsers, adds the parity features a shortener extension is expected to have, and hardens permissions. No new permissions.
