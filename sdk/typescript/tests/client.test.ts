@@ -789,6 +789,40 @@ describe("slugs.lookup", () => {
   });
 });
 
+// Percent-encoding leaves "." untouched, and a URL parser collapses a "." or
+// ".." path segment. slugs.disable(5, "..") therefore requested
+// POST /_/api/links/5/disable and disabled the whole link. No slug is a dot
+// segment or empty, so these never leave the client: they raise the 404 the
+// server answers for any slug that fails its path pattern.
+describe("slug path segments that would retarget the request", () => {
+  const calls: [string, (c: ShrtnrClient) => Promise<unknown>][] = [
+    ["slugs.lookup", (c) => c.slugs.lookup("..")],
+    ["slugs.disable", (c) => c.slugs.disable(5, "..")],
+    ["slugs.enable", (c) => c.slugs.enable(5, "..")],
+    ["slugs.remove", (c) => c.slugs.remove(5, "..")],
+    ["slugs.disable with a single dot", (c) => c.slugs.disable(5, ".")],
+    ["slugs.remove with an empty slug", (c) => c.slugs.remove(5, "")],
+    ["slugs.lookup with an empty slug", (c) => c.slugs.lookup("")],
+  ];
+
+  it.each(calls)("%s rejects with ShrtnrError 404 and sends nothing", async (_name, call) => {
+    mockFetch(200, stubLink);
+    const err = await call(client()).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(ShrtnrError);
+    expect((err as ShrtnrError).status).toBe(404);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("still sends a slug that merely contains dots", async () => {
+    mockFetch(200, stubLink);
+    await client().slugs.lookup("v1.2");
+    expect(lastCall().url).toBe(`${BASE}/_/api/slugs/v1.2`);
+  });
+});
+
 describe("slugs.add", () => {
   it("POSTs /api/links/:id/slugs with slug body", async () => {
     mockFetch(201, stubSlug);
