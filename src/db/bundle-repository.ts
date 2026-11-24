@@ -174,6 +174,19 @@ export class BundleRepository {
     return row?.cnt ?? 0;
   }
 
+  /**
+   * Member count of every bundle that has members, keyed by bundle id. Grouped
+   * over the whole table rather than filtered by a bound id list: an IN list
+   * past D1's 100-parameter cap fails the statement, and the table holds one
+   * row per membership, so grouping it whole costs no more than a long list.
+   */
+  static async linkCounts(db: D1Database): Promise<Map<number, number>> {
+    const rows = await db
+      .prepare("SELECT bundle_id, COUNT(*) as cnt FROM bundle_links GROUP BY bundle_id")
+      .all<{ bundle_id: number; cnt: number }>();
+    return new Map((rows.results ?? []).map((r) => [r.bundle_id, r.cnt]));
+  }
+
   static async listLinks(db: D1Database, bundleId: number, opts?: SlugClickCountOptions): Promise<LinkWithSlugs[]> {
     const linkRows = await db
       .prepare(

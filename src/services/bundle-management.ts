@@ -101,17 +101,10 @@ export async function listBundles(
 
   const filters = await resolveClickFilters(env, identity);
   const range = opts.range ?? "all";
-  // Counted per bundle without binding the ids: an IN list past D1's
-  // 100-parameter cap fails the whole listing, and the table is one row per
-  // membership, so grouping it whole costs no more than a long IN list.
-  const [linkCounts, summaries] = await Promise.all([
-    env.DB
-      .prepare("SELECT bundle_id, COUNT(*) as cnt FROM bundle_links GROUP BY bundle_id")
-      .all<{ bundle_id: number; cnt: number }>(),
+  const [linkCountMap, summaries] = await Promise.all([
+    BundleRepository.linkCounts(env.DB),
     ClickRepository.getBundleSummariesBulk(env.DB, bundleIds, undefined, filters, range, opts.cardExtras),
   ]);
-
-  const linkCountMap = new Map((linkCounts.results ?? []).map((r) => [r.bundle_id, r.cnt]));
 
   const enriched: BundleWithSummary[] = bundles.map((b) => {
     const s = summaries.get(b.id);
@@ -148,13 +141,10 @@ export async function getBundle(
   const filters = await resolveClickFilters(env, identity);
   const summaries = await ClickRepository.getBundleSummariesBulk(env.DB, [id], undefined, filters, opts.range);
   const s = summaries.get(id);
-  const linkCount = await env.DB
-    .prepare("SELECT COUNT(*) as cnt FROM bundle_links WHERE bundle_id = ?")
-    .bind(id)
-    .first<{ cnt: number }>();
+  const linkCount = await BundleRepository.countLinks(env.DB, id);
   const result: BundleWithSummary = {
     ...bundle,
-    link_count: linkCount?.cnt ?? 0,
+    link_count: linkCount,
     total_clicks: s?.total_clicks ?? 0,
     delta_pct: s?.delta_pct,
     sparkline: s?.sparkline ?? [],
