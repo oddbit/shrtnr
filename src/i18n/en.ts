@@ -229,6 +229,7 @@ const en = {
   "keys.colCreated": "Created",
   "keys.colLastUsed": "Last Used",
   "keys.never": "Never",
+  "keys.deleteKey": "Delete key",
 
   // Settings
   "settings.title": "Settings",
@@ -311,6 +312,10 @@ const en = {
   "client.createLinkError": "Failed to create link",
   "client.cancel": "Cancel",
   "client.urlRequired": "URL is required",
+  "client.slugRequired": "Slug is required",
+  "client.bundles.nameRequired": "Name is required",
+  "client.primaryUpdated": "Primary slug updated",
+  "client.loadError": "Failed to load",
   "client.createApiKey": "Create API Key",
   "client.keyTitleLabel": "Title *",
   "client.keyScopeLabel": "Scope *",

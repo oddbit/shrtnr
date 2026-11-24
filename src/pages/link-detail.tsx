@@ -79,10 +79,6 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
   const custom = link.slugs.filter((s) => s.is_custom);
   const hasMultipleSlugs = custom.length > 0;
 
-  const expVal = link.expires_at
-    ? new Date(link.expires_at * 1000).toISOString().slice(0, 16)
-    : "";
-
   const maxSlugClicks = Math.max(1, link.slugs.reduce((s, slug) => s + slug.click_count, 0));
 
   // Denominators for the paginated panels: the sum of page one (the top
@@ -124,7 +120,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
             <button class="detail-menu-item" onclick={`showAddToBundleModal(${link.id})`}>
               <span aria-hidden="true" class="icon">inventory_2</span> {t("linkDetail.addToBundle")}
             </button>
-            {hasMultipleSlugs && (
+            {isOwner && hasMultipleSlugs && (
               <button class="detail-menu-item" onclick={`showChangePrimaryModal(${link.id})`}>
                 <span aria-hidden="true" class="icon">star</span> {t("linkDetail.changePrimary")}
               </button>
@@ -249,12 +245,16 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
               <span aria-hidden="true" class="icon inline-edit-icon">edit</span>
             </span>
             <div class="inline-edit-form expiry-form" id="expiry-form" style="display:none">
+              {/* The instant, not a wall-clock string: the Worker renders in
+                  UTC and a datetime-local input is read in the viewer's zone,
+                  so a prefilled value moved the expiry by the UTC offset on
+                  every save. The client fills the field (beginEditExpiry). */}
               <input
                 class="form-input form-input-sm"
                 id="detail-expires"
                 aria-label={t("linkDetail.expiresAt")}
                 type="datetime-local"
-                value={expVal}
+                data-expires-at={link.expires_at ?? ""}
               />
               <button class="inline-edit-btn confirm" onclick={`saveDetailExpiry(${link.id})`} aria-label={t("linkDetail.save")}>
                 <span aria-hidden="true" class="icon">check</span>

@@ -232,6 +232,7 @@ const sv: Translations = {
   "keys.colCreated": "Skapad",
   "keys.colLastUsed": "Senast använd",
   "keys.never": "Aldrig",
+  "keys.deleteKey": "Ta bort nyckel",
 
   // Settings
   "settings.title": "Inställningar",
@@ -314,6 +315,10 @@ const sv: Translations = {
   "client.createLinkError": "Kunde inte skapa länk",
   "client.cancel": "Avbryt",
   "client.urlRequired": "URL krävs",
+  "client.slugRequired": "Slug krävs",
+  "client.bundles.nameRequired": "Namn krävs",
+  "client.primaryUpdated": "Primär slug uppdaterad",
+  "client.loadError": "Kunde inte läsa in",
   "client.createApiKey": "Skapa API-nyckel",
   "client.keyTitleLabel": "Titel *",
   "client.keyScopeLabel": "Omfattning *",
