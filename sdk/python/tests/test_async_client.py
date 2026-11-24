@@ -303,7 +303,9 @@ async def test_async_slugs_lookup(client: AsyncShrtnr) -> None:
 # (see the sync suite). The async client refuses it the same way.
 @pytest.mark.parametrize("slug", ["..", ".", ""])
 @respx.mock
-async def test_async_slug_dot_segments_raise_404_and_send_nothing(client: AsyncShrtnr, slug: str) -> None:
+async def test_async_slug_dot_segments_raise_404_and_send_nothing(
+    client: AsyncShrtnr, slug: str
+) -> None:
     catch_all = respx.route().mock(return_value=httpx.Response(200, json=make_link_dict()))
     for call in (
         lambda: client.slugs.lookup(slug),
