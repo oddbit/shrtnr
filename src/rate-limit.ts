@@ -25,9 +25,23 @@ export interface RateLimitDecision {
   retryAfter: number;
 }
 
+/**
+ * Most windows the map holds before expired ones are swept. The key is the
+ * caller's IP, which the caller chooses when it rotates addresses, so without
+ * a sweep the map grows for as long as the isolate lives.
+ */
+const SWEEP_THRESHOLD = 1024;
+
+function sweepExpired(now: number): void {
+  for (const [key, window] of windows) {
+    if (window.resetAt <= now) windows.delete(key);
+  }
+}
+
 export function checkRateLimit(key: string, limit: number, periodSeconds: number, now = Date.now()): RateLimitDecision {
   let window = windows.get(key);
   if (!window || window.resetAt <= now) {
+    if (windows.size >= SWEEP_THRESHOLD) sweepExpired(now);
     window = { count: 0, resetAt: now + periodSeconds * 1000 };
     windows.set(key, window);
   }
@@ -46,6 +60,11 @@ export function rateLimitedResponse(retryAfter: number): Response {
     { error: "Too many requests" },
     { status: 429, headers: { "Retry-After": String(retryAfter), "Cache-Control": "no-store" } },
   );
+}
+
+/** Test hook: how many windows the map holds. */
+export function rateLimitWindowCount(): number {
+  return windows.size;
 }
 
 /** Test hook: forget every window. */
