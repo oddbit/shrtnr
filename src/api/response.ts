@@ -14,6 +14,30 @@ export function json(data: unknown, status = 200): Response {
   });
 }
 
+/**
+ * The request body as a JSON object, or the 400 that says why not.
+ *
+ * The admin routes parse raw JSON without a zod schema. `null`, an array, a
+ * string and a number are all valid JSON, and a handler that read a field off
+ * one of them threw a TypeError (a 500) or, for an array, found no fields and
+ * reported success having done nothing. One parser for every admin route keeps
+ * the answer a 400 with a sentence.
+ */
+export async function readJsonObject<T extends object>(
+  request: Request,
+): Promise<{ ok: true; body: T } | { ok: false; response: Response }> {
+  let parsed: unknown;
+  try {
+    parsed = await request.json();
+  } catch {
+    return { ok: false, response: json({ error: "Invalid JSON body" }, 400) };
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, response: json({ error: "Request body must be a JSON object" }, 400) };
+  }
+  return { ok: true, body: parsed as T };
+}
+
 export function fromServiceResult<T>(result: import("../services/result").ServiceResult<T>): Response {
   if (!result.ok) return json({ error: result.error }, result.status);
   if (result.meta && typeof result.data === "object" && result.data !== null) {

@@ -12,7 +12,7 @@ import {
   removeSlug,
   getLinkBySlug,
 } from "../services/link-management";
-import { json, fromLinkResult, fromServiceResult } from "./response";
+import { json, fromLinkResult, fromServiceResult, readJsonObject } from "./response";
 import { requireScope } from "./scope";
 import { ErrorResponseSchema, LinkSchema, SlugParamSchema, paramHook } from "./schemas";
 // ---- Legacy admin handlers (still consumed by admin routes in src/index.tsx) ----
@@ -22,14 +22,10 @@ export async function handleAddCustomSlug(
   env: Env,
   linkId: number
 ): Promise<Response> {
-  let body: { slug?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "Invalid JSON body" }, 400);
-  }
+  const parsed = await readJsonObject<{ slug?: string }>(request);
+  if (!parsed.ok) return parsed.response;
 
-  return fromServiceResult(await addCustomSlugToLink(env, linkId, body));
+  return fromServiceResult(await addCustomSlugToLink(env, linkId, parsed.body));
 }
 
 
@@ -39,14 +35,11 @@ export async function handleSetPrimarySlug(
   linkId: number,
   identity: string,
 ): Promise<Response> {
-  let body: { slug?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "Invalid JSON body" }, 400);
-  }
-  if (!body.slug) return json({ error: "slug is required" }, 400);
-  return fromServiceResult(await setSlugPrimary(env, linkId, body.slug, identity));
+  const parsed = await readJsonObject<{ slug?: unknown }>(request);
+  if (!parsed.ok) return parsed.response;
+  const { slug } = parsed.body;
+  if (!slug || typeof slug !== "string") return json({ error: "slug is required" }, 400);
+  return fromServiceResult(await setSlugPrimary(env, linkId, slug, identity));
 }
 
 export async function handleDisableSlug(

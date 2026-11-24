@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.43.2 (2026-11-24)
+
+A hardening release from a full review of the Worker and the admin. No feature is added or changed, and the API surface is the same.
+
+- **Concurrent edits no longer undo each other.** A link or bundle update wrote every column back, so a label edit could re-enable a link someone disabled in the same moment, or restore an old URL or expiry. An update now writes only the fields it was given, and the automatic page-title label fills in only while the link has no label.
+- **The expiry editor keeps the time you see.** It showed the stored UTC time as if it were local, so saving it untouched moved the expiry by the viewer's UTC offset. The editor and the expiry line now both use the viewer's time zone. An expiry of epoch 0 shows as a date instead of "Never expires".
+- **The admin API refuses writes from other origins.** It authenticates with the session cookie, so a write is now answered 403 when the browser marks it as coming from another origin. Admin pages forbid framing (`X-Frame-Options: DENY`, `frame-ancestors 'none'`) and send `nosniff`.
+- **Malformed input answers 400, not 500.** That covers a body that is not JSON or not an object on the admin API, and a malformed cookie header. The 2048-character URL limit now also holds for links created through MCP and the admin.
+- **Redirects survive a bad cache.** A slug cache read that fails, or returns something unusable, falls back to the database and logs one warning a minute. A failed cache write no longer fails the redirect. A path no slug can match answers 404 without a lookup, and device detection runs in linear time.
+- **Link creation retries a slug collision** instead of answering 500 when a generated slug is already taken.
+- **Admin pages report failures.** Analytics, the breakdown pager, Add to bundle and both QR downloads check the response: an error no longer paints "undefined" over the numbers, advances the pager or saves an error body as a file. A slow answer for a range you have left no longer paints over the current one. Several toasts that showed a raw key now show their text in all four languages.
+- **"Change primary slug" is offered to the link owner only**, matching the server rule. The API key delete button has an accessible name.
+- **The API reference script is pinned** to an exact version with a subresource integrity hash.
+- The setup rate limiter caps its memory, and the MCP `get_link_qr` tool holds `base_url` to a bare http(s) origin.
+- **Security patches.** hono and the MCP SDK's transitive dependencies close published advisories.
+- The version bump refreshes the recorded spec hash in all three SDKs. Their own fix ships in npm 1.3.1, PyPI 1.3.1 and pub 2.3.1.
+
 ## 0.43.1 (2026-11-03)
 
 Chart axes read correctly in every admin language, Chinese pages render in Simplified glyphs, and dependencies pick up two security patches. No API change.

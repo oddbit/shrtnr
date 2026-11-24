@@ -77,7 +77,13 @@ export async function shortenUrl(url: string): Promise<ShortenResult> {
   const client = buildClient(config);
   try {
     const link = await client.links.create({ url });
-    const firstSlug = link.slugs?.[0]?.slug;
+    // The slug that names the link: the one flagged primary, then the first
+    // custom slug, then the first of any kind. The same order the server's
+    // pickPrimarySlug uses for the QR code (src/slugs.ts), so the URL the
+    // popup shows and the code beside it lead to the same address. The
+    // server lists the system slug first, so index 0 alone is not it.
+    const slugs = link.slugs ?? [];
+    const firstSlug = (slugs.find((s) => s.isPrimary) ?? slugs.find((s) => s.isCustom) ?? slugs[0])?.slug;
     if (!firstSlug) {
       throw new ExtensionError("server", "server returned a link with no slugs");
     }

@@ -2,6 +2,13 @@
 
 All notable changes to the SDK are documented in this file.
 
+## 1.3.1 (2026-11-24)
+
+A safety fix on the slug methods. No public surface changes.
+
+- **A slug of `""`, `"."` or `".."` is refused before any request.** The slug goes into the request path, and the URL parser collapses a dot segment: `slugs.disable(5, "..")` reached `/links/5/disable` and disabled the whole link. `slugs.lookup`, `disable`, `enable` and `remove` now raise `ShrtnrError` with status 404, on the sync and the async client. That is the answer the server gives any slug that fails its pattern. The TypeScript and Dart SDKs behave the same in 1.3.1 and 2.3.1.
+- Records the spec hash for app 0.43.2.
+
 ## 1.3.0 (2026-10-20)
 
 Clients can build the same short URLs the admin hands out.

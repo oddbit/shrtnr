@@ -89,6 +89,22 @@ def url_encode(value: str) -> str:
     return quote(value, safe="")
 
 
+def slug_segment(slug: str) -> str:
+    """A slug as one URL path segment.
+
+    Percent-encoding keeps a slug with reserved characters inside its segment,
+    but it leaves "." untouched, and the URL parser collapses a "." or ".."
+    segment before the request is sent: ``/links/5/slugs/../disable`` becomes
+    ``/links/5/disable``, which disables the whole link. An empty slug drops
+    the segment the same way. None of the three can name a slug, so they raise
+    the 404 the server answers for any slug that fails its path pattern,
+    without a request.
+    """
+    if slug in ("", ".", ".."):
+        raise ShrtnrError(404, f'Slug not found: "{slug}" is not a valid slug')
+    return url_encode(slug)
+
+
 def _raise_from_response(response: httpx.Response) -> None:
     server_message = f"HTTP {response.status_code}"
     try:

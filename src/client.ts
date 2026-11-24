@@ -424,7 +424,7 @@ function showAddSlugModal(linkId) {
 }
 function doAddSlug(linkId) {
   var slug = document.getElementById('m-new-slug').value.trim();
-  if (!slug) { toast(t('client.urlRequired'), 'error'); return; }
+  if (!slug) { toast(t('client.slugRequired'), 'error'); return; }
   api('/links/' + linkId + '/slugs', { method: 'POST', body: JSON.stringify({ slug: slug }) }).then(function(res) {
     if (res.ok) { closeModal(); toast(t('client.customAdded')); window.location.reload(); }
     else res.json().then(function(data) { toast(data.error || t('client.customError'), 'error'); }).catch(function() { toast(t('client.customError'), 'error'); });
@@ -436,13 +436,12 @@ function showChangePrimaryModal(linkId) {
   document.getElementById('detail-menu').style.display = 'none';
   // Fetch link data to render slug list
   api('/links/' + linkId).then(function(res) {
-    if (!res.ok) { toast(t('client.createLinkError'), 'error'); return; }
+    if (!res.ok) { toast(t('client.loadError'), 'error'); return; }
     return res.json().then(function(link) {
       var html = '<div class="modal-title">' + esc(t('linkDetail.selectPrimary')) + '</div>';
       html += '<div style="display:flex;flex-direction:column;gap:0.25rem;margin-bottom:1rem">';
       link.slugs.forEach(function(s) {
-        var active = s.is_primary ? ' style="background:var(--color-selection);border-color:var(--color-accent)"' : '';
-        html += '<button class="btn btn-ghost" ' + active + ' onclick="doSetPrimary(' + linkId + ',\\'' + s.slug + '\\')" style="justify-content:flex-start;font-family:var(--font-family-mono);font-size:0.875rem">';
+        html += '<button class="btn btn-ghost slug-choice' + (s.is_primary ? ' active' : '') + '" onclick="doSetPrimary(' + linkId + ',\\'' + s.slug + '\\')">';
         html += '/' + esc(s.slug);
         if (s.is_primary) html += ' <span aria-hidden="true" class="icon" style="font-size:14px;color:var(--color-accent);margin-left:auto">star</span>';
         html += '</button>';
@@ -455,7 +454,7 @@ function showChangePrimaryModal(linkId) {
 }
 function doSetPrimary(linkId, slug) {
   api('/links/' + linkId + '/slugs/primary', { method: 'PUT', body: JSON.stringify({ slug: slug }) }).then(function(res) {
-    if (res.ok) { closeModal(); toast(t('client.labelUpdated')); window.location.reload(); }
+    if (res.ok) { closeModal(); toast(t('client.primaryUpdated')); window.location.reload(); }
     else res.json().then(function(data) { toast(data.error || t('client.setPrimaryError'), 'error'); }).catch(function() { toast(t('client.setPrimaryError'), 'error'); });
   });
 }
@@ -548,10 +547,29 @@ function saveDetailLabel(linkId) {
 }
 
 // ---- Inline edit: Expiry ----
+// A datetime-local input shows and reads wall-clock time in the viewer's own
+// time zone, so the stored instant is rendered with the local-time getters.
+function toLocalInputValue(epochSeconds) {
+  var d = new Date(epochSeconds * 1000);
+  function p(n) { return (n < 10 ? '0' : '') + n; }
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
 function beginEditExpiry() {
   document.getElementById('expiry-display').style.display = 'none';
   document.getElementById('expiry-form').style.display = 'flex';
-  document.getElementById('detail-expires').focus();
+  var input = document.getElementById('detail-expires');
+  // The page hands over the stored instant; show it in the viewer's zone and
+  // remember what was shown, so saveDetailExpiry can tell an untouched field.
+  var stored = parseInt(input.getAttribute('data-expires-at'), 10);
+  if (isNaN(stored)) {
+    input.value = '';
+    window.__expiryEdit = null;
+  } else {
+    input.value = toLocalInputValue(stored);
+    window.__expiryEdit = { epoch: stored, shown: input.value };
+  }
+  input.focus();
 }
 
 function cancelEditExpiry() {
@@ -561,7 +579,12 @@ function cancelEditExpiry() {
 
 function saveDetailExpiry(linkId) {
   var exp = document.getElementById('detail-expires').value;
-  var body = { expires_at: exp ? Math.floor(new Date(exp).getTime() / 1000) : null };
+  // The field has minute precision. A value left as beginEditExpiry showed it
+  // keeps the stored instant, so saving without editing changes nothing.
+  var edit = window.__expiryEdit;
+  var body = {
+    expires_at: !exp ? null : (edit && edit.shown === exp ? edit.epoch : Math.floor(new Date(exp).getTime() / 1000)),
+  };
   api('/links/' + linkId, { method: 'PUT', body: JSON.stringify(body) }).then(function(res) {
     if (res.ok) { toast(t('client.expiryUpdated')); window.location.reload(); }
     else res.json().then(function(data) { toast(data.error || t('client.expiryError'), 'error'); }).catch(function() { toast(t('client.expiryError'), 'error'); });
@@ -612,14 +635,19 @@ function showQRModal(linkId, slug) {
 }
 
 function downloadQrSvg() {
-  fetch(_qrSrc).then(function(r) { return r.blob(); }).then(function(blob) {
+  fetch(_qrSrc).then(function(r) {
+    // An error answers JSON; saving that under an .svg name hands the user a
+    // file nothing can open.
+    if (!r.ok) throw new Error('qr ' + r.status);
+    return r.blob();
+  }).then(function(blob) {
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.download = _qrSlug + '-qr.svg';
     a.href = url;
     a.click();
     URL.revokeObjectURL(url);
-  });
+  }).catch(function() { toast(t('client.loadError'), 'error'); });
 }
 
 function downloadQrPng() {
@@ -641,6 +669,9 @@ function downloadQrPng() {
       URL.revokeObjectURL(url);
     }, 'image/png');
   };
+  // The QR endpoint answered an error (the link is gone, a 5xx), so there is
+  // nothing to draw.
+  img.onerror = function() { toast(t('client.loadError'), 'error'); };
   img.src = _qrSrc;
 }
 
@@ -901,7 +932,7 @@ function statPageGo(containerId, delta) {
   var offset = (target - 1) * STAT_PAGE_SIZE;
   var url = '/' + st.kind + '/' + st.id + '/breakdown?dimension=' + encodeURIComponent(st.dimension) +
     '&range=' + encodeURIComponent(st.range) + '&offset=' + offset + '&limit=' + STAT_PAGE_SIZE;
-  api(url).then(function(r) { return r.json(); }).then(function(data) {
+  api(url).then(okJson).then(function(data) {
     st.loading = false;
     st.page = target;
     if (typeof data.total === 'number') st.total = data.total;
@@ -913,24 +944,53 @@ function statPageGo(containerId, delta) {
   });
 }
 
+// The parsed body of a successful response. A non-OK response rejects, so an
+// error body ({ error: "..." }) is never rendered as if it were the data.
+function okJson(res) {
+  if (!res.ok) return Promise.reject(new Error('HTTP ' + res.status));
+  return res.json();
+}
+
 function sumCounts(items) {
   var s = 0;
   for (var i = 0; i < (items || []).length; i++) s += items[i].count;
   return s;
 }
 
-function loadAnalytics(linkId, range) {
-  // Update active button
-  var btns = document.querySelectorAll('.timeline-range-btn');
-  for (var i = 0; i < btns.length; i++) {
-    btns[i].className = 'timeline-range-btn' + (btns[i].getAttribute('data-range') === range ? ' active' : '');
+// announce: the user picked this range (a click), so a failure is worth a
+// toast. The first load and the 15 s poll pass nothing and fail quietly.
+function loadAnalytics(linkId, range, announce) {
+  // Requests overlap: a poll can be in flight when the user picks a range.
+  // Only the latest request may paint, and state.range remembers which range the
+  // numbers on screen belong to.
+  var state = window.__analytics || (window.__analytics = { seq: 0, range: null });
+  var seq = ++state.seq;
+
+  function highlight(active) {
+    var btns = document.querySelectorAll('.timeline-range-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].className = 'timeline-range-btn' + (btns[i].getAttribute('data-range') === active ? ' active' : '');
+    }
   }
+  highlight(range);
 
   // Fetch both timeline and analytics in parallel
-  var timelineReq = api('/links/' + linkId + '/timeline?range=' + range).then(function(r) { return r.json(); });
-  var analyticsReq = api('/links/' + linkId + '/analytics?range=' + range).then(function(r) { return r.json(); });
+  var timelineReq = api('/links/' + linkId + '/timeline?range=' + encodeURIComponent(range)).then(okJson);
+  var analyticsReq = api('/links/' + linkId + '/analytics?range=' + encodeURIComponent(range)).then(okJson);
 
-  Promise.all([timelineReq, analyticsReq]).then(function(results) {
+  // The catch covers the two requests only. An error thrown while painting
+  // below is a defect and must reach the console.
+  Promise.all([timelineReq, analyticsReq]).catch(function() { return null; }).then(function(results) {
+    if (seq !== state.seq) return;
+    if (!results) {
+      // A failed load (link deleted in another tab, a 5xx, no network) leaves
+      // the numbers already on the page in place, under the range they
+      // belong to. The next poll tries again.
+      if (state.range !== null) highlight(state.range);
+      if (announce) toast(t('client.loadError'), 'error');
+      return;
+    }
+    state.range = range;
     var tlData = results[0];
     var stats = results[1];
     _tlData = tlData;
@@ -1243,6 +1303,16 @@ function niceStep(max) {
   return 10 * pow;
 }
 
+// A date the Worker rendered is a UTC date. Repaint it in the viewer's zone,
+// so it names the same day as the editors that read and write local time.
+var localDates = document.querySelectorAll('[data-local-date]');
+for (var ldi = 0; ldi < localDates.length; ldi++) {
+  var localTs = parseInt(localDates[ldi].getAttribute('data-local-date'), 10);
+  if (!isNaN(localTs)) {
+    localDates[ldi].textContent = new Date(localTs * 1000).toLocaleDateString(UI_LANG, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+}
+
 // Auto-load analytics on link detail page
 var analyticsRangeBar = document.getElementById('timeline-range');
 if (analyticsRangeBar) {
@@ -1419,7 +1489,7 @@ function showCreateBundleModal(onCreated) {
 
 function doCreateBundle() {
   var name = document.getElementById('bundle-name').value.trim();
-  if (!name) { toast(t('client.urlRequired'), 'error'); return; }
+  if (!name) { toast(t('client.bundles.nameRequired'), 'error'); return; }
   var body = {
     name: name,
     description: document.getElementById('bundle-description').value.trim() || null,
@@ -1469,7 +1539,7 @@ function showEditBundleModal(bundleId) {
 
 function doUpdateBundle(bundleId) {
   var name = document.getElementById('bundle-name').value.trim();
-  if (!name) { toast(t('client.urlRequired'), 'error'); return; }
+  if (!name) { toast(t('client.bundles.nameRequired'), 'error'); return; }
   var body = {
     name: name,
     description: document.getElementById('bundle-description').value.trim() || null,
@@ -1526,8 +1596,12 @@ function showAddToBundleModal(linkId) {
     api('/bundles?archived=false'),
     api('/links/' + linkId + '/bundles'),
   ]).then(function(responses) {
-    return Promise.all(responses.map(function(r) { return r.json(); }));
+    return Promise.all(responses.map(okJson));
+  }).catch(function() {
+    toast(t('client.loadError'), 'error');
+    return null;
   }).then(function(data) {
+    if (!data) return;
     var allBundles = data[0] || [];
     var memberOf = data[1] || [];
     var memberIds = {};
@@ -1622,7 +1696,7 @@ function showAddLinkToBundlePicker(bundleId, excludeIds) {
     for (var i = 0; i < excludeIds.length; i++) exclude[excludeIds[i]] = true;
   }
   api('/links').then(function(res) {
-    if (!res.ok) { toast(t('client.createLinkError'), 'error'); return; }
+    if (!res.ok) { toast(t('client.loadError'), 'error'); return; }
     res.json().then(function(links) {
       var available = links.filter(function(link) { return !exclude[link.id]; });
       var html = '<div class="modal-title">' + esc(t('bundles.addLinkToBundle')) + '</div>';

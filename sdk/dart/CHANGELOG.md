@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.1 (2026-11-24)
+
+A safety fix on the slug methods. No public surface changes.
+
+- **A slug of `''`, `'.'` or `'..'` is refused before any request.** The slug goes into the request path, and the URI parser collapses a dot segment: `slugs.disable(5, '..')` reached `/links/5/disable` and disabled the whole link. `slugs.lookup`, `disable`, `enable` and `remove` now throw `ShrtnrError` with status 404, the answer the server gives any slug that fails its pattern. The TypeScript and Python SDKs behave the same in 1.3.1.
+- Records the spec hash for app 0.43.2.
+
 ## 2.3.0 (2026-10-20)
 
 Clients can build the same short URLs the admin hands out.

@@ -229,6 +229,7 @@ const zh: Translations = {
   "keys.colCreated": "创建时间",
   "keys.colLastUsed": "最后使用",
   "keys.never": "从未",
+  "keys.deleteKey": "删除密钥",
 
   // Settings
   "settings.title": "设置",
@@ -307,6 +308,10 @@ const zh: Translations = {
   "client.createLinkError": "创建链接失败",
   "client.cancel": "取消",
   "client.urlRequired": "请输入 URL",
+  "client.slugRequired": "请输入短码",
+  "client.bundles.nameRequired": "请输入名称",
+  "client.primaryUpdated": "主短码已更新",
+  "client.loadError": "加载失败",
   "client.createApiKey": "创建 API 密钥",
   "client.keyTitleLabel": "标题 *",
   "client.keyScopeLabel": "权限范围 *",

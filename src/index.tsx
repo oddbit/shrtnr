@@ -24,6 +24,7 @@ import { Hono } from "hono";
 import type { Env, TimelineRange } from "./types";
 import { verifyAccessJwt, extractIdentity, isSignedIn, isDevMode, type AccessUser } from "./access";
 import { accessNotConfiguredResponse } from "./access-required";
+import { crossOriginRefusedResponse, isCrossOriginWrite } from "./cross-site";
 import { resolveShortOrigin } from "./short-origin";
 import { handleDevLogin, handleDevLogout } from "./dev-login";
 import { handleRedirect } from "./redirect";
@@ -135,6 +136,29 @@ app.use("/_/admin/api/*", answersJson);
 app.use("/_/admin/w/*", answersJson);
 app.use("/_/api/*", answersJson);
 
+// ---- Admin response hardening ----
+
+// Nothing embeds the admin, so no other site may frame it: a framed page lets
+// an attacker line a decoy up over the disable and delete buttons. nosniff
+// keeps a browser from second-guessing the declared Content-Type. Registered
+// ahead of the auth middleware so the pages it answers with carry both too.
+app.use("/_/admin/*", async (c, next) => {
+  await next();
+  c.res.headers.set("X-Content-Type-Options", "nosniff");
+  c.res.headers.set("X-Frame-Options", "DENY");
+  c.res.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
+});
+
+// ---- Admin API cross-site guard ----
+
+// The admin API authenticates with a cookie the browser sends on its own, so
+// a write another site triggers is refused before it reaches a handler
+// (src/cross-site.ts).
+app.use("/_/admin/api/*", async (c, next) => {
+  if (isCrossOriginWrite(c.req.raw)) return crossOriginRefusedResponse();
+  await next();
+});
+
 // ---- Admin auth middleware ----
 
 app.use("/_/admin/*", async (c, next) => {
@@ -196,9 +220,14 @@ app.use("/_/admin/api/*", async (c, next) => {
 // ---- Admin logout ----
 
 app.get("/_/admin/logout", (c) => {
-  const teamDomain = c.env.ACCESS_JWKS_URL
-    ? new URL(c.env.ACCESS_JWKS_URL).origin
-    : null;
+  // A malformed ACCESS_JWKS_URL already keeps everyone out of the admin; it
+  // must not also turn the way out into a 500.
+  let teamDomain: string | null = null;
+  try {
+    teamDomain = c.env.ACCESS_JWKS_URL ? new URL(c.env.ACCESS_JWKS_URL).origin : null;
+  } catch {
+    teamDomain = null;
+  }
   const logoutUrl = teamDomain
     ? `${teamDomain}/cdn-cgi/access/logout`
     : "/_/admin/dashboard";
@@ -217,9 +246,8 @@ function getCookie(request: Request, name: string): string | null {
   const header = request.headers.get("Cookie") || "";
   const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
   if (!match) return null;
-  // The value is whatever the caller sent. One that is not valid
-  // percent-encoding counts as no cookie, so the page falls back to its
-  // default instead of answering 500.
+  // The value is whatever the browser holds. One that is not valid
+  // percent-encoding counts as absent instead of failing the page.
   try {
     return decodeURIComponent(match[1]);
   } catch {

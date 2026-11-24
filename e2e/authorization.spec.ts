@@ -143,6 +143,11 @@ test.describe("rules 3, 4 and 6: slugs on someone else's link", () => {
     // gets no row action on it.
     await expect(slugRow(otherPage, slug).getByTitle("Delete slug")).toHaveCount(0);
     await expect(slugRow(otherPage, slug).getByTitle("Disable slug")).toHaveCount(0);
+    // Choosing the primary slug is the owner's too. The link has a custom
+    // slug now, which is when the menu offers Change primary at all.
+    await moreActions(otherPage).click();
+    await expect(menuItem(otherPage, "Add custom slug")).toBeVisible();
+    await expect(menuItem(otherPage, "Change primary slug")).toHaveCount(0);
     otherErrors.assertClean();
     await context.close();
 
@@ -150,6 +155,11 @@ test.describe("rules 3, 4 and 6: slugs on someone else's link", () => {
     // never Disable slug, and the delete lands.
     const errors = watchErrors(page);
     await page.goto(`/_/admin/links/${link.id}`);
+    // Rule 6: the owner is offered Change primary on the same link.
+    await moreActions(page).click();
+    await expect(menuItem(page, "Change primary slug")).toBeVisible();
+    await moreActions(page).click();
+    await expect(menuItem(page, "Change primary slug")).toBeHidden();
     await expect(slugRow(page, slug).getByTitle("Delete slug")).toBeVisible();
     await expect(slugRow(page, slug).getByTitle("Disable slug")).toHaveCount(0);
     await slugRow(page, slug).getByTitle("Delete slug").click();
