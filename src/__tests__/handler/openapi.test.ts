@@ -65,7 +65,11 @@ describe("OpenAPI surface", () => {
     const external = [...html.matchAll(/<script\b[^>]*\bsrc="(https?:[^"]+)"[^>]*>/g)];
     expect(external.length).toBeGreaterThan(0);
     for (const [tag, src] of external) {
-      expect(src, "exact version in the URL").toMatch(/@\d+\.\d+\.\d+$/);
+      // A file path after the version, not the bare package URL: the CDN
+      // minifies the package default on request, and bytes generated on
+      // request can change under a fixed hash.
+      expect(src, "exact version and a published file in the URL").toMatch(/@\d+\.\d+\.\d+\/[^?#]+\.js$/);
+      expect(src, "no on-request minified variant").not.toMatch(/\.min\.js$/);
       expect(tag).toMatch(/\bintegrity="sha384-[A-Za-z0-9+/]{64}"/);
       expect(tag).toContain('crossorigin="anonymous"');
     }
