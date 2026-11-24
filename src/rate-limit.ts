@@ -26,11 +26,19 @@ export interface RateLimitDecision {
 }
 
 /**
- * Most windows the map holds before expired ones are swept. The key is the
- * caller's IP, which the caller chooses when it rotates addresses, so without
- * a sweep the map grows for as long as the isolate lives.
+ * The key is the caller's IP, which the caller chooses when it rotates
+ * addresses, so the map needs a ceiling of its own.
+ *
+ * Past SWEEP_THRESHOLD windows, expired ones are swept, at most once per
+ * period: inside one period nothing new has expired, and a scan on every
+ * request would cost a flood more than it frees. Past MAX_WINDOWS the oldest
+ * window makes room for each new one. A caller evicted that way starts a
+ * fresh count, which only a caller already rotating addresses can provoke.
  */
 const SWEEP_THRESHOLD = 1024;
+const MAX_WINDOWS = 8192;
+
+let nextSweepAt = 0;
 
 function sweepExpired(now: number): void {
   for (const [key, window] of windows) {
@@ -41,7 +49,18 @@ function sweepExpired(now: number): void {
 export function checkRateLimit(key: string, limit: number, periodSeconds: number, now = Date.now()): RateLimitDecision {
   let window = windows.get(key);
   if (!window || window.resetAt <= now) {
-    if (windows.size >= SWEEP_THRESHOLD) sweepExpired(now);
+    // Deleted before it is set again, so the map's insertion order stays the
+    // order of window age and the eviction below takes the oldest.
+    windows.delete(key);
+    if (windows.size >= SWEEP_THRESHOLD && now >= nextSweepAt) {
+      sweepExpired(now);
+      nextSweepAt = now + periodSeconds * 1000;
+    }
+    while (windows.size >= MAX_WINDOWS) {
+      const oldest = windows.keys().next();
+      if (oldest.done) break;
+      windows.delete(oldest.value);
+    }
     window = { count: 0, resetAt: now + periodSeconds * 1000 };
     windows.set(key, window);
   }
@@ -70,4 +89,5 @@ export function rateLimitWindowCount(): number {
 /** Test hook: forget every window. */
 export function resetRateLimits(): void {
   windows.clear();
+  nextSweepAt = 0;
 }

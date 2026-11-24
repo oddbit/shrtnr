@@ -48,4 +48,31 @@ describe("checkRateLimit", () => {
     checkRateLimit("newcomer", 3, 60, later + 1);
     expect(checkRateLimit("hammer", 3, 60, later + 2).allowed).toBe(false);
   });
+
+  // Inside one period nothing has expired, so a sweep frees nothing. A caller
+  // that rotates through more addresses than the map should hold still has to
+  // meet a ceiling.
+  it("holds a bounded number of windows through a flood inside one period", () => {
+    const now = 1_000_000;
+    for (let i = 0; i < 50_000; i++) checkRateLimit(`flood-${i}`, 3, 60, now + (i % 1000));
+    expect(rateLimitWindowCount()).toBeLessThanOrEqual(8192);
+  });
+
+  it("drops the oldest windows first, so a recently refused caller stays refused", () => {
+    const now = 1_000_000;
+    for (let i = 0; i < 20_000; i++) checkRateLimit(`before-${i}`, 3, 60, now);
+    for (let i = 0; i < 4; i++) checkRateLimit("hammer", 3, 60, now + 1);
+    for (let i = 0; i < 2000; i++) checkRateLimit(`after-${i}`, 3, 60, now + 2);
+    expect(checkRateLimit("hammer", 3, 60, now + 3).allowed).toBe(false);
+  });
+
+  it("counts a caller whose window was renewed as recent", () => {
+    const start = 1_000_000;
+    checkRateLimit("regular", 3, 60, start);
+    // The first window has expired; the caller comes back and hits the limit.
+    const later = start + 61_000;
+    for (let i = 0; i < 4; i++) checkRateLimit("regular", 3, 60, later);
+    for (let i = 0; i < 8000; i++) checkRateLimit(`crowd-${i}`, 3, 60, later + 1);
+    expect(checkRateLimit("regular", 3, 60, later + 2).allowed).toBe(false);
+  });
 });
