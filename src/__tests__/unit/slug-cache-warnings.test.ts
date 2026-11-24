@@ -20,7 +20,7 @@ let warn: ReturnType<typeof vi.spyOn>;
 
 /** The warnings logged so far, parsed. Each must be one JSON line. */
 function warnings(): Record<string, unknown>[] {
-  return warn.mock.calls.map((call) => {
+  return warn.mock.calls.map((call: unknown[]) => {
     expect(call).toHaveLength(1);
     return JSON.parse(call[0] as string) as Record<string, unknown>;
   });
