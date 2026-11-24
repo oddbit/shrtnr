@@ -5,16 +5,7 @@ import type { WidgetCtx } from "./types";
 import type { ClickFilters } from "../../db/filters";
 import { getAppSettings } from "../../services";
 import { createTranslateFn, isSupportedLanguage, DEFAULT_LANGUAGE } from "../../i18n";
-
-/**
- * Read a single cookie value off the raw request, mirroring the helper the
- * admin page handlers use. Returns null when the cookie is absent.
- */
-function readCookie(request: Request, name: string): string | null {
-  const header = request.headers.get("Cookie") || "";
-  const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
-}
+import { readCookie } from "../../cookies";
 
 /**
  * Assemble the per-request widget context once so each widget's generic route
