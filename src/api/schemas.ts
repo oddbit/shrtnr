@@ -3,7 +3,7 @@
 
 import { z } from "@hono/zod-openapi";
 import type { Hook } from "@hono/zod-openapi";
-import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH, TIMELINE_RANGES, PAGINATED_DIMENSIONS, MAX_BREAKDOWN_LIMIT, BREAKDOWN_PAGE_SIZE } from "../constants";
+import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH, MAX_URL_LENGTH, TIMELINE_RANGES, PAGINATED_DIMENSIONS, MAX_BREAKDOWN_LIMIT, BREAKDOWN_PAGE_SIZE } from "../constants";
 import { formatZodError } from "./response";
 
 // ---- Common ----
@@ -45,7 +45,7 @@ export const SlugSchema = z
 export const LinkSchema = z
   .object({
     id: z.number().int().openapi({ example: 42 }),
-    url: z.string().url().max(2048).openapi({ example: "https://example.com/long-url" }),
+    url: z.string().url().max(MAX_URL_LENGTH).openapi({ example: "https://example.com/long-url" }),
     label: z.string().nullable().openapi({ example: "Marketing landing" }),
     created_at: z.number().int(),
     expires_at: z.number().int().nullable().openapi({ description: "Unix seconds; null means no expiry." }),
@@ -74,7 +74,7 @@ export const ConfigSchema = z
 
 export const CreateLinkBodySchema = z
   .object({
-    url: z.string().url().max(2048),
+    url: z.string().url().max(MAX_URL_LENGTH),
     label: z.string().optional(),
     slug_length: z.number().int().min(MIN_SLUG_LENGTH).max(MAX_SLUG_LENGTH).optional(),
     expires_at: z.number().int().nonnegative().optional(),
@@ -85,7 +85,7 @@ export const CreateLinkBodySchema = z
 
 export const UpdateLinkBodySchema = z
   .object({
-    url: z.string().url().max(2048).optional(),
+    url: z.string().url().max(MAX_URL_LENGTH).optional(),
     label: z.string().nullable().optional(),
     expires_at: z.number().int().nonnegative().nullable().optional(),
   })

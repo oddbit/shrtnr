@@ -6,7 +6,7 @@ import {
   getAppSettings,
   updateAppSettings,
 } from "../services/admin-management";
-import { json, fromServiceResult } from "./response";
+import { fromServiceResult, readJsonObject } from "./response";
 
 export async function handleGetSettings(env: Env, identity: string): Promise<Response> {
   return fromServiceResult(await getAppSettings(env, identity));
@@ -14,13 +14,8 @@ export async function handleGetSettings(env: Env, identity: string): Promise<Res
 
 export async function handleUpdateSettings(request: Request, env: Env, identity: string): Promise<Response> {
   // The service validates every field; the type is its parameter type.
-  let body: Parameters<typeof updateAppSettings>[2];
+  const parsed = await readJsonObject<Parameters<typeof updateAppSettings>[2]>(request);
+  if (!parsed.ok) return parsed.response;
 
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "Invalid JSON body" }, 400);
-  }
-
-  return fromServiceResult(await updateAppSettings(env, identity, body));
+  return fromServiceResult(await updateAppSettings(env, identity, parsed.body));
 }

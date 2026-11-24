@@ -635,6 +635,34 @@ describe("MCP get_link_qr and SHORT_ORIGIN", () => {
     expect(isError).toBe(true);
     expect(text).toMatch(/base_url/);
   });
+
+  // Short links live at the root of an origin (the catch-all route is /:slug).
+  // A base_url with a path, a query or credentials names an address nothing
+  // serves, and gluing the slug onto it encoded a QR that leads nowhere.
+  // SHORT_ORIGIN is held to the same rule (src/short-origin.ts).
+  it.each([
+    "https://a.example/links",
+    "https://a.example/?ref=1",
+    "https://a.example/#top",
+    "https://user:pass@a.example",
+    "ftp://a.example",
+  ])("refuses a base_url that is not a bare http(s) origin: %s", async (base_url) => {
+    const { id } = await seedQrLink();
+
+    const { isError, text } = await callQr(undefined, { link_id: id, base_url });
+
+    expect(isError).toBe(true);
+    expect(text).toMatch(/base_url/);
+  });
+
+  it("normalizes the base_url origin: host case and a default port are dropped", async () => {
+    const { id, slug } = await seedQrLink();
+
+    const { isError, text } = await callQr(undefined, { link_id: id, base_url: "https://A.Example:443" });
+
+    expect(isError).toBeFalsy();
+    expect(text).toContain(`https://a.example/${slug}?utm_medium=qr`);
+  });
 });
 
 // ---- Link tools and the pinned short origin ----

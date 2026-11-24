@@ -15,10 +15,12 @@ import {
   removeLinkFromBundle,
   unarchiveBundle,
   updateBundle,
+  type CreateBundleBody,
+  type UpdateBundleBody,
 } from "../services/bundle-management";
 import { resolveClickFilters } from "../services/admin-management";
 import { handlePublicBundleBreakdown } from "./analytics";
-import { fromLinkResult, fromServiceResult, json } from "./response";
+import { fromLinkResult, fromServiceResult, json, readJsonObject } from "./response";
 import { createRoute, z } from "@hono/zod-openapi";
 import { createApiSubApp } from "./sub-app";
 import { requireScope } from "./scope";
@@ -61,23 +63,15 @@ export async function handleGetBundle(env: Env, id: number, identity: string): P
 }
 
 export async function handleCreateBundle(request: Request, env: Env, identity: string, createdVia?: string): Promise<Response> {
-  let body: { name?: string; description?: string | null; icon?: string | null; accent?: "orange" | "red" | "green" | "blue" | "purple" };
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "Invalid JSON body" }, 400);
-  }
-  return fromServiceResult(await createBundle(env, body, identity, createdVia));
+  const parsed = await readJsonObject<CreateBundleBody>(request);
+  if (!parsed.ok) return parsed.response;
+  return fromServiceResult(await createBundle(env, parsed.body, identity, createdVia));
 }
 
 export async function handleUpdateBundle(request: Request, env: Env, id: number, identity: string): Promise<Response> {
-  let body: { name?: string; description?: string | null; icon?: string | null; accent?: "orange" | "red" | "green" | "blue" | "purple" };
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "Invalid JSON body" }, 400);
-  }
-  return fromServiceResult(await updateBundle(env, id, body, identity));
+  const parsed = await readJsonObject<UpdateBundleBody>(request);
+  if (!parsed.ok) return parsed.response;
+  return fromServiceResult(await updateBundle(env, id, parsed.body, identity));
 }
 
 export async function handleArchiveBundle(env: Env, id: number, identity: string): Promise<Response> {
@@ -116,13 +110,12 @@ export async function handleBundleLinks(env: Env, id: number, identity: string):
 }
 
 export async function handleAddLinkToBundle(request: Request, env: Env, bundleId: number, identity: string): Promise<Response> {
-  let body: { link_id?: number };
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "Invalid JSON body" }, 400);
-  }
-  const linkId = Number(body.link_id);
+  const parsed = await readJsonObject<{ link_id?: unknown }>(request);
+  if (!parsed.ok) return parsed.response;
+  // A number, or a numeric string as an HTML form control hands it over.
+  // Number() alone would also read true as 1 and null or "" as 0.
+  const raw = parsed.body.link_id;
+  const linkId = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() ? Number(raw) : NaN;
   if (!Number.isInteger(linkId)) return json({ error: "link_id must be an integer" }, 400);
   return fromServiceResult(await addLinkToBundle(env, bundleId, linkId, identity));
 }

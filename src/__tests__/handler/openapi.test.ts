@@ -57,6 +57,23 @@ describe("OpenAPI surface", () => {
     const html = await res.text();
     expect(html).toContain("/_/api/openapi.json");
   });
+
+  // The docs page shares its origin with the admin, so a script from another
+  // host must be a pinned version the browser verifies before running it.
+  it("GET /_/api/docs pins every third-party script to a version and an integrity hash", async () => {
+    const html = await (await SELF.fetch("https://shrtnr.test/_/api/docs")).text();
+    const external = [...html.matchAll(/<script\b[^>]*\bsrc="(https?:[^"]+)"[^>]*>/g)];
+    expect(external.length).toBeGreaterThan(0);
+    for (const [tag, src] of external) {
+      // A file path after the version, not the bare package URL: the CDN
+      // minifies the package default on request, and bytes generated on
+      // request can change under a fixed hash.
+      expect(src, "exact version and a published file in the URL").toMatch(/@\d+\.\d+\.\d+\/[^?#]+\.js$/);
+      expect(src, "no on-request minified variant").not.toMatch(/\.min\.js$/);
+      expect(tag).toMatch(/\bintegrity="sha384-[A-Za-z0-9+/]{64}"/);
+      expect(tag).toContain('crossorigin="anonymous"');
+    }
+  });
 });
 
 describe("OpenAPI strict validation", () => {

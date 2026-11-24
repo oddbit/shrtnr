@@ -60,7 +60,7 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: AUTH_STATE },
       dependencies: ["setup"],
-      testIgnore: [/setup\.ts$/, /authorization\.spec\.ts$/, /default-origin\.spec\.ts$/],
+      testIgnore: [/setup\.ts$/, /authorization\.spec\.ts$/, /expiry-editor\.spec\.ts$/, /default-origin\.spec\.ts$/],
     },
     ...(PINNED_ONLY
       ? []
@@ -77,8 +77,9 @@ export default defineConfig({
       // Runs after the counting specs: it signs in a second identity and
       // adds slugs and bundle memberships to seeded links, which the listing
       // spec's exact counts and chip assertions must never observe mid-flight.
+      // The expiry editor spec writes to a seeded link too, so it runs here.
       name: "authorization",
-      testMatch: /authorization\.spec\.ts$/,
+      testMatch: /(authorization|expiry-editor)\.spec\.ts$/,
       use: { ...devices["Desktop Chrome"], storageState: AUTH_STATE },
       dependencies: ["chromium"],
     },

@@ -355,19 +355,43 @@ export class LinkRepository {
     id: number,
     updates: { url?: string; label?: string | null; expires_at?: number | null },
   ): Promise<LinkWithSlugs | null> {
-    const link = await db.prepare("SELECT * FROM links WHERE id = ?").bind(id).first<Link>();
-    if (!link) return null;
-
-    const url = updates.url ?? link.url;
-    const label = updates.label !== undefined ? updates.label : link.label;
-    const expiresAt = updates.expires_at !== undefined ? updates.expires_at : link.expires_at;
-
-    await db
-      .prepare("UPDATE links SET url = ?, label = ?, expires_at = ? WHERE id = ?")
-      .bind(url, label, expiresAt, id)
-      .run();
+    // Write the supplied columns and no others. Merging the patch into a row
+    // read beforehand and writing every column back would undo whatever a
+    // concurrent request changed in between: a label edit racing a disable
+    // would restore the old expires_at and switch the link back on.
+    const sets: string[] = [];
+    const binds: (string | number | null)[] = [];
+    if (updates.url !== undefined) {
+      sets.push("url = ?");
+      binds.push(updates.url);
+    }
+    if (updates.label !== undefined) {
+      sets.push("label = ?");
+      binds.push(updates.label);
+    }
+    if (updates.expires_at !== undefined) {
+      sets.push("expires_at = ?");
+      binds.push(updates.expires_at);
+    }
+    if (sets.length > 0) {
+      await db.prepare(`UPDATE links SET ${sets.join(", ")} WHERE id = ?`).bind(...binds, id).run();
+    }
 
     return LinkRepository.getById(db, id);
+  }
+
+  /**
+   * Label a link only while it has none, in one statement. The caller is the
+   * background title fetch, which decided to label the link seconds earlier:
+   * the check has to happen at write time, or a label the owner typed in the
+   * meantime is overwritten. Returns whether the label was written.
+   */
+  static async setLabelIfEmpty(db: D1Database, id: number, label: string): Promise<boolean> {
+    const result = await db
+      .prepare("UPDATE links SET label = ? WHERE id = ? AND (label IS NULL OR label = '')")
+      .bind(label, id)
+      .run();
+    return (result.meta.changes ?? 0) > 0;
   }
 
   static async disable(db: D1Database, id: number): Promise<LinkWithSlugs | null> {

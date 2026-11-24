@@ -576,6 +576,41 @@ def test_slugs_lookup_url_encodes_reserved_chars(client: Shrtnr) -> None:
     assert route.called
 
 
+# Percent-encoding leaves "." untouched, and the URL parser collapses a "." or
+# ".." path segment. slugs.disable(5, "..") therefore requested
+# POST /_/api/links/5/disable and disabled the whole link. No slug is a dot
+# segment or empty, so these never leave the client: they raise the 404 the
+# server answers for any slug that fails its path pattern.
+@pytest.mark.parametrize(
+    "call",
+    [
+        lambda c: c.slugs.lookup(".."),
+        lambda c: c.slugs.disable(5, ".."),
+        lambda c: c.slugs.enable(5, ".."),
+        lambda c: c.slugs.remove(5, ".."),
+        lambda c: c.slugs.disable(5, "."),
+        lambda c: c.slugs.remove(5, ""),
+        lambda c: c.slugs.lookup(""),
+    ],
+)
+@respx.mock
+def test_slug_dot_segments_raise_404_and_send_nothing(client: Shrtnr, call) -> None:  # type: ignore[no-untyped-def]
+    catch_all = respx.route().mock(return_value=httpx.Response(200, json=make_link_dict()))
+    with pytest.raises(ShrtnrError) as exc_info:
+        call(client)
+    assert exc_info.value.status == 404
+    assert not catch_all.called
+
+
+@respx.mock
+def test_slugs_lookup_still_sends_a_slug_that_contains_dots(client: Shrtnr) -> None:
+    route = respx.get(f"{BASE_URL}/_/api/slugs/v1.2").mock(
+        return_value=httpx.Response(200, json=make_link_dict()),
+    )
+    client.slugs.lookup("v1.2")
+    assert route.called
+
+
 # ---- slugs.add ----
 
 

@@ -43,15 +43,29 @@ function validateAccent(a?: BundleAccent): string | null {
   return VALID_ACCENTS.includes(a) ? null : `accent must be one of: ${VALID_ACCENTS.join(", ")}`;
 }
 
+// The admin API path parses raw JSON without a schema, so the service rejects
+// malformed field types before they reach D1, where a bound object or array
+// fails the statement and answers 500.
+function validateOptionalText(field: "description" | "icon", value: unknown): string | null {
+  if (value === undefined || value === null || typeof value === "string") return null;
+  return `${field} must be a string or null`;
+}
+
 export async function createBundle(
   env: Env,
   body: CreateBundleBody,
   identity: string,
   createdVia?: string,
 ): Promise<ServiceResult<Bundle>> {
+  if (body.name !== undefined && body.name !== null && typeof body.name !== "string") {
+    return fail(400, "name must be a string");
+  }
   const name = (body.name ?? "").trim();
   if (!name) return fail(400, "name is required");
   if (name.length > 120) return fail(400, "name must be 120 characters or fewer");
+
+  const textErr = validateOptionalText("description", body.description) ?? validateOptionalText("icon", body.icon);
+  if (textErr) return fail(400, textErr);
 
   const accentErr = validateAccent(body.accent);
   if (accentErr) return fail(400, accentErr);
@@ -87,17 +101,10 @@ export async function listBundles(
 
   const filters = await resolveClickFilters(env, identity);
   const range = opts.range ?? "all";
-  // Counted per bundle without binding the ids: an IN list past D1's
-  // 100-parameter cap fails the whole listing, and the table is one row per
-  // membership, so grouping it whole costs no more than a long IN list.
-  const [linkCounts, summaries] = await Promise.all([
-    env.DB
-      .prepare("SELECT bundle_id, COUNT(*) as cnt FROM bundle_links GROUP BY bundle_id")
-      .all<{ bundle_id: number; cnt: number }>(),
+  const [linkCountMap, summaries] = await Promise.all([
+    BundleRepository.linkCounts(env.DB),
     ClickRepository.getBundleSummariesBulk(env.DB, bundleIds, undefined, filters, range, opts.cardExtras),
   ]);
-
-  const linkCountMap = new Map((linkCounts.results ?? []).map((r) => [r.bundle_id, r.cnt]));
 
   const enriched: BundleWithSummary[] = bundles.map((b) => {
     const s = summaries.get(b.id);
@@ -134,13 +141,10 @@ export async function getBundle(
   const filters = await resolveClickFilters(env, identity);
   const summaries = await ClickRepository.getBundleSummariesBulk(env.DB, [id], undefined, filters, opts.range);
   const s = summaries.get(id);
-  const linkCount = await env.DB
-    .prepare("SELECT COUNT(*) as cnt FROM bundle_links WHERE bundle_id = ?")
-    .bind(id)
-    .first<{ cnt: number }>();
+  const linkCount = await BundleRepository.countLinks(env.DB, id);
   const result: BundleWithSummary = {
     ...bundle,
-    link_count: linkCount?.cnt ?? 0,
+    link_count: linkCount,
     total_clicks: s?.total_clicks ?? 0,
     delta_pct: s?.delta_pct,
     sparkline: s?.sparkline ?? [],
@@ -160,11 +164,14 @@ export async function updateBundle(
   if (bundle.created_by !== identity) return fail(403, "Only the bundle owner can update this bundle");
 
   if (patch.name !== undefined) {
+    if (typeof patch.name !== "string") return fail(400, "name must be a string");
     const trimmed = patch.name.trim();
     if (!trimmed) return fail(400, "name must not be blank");
     if (trimmed.length > 120) return fail(400, "name must be 120 characters or fewer");
     patch = { ...patch, name: trimmed };
   }
+  const textErr = validateOptionalText("description", patch.description) ?? validateOptionalText("icon", patch.icon);
+  if (textErr) return fail(400, textErr);
   const accentErr = validateAccent(patch.accent);
   if (accentErr) return fail(400, accentErr);
 

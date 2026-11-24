@@ -232,6 +232,7 @@ const id: Translations = {
   "keys.colCreated": "Dibuat",
   "keys.colLastUsed": "Terakhir Digunakan",
   "keys.never": "Belum pernah",
+  "keys.deleteKey": "Hapus kunci",
 
   // Settings
   "settings.title": "Pengaturan",
@@ -314,6 +315,10 @@ const id: Translations = {
   "client.createLinkError": "Gagal membuat tautan",
   "client.cancel": "Batal",
   "client.urlRequired": "URL wajib diisi",
+  "client.slugRequired": "Slug wajib diisi",
+  "client.bundles.nameRequired": "Nama wajib diisi",
+  "client.primaryUpdated": "Slug utama diperbarui",
+  "client.loadError": "Gagal memuat",
   "client.createApiKey": "Buat Kunci API",
   "client.keyTitleLabel": "Judul *",
   "client.keyScopeLabel": "Cakupan *",

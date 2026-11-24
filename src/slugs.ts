@@ -10,6 +10,21 @@ export const RANDOM_CHARSET = "abcdefghijkmnpqrstuvwxyz23456789";
 const RANDOM_SLUG_REGEX = /^[a-z0-9]+$/;
 const CUSTOM_SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
 
+// Every character a stored slug can carry, matching SlugParamSchema in
+// src/api/schemas.ts. Wider than the two validators above on purpose: it
+// decides what is worth a lookup, not what may be created.
+const SLUG_SHAPE_REGEX = /^[a-z0-9_-]+$/;
+
+/**
+ * Whether a lowercased path segment could name a stored slug at all. The
+ * redirect path asks before it spends a KV read and a D1 query: scanner
+ * traffic (`/wp-login.php`, `/.env`) never passes, and a segment longer than
+ * a slug would overrun KV's 512-byte key limit and fail the read.
+ */
+export function isSlugShaped(slug: string): boolean {
+  return slug.length > 0 && slug.length <= MAX_SLUG_LENGTH && SLUG_SHAPE_REGEX.test(slug);
+}
+
 export function generateRandomSlug(length: number): string {
   const bytes = new Uint8Array(length);
   crypto.getRandomValues(bytes);

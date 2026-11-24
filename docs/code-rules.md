@@ -22,6 +22,10 @@ Technical only. Shape: `architecture.md`, `code-architecture.md`. Process and re
 
 **Scope first, then ownership.** A `read` key is refused on writes before ownership is read.
 
+**Admin API writes come from the admin's own origin.** The admin API authenticates with a cookie the browser sends on its own, so a write whose `Origin` or `Sec-Fetch-Site` names another origin answers 403 (`src/cross-site.ts`). The public API is exempt: a bearer key is never ambient.
+
+**Admin responses refuse framing.** Every `/_/admin/*` response carries `X-Frame-Options: DENY`, `frame-ancestors 'none'` and `nosniff`.
+
 **A clicked link or slug is disabled, never deleted.** Delete is refused server-side after the first click.
 
 **The rules in `CLAUDE.md` ("Authorization model") are settled.** Tests in `authorization-model.test.ts`, `authorization-surfaces.test.ts` and `e2e/authorization.spec.ts` pin them.

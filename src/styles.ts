@@ -662,6 +662,8 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 
 /* Muted hint inside a card */
 .muted-hint { color: var(--color-text-muted); font-size: 0.875rem; }
+.slug-choice { justify-content: flex-start; font-family: var(--font-family-mono); font-size: 0.875rem; }
+.slug-choice.active { background: var(--color-selection); border-color: var(--color-accent); }
 
 /* Icon size utilities (replace inline style="font-size:..." on .icon spans) */
 .icon-xxs { font-size: 12px !important; vertical-align: -1px; }

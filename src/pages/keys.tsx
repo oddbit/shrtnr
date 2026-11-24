@@ -160,6 +160,8 @@ export const KeysPage: FC<Props> = ({ keys, t, lang, origin }) => {
                           class="btn btn-danger btn-sm"
                           data-delete-key={k.id}
                           data-delete-key-title={k.title}
+                          title={t("keys.deleteKey")}
+                          aria-label={t("keys.deleteKey")}
                         >
                           <span aria-hidden="true" class="icon icon-sm">delete</span>
                         </button>
