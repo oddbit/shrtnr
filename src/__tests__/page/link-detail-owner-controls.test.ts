@@ -76,3 +76,34 @@ describe("link detail: the expiry editor carries an instant, not a wall-clock ti
     expect(input![0]).not.toMatch(/data-expires-at="\d/);
   });
 });
+
+describe("link detail: the expiry line", () => {
+  function expiryDisplay(html: string): string {
+    const m = html.match(/<span\b[^>]*\bid="expiry-display"[^>]*>([\s\S]*?)<div\b[^>]*\bid="expiry-form"/);
+    expect(m).not.toBeNull();
+    return m![1];
+  }
+
+  // Epoch 0 is a valid expiry the API accepts, and a visit to such a link
+  // answers 404. The page must not call it a link that never expires.
+  it("shows a date for an expiry of epoch 0, not Never expires", async () => {
+    const html = await detailHtml(await seed(VIEWER, 0));
+    const display = expiryDisplay(html);
+    expect(display).not.toContain("Never expires");
+    expect(display).toContain("1970");
+  });
+
+  it("says Never expires for a link with no expiry", async () => {
+    const html = await detailHtml(await seed(VIEWER));
+    expect(expiryDisplay(html)).toContain("Never expires");
+  });
+
+  // The Worker formats in UTC. The browser repaints the date in the viewer's
+  // zone, so the line and the editor name the same day; for that it needs the
+  // instant.
+  it("hands the browser the instant behind the date it shows", async () => {
+    const expiresAt = 2_000_000_000;
+    const html = await detailHtml(await seed(VIEWER, expiresAt));
+    expect(expiryDisplay(html)).toMatch(new RegExp(`<strong\\b[^>]*\\bdata-local-date="${expiresAt}"[^>]*>[^<]*2033`));
+  });
+});

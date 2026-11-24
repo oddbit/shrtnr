@@ -235,8 +235,12 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
             </span>
             <span class="m inline-edit" id="expiry-display" onclick={`beginEditExpiry(${link.id})`}>
               <span aria-hidden="true" class="icon">event_busy</span>
-              {link.expires_at ? (
-                <strong>
+              {/* != null, not truthiness: epoch 0 is an expiry, and the
+                  redirect treats it as one. The Worker formats in UTC, so the
+                  client repaints the date in the viewer's zone from the
+                  instant (data-local-date), the zone the editor works in. */}
+              {link.expires_at != null ? (
+                <strong data-local-date={link.expires_at}>
                   {new Date(link.expires_at * 1000).toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric" })}
                 </strong>
               ) : (

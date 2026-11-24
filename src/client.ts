@@ -1281,6 +1281,16 @@ function niceStep(max) {
   return 10 * pow;
 }
 
+// A date the Worker rendered is a UTC date. Repaint it in the viewer's zone,
+// so it names the same day as the editors that read and write local time.
+var localDates = document.querySelectorAll('[data-local-date]');
+for (var ldi = 0; ldi < localDates.length; ldi++) {
+  var localTs = parseInt(localDates[ldi].getAttribute('data-local-date'), 10);
+  if (!isNaN(localTs)) {
+    localDates[ldi].textContent = new Date(localTs * 1000).toLocaleDateString(UI_LANG, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+}
+
 // Auto-load analytics on link detail page
 var analyticsRangeBar = document.getElementById('timeline-range');
 if (analyticsRangeBar) {

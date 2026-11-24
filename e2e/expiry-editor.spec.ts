@@ -100,3 +100,22 @@ test("an edited expiry is stored as the instant the viewer picked in their own z
   errors.assertClean();
   await context.close();
 });
+
+test("the expiry line names the same day as the editor, for a viewer whose day differs from UTC", async ({ browser }) => {
+  // 20:00 UTC on 31 May is 04:00 on 1 June in Makassar.
+  const lateUtc = Date.UTC(2033, 4, 31, 20, 0, 0) / 1000;
+  expect((await ownerApi.put(`/_/admin/api/links/${link().id}`, { data: { expires_at: lateUtc } })).ok()).toBe(true);
+
+  const context = await browser.newContext({ storageState: await ownerApi.storageState(), timezoneId: ZONE });
+  const page = await context.newPage();
+  const errors = watchErrors(page);
+
+  await page.goto(`/_/admin/links/${link().id}`);
+  await expect(page.locator("#expiry-display")).toContainText("Jun 1, 2033");
+  await page.locator("#expiry-display").click();
+  await expect(page.locator("#detail-expires")).toHaveValue("2033-06-01T04:00");
+
+  expect((await ownerApi.put(`/_/admin/api/links/${link().id}`, { data: { expires_at: EXPIRES_AT } })).ok()).toBe(true);
+  errors.assertClean();
+  await context.close();
+});
