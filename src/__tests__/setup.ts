@@ -51,3 +51,64 @@ export function spyDb(log: string[]): D1Database {
     },
   }) as unknown as D1Database;
 }
+
+/**
+ * A database on which `competitor` runs immediately before a write matching
+ * `match` reaches D1, as a second request would in production.
+ *
+ * This is how a test states a concurrency expectation without knowing how the
+ * code under test is written: let it read whatever it wants first, land
+ * another writer's change at the last moment, then assert that both changes
+ * survive. The competitor writes through the plain `env.DB`, so it never
+ * re-triggers itself. It fires once unless `every` is set.
+ */
+export function interleaveDb(
+  match: RegExp,
+  competitor: () => Promise<unknown>,
+  opts: { every?: boolean } = {},
+): D1Database {
+  const db = env.DB as unknown as D1Database;
+  const realOf = new WeakMap<object, D1PreparedStatement>();
+  const sqlOf = new WeakMap<object, string>();
+  let fired = false;
+
+  const fire = async (sql: string): Promise<void> => {
+    if (!match.test(sql)) return;
+    if (fired && !opts.every) return;
+    fired = true;
+    await competitor();
+  };
+
+  const wrap = (stmt: D1PreparedStatement, sql: string): D1PreparedStatement => {
+    const proxy = new Proxy(stmt, {
+      get(target, prop) {
+        if (prop === "bind") return (...args: unknown[]) => wrap(target.bind(...args), sql);
+        if (prop === "run" || prop === "first" || prop === "all" || prop === "raw") {
+          return async (...args: unknown[]) => {
+            await fire(sql);
+            return (target as unknown as Record<string, (...a: unknown[]) => unknown>)[prop](...args);
+          };
+        }
+        const value = Reflect.get(target, prop);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+    realOf.set(proxy, stmt);
+    sqlOf.set(proxy, sql);
+    return proxy;
+  };
+
+  return new Proxy(db, {
+    get(target, prop) {
+      if (prop === "prepare") return (sql: string) => wrap(target.prepare(sql), sql);
+      if (prop === "batch") {
+        return async (statements: D1PreparedStatement[]) => {
+          for (const s of statements) await fire(sqlOf.get(s) ?? "");
+          return target.batch(statements.map((s) => realOf.get(s) ?? s));
+        };
+      }
+      const value = Reflect.get(target, prop);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  }) as unknown as D1Database;
+}

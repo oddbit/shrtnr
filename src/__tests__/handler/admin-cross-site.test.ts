@@ -95,6 +95,45 @@ describe("admin API writes from another origin", () => {
     expect(res.status).toBe(403);
   });
 
+  it("refuses the same host on another port", async () => {
+    const id = await seedLink();
+    const res = await admin("POST", `/_/admin/api/links/${id}/disable`, { Origin: "https://shrtnr.test:8443" });
+    expect(res.status).toBe(403);
+    expect(await isDisabled(id)).toBe(false);
+  });
+
+  it("refuses a host that merely starts with the admin's host", async () => {
+    const id = await seedLink();
+    const res = await admin("POST", `/_/admin/api/links/${id}/disable`, { Origin: "https://shrtnr.test.evil.example" });
+    expect(res.status).toBe(403);
+  });
+
+  // The Origin header is the stronger statement: a forged or stale
+  // Sec-Fetch-Site must not talk the guard out of it.
+  it("refuses a foreign Origin even when Sec-Fetch-Site claims same-origin", async () => {
+    const id = await seedLink();
+    const res = await admin("POST", `/_/admin/api/links/${id}/disable`, {
+      Origin: "https://evil.example",
+      "Sec-Fetch-Site": "same-origin",
+    });
+    expect(res.status).toBe(403);
+    expect(await isDisabled(id)).toBe(false);
+  });
+
+  it("refuses every kind of admin write, not only links", async () => {
+    const evil = { Origin: "https://evil.example" };
+    const attempts: [string, string, unknown][] = [
+      ["POST", "/_/admin/api/keys", { title: "stolen", scope: "create,read" }],
+      ["PUT", "/_/admin/api/settings", { theme: "dark" }],
+      ["POST", "/_/admin/api/bundles", { name: "planted" }],
+    ];
+    for (const [method, path, body] of attempts) {
+      expect((await admin(method, path, evil, body)).status, `${method} ${path}`).toBe(403);
+    }
+    const keys = await env.DB.prepare("SELECT COUNT(*) AS n FROM api_keys").first<{ n: number }>();
+    expect(keys?.n).toBe(0);
+  });
+
   it("refuses a write the browser labels cross-site when it sends no Origin", async () => {
     const id = await seedLink();
     for (const site of ["cross-site", "same-site"]) {

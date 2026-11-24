@@ -28,7 +28,7 @@ function admin(method: string, path: string, body: unknown): Promise<Response> {
     new Request(`https://shrtnr.test/_/admin/api${path}`, {
       method,
       headers: { "Cf-Access-Jwt-Assertion": makeJwt(OWNER), "Content-Type": "application/json" },
-      body: typeof body === "string" ? body : JSON.stringify(body),
+      body: method === "GET" ? undefined : typeof body === "string" ? body : JSON.stringify(body),
     }),
   );
 }
@@ -165,6 +165,29 @@ describe("admin API: fields of the wrong type", () => {
     }
   });
 
+  it("a refused bundle edit changes nothing", async () => {
+    const id = await seedBundle();
+    await expect400(await admin("PUT", `/bundles/${id}`, { name: "Renamed", description: 42 }));
+    const row = await env.DB.prepare("SELECT name FROM bundles WHERE id = ?").bind(id).first<{ name: string }>();
+    expect(row?.name).toBe("Seed");
+  });
+
+  it("a refused settings body changes no setting", async () => {
+    expect((await admin("PUT", "/settings", { theme: "dark" })).status).toBe(200);
+    await expect400(await admin("PUT", "/settings", [{ theme: "light" }]));
+    const settings = (await (await admin("GET", "/settings", undefined)).json()) as { theme: string };
+    expect(settings.theme).toBe("dark");
+  });
+
+  it("POST /bundles/:id/links still files a link given its id as a number or a numeric string", async () => {
+    const bundle = await seedBundle();
+    const link = await seedLink();
+    expect((await admin("POST", `/bundles/${bundle}/links`, { link_id: link })).status).toBe(200);
+    expect((await admin("POST", `/bundles/${bundle}/links`, { link_id: String(link) })).status).toBe(200);
+    const row = await env.DB.prepare("SELECT COUNT(*) AS n FROM bundle_links WHERE bundle_id = ?").bind(bundle).first<{ n: number }>();
+    expect(row?.n).toBe(1);
+  });
+
   it("still accepts null to clear a bundle's description and icon", async () => {
     const id = await seedBundle();
     const res = await admin("PUT", `/bundles/${id}`, { description: null, icon: null });
@@ -193,6 +216,26 @@ describe("the URL length limit holds on every surface", () => {
     const id = await seedLink();
     const updated = await updateLink(e, id, { url: longUrl }, OWNER);
     expect(updated).toMatchObject({ ok: false, status: 400 });
+  });
+
+  it("refuses 2049 characters, one past the limit, and stores nothing", async () => {
+    const onePast = `${maxUrl}a`;
+    expect(onePast.length).toBe(2049);
+    await expect400(await admin("POST", "/links", { url: onePast }));
+    const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM links").first<{ n: number }>();
+    expect(count?.n).toBe(0);
+  });
+
+  it("a refused retarget leaves the link pointing where it did", async () => {
+    const id = await seedLink();
+    await expect400(await admin("PUT", `/links/${id}`, { url: longUrl }));
+    const row = await env.DB.prepare("SELECT url FROM links WHERE id = ?").bind(id).first<{ url: string }>();
+    expect(row?.url).toBe("https://example.com/seed");
+  });
+
+  it("the admin API accepts exactly 2048 characters, as the public API does", async () => {
+    const res = await admin("POST", "/links", { url: maxUrl });
+    expect(res.status).toBe(201);
   });
 
   it("accepts a URL of exactly 2048 characters", async () => {
