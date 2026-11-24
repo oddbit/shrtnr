@@ -1420,8 +1420,8 @@ export class ClickRepository {
    *  - delta_pct: trend of last 30 days vs the preceding 30 days, to give
    *    range = "all" has no previous window so delta_pct is undefined.
    *  - sparkline: bucketed across the selected range. Granularity follows
-   *    getBucketSpec (hourly for 24h, daily for 7d/30d/90d, weekly for 1y,
-   *    adaptive for all).
+   *    getBucketSpec (hourly for 24h, daily for 7d/30d/90d, twelve
+   *    calendar months for 1y and all).
    *  - top_links: top 3 member links by click count within the same range.
    *    With range = "all" this matches the lifetime total used elsewhere on
    *    the page.
