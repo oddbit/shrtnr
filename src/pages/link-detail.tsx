@@ -99,7 +99,7 @@ export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, la
             <button
               class={`timeline-range-btn${r === initialRange ? " active" : ""}`}
               data-range={r}
-              onclick={`loadAnalytics(${link.id}, '${r}')`}
+              onclick={`loadAnalytics(${link.id}, '${r}', true)`}
             >
               {t(`range.${r}` as const)}
             </button>

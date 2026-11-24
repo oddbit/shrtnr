@@ -669,6 +669,9 @@ function downloadQrPng() {
       URL.revokeObjectURL(url);
     }, 'image/png');
   };
+  // The QR endpoint answered an error (the link is gone, a 5xx), so there is
+  // nothing to draw.
+  img.onerror = function() { toast(t('client.loadError'), 'error'); };
   img.src = _qrSrc;
 }
 
@@ -954,18 +957,40 @@ function sumCounts(items) {
   return s;
 }
 
-function loadAnalytics(linkId, range) {
-  // Update active button
-  var btns = document.querySelectorAll('.timeline-range-btn');
-  for (var i = 0; i < btns.length; i++) {
-    btns[i].className = 'timeline-range-btn' + (btns[i].getAttribute('data-range') === range ? ' active' : '');
+// announce: the user picked this range (a click), so a failure is worth a
+// toast. The first load and the 15 s poll pass nothing and fail quietly.
+function loadAnalytics(linkId, range, announce) {
+  // Requests overlap: a poll can be in flight when the user picks a range.
+  // Only the latest request may paint, and state.range remembers which range the
+  // numbers on screen belong to.
+  var state = window.__analytics || (window.__analytics = { seq: 0, range: null });
+  var seq = ++state.seq;
+
+  function highlight(active) {
+    var btns = document.querySelectorAll('.timeline-range-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].className = 'timeline-range-btn' + (btns[i].getAttribute('data-range') === active ? ' active' : '');
+    }
   }
+  highlight(range);
 
   // Fetch both timeline and analytics in parallel
   var timelineReq = api('/links/' + linkId + '/timeline?range=' + encodeURIComponent(range)).then(okJson);
   var analyticsReq = api('/links/' + linkId + '/analytics?range=' + encodeURIComponent(range)).then(okJson);
 
-  Promise.all([timelineReq, analyticsReq]).then(function(results) {
+  // The catch covers the two requests only. An error thrown while painting
+  // below is a defect and must reach the console.
+  Promise.all([timelineReq, analyticsReq]).catch(function() { return null; }).then(function(results) {
+    if (seq !== state.seq) return;
+    if (!results) {
+      // A failed load (link deleted in another tab, a 5xx, no network) leaves
+      // the numbers already on the page in place, under the range they
+      // belong to. The next poll tries again.
+      if (state.range !== null) highlight(state.range);
+      if (announce) toast(t('client.loadError'), 'error');
+      return;
+    }
+    state.range = range;
     var tlData = results[0];
     var stats = results[1];
     _tlData = tlData;
@@ -1029,9 +1054,6 @@ function loadAnalytics(linkId, range) {
     updateCount('count-browsers', stats.num_browsers);
     updateCount('hero-num-countries', stats.num_countries);
     updateCount('hero-num-domains', stats.num_referrer_hosts);
-  }).catch(function() {
-    // A failed poll (link deleted in another tab, a 5xx, no network) leaves
-    // the numbers already on the page in place. The next poll tries again.
   });
 }
 

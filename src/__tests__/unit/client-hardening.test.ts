@@ -201,6 +201,154 @@ describe("the link detail page when its analytics poll fails", () => {
   });
 });
 
+describe("switching the range on the link detail page", () => {
+  const RANGES = ["7d", "30d", "all"];
+  const statsOf = (total: number) => ({ total_clicks: total, slug_clicks: [], countries: [], referrer_hosts: [], referrers: [] });
+
+  /**
+   * A link detail page with range buttons and an API whose answers the test
+   * releases one by one, in the order it chooses.
+   */
+  function detail(opts: { renderTimeline?: () => void } = {}) {
+    const p = page();
+    const buttons = RANGES.map((range) => ({ className: "timeline-range-btn", getAttribute: () => range }));
+    const pending: { path: string; answer: (res: unknown) => void; fail: (err: unknown) => void }[] = [];
+    const api = (path: string) =>
+      new Promise((answer, fail) => {
+        pending.push({ path, answer, fail });
+      });
+    // Follows the handler's promise chain to its last link, whatever shape
+    // the chain has, so a test can see how the handler's work ended.
+    let last: Promise<unknown> = Promise.resolve();
+    const follow = (promise: Promise<unknown>) => {
+      last = promise;
+      // Observed here, so a rejection waits for the test to read it instead
+      // of failing the run as unhandled.
+      promise.catch(() => {});
+      return {
+        then: (ok?: (v: unknown) => unknown, fail?: (e: unknown) => unknown) => follow(promise.then(ok, fail)),
+        catch: (fail: (e: unknown) => unknown) => follow(promise.catch(fail)),
+      };
+    };
+    const h = load(["loadAnalytics"], {
+      ...p.globals,
+      Promise: { all: (list: Promise<unknown>[]) => follow(Promise.all(list)), reject: (e: unknown) => Promise.reject(e) },
+      document: { ...p.globals.document, querySelectorAll: (sel: string) => (sel === ".timeline-range-btn" ? buttons : []) },
+      api,
+      _tlData: null,
+      ACCESS_METHOD_OPTIONS: [],
+      fmtNum: (n: unknown) => String(n),
+      fmtAvgPerDay: () => "0",
+      sumCounts: () => 0,
+      countryName: () => "",
+      linkModeIcon: () => "",
+      deviceIcon: () => "",
+      osIcon: () => "",
+      fillMissingOptions: (x: unknown) => x,
+      renderTimeline: opts.renderTimeline ?? (() => {}),
+      renderStatCard: () => {},
+      setupStatPager: () => {},
+      updateCount: () => {},
+    });
+    /** Answers every open request for `range`: 200 with `total` clicks, or the given status. */
+    const answer = async (range: string, total: number, status = 200) => {
+      for (const req of pending.filter((r) => r.path.includes(`range=${range}`))) {
+        req.answer(response(status, status === 200 ? statsOf(total) : { error: "failed" }));
+      }
+      await settle();
+    };
+    return {
+      load: h.loadAnalytics,
+      answer,
+      toasts: p.toasts,
+      outcome: () => last,
+      hero: () => p.element("hero-total-clicks").textContent,
+      highlighted: () => buttons.filter((b) => b.className.includes("active")).map((b) => b.getAttribute()),
+    };
+  }
+
+  // A poll for the old range is still in flight when the user picks a new
+  // one. Whichever answer lands last used to win, so the old range's numbers
+  // could sit under the new range's highlighted button.
+  it("ignores an answer for a range the user has since left", async () => {
+    const d = detail();
+    d.load(7, "30d");
+    d.load(7, "7d", true);
+    await d.answer("7d", 7);
+    await d.answer("30d", 30);
+    expect(d.hero()).toBe("7");
+    expect(d.highlighted()).toEqual(["7d"]);
+  });
+
+  it("highlights the picked range at once, before the answer arrives", async () => {
+    const d = detail();
+    d.load(7, "7d", true);
+    expect(d.highlighted()).toEqual(["7d"]);
+  });
+
+  // The numbers on screen still belong to the old range, so the highlight
+  // goes back to it and the user is told.
+  it("returns the highlight to the range on screen when a switch fails, and says so", async () => {
+    const d = detail();
+    d.load(7, "30d");
+    await d.answer("30d", 30);
+    d.load(7, "7d", true);
+    await d.answer("7d", 0, 500);
+    expect(d.hero()).toBe("30");
+    expect(d.highlighted()).toEqual(["30d"]);
+    expect(d.toasts).toEqual([{ message: "client.loadError", level: "error" }]);
+  });
+
+  it("stays quiet when a background poll fails", async () => {
+    const d = detail();
+    d.load(7, "30d");
+    await d.answer("30d", 30);
+    d.load(7, "30d");
+    await d.answer("30d", 0, 500);
+    expect(d.hero()).toBe("30");
+    expect(d.highlighted()).toEqual(["30d"]);
+    expect(d.toasts).toEqual([]);
+  });
+
+  // A script error while painting is a defect, not a failed load. Swallowed,
+  // it leaves stale numbers on a page whose console looks clean.
+  it("does not swallow an error thrown while painting", async () => {
+    const d = detail({
+      renderTimeline: () => {
+        throw new TypeError("paint failed");
+      },
+    });
+    d.load(7, "30d");
+    await d.answer("30d", 30);
+    // The end of the handler's own promise chain: what the browser would
+    // report as an unhandled rejection.
+    await expect(d.outcome()).rejects.toThrow("paint failed");
+  });
+});
+
+describe("downloading the QR code as a PNG", () => {
+  // The link was deleted in another tab, so the QR endpoint answers 404 and
+  // the image never loads. The button used to do nothing and say nothing.
+  it("tells the user when the QR image cannot be loaded", () => {
+    const p = page();
+    const images: { onerror?: () => void; src?: string }[] = [];
+    class FakeImage {
+      onerror?: () => void;
+      src?: string;
+      constructor() {
+        images.push(this);
+      }
+    }
+    const h = load(["downloadQrPng"], { ...p.globals, Image: FakeImage, _qrSrc: "/qr", _qrSlug: "abc", URL: {} });
+    h.downloadQrPng();
+    expect(images).toHaveLength(1);
+    expect(images[0].src).toBe("/qr");
+    expect(typeof images[0].onerror).toBe("function");
+    images[0].onerror!();
+    expect(p.toasts).toEqual([{ message: "client.loadError", level: "error" }]);
+  });
+});
+
 describe("paging a breakdown panel", () => {
   async function next(api: () => Promise<unknown>) {
     const pager = { page: 1, total: 30, loading: false, kind: "links", id: 7, dimension: "countries", range: "30d", color: "orange", opts: {}, denom: 1 };
