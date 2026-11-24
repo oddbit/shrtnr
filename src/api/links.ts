@@ -23,7 +23,7 @@ import { listBundlesForLink } from "../services/bundle-management";
 import { handleLinkQr } from "./qr";
 import { handlePublicLinkAnalytics, handlePublicLinkBreakdown, handlePublicLinkTimeline } from "./analytics";
 import { fetchPageTitle } from "../title-fetch";
-import { fromLinkResult, fromServiceResult, json } from "./response";
+import { fromLinkResult, fromServiceResult, readJsonObject } from "./response";
 import { requireScope } from "./scope";
 import { DEFAULT_QR_SIZE, MAX_QR_SIZE, MIN_QR_SIZE } from "../constants";
 import type { Env, TimelineRange, WaitUntilContext } from "../types";
@@ -537,19 +537,15 @@ export async function handleGetLink(env: Env, id: number): Promise<Response> {
 }
 
 export async function handleCreateLink(request: Request, env: Env, createdVia?: string, createdBy?: string, ctx?: WaitUntilContext): Promise<Response> {
-  let body: {
+  const parsed = await readJsonObject<{
     url?: string;
     label?: string;
     slug_length?: number;
     expires_at?: number;
     allow_duplicate?: boolean;
-  };
-
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "Invalid JSON body" }, 400);
-  }
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const result = await createLink(env, { ...body, created_via: createdVia, created_by: createdBy });
 
@@ -561,15 +557,10 @@ export async function handleCreateLink(request: Request, env: Env, createdVia?: 
 }
 
 export async function handleUpdateLink(request: Request, env: Env, id: number, identity: string): Promise<Response> {
-  let body: { url?: string; label?: string | null; expires_at?: number | null };
+  const parsed = await readJsonObject<{ url?: string; label?: string | null; expires_at?: number | null }>(request);
+  if (!parsed.ok) return parsed.response;
 
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "Invalid JSON body" }, 400);
-  }
-
-  return fromServiceResult(await updateLink(env, id, body, identity));
+  return fromServiceResult(await updateLink(env, id, parsed.body, identity));
 }
 
 export async function handleDisableLink(env: Env, id: number, identity: string): Promise<Response> {

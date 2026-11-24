@@ -4,7 +4,7 @@
 import { LinkRepository, SlugRepository, ClickRepository, SettingRepository } from "../db";
 import type { ClickFilters, LinkSort, LinkStatus } from "../db";
 import { SlugCache } from "../kv";
-import { DEFAULT_SLUG_LENGTH, LINKS_DEFAULT_PER_PAGE, LINKS_MAX_PER_PAGE } from "../constants";
+import { DEFAULT_SLUG_LENGTH, LINKS_DEFAULT_PER_PAGE, LINKS_MAX_PER_PAGE, MAX_URL_LENGTH } from "../constants";
 import { generateUniqueSlug, validateSlugLength, validateCustomSlug } from "../slugs";
 import { BreakdownPage, ClickData, ClickStats, DashboardStats, Env, LinkWithSlugs, Slug, TimelineData, TimelineRange } from "../types";
 import { normalizeUrl } from "../normalize-url";
@@ -20,6 +20,28 @@ export type { ServiceResult };
 function validateLabel(label: unknown): string | null {
   if (label === undefined || label === null) return null;
   if (typeof label !== "string") return "label must be a string";
+  return null;
+}
+
+/** How often createLink draws a new slug after losing the insert to a concurrent claim. */
+const CREATE_SLUG_ATTEMPTS = 3;
+
+/**
+ * A destination URL every surface accepts: a string, http(s), within the
+ * length limit. The public API states the same rules in its zod schemas; the
+ * admin API and MCP reach the service without them, so the rules live here.
+ */
+function validateDestinationUrl(url: unknown): string | null {
+  if (typeof url !== "string") return "url must be a valid URL";
+  if (url.length > MAX_URL_LENGTH) return `url must be at most ${MAX_URL_LENGTH} characters`;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return "url must use http or https";
+    }
+  } catch {
+    return "url must be a valid URL";
+  }
   return null;
 }
 
@@ -179,14 +201,8 @@ export async function createLink(
     return fail(400, "url is required");
   }
 
-  try {
-    const parsed = new URL(body.url);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return fail(400, "url must use http or https");
-    }
-  } catch {
-    return fail(400, "url must be a valid URL");
-  }
+  const urlErr = validateDestinationUrl(body.url);
+  if (urlErr) return fail(400, urlErr);
 
   // The admin API path parses raw JSON without a schema, so the service layer
   // must reject malformed field types before they reach D1. A non-numeric
@@ -220,21 +236,32 @@ export async function createLink(
     slugLength = validateSlugLength(parsed) === null ? parsed : DEFAULT_SLUG_LENGTH;
   }
 
-  let slug: string;
-  try {
-    slug = await generateUniqueSlug(env.DB, slugLength);
-  } catch (e) {
-    return fail(500, (e as Error).message);
+  // generateUniqueSlug() checks a candidate and create() inserts it in a later
+  // statement, so a concurrent create or custom slug can claim it in between.
+  // The insert then fails on the UNIQUE constraint and rolls back whole (one
+  // batch), which makes it safe to draw another slug and try again.
+  let slug = "";
+  let link: LinkWithSlugs | null = null;
+  for (let attempt = 0; attempt < CREATE_SLUG_ATTEMPTS && !link; attempt++) {
+    try {
+      slug = await generateUniqueSlug(env.DB, slugLength);
+    } catch (e) {
+      return fail(500, (e as Error).message);
+    }
+    try {
+      link = await LinkRepository.create(env.DB, {
+        url: body.url,
+        slug,
+        label: body.label,
+        expiresAt: body.expires_at,
+        createdVia: body.created_via,
+        createdBy: body.created_by,
+      });
+    } catch (e) {
+      if (!(e instanceof Error && e.message.includes("UNIQUE constraint failed"))) throw e;
+    }
   }
-
-  const link = await LinkRepository.create(env.DB, {
-    url: body.url,
-    slug,
-    label: body.label,
-    expiresAt: body.expires_at,
-    createdVia: body.created_via,
-    createdBy: body.created_by,
-  });
+  if (!link) return fail(500, `Failed to claim a unique slug after ${CREATE_SLUG_ATTEMPTS} attempts`);
 
   await SlugCache.put(env.SLUG_KV, slug, {
     url: body.url,
@@ -256,14 +283,8 @@ export async function updateLink(
   if (existing.created_by !== identity) return fail(403, "Only the link owner can update this link");
 
   if (body.url !== undefined) {
-    try {
-      const parsed = new URL(body.url);
-      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-        return fail(400, "url must use http or https");
-      }
-    } catch {
-      return fail(400, "url must be a valid URL");
-    }
+    const urlErr = validateDestinationUrl(body.url);
+    if (urlErr) return fail(400, urlErr);
     body.url = normalizeUrl(body.url);
   }
 

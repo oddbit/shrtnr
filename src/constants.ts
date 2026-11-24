@@ -5,6 +5,10 @@ export const MIN_SLUG_LENGTH = 3;
 export const MAX_SLUG_LENGTH = 128;
 export const DEFAULT_SLUG_LENGTH = MIN_SLUG_LENGTH;
 
+// Longest destination URL a link may carry. The service layer enforces it for
+// every surface; the public API schemas state the same number in the spec.
+export const MAX_URL_LENGTH = 2048;
+
 export const TIMELINE_RANGES = ["24h", "7d", "30d", "90d", "1y", "all"] as const;
 export const DEFAULT_TIMELINE_RANGE: (typeof TIMELINE_RANGES)[number] = "30d";
 

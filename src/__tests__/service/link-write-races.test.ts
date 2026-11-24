@@ -4,9 +4,10 @@
 // autoLabelLink() runs after the create response, and its title fetch can take
 // seconds. Whatever the owner does to the link in that window must survive.
 
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { applyMigrations, resetData } from "../setup";
+import { LinkRepository } from "../../db";
 import { autoLabelLink, createLink, disableLink, getLink, updateLink } from "../../services/link-management";
 import type { Env } from "../../types";
 
@@ -57,5 +58,47 @@ describe("autoLabelLink and a concurrent owner edit", () => {
     });
     const link = await getLink(e, id);
     expect(link.ok && link.data.url).toBe("https://example.org/moved");
+  });
+});
+
+describe("createLink and a slug claimed between the availability check and the insert", () => {
+  // generateUniqueSlug() checks a candidate and LinkRepository.create()
+  // inserts it in a later statement. A concurrent create, or a custom slug
+  // added in between, takes the candidate and the insert fails on the UNIQUE
+  // constraint. That is a lost race, not a server fault: try another slug.
+  const taken = () => new Error("D1_ERROR: UNIQUE constraint failed: slugs.slug: SQLITE_CONSTRAINT");
+
+  it("retries with a fresh slug instead of failing the request", async () => {
+    const real = LinkRepository.create.bind(LinkRepository);
+    let calls = 0;
+    const spy = vi.spyOn(LinkRepository, "create").mockImplementation(async (db, data) => {
+      calls++;
+      if (calls === 1) throw taken();
+      return real(db, data);
+    });
+    const created = await createLink(e, { url: "https://example.com/raced", created_by: OWNER }).finally(() =>
+      spy.mockRestore(),
+    );
+    expect(created).toMatchObject({ ok: true, status: 201 });
+    expect(calls).toBe(2);
+  });
+
+  it("gives up with a 500 result, not an exception, when every attempt loses", async () => {
+    const spy = vi.spyOn(LinkRepository, "create").mockImplementation(async () => {
+      throw taken();
+    });
+    const created = await createLink(e, { url: "https://example.com/unlucky", created_by: OWNER }).finally(() =>
+      spy.mockRestore(),
+    );
+    expect(created).toMatchObject({ ok: false, status: 500 });
+  });
+
+  it("lets any other database error propagate", async () => {
+    const spy = vi.spyOn(LinkRepository, "create").mockImplementation(async () => {
+      throw new Error("D1_ERROR: no such table: links");
+    });
+    await expect(
+      createLink(e, { url: "https://example.com/broken", created_by: OWNER }).finally(() => spy.mockRestore()),
+    ).rejects.toThrow("no such table");
   });
 });
