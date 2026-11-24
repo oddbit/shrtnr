@@ -904,6 +904,40 @@ void main() {
     });
   });
 
+  // Percent-encoding leaves "." untouched, and the URI parser collapses a "."
+  // or ".." path segment. slugs.disable(5, '..') therefore requested
+  // POST /_/api/links/5/disable and disabled the whole link. No slug is a dot
+  // segment or empty, so these never leave the client: they throw the 404 the
+  // server answers for any slug that fails its path pattern.
+  group('slug path segments that would retarget the request', () {
+    final calls = <String, Future<Object?> Function(ShrtnrClient)>{
+      'slugs.lookup("..")': (c) => c.slugs.lookup('..'),
+      'slugs.disable(5, "..")': (c) => c.slugs.disable(5, '..'),
+      'slugs.enable(5, "..")': (c) => c.slugs.enable(5, '..'),
+      'slugs.remove(5, "..")': (c) => c.slugs.remove(5, '..'),
+      'slugs.disable(5, ".")': (c) => c.slugs.disable(5, '.'),
+      'slugs.remove(5, "")': (c) => c.slugs.remove(5, ''),
+      'slugs.lookup("")': (c) => c.slugs.lookup(''),
+    };
+
+    for (final entry in calls.entries) {
+      test('${entry.key} throws ShrtnrError 404 and sends nothing', () async {
+        final m = _mock(status: 200, body: _linkJson());
+        await expectLater(
+          entry.value(m.client),
+          throwsA(isA<ShrtnrError>().having((e) => e.status, 'status', 404)),
+        );
+        expect(m.capture.request, isNull);
+      });
+    }
+
+    test('still sends a slug that merely contains dots', () async {
+      final m = _mock(status: 200, body: _linkJson());
+      await m.client.slugs.lookup('v1.2');
+      expect(m.capture.request!.url.toString(), '$_base/_/api/slugs/v1.2');
+    });
+  });
+
   // ---- 15. slugs.add ----
 
   group('slugs.add', () {
