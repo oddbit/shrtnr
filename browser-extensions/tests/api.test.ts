@@ -113,6 +113,38 @@ describe("api.shortenUrl", () => {
     expect(mockedClient.links.create).toHaveBeenCalledWith({ url: "https://example.com/page" });
   });
 
+  // The server lists the system slug first and the QR endpoint encodes the
+  // primary slug. For a URL that already has a link with a custom primary
+  // slug, the popup showed and copied /abc while its QR code encoded /promo.
+  it("returns the link's primary slug, the one the QR code encodes", async () => {
+    setStorageItem("config", { baseUrl: "https://x.com", apiKey: "sk_abc" });
+    mockedClient.links.create.mockResolvedValueOnce({
+      id: 42,
+      url: "https://example.com/page",
+      slugs: [
+        { slug: "abc", isCustom: 0, isPrimary: 0 },
+        { slug: "promo", isCustom: 1, isPrimary: 1 },
+      ],
+    });
+    const { shortenUrl } = await import("../src/api");
+    const result: ShortenResult = await shortenUrl("https://example.com/page");
+    expect(result).toEqual({ id: 42, slug: "promo", shortUrl: "https://x.com/promo" });
+  });
+
+  it("falls back to the first custom slug, then the first slug, when none is flagged primary", async () => {
+    setStorageItem("config", { baseUrl: "https://x.com", apiKey: "sk_abc" });
+    mockedClient.links.create.mockResolvedValueOnce({
+      id: 43,
+      url: "https://example.com/other",
+      slugs: [
+        { slug: "abc", isCustom: 0, isPrimary: 0 },
+        { slug: "custom", isCustom: 1, isPrimary: 0 },
+      ],
+    });
+    const { shortenUrl } = await import("../src/api");
+    expect((await shortenUrl("https://example.com/other")).slug).toBe("custom");
+  });
+
   it("throws when no config is saved", async () => {
     const { shortenUrl } = await import("../src/api");
     await expect(shortenUrl("https://example.com/page")).rejects.toThrow(/not configured/i);
