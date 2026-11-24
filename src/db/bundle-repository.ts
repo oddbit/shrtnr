@@ -89,21 +89,33 @@ export class BundleRepository {
     id: number,
     patch: UpdateBundleInput,
   ): Promise<Bundle | null> {
-    const current = await BundleRepository.getById(db, id);
-    if (!current) return null;
-
-    const name = patch.name ?? current.name;
-    const description = patch.description !== undefined ? patch.description : current.description;
-    const icon = patch.icon !== undefined ? patch.icon : current.icon;
-    const accent = patch.accent ?? current.accent;
-    const now = Math.floor(Date.now() / 1000);
-
-    await db
-      .prepare(
-        "UPDATE bundles SET name = ?, description = ?, icon = ?, accent = ?, updated_at = ? WHERE id = ?",
-      )
-      .bind(name, description, icon, accent, now, id)
-      .run();
+    // Write the supplied columns and no others, so two concurrent edits to
+    // different fields both land (see LinkRepository.update).
+    const sets: string[] = [];
+    const binds: (string | number | null)[] = [];
+    if (patch.name !== undefined) {
+      sets.push("name = ?");
+      binds.push(patch.name);
+    }
+    if (patch.description !== undefined) {
+      sets.push("description = ?");
+      binds.push(patch.description);
+    }
+    if (patch.icon !== undefined) {
+      sets.push("icon = ?");
+      binds.push(patch.icon);
+    }
+    if (patch.accent !== undefined) {
+      sets.push("accent = ?");
+      binds.push(patch.accent);
+    }
+    if (sets.length > 0) {
+      const now = Math.floor(Date.now() / 1000);
+      await db
+        .prepare(`UPDATE bundles SET ${sets.join(", ")}, updated_at = ? WHERE id = ?`)
+        .bind(...binds, now, id)
+        .run();
+    }
 
     return BundleRepository.getById(db, id);
   }

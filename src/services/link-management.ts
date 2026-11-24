@@ -589,7 +589,9 @@ export async function autoLabelLink(
   const title = await titleFetcher(url);
   if (!title) return;
 
-  await LinkRepository.update(db, linkId, { label: title });
+  // The fetch above can take seconds. Re-check at write time, in the same
+  // statement, so a label the owner set meanwhile is not overwritten.
+  await LinkRepository.setLabelIfEmpty(db, linkId, title);
 }
 
 export async function recordClick(
