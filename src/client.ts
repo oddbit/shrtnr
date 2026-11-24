@@ -6,13 +6,19 @@ import { RANDOM_CHARSET } from "./slugs";
 import { MIN_SLUG_LENGTH, BREAKDOWN_PAGE_SIZE } from "./constants";
 import { ACCESS_METHOD_OPTIONS } from "./analytics-fill";
 
-export function adminClientScript(version: string, translations: Translations): string {
+export function adminClientScript(
+  version: string,
+  translations: Translations,
+  build: { commit: string | null; date: string | null } = { commit: null, date: null },
+): string {
   const tJson = JSON.stringify(translations);
   const accessMethodOptionsJson = JSON.stringify(ACCESS_METHOD_OPTIONS);
   return `
 'use strict';
 var API = '/_/admin/api';
 var APP_VERSION = '${version}';
+var BUILD_COMMIT = ${JSON.stringify(build.commit)};
+var BUILD_DATE = ${JSON.stringify(build.date)};
 var REPO_URL = 'https://oddb.it/github-shrtnr-app';
 var CHARSET_SIZE = ${RANDOM_CHARSET.length};
 var MIN_SLUG_LEN = ${MIN_SLUG_LENGTH};
@@ -727,22 +733,63 @@ function compareVersions(a, b) {
   return 0;
 }
 
+// The running version, followed by the build it came from when the deploy
+// recorded one: "0.43.2 (Nov 24, 2026 · 432b90a)". A deployment that follows
+// main runs commits no release holds, and the version alone cannot say so.
+function versionLabel(strong) {
+  var html = '<span class="version-number' + (strong ? ' version-number-strong' : '') + '">' + esc(APP_VERSION) + '</span>';
+  if (!BUILD_COMMIT) return html;
+  var parts = [];
+  var built = BUILD_DATE ? new Date(BUILD_DATE) : null;
+  if (built && !isNaN(built.getTime())) {
+    parts.push(built.toLocaleDateString(UI_LANG, { year: 'numeric', month: 'short', day: 'numeric' }));
+  }
+  parts.push(BUILD_COMMIT.slice(0, 7));
+  return html + ' <span class="version-build">(' + esc(parts.join(' · ')) + ')</span>';
+}
+
 function checkForUpdates() {
   var el = document.getElementById('version-status');
   if (!el) return;
+  // ahead: commits this build holds past the latest release, or 0 when it
+  // holds none or GitHub could not say.
+  function showCurrent(latest, releaseUrl, ahead) {
+    var status = ahead > 0
+      ? '<span class="version-unreleased">' +
+          '<span aria-hidden="true" class="icon">construction</span> ' + esc(t('client.unreleased')) +
+        '</span>' +
+        '<span class="version-build">' + esc(t('client.sinceRelease', { count: ahead, version: latest })) + '</span>'
+      : '<span style="color:var(--color-success);display:inline-flex;align-items:center;gap:0.2rem">' +
+          '<span aria-hidden="true" class="icon" style="font-size:15px;vertical-align:text-bottom">check_circle</span> ' + esc(t('client.upToDate')) +
+        '</span>';
+    el.innerHTML =
+      '<div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">' +
+        '<div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap">' +
+          versionLabel(true) +
+          status +
+        '</div>' +
+        '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" ' +
+          'style="color:var(--color-text-muted);font-size:0.8rem;text-decoration:none;display:inline-flex;align-items:center;gap:0.2rem">' +
+          esc(t('client.whatsNew')) + ' <span aria-hidden="true" class="icon" style="font-size:13px">open_in_new</span>' +
+        '</a>' +
+        '<button id="install-app-btn" class="btn btn-secondary btn-sm" onclick="installApp()" style="display:none;align-items:center;gap:0.4rem"><span aria-hidden="true" class="icon" style="font-size:14px">install_desktop</span> ' + esc(t('settings.installApp')) + '</button>' +
+      '</div>';
+  }
   fetch('https://api.github.com/repos/oddbit/shrtnr/releases/latest', {
     headers: { 'Accept': 'application/vnd.github.v3+json' }
   }).then(function(res) {
     if (!res.ok) throw new Error('GitHub API error');
     return res.json();
   }).then(function(release) {
-    var latest = (release.tag_name || '').replace(/^v/, '');
+    // App releases are tagged app-v<version>. The prefix is not part of the
+    // version: left in, it shows in the card and its major number is NaN.
+    var latest = (release.tag_name || '').replace(/^(app-)?v/, '');
     if (!latest) throw new Error('No version tag');
-    var releaseUrl = release.html_url || (REPO_URL + '/releases/tag/v' + latest);
+    var releaseUrl = release.html_url || (REPO_URL + '/releases/tag/' + release.tag_name);
     if (compareVersions(APP_VERSION, latest) < 0) {
       var html = '<div style="display:flex;flex-direction:column;gap:0.75rem">';
       html += '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">';
-      html += '<div><span style="font-family:var(--font-family-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--color-text-muted)">&rarr;</span> <span style="font-family:var(--font-family-mono);color:var(--color-success);font-weight:600">' + esc(latest) + '</span> <span style="color:var(--color-text-muted);font-size:0.8rem">' + esc(t('client.updateAvailable')) + '</span></div>';
+      html += '<div>' + versionLabel(false) + ' <span style="color:var(--color-text-muted)">&rarr;</span> <span style="font-family:var(--font-family-mono);color:var(--color-success);font-weight:600">' + esc(latest) + '</span> <span style="color:var(--color-text-muted);font-size:0.8rem">' + esc(t('client.updateAvailable')) + '</span></div>';
       html += '</div>';
       html += '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">';
       html += '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none"><span aria-hidden="true" class="icon" style="font-size:16px">open_in_new</span> ' + esc(t('client.releaseNotes')) + '</a>';
@@ -752,24 +799,24 @@ function checkForUpdates() {
       html += '<div style="font-size:0.75rem;color:var(--color-text-muted);line-height:1.5">' + esc(t('client.updateHint')) + '</div>';
       html += '</div>';
       el.innerHTML = html;
+    } else if (!BUILD_COMMIT) {
+      showCurrent(latest, releaseUrl, 0);
     } else {
-      el.innerHTML =
-        '<div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">' +
-          '<div style="display:flex;align-items:center;gap:0.4rem">' +
-            '<span style="font-family:var(--font-family-mono);font-weight:600">' + esc(APP_VERSION) + '</span>' +
-            '<span style="color:var(--color-success);display:inline-flex;align-items:center;gap:0.2rem">' +
-              '<span aria-hidden="true" class="icon" style="font-size:15px;vertical-align:text-bottom">check_circle</span> ' + esc(t('client.upToDate')) +
-            '</span>' +
-          '</div>' +
-          '<a href="' + esc(releaseUrl) + '" target="_blank" rel="noopener" ' +
-            'style="color:var(--color-text-muted);font-size:0.8rem;text-decoration:none;display:inline-flex;align-items:center;gap:0.2rem">' +
-            esc(t('client.whatsNew')) + ' <span aria-hidden="true" class="icon" style="font-size:13px">open_in_new</span>' +
-          '</a>' +
-          '<button id="install-app-btn" class="btn btn-secondary btn-sm" onclick="installApp()" style="display:none;align-items:center;gap:0.4rem"><span aria-hidden="true" class="icon" style="font-size:14px">install_desktop</span> ' + esc(t('settings.installApp')) + '</button>' +
-        '</div>';
+      // Ask GitHub how this build's commit relates to the release tag. A
+      // fork's commit is unknown upstream and anonymous calls are rate
+      // limited: either way the version comparison above stands.
+      return fetch('https://api.github.com/repos/oddbit/shrtnr/compare/' + encodeURIComponent(release.tag_name) + '...' + BUILD_COMMIT, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      }).then(function(res) {
+        return res.ok ? res.json() : null;
+      }).catch(function() {
+        return null;
+      }).then(function(diff) {
+        showCurrent(latest, releaseUrl, diff && diff.ahead_by > 0 ? diff.ahead_by : 0);
+      });
     }
   }).catch(function() {
-    el.innerHTML = '<span style="font-family:var(--font-family-mono)">' + esc(APP_VERSION) + '</span> <span style="color:var(--color-text-muted)">&middot; ' + esc(t('client.updateCheckFailed')) + '</span>';
+    el.innerHTML = versionLabel(false) + ' <span style="color:var(--color-text-muted)">&middot; ' + esc(t('client.updateCheckFailed')) + '</span>';
   });
 }
 

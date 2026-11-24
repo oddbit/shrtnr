@@ -378,6 +378,8 @@ const en = {
   "client.updateHint":
     "To update: sync your fork on GitHub, then your deployment will redeploy automatically.",
   "client.upToDate": "Up to date",
+  "client.unreleased": "Unreleased build",
+  "client.sinceRelease": "+{count} since {version}",
   "client.whatsNew": "What's new",
   "client.updateCheckFailed": "Could not check for updates",
   "client.bundles.saveError": "Failed to save bundle",

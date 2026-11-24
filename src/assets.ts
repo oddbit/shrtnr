@@ -33,6 +33,7 @@ import { adminClientScript } from "./client";
 import { getTranslations, isSupportedLanguage, DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, type SupportedLanguage } from "./i18n";
 import { notFoundResponse } from "./404";
 import pkg from "../package.json";
+import { buildInfo } from "./build-info";
 
 const PREFIX = "/_/assets";
 const IMMUTABLE = "public, max-age=31536000, immutable";
@@ -67,7 +68,7 @@ const stylesheet: Asset = {
 
 const scripts = new Map<SupportedLanguage, Asset>(
   SUPPORTED_LANGUAGES.map((language) => {
-    const body = adminClientScript(pkg.version, getTranslations(language));
+    const body = adminClientScript(pkg.version, getTranslations(language), buildInfo);
     return [
       language,
       {
