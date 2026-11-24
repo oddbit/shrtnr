@@ -58,7 +58,7 @@ import {
 import type { TimelineRange } from "../types";
 import { MIN_SLUG_LENGTH, MAX_SLUG_LENGTH, DEFAULT_SLUG_LENGTH, TIMELINE_RANGES } from "../constants";
 import { renderQrSvg } from "../qr";
-import { configuredShortOrigin, withShortOrigin } from "../short-origin";
+import { configuredShortOrigin, normalizeShortOrigin, withShortOrigin } from "../short-origin";
 import { pickPrimarySlug } from "../slugs";
 import {
   BUNDLE_ACCENTS,
@@ -500,8 +500,13 @@ export class ShrtnrMCP extends McpAgent<Env, Record<string, never>, Props> {
         // Otherwise one deployment encodes two different URLs for the same slug
         // depending on whether an assistant or the admin asked for the QR.
         // base_url stays the caller's fallback for a deployment that sets none.
-        const origin = configuredShortOrigin(this.env) ?? (base_url ? base_url.replace(/\/+$/, "") : null);
-        if (!origin) return fail("base_url is required when the deployment sets no SHORT_ORIGIN");
+        // The fallback passes the same check SHORT_ORIGIN does: short links
+        // live at the root of an origin, so a path, query or credentials
+        // would encode a URL nothing serves.
+        const pinned = configuredShortOrigin(this.env);
+        if (!pinned && !base_url) return fail("base_url is required when the deployment sets no SHORT_ORIGIN");
+        const origin = pinned ?? normalizeShortOrigin(base_url!);
+        if (!origin) return fail("base_url must be a bare http(s) origin with no path, e.g. https://oddb.it");
 
         const result = await getLink(this.env, link_id);
         if (!result.ok) return fail(result.error);
