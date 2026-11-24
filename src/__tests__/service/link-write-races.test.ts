@@ -65,7 +65,7 @@ describe("the background title fetch and what the owner does meanwhile", () => {
     expect(link.ok && link.data.url).toBe("https://example.org/moved");
   });
 
-  // The narrow window: the owner disables the link at the very moment the
+  // The narrow window: the owner disables the link in the same instant the
   // fetched title is being written. The link must stay dead for visitors.
   it("does not bring back a link disabled at the moment the title is written", async () => {
     const { id, slug } = await newLink();
