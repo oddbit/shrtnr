@@ -237,6 +237,121 @@ describe("Popup: concurrent state writes", () => {
   });
 });
 
+describe("Popup: a QR fetch that outlives its slug", () => {
+  it("drops a QR for the old slug that arrives after a custom slug was added", async () => {
+    // Show QR starts a fetch for the primary slug. Adding a custom slug swaps
+    // the short URL and resets the QR. The late answer still encodes the old
+    // slug, so writing it would pair the new URL with a QR for the other one
+    // and cache it for every later toggle.
+    let resolveOldQr: (svg: string) => void = () => {};
+    mockedQr.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveOldQr = resolve;
+        }),
+    );
+    mockedAddSlug.mockResolvedValue({ id: 42, slug: "my-link", shortUrl: "https://x.com/my-link" });
+    await renderPopup();
+    await waitFor(() => slugInput());
+
+    fireEvent.click(screen.getByRole("button", { name: /show qr/i }));
+    await waitFor(() => expect(mockedQr).toHaveBeenCalledTimes(1));
+
+    fireEvent.input(slugInput(), { target: { value: "my-link" } });
+    fireEvent.click(addButton());
+    await waitFor(() => expect(screen.getByText("https://x.com/my-link")).toBeTruthy());
+
+    resolveOldQr("<svg data-old-slug/>");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByAltText(/qr code/i)).toBeNull();
+
+    // The next Show QR fetches for the slug on screen instead of reusing a cache.
+    mockedQr.mockResolvedValue("<svg data-new-slug/>");
+    fireEvent.click(screen.getByRole("button", { name: /show qr/i }));
+    await waitFor(() => expect(mockedQr).toHaveBeenLastCalledWith(42, "my-link"));
+    const img = await waitFor(() => screen.getByAltText(/qr code/i));
+    expect(decodeURIComponent(img.getAttribute("src") ?? "")).toContain("data-new-slug");
+  });
+
+  it("drops a late QR failure for the old slug the same way", async () => {
+    let rejectOldQr: (err: unknown) => void = () => {};
+    mockedQr.mockImplementationOnce(
+      () =>
+        new Promise<string>((_resolve, reject) => {
+          rejectOldQr = reject;
+        }),
+    );
+    mockedAddSlug.mockResolvedValue({ id: 42, slug: "my-link", shortUrl: "https://x.com/my-link" });
+    await renderPopup();
+    await waitFor(() => slugInput());
+
+    fireEvent.click(screen.getByRole("button", { name: /show qr/i }));
+    await waitFor(() => expect(mockedQr).toHaveBeenCalledTimes(1));
+    fireEvent.input(slugInput(), { target: { value: "my-link" } });
+    fireEvent.click(addButton());
+    await waitFor(() => expect(screen.getByText("https://x.com/my-link")).toBeTruthy());
+
+    rejectOldQr(new ExtensionError("server", "boom", 500));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByText(/couldn't fetch the qr code/i)).toBeNull();
+  });
+});
+
+describe("Popup: hiding the QR while it loads", () => {
+  // The button is the user's last word. Hide QR during the fetch must clear
+  // the loading line and keep the QR closed when the answer lands.
+  function heldQr() {
+    let resolve: (svg: string) => void = () => {};
+    mockedQr.mockImplementationOnce(
+      () =>
+        new Promise<string>((r) => {
+          resolve = r;
+        }),
+    );
+    return (svg: string) => resolve(svg);
+  }
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it("clears the loading line and keeps the QR closed when the answer arrives", async () => {
+    const answer = heldQr();
+    await renderPopup();
+    fireEvent.click(await waitFor(() => screen.getByRole("button", { name: /show qr/i })));
+    await waitFor(() => expect(screen.getByText(/generating qr/i)).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: /hide qr/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /show qr/i })).toBeTruthy());
+    expect(screen.queryByText(/generating qr/i)).toBeNull();
+
+    answer("<svg data-held/>");
+    await settle();
+    expect(screen.queryByAltText(/qr code/i)).toBeNull();
+    expect(screen.getByRole("button", { name: /show qr/i })).toBeTruthy();
+
+    // The answer was kept: the next Show QR needs no second request.
+    fireEvent.click(screen.getByRole("button", { name: /show qr/i }));
+    const img = await waitFor(() => screen.getByAltText(/qr code/i));
+    expect(decodeURIComponent(img.getAttribute("src") ?? "")).toContain("data-held");
+    expect(mockedQr).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits on the request in flight when the QR is shown again", async () => {
+    const answer = heldQr();
+    await renderPopup();
+    fireEvent.click(await waitFor(() => screen.getByRole("button", { name: /show qr/i })));
+    await waitFor(() => expect(mockedQr).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("button", { name: /hide qr/i }));
+    fireEvent.click(await waitFor(() => screen.getByRole("button", { name: /show qr/i })));
+
+    await waitFor(() => expect(screen.getByText(/generating qr/i)).toBeTruthy());
+    expect(mockedQr).toHaveBeenCalledTimes(1);
+
+    answer("<svg data-held/>");
+    await waitFor(() => expect(screen.getByAltText(/qr code/i)).toBeTruthy());
+    expect(screen.queryByText(/generating qr/i)).toBeNull();
+    expect(mockedQr).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("Popup: recent list on the error screen", () => {
   it("lists earlier links when the shorten fails", async () => {
     local.recent = [

@@ -108,6 +108,7 @@ import { BundlesPage } from "./pages/bundles";
 import { BundleDetailPage } from "./pages/bundle-detail";
 import { handleWidget } from "./admin/widgets/route";
 import { bumpCacheVersion } from "./admin/widgets/cache";
+import { readCookie } from "./cookies";
 
 // ---- App ----
 
@@ -242,27 +243,14 @@ app.get("/_/admin/logout", (c) => {
 
 // ---- Admin page helpers ----
 
-function getCookie(request: Request, name: string): string | null {
-  const header = request.headers.get("Cookie") || "";
-  const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-  if (!match) return null;
-  // The value is whatever the browser holds. One that is not valid
-  // percent-encoding counts as absent instead of failing the page.
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return null;
-  }
-}
-
 async function getPageData(c: { env: Env; req: { raw: Request } }, identity: string) {
   const settingsResult = await getAppSettings(c.env, identity);
   const settings = settingsResult.ok ? settingsResult.data : null;
   // Cookie values are caller-controlled and stored settings may predate
   // validation; clamp both to the known sets before rendering.
-  const themeRaw = settings?.theme ?? getCookie(c.req.raw, "theme") ?? DEFAULT_THEME;
+  const themeRaw = settings?.theme ?? readCookie(c.req.raw, "theme") ?? DEFAULT_THEME;
   const theme = (THEMES as readonly string[]).includes(themeRaw) ? themeRaw : DEFAULT_THEME;
-  const langRaw = settings?.lang ?? getCookie(c.req.raw, "lang") ?? DEFAULT_LANGUAGE;
+  const langRaw = settings?.lang ?? readCookie(c.req.raw, "lang") ?? DEFAULT_LANGUAGE;
   const lang = isSupportedLanguage(langRaw) ? langRaw : DEFAULT_LANGUAGE;
   const slugLength = settings?.slug_default_length ?? DEFAULT_SLUG_LENGTH;
   const defaultRange: TimelineRange = settings?.default_range ?? "30d";

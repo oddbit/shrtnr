@@ -1420,8 +1420,8 @@ export class ClickRepository {
    *  - delta_pct: trend of last 30 days vs the preceding 30 days, to give
    *    range = "all" has no previous window so delta_pct is undefined.
    *  - sparkline: bucketed across the selected range. Granularity follows
-   *    getBucketSpec (hourly for 24h, daily for 7d/30d/90d, weekly for 1y,
-   *    adaptive for all).
+   *    getBucketSpec (hourly for 24h, daily for 7d/30d/90d, twelve
+   *    calendar months for 1y and all).
    *  - top_links: top 3 member links by click count within the same range.
    *    With range = "all" this matches the lifetime total used elsewhere on
    *    the page.
@@ -1627,8 +1627,13 @@ interface BucketSpec {
   since: number | null;
   /** Number of buckets to emit in the output series. */
   buckets: number;
-  /** Approximate bucket width; used to walk backwards when zero-filling. */
+  /** Bucket width used to walk backwards when zero-filling. Unused when `monthly`. */
   stepSec: number;
+  /**
+   * Buckets are calendar months. They vary in length, so the walk backwards
+   * steps the calendar rather than `stepSec`.
+   */
+  monthly?: boolean;
 }
 
 function getBucketSpec(range: TimelineRange, ts: number): BucketSpec {
@@ -1664,9 +1669,13 @@ function getBucketSpec(range: TimelineRange, ts: number): BucketSpec {
     case "1y":
       return {
         bucketExpr: (c) => `strftime('%Y-%m', ${c}, 'unixepoch')`,
-        since: ts - 365 * 86400,
+        // The floor is the start of the oldest charted month, so that month
+        // is counted whole. A 365-day floor cuts into it on a month's last
+        // day when the window holds 29 February.
+        since: monthStart(ts, 11),
         buckets: 12,
         stepSec: 30 * 86400,
+        monthly: true,
       };
     case "all":
     default:
@@ -1675,8 +1684,15 @@ function getBucketSpec(range: TimelineRange, ts: number): BucketSpec {
         since: null,
         buckets: 12,
         stepSec: 30 * 86400,
+        monthly: true,
       };
   }
+}
+
+/** Unix seconds of the first instant (UTC) of the month `back` months before the one holding `ts`. Date.UTC normalizes a negative month index into the preceding year. */
+function monthStart(ts: number, back: number): number {
+  const now = new Date(ts * 1000);
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1) / 1000;
 }
 
 function sparkLabelAt(range: TimelineRange, t: number): string {
@@ -1690,6 +1706,24 @@ function sparkLabelAt(range: TimelineRange, t: number): string {
   return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 }
 
+/**
+ * Labels of the buckets a sparkline series covers, oldest first, current
+ * period last. The one walk shared by the values and their labels, so the two
+ * cannot name different buckets.
+ *
+ * Monthly series step the calendar. A fixed 30-day step drifts against months
+ * of 28 to 31 days: two steps land in one month (its count is charted twice)
+ * or a step jumps a month (its count is dropped).
+ */
+function sparkLabels(spec: BucketSpec, range: TimelineRange, ts: number): string[] {
+  const out: string[] = [];
+  for (let i = spec.buckets - 1; i >= 0; i--) {
+    const t = spec.monthly ? monthStart(ts, i) : ts - i * spec.stepSec;
+    out.push(sparkLabelAt(range, t));
+  }
+  return out;
+}
+
 function fillSparkline(
   rows: { label: string; value: number }[],
   spec: BucketSpec,
@@ -1697,12 +1731,7 @@ function fillSparkline(
   ts: number,
 ): number[] {
   const map = new Map(rows.map((r) => [r.label, r.value]));
-  const out: number[] = [];
-  for (let i = spec.buckets - 1; i >= 0; i--) {
-    const t = ts - i * spec.stepSec;
-    out.push(map.get(sparkLabelAt(range, t)) ?? 0);
-  }
-  return out;
+  return sparkLabels(spec, range, ts).map((label) => map.get(label) ?? 0);
 }
 
 /**
@@ -1712,12 +1741,7 @@ function fillSparkline(
  * matches sparkLabelAt (`YYYY-MM`, `YYYY-MM-DD`, or `YYYY-MM-DD HH`).
  */
 export function sparklineBucketLabels(range: TimelineRange, ts: number): string[] {
-  const spec = getBucketSpec(range, ts);
-  const out: string[] = [];
-  for (let i = spec.buckets - 1; i >= 0; i--) {
-    out.push(sparkLabelAt(range, ts - i * spec.stepSec));
-  }
-  return out;
+  return sparkLabels(getBucketSpec(range, ts), range, ts);
 }
 
 function fillBuckets(
