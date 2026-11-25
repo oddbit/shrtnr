@@ -7,6 +7,7 @@
     "node": "^22.18.0"
   },
   "scripts": {
+    "postinstall": "node scripts/generate-build-info.mjs",
     "migrations:bundle": "tsx scripts/generate-migrations.ts",
     "predev": "yarn migrations:bundle",
     "dev": "wrangler dev",

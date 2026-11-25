@@ -370,6 +370,8 @@ const zh: Translations = {
   "client.viewRepo": "查看仓库",
   "client.updateHint": "更新方法：在 GitHub 上同步你的 fork，部署会自动重新部署。",
   "client.upToDate": "已是最新",
+  "client.unreleased": "未发布的构建",
+  "client.sinceRelease": "{version} 之后 +{count}",
   "client.whatsNew": "新功能",
   "client.updateCheckFailed": "无法检查更新",
   "client.bundles.saveError": "保存合集失败",

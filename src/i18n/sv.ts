@@ -382,6 +382,8 @@ const sv: Translations = {
   "client.updateHint":
     "För att uppdatera: synka din fork på GitHub, så deployas den automatiskt.",
   "client.upToDate": "Uppdaterad",
+  "client.unreleased": "Osläppt bygge",
+  "client.sinceRelease": "+{count} sedan {version}",
   "client.whatsNew": "Nyheter",
   "client.updateCheckFailed": "Kunde inte söka efter uppdateringar",
   "client.bundles.saveError": "Kunde inte spara bunt",

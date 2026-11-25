@@ -817,6 +817,11 @@ select.form-input { appearance: none; -webkit-appearance: none; padding-right: 2
 /* Version row spinner */
 .version-status { font-size: 0.875rem; margin-top: 0.5rem; color: var(--color-text-muted); display: inline-flex; align-items: center; gap: 0.35rem; }
 .icon-spin { font-size: 16px; vertical-align: text-bottom; animation: spin 1s linear infinite; }
+.version-number { font-family: var(--font-family-mono); }
+.version-number-strong { font-weight: 600; }
+.version-build { font-family: var(--font-family-mono); font-size: 0.8rem; color: var(--color-text-muted); }
+.version-unreleased { color: var(--color-info); display: inline-flex; align-items: center; gap: 0.2rem; }
+.version-unreleased .icon { font-size: 15px; }
 
 /* Account row (identity + logout) */
 .account-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 0.5rem; }
