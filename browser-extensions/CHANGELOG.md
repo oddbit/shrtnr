@@ -2,6 +2,13 @@
 
 All notable changes to the shrtnr browser extensions are documented in this file.
 
+## 0.2.2 (2026-11-25)
+
+Two popup QR fixes. No new permissions.
+
+- **A QR code for a replaced slug no longer lands.** Adding a custom slug while the QR was loading left the new short URL beside a QR for the old slug, cached for later toggles. The popup now drops an answer for a slug it no longer shows.
+- **Hide QR during loading stays hidden.** "Generating QR..." stayed on screen and the answer re-opened the panel. Show QR now waits on the request in flight instead of starting a second one.
+
 ## 0.2.1 (2026-11-24)
 
 One popup fix. No new permissions.
