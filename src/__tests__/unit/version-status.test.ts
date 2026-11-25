@@ -68,14 +68,21 @@ describe("settings Version card", () => {
   it("says the build is unreleased when it holds commits the latest release does not", async () => {
     const { text } = await card(BUILD, { [RELEASES]: released("app-v0.43.2"), [COMPARE]: { status: 200, body: { status: "ahead", ahead_by: 3 } } });
     expect(text).toContain("0.43.2 (Nov 24, 2026 · 432b90a)");
-    expect(text).toContain("client.unreleased");
-    expect(text).toContain('client.sinceRelease{"count":3,"version":"0.43.2"}');
+    expect(text).toContain('client.unreleasedMany{"count":3}');
     expect(text).not.toContain("client.upToDate");
+  });
+
+  // One phrase, with the version named once: "0.43.2 (...) Unreleased: 3
+  // commits ahead". A single commit takes the singular.
+  it("says one commit in the singular", async () => {
+    const { text } = await card(BUILD, { [RELEASES]: released("app-v0.43.2"), [COMPARE]: { status: 200, body: { status: "ahead", ahead_by: 1 } } });
+    expect(text).toContain("client.unreleasedOne");
+    expect(text).not.toContain("client.unreleasedMany");
   });
 
   it("counts a build on a diverged branch as unreleased", async () => {
     const { text } = await card(BUILD, { [RELEASES]: released("app-v0.43.2"), [COMPARE]: { status: 200, body: { status: "diverged", ahead_by: 2, behind_by: 1 } } });
-    expect(text).toContain("client.unreleased");
+    expect(text).toContain('client.unreleasedMany{"count":2}');
   });
 
   // A fork's commits are unknown to the upstream repository, and GitHub rate
@@ -136,9 +143,8 @@ describe("settings Version card", () => {
 
   it("has the unreleased strings in every language", () => {
     for (const lang of [en, id, sv, zh]) {
-      expect(lang["client.unreleased"]).toBeTruthy();
-      expect(lang["client.sinceRelease"]).toContain("{count}");
-      expect(lang["client.sinceRelease"]).toContain("{version}");
+      expect(lang["client.unreleasedOne"]).toContain("1");
+      expect(lang["client.unreleasedMany"]).toContain("{count}");
     }
   });
 });

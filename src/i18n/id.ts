@@ -382,8 +382,8 @@ const id: Translations = {
   "client.updateHint":
     "Untuk memperbarui: sinkronkan fork Anda di GitHub, lalu deployment akan dideploy ulang secara otomatis.",
   "client.upToDate": "Terbaru",
-  "client.unreleased": "Build belum dirilis",
-  "client.sinceRelease": "+{count} sejak {version}",
+  "client.unreleasedOne": "Belum dirilis: 1 commit di depan",
+  "client.unreleasedMany": "Belum dirilis: {count} commit di depan",
   "client.whatsNew": "Yang baru",
   "client.updateCheckFailed": "Tidak dapat memeriksa pembaruan",
   "client.bundles.saveError": "Gagal menyimpan bundel",

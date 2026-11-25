@@ -753,12 +753,12 @@ function checkForUpdates() {
   if (!el) return;
   // ahead: commits this build holds past the latest release, or 0 when it
   // holds none or GitHub could not say.
-  function showCurrent(latest, releaseUrl, ahead) {
+  function showCurrent(releaseUrl, ahead) {
     var status = ahead > 0
       ? '<span class="version-unreleased">' +
-          '<span aria-hidden="true" class="icon">construction</span> ' + esc(t('client.unreleased')) +
-        '</span>' +
-        '<span class="version-build">' + esc(t('client.sinceRelease', { count: ahead, version: latest })) + '</span>'
+          '<span aria-hidden="true" class="icon">construction</span> ' +
+          esc(t(ahead === 1 ? 'client.unreleasedOne' : 'client.unreleasedMany', { count: ahead })) +
+        '</span>'
       : '<span style="color:var(--color-success);display:inline-flex;align-items:center;gap:0.2rem">' +
           '<span aria-hidden="true" class="icon" style="font-size:15px;vertical-align:text-bottom">check_circle</span> ' + esc(t('client.upToDate')) +
         '</span>';
@@ -800,7 +800,7 @@ function checkForUpdates() {
       html += '</div>';
       el.innerHTML = html;
     } else if (!BUILD_COMMIT) {
-      showCurrent(latest, releaseUrl, 0);
+      showCurrent(releaseUrl, 0);
     } else {
       // Ask GitHub how this build's commit relates to the release tag. A
       // fork's commit is unknown upstream and anonymous calls are rate
@@ -812,7 +812,7 @@ function checkForUpdates() {
       }).catch(function() {
         return null;
       }).then(function(diff) {
-        showCurrent(latest, releaseUrl, diff && diff.ahead_by > 0 ? diff.ahead_by : 0);
+        showCurrent(releaseUrl, diff && diff.ahead_by > 0 ? diff.ahead_by : 0);
       });
     }
   }).catch(function() {

@@ -4,7 +4,7 @@
 
 The settings page names the build a deployment runs, plus four fixes from the weekly review.
 
-- **The Version card names the build.** Under Workers Builds it reads `0.44.0 (Nov 25, 2026 · 432b90a)`: the version, then the date and short hash of the deployed commit. A deployment that follows `main` past the latest release reads "Unreleased build" with its commit count, in place of "Up to date". The dependency install records the commit, so no build command is needed. A deploy from your own machine shows the version alone.
+- **The Version card names the build.** Under Workers Builds it reads `0.44.0 (Nov 25, 2026 · 432b90a)`: the version, then the date and short hash of the deployed commit. A deployment that follows `main` past the latest release reads "Unreleased: 11 commits ahead" in place of "Up to date". The dependency install records the commit, so no build command is needed. A deploy from your own machine shows the version alone.
 - **The update check reads the release tag.** Releases are tagged `app-v<version>` and the card stripped only a leading `v`: an available update showed as "app-v0.44.0", and a 1.x release would never have counted as newer.
 - **Monthly sparklines chart each month once.** The 1y and all series stepped back 30 days at a time, so on 62 days of a year one month appeared on two points, and around the turn of February a month vanished. They now step the calendar, and the 1y series counts its oldest month whole.
 - **A malformed `theme` or `lang` cookie no longer breaks the admin.** Pages answered 500, and after the first fix the dashboard panels still did. Pages and panels now share one cookie reader that treats an undecodable value as absent and tries the next cookie of the same name.

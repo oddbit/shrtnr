@@ -101,7 +101,7 @@ Build settings, under **Workers & Pages > shrtnr > Settings > Build** in the das
 
 A fork created by the deploy button gets these from `package.json`. Both commands link to the Worker's existing KV namespace and D1 database by the binding names in `wrangler.jsonc`.
 
-**The settings page names the build.** Under Workers Builds the Version card reads `0.43.2 (Nov 24, 2026 · 432b90a)`: the version, then the date and short hash of the deployed commit. A deployment that follows `main` past the latest release is marked "Unreleased build" with its commit count. The dependency install records the commit, so no build command is needed. A deploy from your own machine shows the version alone.
+**The settings page names the build.** Under Workers Builds the Version card reads `0.43.2 (Nov 24, 2026 · 432b90a)`: the version, then the date and short hash of the deployed commit. A deployment that follows `main` past the latest release reads "Unreleased: 11 commits ahead" in place of "Up to date". The dependency install records the commit, so no build command is needed. A deploy from your own machine shows the version alone.
 
 **Remove a `bash scripts/resolve-bindings.sh && ...` prefix if a field still carries one.** Projects set up before this repo dropped its id placeholders may have it. The script no longer exists, and the build fails with "No such file or directory".
 
