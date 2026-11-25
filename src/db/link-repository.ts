@@ -103,11 +103,14 @@ function linkFilterSql(query: LinkFilterQuery): LinkFilterSql {
   }
 
   const now = query.now ?? Math.floor(Date.now() / 1000);
+  // A link is off from the second its expires_at names, the rule the
+  // redirect applies. Disable stamps the current second, so the listing must
+  // call the link disabled in that same second.
   if (query.status === "active") {
-    conds.push("(l.expires_at IS NULL OR l.expires_at >= ?)");
+    conds.push("(l.expires_at IS NULL OR l.expires_at > ?)");
     binds.push(now);
   } else if (query.status === "disabled") {
-    conds.push("(l.expires_at IS NOT NULL AND l.expires_at < ?)");
+    conds.push("(l.expires_at IS NOT NULL AND l.expires_at <= ?)");
     binds.push(now);
   }
 

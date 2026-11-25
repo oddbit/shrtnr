@@ -235,7 +235,7 @@ export const LinksPage: FC<Props> = ({
 }) => {
   const now = Math.floor(Date.now() / 1000);
   const isLinkDisabled = (l: LinkWithSlugs) =>
-    l.expires_at != null && l.expires_at < now;
+    l.expires_at != null && l.expires_at <= now;
 
   const { currentPage, pageCount, perPage: rowsPerPage, start } = pageWindow(page, perPage, totalPages);
 

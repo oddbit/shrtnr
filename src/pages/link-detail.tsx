@@ -70,7 +70,8 @@ type Props = {
 
 export const LinkDetailPage: FC<Props> = ({ link, analytics, bundles = [], t, lang, identity, initialRange }) => {
   const now = Math.floor(Date.now() / 1000);
-  const isExpired = link.expires_at != null && link.expires_at < now;
+  // Off from the second expires_at names, as the redirect has it.
+  const isExpired = link.expires_at != null && link.expires_at <= now;
   const isOwner = identity === link.created_by;
 
   const primarySlug = pickPrimarySlug(link.slugs);
